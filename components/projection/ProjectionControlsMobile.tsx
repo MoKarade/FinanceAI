@@ -1,6 +1,7 @@
 import React from 'react';
 import { Select } from '../ui/Select';
 import { Icon } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
 import { Button } from '../ui/Button';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { Badge } from '../ui/Badge';
@@ -111,7 +112,7 @@ export const ProjectionControlsMobile: React.FC<ProjectionControlsMobileProps> =
                         size="sm"
                         title="Appliquer le rendement composé observé sur ton historique. ⚠️ Il inclut tes APPORTS (pas seulement la croissance des titres) → il SURESTIME le rendement pur, surtout sur un historique court (fiable à partir de ~3 ans)."
                     >
-                        Auto ({liveCSVBalances.historicalRate.toFixed(1)}%)
+                        Auto (<PrivateAmount>{liveCSVBalances.historicalRate.toFixed(1)}%</PrivateAmount>)
                     </Button>
                 )}
                 <ReturnRateField

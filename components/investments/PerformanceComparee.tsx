@@ -14,6 +14,9 @@ import { reperesRonds } from '../../utils/reperesRonds';
 import { toPerformanceRows } from '../StockChart';
 import { Skeleton } from '../ui/Skeleton';
 import { ChartDataTable, type ChartDataColumn } from '../ui/ChartDataTable';
+import { PrivateAmount } from '../ui/PrivateAmount';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 
 export type PeriodeGraphe = '1M' | '3M' | '6M' | 'ALL';
 const PERIODES: ReadonlyArray<{ id: PeriodeGraphe; libelle: string }> = [
@@ -71,6 +74,9 @@ export function variationFenetre(rows: MarketDataPoint[], cle: string, estSynthe
 
 export const PerformanceComparee: React.FC<Props> = ({ donnees, series, selection, onSelection, periode, onPeriode, estSynthetique, chargement, etroit, children }) => {
     const [titresOuverts, setTitresOuverts] = useState(false);
+    // [PRIVACY-RATIOS-DUREES-UNIFORMES] La variation du TOTAL et de chaque COMPTE est un ratio perso : masquée en
+    // mode discret. Celle d'un TITRE est une variation de prix de marché (décision de Marc : laissée visible).
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
     const decor = useMemo(() => {
         let i = 0;
         return new Map(series.map((s) => {
@@ -83,6 +89,8 @@ export const PerformanceComparee: React.FC<Props> = ({ donnees, series, selectio
     const lignes = useMemo(() => toPerformanceRows(donnees, new Set(series.map((s) => s.id))), [donnees, series]);
     const variations = useMemo(() => new Map(series.map((s) => [s.id, variationFenetre(donnees, s.id, estSynthetique)])), [donnees, series, estSynthetique]);
     const visibles = series.filter((s) => selection.has(s.id));
+    const estPerso = (id: string) => decor.get(id)?.total === true;
+    const pctSerie = (id: string, v: unknown, decimales: 0 | 1 | 2 = 1) => (isPrivacyMode && estPerso(id) ? MASKED_AMOUNT_LABEL : formatVariationPct(v, decimales));
     const reperes = useMemo(() => {
         const r = reperesRonds(lignes.flatMap((l) => visibles.map((s) => l[s.id])).filter((v): v is number => typeof v === 'number'));
         return etroit && r ? r.filter((_, i) => i % 2 === 0) : r;
@@ -114,7 +122,7 @@ export const PerformanceComparee: React.FC<Props> = ({ donnees, series, selectio
             >
                 <span className="w-3 h-[3px] rounded-sm" style={{ background: d.couleur, opacity: actif ? 1 : 0.4 }} aria-hidden="true" />
                 {d.libelle}
-                <span className={`font-mono text-meta ${v === null ? 'text-ink-400' : v >= 0 ? 'text-success-400' : 'text-danger-400'}`}>{formatVariationPct(v)}</span>
+                <span className={`font-mono text-meta ${v === null ? 'text-ink-400' : v >= 0 ? 'text-success-400' : 'text-danger-400'}`}>{d.total ? <PrivateAmount>{formatVariationPct(v)}</PrivateAmount> : formatVariationPct(v)}</span>
             </button>
         );
     };
@@ -128,7 +136,7 @@ export const PerformanceComparee: React.FC<Props> = ({ donnees, series, selectio
     };
     const colonnes: ChartDataColumn[] = [
         { key: 'date', label: 'Date', format: (v) => formatDate(jour(String(v))) },
-        ...visibles.map((s) => ({ key: s.id, label: decor.get(s.id)!.libelle, format: (v: unknown) => formatVariationPct(v, 2) })),
+        ...visibles.map((s) => ({ key: s.id, label: decor.get(s.id)!.libelle, format: (v: unknown) => pctSerie(s.id, v, 2) })),
     ];
 
     return (
@@ -167,12 +175,12 @@ export const PerformanceComparee: React.FC<Props> = ({ donnees, series, selectio
                                 <YAxis /* AXE-NON-MONETAIRE : variation en %, jamais un montant */
                                     orientation={etroit ? 'left' : 'right'} mirror={etroit} ticks={reperes} domain={['dataMin', 'dataMax']}
                                     stroke="#8896a8" tick={{ fontSize: etroit ? 10 : 11, fontFamily: 'JetBrains Mono', dy: etroit ? -8 : 0 }}
-                                    tickLine={false} axisLine={false} width={64} tickFormatter={(v: number) => formatVariationPct(v)}
+                                    tickLine={false} axisLine={false} width={64} tickFormatter={(v: number) => (isPrivacyMode ? '' : formatVariationPct(v))}
                                 />
                                 <Tooltip
                                     contentStyle={CHART_TOOLTIP_STYLE}
                                     labelFormatter={(d) => formatDate(jour(String(d)))}
-                                    formatter={(v: number, cle: string) => [formatVariationPct(v, 2), decor.get(cle)?.libelle ?? cle]}
+                                    formatter={(v: number, cle: string) => [pctSerie(cle, v, 2), decor.get(cle)?.libelle ?? cle]}
                                 />
                                 {visibles.map((s) => {
                                     const d = decor.get(s.id)!;

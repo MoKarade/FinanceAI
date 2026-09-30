@@ -16,8 +16,8 @@ export interface JalonProjection {
     /** Libellé court (téléphone), sinon `libelle`. */
     libelleCourt?: string;
     /** Année (« 2036 », « ≈ 2036 ») ou « — ». */
-    annee: string;
-    age: string;
+    annee: React.ReactNode;
+    age: React.ReactNode;
     /** Montant DÉJÀ enveloppé par l'appelant (`PrivateAmount`) ou `null` → « — ». */
     montant: React.ReactNode | null;
     /** Teinte du montant : FIRE en ambre (couleur de sa série). */

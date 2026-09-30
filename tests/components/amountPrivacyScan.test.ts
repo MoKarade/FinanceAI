@@ -84,8 +84,10 @@ const files = readdirSync(path.join(ROOT, 'components'), { recursive: true, enco
     .map((f) => path.join(ROOT, 'components', f));
 
 /**
- * Jeton posé sur la DÉFINITION d'un alias de `formatNumber` (sur sa ligne ou celle du dessus) qui
- * formate un nombre qui n'est PAS un montant de l'utilisateur (pourcentage d'hypothèse, durée…).
+ * Jeton posé sur la DÉFINITION d'un alias de `formatNumber` (sur sa ligne ou celle du dessus), ou au-dessus
+ * d'un appel direct / d'un ratio, pour un nombre qui n'est PAS une donnée de l'utilisateur (hypothèse
+ * saisie, qualité d'un outil…). ⚠️ Depuis `[PRIVACY-RATIOS-DUREES-UNIFORMES]` (Marc, 2026-09-29), un
+ * ratio ou une durée DÉRIVÉ du dossier ne se déclare PLUS ainsi : il se masque.
  * Honoré pour `formatNumber` SEULEMENT : un alias de `formatCAD` est un montant par construction.
  */
 const NOMBRE_NON_MONETAIRE = /NOMBRE-NON-MONETAIRE/;
@@ -97,8 +99,7 @@ const NOMBRE_NON_MONETAIRE = /NOMBRE-NON-MONETAIRE/;
  * `const fmtNu = (n) => formatNumber(...)` qui rend un gain en dollars était structurellement
  * invisible (`panneauJour/sections.tsx`). Ses alias sont donc traités comme monétaires PAR DÉFAUT,
  * sauf déclaration explicite `NOMBRE-NON-MONETAIRE` sur leur définition (lue dans `brut`).
- * ⚠️ Les appels DIRECTS à `formatNumber(` ne sont PAS relevés : mesuré le 2026-09-29, ils mêlent
- * pourcentages et prix unitaires (6 sites à trier, BACKLOG `[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`).
+ * Les appels DIRECTS à `formatNumber(` sont relevés à part (`NOMBRE_DIRECT`, plus bas).
  */
 export function aliasMonetaires(src: string, brut?: string): string[] {
     const lignesBrutes = brut?.split('\n');
@@ -113,12 +114,35 @@ export function aliasMonetaires(src: string, brut?: string): string[] {
         .map((m) => m[1]);
 }
 
+/**
+ * [PRIVACY-SCAN-FORMATNUMBER-DIRECT] Appel DIRECT au formateur sans devise. Il sert autant aux
+ * montants (prix d'achat, total investi) qu'aux ratios et durées : il est donc relevé comme un
+ * montant, et un site non monétaire le DÉCLARE par `NOMBRE-NON-MONETAIRE` dans sa fenêtre (±2 lignes,
+ * source brute). Mesuré le 2026-09-29 : 6 sites relevés, dont 2 vraies fuites (récapitulatif
+ * d'`AddStockForm`) corrigées dans le même lot. Le jeton n'excuse JAMAIS une ligne qui porte aussi
+ * un formateur CAD ou un alias monétaire.
+ */
+const NOMBRE_DIRECT = /\bformatNumber\s*\(/;
+
+/**
+ * [PRIVACY-RATIOS-DUREES-UNIFORMES] Décision de Marc (2026-09-29) : un RATIO dérivé des données de
+ * l'utilisateur (part du budget, poids d'un titre, taux d'épargne, variation du portefeuille, gain %)
+ * se masque comme un montant. Relevés ici : `formatPercent(`, `formatVariationPct(`, et un
+ * `.toFixed(n)` suivi d'un `%` sur la même ligne. Un pourcentage NON personnel (hypothèse de marché,
+ * réglage de simulation, barème légal) le DÉCLARE par `NOMBRE-NON-MONETAIRE` ou `MONTANT-PUBLIC`.
+ */
+const RATIO_BASE = /\bformatPercent\s*\(|\bformatVariationPct\s*\(|\.toFixed\(\s*\d*\s*\)[^\n%]{0,6}%/;
+
 interface Site { fichier: string; ligne: number; texte: string }
 
 function sitesNonMasques(): Site[] {
+    return files.flatMap((file) => sitesNonMasquesDans(readFileSync(file, 'utf8'), path.relative(ROOT, file)));
+}
+
+/** Même jugement, sur UNE source (testable sur une synthèse). */
+function sitesNonMasquesDans(brut: string, fichier: string): Site[] {
     const out: Site[] = [];
-    for (const file of files) {
-        const brut = readFileSync(file, 'utf8');
+    {
         // `stripCommentsJsx` BLANCHIT (mêmes lignes, mêmes colonnes) : les deux lectures restent
         // alignées ligne à ligne, ce qui est la condition pour croiser les deux fenêtres.
         const src = stripCommentsJsx(brut);
@@ -127,16 +151,21 @@ function sitesNonMasques(): Site[] {
         const alias = aliasMonetaires(src, brut);
         const ALIAS = alias.length ? new RegExp(`\\b(${alias.join('|')})\\s*\\(`) : null;
         lines.forEach((l, i) => {
-            if (!(MONEY_BASE.test(l) || (ALIAS && ALIAS.test(l)))) return;
+            const monetaire = MONEY_BASE.test(l) || (ALIAS !== null && ALIAS.test(l));
+            const nombre = NOMBRE_DIRECT.test(l) || RATIO_BASE.test(l);
+            if (!monetaire && !nombre) return;
             // La DÉFINITION d'un alias n'est pas un rendu — c'est son point d'APPEL qui compte.
-            if (/const\s+\w+\s*[:=][^\n]*=>/.test(l) && MONEY_BASE.test(l)) return;
+            if (/const\s+\w+\s*[:=][^\n]*=>/.test(l) && (MONEY_BASE.test(l) || nombre)) return;
             const fenetre = lines.slice(Math.max(0, i - W), i + W + 1).join('\n');
             const fenetreBrute = lignesBrutes.slice(Math.max(0, i - W), i + W + 1).join('\n');
+            // Le jeton ne regarde QUE vers le haut (ligne courante + 2 au-dessus) : posé pour un site,
+            // il ne doit pas excuser un `formatNumber(` situé AU-DESSUS de lui (revue lot 4).
+            if (!monetaire && NOMBRE_NON_MONETAIRE.test(lignesBrutes.slice(Math.max(0, i - W), i + 1).join('\n'))) return;
             if (LIGNE_ATTRIBUT.test(l)) { if (PRIVACY.test(l)) return; }
             else if (PRIVACY.test(fenetre)) return;
             if (PUBLIC_OK.test(fenetreBrute) || HORS_ECRAN.test(fenetreBrute)
                 || MASQUE_AILLEURS.test(fenetreBrute)) return;
-            out.push({ fichier: path.relative(ROOT, file), ligne: i + 1, texte: l.trim().slice(0, 120) });
+            out.push({ fichier, ligne: i + 1, texte: l.trim().slice(0, 120) });
         });
     }
     return out;
@@ -206,6 +235,34 @@ describe('[A11Y-PRIVACY-SCAN-GLOBAL] aucun montant rendu n\'échappe au mode dis
         expect(PRIVACY.test(faux)).toBe(false);
         // …et le MÊME texte, enveloppé, ne l'est plus.
         expect(PRIVACY.test(faux.replace('{formatCAD(', '<PrivateAmount>{formatCAD('))).toBe(true);
+    });
+
+    it('[PRIVACY-SCAN-FORMATNUMBER-DIRECT] un appel direct à formatNumber est relevé, sauf masqué ou déclaré', () => {
+        const nu = 'const a = 1;\n<strong>{formatNumber(total, { decimals: 2 })}</strong> CAD\nconst b = 2;';
+        expect(sitesNonMasquesDans(nu, 'synthese.tsx').map((s) => s.ligne)).toEqual([2]);
+        // Enveloppé : sain.
+        const masque = nu.replace('<strong>{formatNumber(total, { decimals: 2 })}</strong>', '<strong><PrivateAmount>{formatNumber(total, { decimals: 2 })}</PrivateAmount></strong>');
+        expect(sitesNonMasquesDans(masque, 'synthese.tsx')).toEqual([]);
+        // Déclaré non monétaire (commentaire JSX au-dessus) : sain.
+        const ratio = '{/* NOMBRE-NON-MONETAIRE : un ratio */}\n<span>{formatNumber(part, { decimals: 1 })} %</span>';
+        expect(sitesNonMasquesDans(ratio, 'synthese.tsx')).toEqual([]);
+        // Le jeton n'excuse PAS un formateur CAD sur la même ligne.
+        const mixte = '{/* NOMBRE-NON-MONETAIRE */}\n<span>{formatNumber(part)} % de {formatCAD(total)}</span>';
+        expect(sitesNonMasquesDans(mixte, 'synthese.tsx').map((s) => s.ligne)).toEqual([2]);
+        // Le jeton d'un site du DESSOUS n'excuse pas un montant du dessus.
+        const dessus = '<b>{formatNumber(total)}</b>\n{/* NOMBRE-NON-MONETAIRE */}\n<span>{formatNumber(part)} %</span>';
+        expect(sitesNonMasquesDans(dessus, 'synthese.tsx').map((s) => s.ligne)).toEqual([1]);
+    });
+
+    it('[PRIVACY-RATIOS-DUREES-UNIFORMES] un ratio rendu en clair est relevé, sauf masqué ou déclaré', () => {
+        const pct = 'const a = 1;\n<span>{formatPercent(taux, 1)}</span>\nconst b = 2;';
+        expect(sitesNonMasquesDans(pct, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        const toFixed = 'const a = 1;\n<div>{a.weight.toFixed(1)}%</div>\nconst b = 2;';
+        expect(sitesNonMasquesDans(toFixed, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        const variation = 'const a = 1;\n<div>{formatVariationPct(v, 2)}</div>\nconst b = 2;';
+        expect(sitesNonMasquesDans(variation, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        expect(sitesNonMasquesDans(pct.replace('{formatPercent(taux, 1)}', '<PrivateAmount>{formatPercent(taux, 1)}</PrivateAmount>'), 's.tsx')).toEqual([]);
+        expect(sitesNonMasquesDans('{/* MONTANT-PUBLIC : barème */}\n<span>{formatPercent(taux, 1)}</span>', 's.tsx')).toEqual([]);
     });
 
     it('le jeton de dette `MONTANT-CHAINE-A-DECOUPER` a bien disparu du dépôt', () => {

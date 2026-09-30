@@ -34,7 +34,7 @@ export const ImpactProjet: React.FC<Props> = ({ projet, patrimoine, rendement, o
                 <div className={tuile}>
                     <span className="text-meta text-ink-400">Coût immédiat</span>
                     <PrivateAmount className="font-mono text-[18px] font-bold text-ink-50">{formatCAD(impact.coutImmediat)}</PrivateAmount>
-                    <span className="text-tiny text-ink-400">{formatPercent(impact.partPatrimoine, 1)} du patrimoine</span>
+                    <span className="text-tiny text-ink-400"><PrivateAmount>{formatPercent(impact.partPatrimoine, 1)}</PrivateAmount> du patrimoine</span>
                 </div>
                 <div className={tuile}>
                     <span className="text-meta text-ink-400">Placé à {formatNumber(rendement, { decimals: Number.isInteger(rendement) ? 0 : 1 })} % sur {ANNEES_IMPACT} ans</span>

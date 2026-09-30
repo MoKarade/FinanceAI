@@ -513,7 +513,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
                 <div className={tuile}>
                     <span className={etiquetteTuile}>Taux marginal</span>
                     {/* utils/tax.ts:getMarginalRate retourne un DÉCIMAL (0,4 pour 40 %). */}
-                    <div className="font-mono lg:font-sans text-[18px] lg:text-[24px] font-bold text-ink-50">{formatPercent(report.marginalRate * 100, 1)}</div>
+                    <div className="font-mono lg:font-sans text-[18px] lg:text-[24px] font-bold text-ink-50"><PrivateAmount>{formatPercent(report.marginalRate * 100, 1)}</PrivateAmount></div>
                     <span className="text-tiny text-ink-400">sur le prochain dollar</span>
                 </div>
                 <div className={tuile}>
@@ -643,15 +643,18 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
 const LigneCascade: React.FC<{
     libelle: string; montant: React.ReactNode; barre: { gauche: number; largeur: number; couleur: string };
     fort?: boolean; separe?: boolean; couleurMontant?: string;
-}> = ({ libelle, montant, barre, fort, separe, couleurMontant = 'text-ink-50' }) => (
+}> = ({ libelle, montant, barre, fort, separe, couleurMontant = 'text-ink-50' }) => {
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    return (
     <div className={`grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_120px] items-center gap-x-4 gap-y-1.5 py-2.5 lg:py-0 lg:h-[42px] ${separe ? 'border-t border-white/6' : ''}`}>
         <dt className={`text-[13px] lg:text-body ${fort ? 'font-semibold text-ink-50' : 'text-ink-200'}`}>{libelle}</dt>
         <div className="relative h-2.5 col-span-2 lg:col-span-1 row-start-2 lg:row-start-auto" aria-hidden="true">
-            <span className={`absolute inset-y-0 rounded-sm ${barre.couleur}`} style={{ left: `${barre.gauche}%`, width: `max(${barre.largeur}%, 2px)` }} />
+            <span className={`absolute inset-y-0 rounded-sm ${barre.couleur}`} style={isPrivacyMode ? { left: 0, width: 0 } : { left: `${barre.gauche}%`, width: `max(${barre.largeur}%, 2px)` }} />
         </div>
         <dd className={`font-mono text-right text-[13px] lg:text-body ${fort ? 'font-bold' : ''} ${couleurMontant}`}>{montant}</dd>
     </div>
-);
+    );
+};
 
 const LigneSimple: React.FC<{ libelle: React.ReactNode; valeur: React.ReactNode }> = ({ libelle, valeur }) => (
     <div className="flex justify-between items-center gap-3 text-body">
@@ -661,7 +664,9 @@ const LigneSimple: React.FC<{ libelle: React.ReactNode; valeur: React.ReactNode 
 );
 
 type Palier = { rate: string; amount: number; filled: number; max: number | string; percentFull: number };
-const Paliers: React.FC<{ titre: string; paliers: Palier[]; couleur: string }> = ({ titre, paliers, couleur }) => (
+const Paliers: React.FC<{ titre: string; paliers: Palier[]; couleur: string }> = ({ titre, paliers, couleur }) => {
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    return (
     <section className="rounded-2xl bg-surface border border-white/6 p-4 sm:p-5">
         <h2 className="text-[17px] font-semibold text-ink-50 mb-3">{titre}</h2>
         <div className="space-y-4">
@@ -672,7 +677,7 @@ const Paliers: React.FC<{ titre: string; paliers: Palier[]; couleur: string }> =
                         <PrivateAmount className="text-ink-400">{b.amount > 0 ? `${formatCAD(b.amount)} taxés` : formatCAD(0)}</PrivateAmount>
                     </div>
                     <div className="h-4 w-full bg-surfaceHighlight rounded-sm overflow-hidden relative border border-white/5">
-                        <div className={`h-full transition-all duration-500 ${couleur}`} style={{ width: `${b.percentFull}%` }}></div>
+                        <div className={`h-full transition-all duration-500 ${couleur}`} style={{ width: `${isPrivacyMode ? 0 : b.percentFull}%` }}></div>
                         <PrivateAmount as="div" className="absolute inset-0 flex items-center justify-center text-tiny font-mono text-white/80">
                             {formatCAD(b.filled)} / {typeof b.max === 'number' ? formatCAD(b.max) : `${b.max} $`}
                         </PrivateAmount>
@@ -681,4 +686,5 @@ const Paliers: React.FC<{ titre: string; paliers: Palier[]; couleur: string }> =
             ))}
         </div>
     </section>
-);
+    );
+};

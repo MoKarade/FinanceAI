@@ -162,12 +162,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
     const claudeKey = anthropicKeyFromStore || apiKey || '';
 
     // [A11Y-CHARTS] tables de données sr-only pour les donuts d'allocation (Recharts opaque aux
-    // lecteurs d'écran). Classe d'actif + % visibles ; Valeur $ masquée en mode privé (parité PrivateAmount).
+    // lecteurs d'écran). Classe d'actif visible ; Valeur $ ET part % masquées en mode privé (parité PrivateAmount ;
+    // [PRIVACY-RATIOS-DUREES-UNIFORMES] : la part d'un portefeuille est un ratio perso).
     const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     const allocationColumns: ChartDataColumn[] = [
         { key: 'name', label: "Classe d'actif" },
         { key: 'value', label: 'Valeur', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v) },
-        { key: 'percent', label: 'Part', format: (v) => `${(Number(v) || 0).toFixed(1)}%` },
+        { key: 'percent', label: 'Part', format: (v) => isPrivacyMode ? MASKED_AMOUNT_LABEL : `${(Number(v) || 0).toFixed(1)}%` },
     ];
 
     const [marketData, setMarketData] = useState<MarketDataPoint[]>([]);
@@ -763,8 +764,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
                             <PrivateAmount as="div" className="font-mono text-[30px] font-bold text-ink-50">{formatCAD(valeurPortefeuille)}</PrivateAmount>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="flex flex-col gap-0.5"><span className="text-meta text-ink-400">Sur 24 h</span><span className={`font-mono font-bold ${couleurVariation(variation24h)}`}>{formatVariationPct(variation24h, 2)}</span></div>
-                            <div className="flex flex-col gap-0.5"><span className="text-meta text-ink-400">Depuis {moisDebut ?? 'le début'}</span><span className={`font-mono font-bold ${couleurVariation(variationDepuisDebut)}`}>{formatVariationPct(variationDepuisDebut)}</span></div>
+                            <div className="flex flex-col gap-0.5"><span className="text-meta text-ink-400">Sur 24 h</span><span className={`font-mono font-bold ${couleurVariation(variation24h)}`}><PrivateAmount>{formatVariationPct(variation24h, 2)}</PrivateAmount></span></div>
+                            <div className="flex flex-col gap-0.5"><span className="text-meta text-ink-400">Depuis {moisDebut ?? 'le début'}</span><span className={`font-mono font-bold ${couleurVariation(variationDepuisDebut)}`}><PrivateAmount>{formatVariationPct(variationDepuisDebut)}</PrivateAmount></span></div>
                         </div>
                         <div className="border-t border-white/6 pt-3 flex flex-col gap-1">
                             <span className="text-meta text-ink-400">Patrimoine net en {horizonSnapshot?.year ?? '—'}</span>
@@ -782,12 +783,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         </div>
                         <div className={tuile}>
                             <span className={etiquetteTuile}>Sur 24 h</span>
-                            <div className={`font-mono text-[22px] font-bold ${couleurVariation(variation24h)}`}>{formatVariationPct(variation24h, 2)}</div>
+                            <div className={`font-mono text-[22px] font-bold ${couleurVariation(variation24h)}`}><PrivateAmount>{formatVariationPct(variation24h, 2)}</PrivateAmount></div>
+                            {/* MONTANT-PUBLIC : variation de l'indice de marché, pas celle du portefeuille. */}
                             {benchmarkTrend24 !== null && <span className="text-meta text-ink-400">marché (CW8 / MSCI) {formatVariationPct(benchmarkTrend24, 2)}</span>}
                         </div>
                         <div className={tuile}>
                             <span className={etiquetteTuile}>Depuis {moisDebut ?? 'le début'}</span>
-                            <div className={`font-mono text-[22px] font-bold ${couleurVariation(variationDepuisDebut)}`}>{formatVariationPct(variationDepuisDebut)}</div>
+                            <div className={`font-mono text-[22px] font-bold ${couleurVariation(variationDepuisDebut)}`}><PrivateAmount>{formatVariationPct(variationDepuisDebut)}</PrivateAmount></div>
                         </div>
                         <div className={tuile}>
                             <span className={etiquetteTuile}>Patrimoine net en {horizonSnapshot?.year ?? '—'}</span>
@@ -891,7 +893,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             </div>
                                             <div className="text-right">
                                                 <PrivateAmount as="div" className="text-white font-bold">{formatCAD(item.value)}</PrivateAmount>
-                                                <div className="text-tiny text-ink-400">{item.percent.toFixed(1)}%</div>
+                                                <div className="text-tiny text-ink-400"><PrivateAmount>{item.percent.toFixed(1)}%</PrivateAmount></div>
                                             </div>
                                         </button>
                                     );
@@ -953,7 +955,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             </div>
                                             <div className="text-right">
                                                 <PrivateAmount as="div" className="text-white font-bold">{formatCAD(item.value)}</PrivateAmount>
-                                                <div className="text-tiny text-ink-400">{item.percent.toFixed(1)}%</div>
+                                                <div className="text-tiny text-ink-400"><PrivateAmount>{item.percent.toFixed(1)}%</PrivateAmount></div>
                                             </div>
                                         </button>
                                     );
@@ -988,10 +990,11 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     <div key={a.id} className="bg-white/5 p-3 rounded-lg border border-white/5">
                                         <div className="flex justify-between items-start mb-1">
                                             <span className="font-bold text-white text-body truncate">{a.name}</span>
-                                            <span className="text-tiny text-ink-400 font-mono">{a.weight.toFixed(1)}%</span>
+                                            <span className="text-tiny text-ink-400 font-mono"><PrivateAmount>{a.weight.toFixed(1)}%</PrivateAmount></span>
                                         </div>
                                         <PrivateAmount as="div" className="text-meta font-mono text-ink-200">{formatCAD(a.value)}</PrivateAmount>
                                         <div className={`text-tiny font-mono ${a.trendPct === null ? 'text-ink-400' : a.trendPct >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
+                                            {/* MONTANT-PUBLIC : variation du PRIX DE MARCHÉ du titre (décision de Marc : laissée visible). */}
                                             {a.trendPct === null ? '—' : `${a.trendPct >= 0 ? '+' : ''}${a.trendPct.toFixed(2)}%`} ({PERF_PERIOD_LABELS[perfPeriod]})
                                         </div>
                                     </div>
@@ -1168,7 +1171,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                             <div>
                                                 <div className="text-white font-bold text-body">{item.label}</div>
                                                 <div className="text-tiny text-ink-400 flex items-center gap-2 mt-1">
-                                                    <span>Actuel: <span className="text-ink-200 font-bold">{item.currentPct.toFixed(1)}%</span></span>
+                                                    <span>Actuel: <span className="text-ink-200 font-bold"><PrivateAmount>{item.currentPct.toFixed(1)}%</PrivateAmount></span></span>
                                                     <span className="opacity-50">|</span>
                                                     {isRebalanceEdit ? (
                                                         <div className="flex items-center gap-1">
@@ -1223,7 +1226,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         <div
                                             className="absolute left-0 top-0 h-full rounded-full transition-all duration-700 shadow-[0_0_10px_rgba(255,255,255,0.2)]"
                                             style={{
-                                                width: `${Math.min(100, item.currentPct)}%`,
+                                                width: `${isPrivacyMode ? 0 : Math.min(100, item.currentPct)}%`, // barre = ratio perso : vide en mode discret
                                                 backgroundColor: item.color
                                             }}
                                         />
@@ -1252,13 +1255,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     {rebalancingActions.filter(a => a.action === 'SELL').map((a, i) => (
                                         <div key={i} className="text-meta text-red-300 flex items-start gap-2">
                                             <span className="w-2 h-2 rounded-full bg-danger-500 mt-1.5 shrink-0" aria-hidden="true" />
-                                            <span><b>Vendre</b> <PrivateAmount>{formatCAD(Math.round(Math.abs(a.diffAmount)))}</PrivateAmount> de <b>{a.label}</b> (surplus {a.diffPct.toFixed(1)}%) — Utilisez votre compte Non-Enregistré en priorité pour optimiser la fiscalité.</span>
+                                            <span><b>Vendre</b> <PrivateAmount>{formatCAD(Math.round(Math.abs(a.diffAmount)))}</PrivateAmount> de <b>{a.label}</b> (surplus <PrivateAmount>{a.diffPct.toFixed(1)}%</PrivateAmount>) — Utilisez votre compte Non-Enregistré en priorité pour optimiser la fiscalité.</span>
                                         </div>
                                     ))}
                                     {rebalancingActions.filter(a => a.action === 'BUY').map((a, i) => (
                                         <div key={i} className="text-meta text-green-300 flex items-start gap-2">
                                             <span className="w-2 h-2 rounded-full bg-success-500 mt-1.5 shrink-0" aria-hidden="true" />
-                                            <span><b>Acheter</b> <PrivateAmount>{formatCAD(Math.round(Math.abs(a.diffAmount)))}</PrivateAmount> de <b>{a.label}</b> (déficit {Math.abs(a.diffPct).toFixed(1)}%) — Priorisez votre CELI si vous avez de l'espace disponible.</span>
+                                            <span><b>Acheter</b> <PrivateAmount>{formatCAD(Math.round(Math.abs(a.diffAmount)))}</PrivateAmount> de <b>{a.label}</b> (déficit <PrivateAmount>{Math.abs(a.diffPct).toFixed(1)}%</PrivateAmount>) — Priorisez votre CELI si vous avez de l'espace disponible.</span>
                                         </div>
                                     ))}
                                     <div className="text-meta text-ink-400 mt-3 pt-3 border-t border-white/5 italic">
@@ -1292,12 +1295,13 @@ export const Investments: React.FC<InvestmentsProps> = ({
                         <div className="card-subtle p-4 flex flex-col items-center justify-center">
                             <div className="kpi-label mb-1">Votre portefeuille</div>
                             <div className={`text-kpi font-mono tabular-nums ${portfolioTrend === null ? 'text-ink-400' : portfolioTrend >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                {formatVariationPct(portfolioTrend, 2)}
+                                <PrivateAmount>{formatVariationPct(portfolioTrend, 2)}</PrivateAmount>
                             </div>
                         </div>
                         <div className="card-subtle p-4 flex flex-col items-center justify-center">
                             <div className="kpi-label mb-1">Marché (CW8 / MSCI)</div>
                             <div className={`text-kpi font-mono tabular-nums ${benchmarkTrend === null ? 'text-ink-400' : benchmarkTrend >= 0 ? 'text-info-400' : 'text-danger-400'}`}>
+                                {/* MONTANT-PUBLIC : performance de l'indice de référence (marché). */}
                                 {formatVariationPct(benchmarkTrend, 2)}
                             </div>
                         </div>
@@ -1424,7 +1428,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-xl font-black text-white tracking-tight">{asset.weight.toFixed(1)}%</div>
+                                        <div className="text-xl font-black text-white tracking-tight"><PrivateAmount>{asset.weight.toFixed(1)}%</PrivateAmount></div>
                                     </div>
                                 </div>
 
@@ -1436,6 +1440,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                     <div className="bg-white/3 p-2.5 rounded-xl border border-white/5 backdrop-blur-xs">
                                         <div className="text-ink-400 mb-1 font-bold">Variation {PERF_PERIOD_LABELS[perfPeriod]}</div>
                                         <div className={`font-bold text-meta ${asset.trendPct === null ? 'text-ink-400' : asset.trendPct >= 0 ? 'text-green-400' : 'text-danger-400'}`}>
+                                            {/* MONTANT-PUBLIC : variation du PRIX DE MARCHÉ du titre (décision de Marc : laissée visible). */}
                                             {asset.trendPct === null ? '—' : `${asset.trendPct > 0 ? '+' : ''}${asset.trendPct.toFixed(1)}%`}
                                         </div>
                                     </div>
@@ -1519,7 +1524,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
                                         <div className="flex justify-between">
                                             <span className="text-ink-400">Gain total</span>
                                             <span className={`font-mono ${purchaseStats.totalGain >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
-                                                {purchaseStats.totalGain >= 0 ? '+' : ''}<PrivateAmount>{formatCAD(purchaseStats.totalGain * toCurrencyFactor(fxRates, savedAsset?.currency || 'CAD'))}</PrivateAmount> ({purchaseStats.gainPct.toFixed(1)}%)
+                                                {purchaseStats.totalGain >= 0 ? '+' : ''}<PrivateAmount>{formatCAD(purchaseStats.totalGain * toCurrencyFactor(fxRates, savedAsset?.currency || 'CAD'))}</PrivateAmount> (<PrivateAmount>{purchaseStats.gainPct.toFixed(1)}%</PrivateAmount>)
                                             </span>
                                         </div>
                                     </div>

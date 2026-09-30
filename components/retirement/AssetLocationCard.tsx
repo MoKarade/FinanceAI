@@ -124,17 +124,17 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                     <div className="bg-success-500/10 rounded-sm p-3 border border-success-500/20">
                         <div className="text-tiny text-success-400 uppercase tracking-wide mb-1">CELI</div>
                         <PrivateAmount as="div" className="text-base font-bold text-emerald-200 font-mono">{formatCAD(accountTotals.totals.CELI)}</PrivateAmount>
-                        <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.CELI / accountTotals.total) * 100).toFixed(0) : 0}%</div>
+                        <div className="text-tiny text-ink-400"><PrivateAmount>{accountTotals.total > 0 ? ((accountTotals.totals.CELI / accountTotals.total) * 100).toFixed(0) : 0}%</PrivateAmount></div>
                     </div>
                     <div className="bg-info-500/10 rounded-sm p-3 border border-info-500/20">
                         <div className="text-tiny text-info-400 uppercase tracking-wide mb-1">REER</div>
                         <PrivateAmount as="div" className="text-base font-bold text-info-400 font-mono">{formatCAD(accountTotals.totals.REER)}</PrivateAmount>
-                        <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.REER / accountTotals.total) * 100).toFixed(0) : 0}%</div>
+                        <div className="text-tiny text-ink-400"><PrivateAmount>{accountTotals.total > 0 ? ((accountTotals.totals.REER / accountTotals.total) * 100).toFixed(0) : 0}%</PrivateAmount></div>
                     </div>
                     <div className="bg-warning-500/10 rounded-sm p-3 border border-warning-500/20">
                         <div className="text-tiny text-warning-400 uppercase tracking-wide mb-1">Non-Enreg.</div>
                         <PrivateAmount as="div" className="text-base font-bold text-amber-200 font-mono">{formatCAD(accountTotals.totals.NonReg)}</PrivateAmount>
-                        <div className="text-tiny text-ink-400">{accountTotals.total > 0 ? ((accountTotals.totals.NonReg / accountTotals.total) * 100).toFixed(0) : 0}%</div>
+                        <div className="text-tiny text-ink-400"><PrivateAmount>{accountTotals.total > 0 ? ((accountTotals.totals.NonReg / accountTotals.total) * 100).toFixed(0) : 0}%</PrivateAmount></div>
                     </div>
                 </div>
 

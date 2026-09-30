@@ -243,7 +243,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
                                         <PrivateText className="font-bold text-ink-100 truncate">{a.label}</PrivateText>
                                         {a.kind === 'price_rise' ? (
                                             <div className="text-ink-300">
-                                                Le prix a monté de {formatPercent((a.risePct ?? 0) * 100, 0)} —{' '}
+                                                Le prix a monté de <PrivateAmount>{formatPercent((a.risePct ?? 0) * 100, 0)}</PrivateAmount> —{' '}
                                                 <PrivateAmount>{formatCAD(a.baselineAmount)}</PrivateAmount> puis{' '}
                                                 <PrivateAmount>{formatCAD(a.latestAmount)}</PrivateAmount>.{' '}
                                                 <span className="text-ink-400">
@@ -328,7 +328,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
                                 return (
                                     <div key={idx} className={`aspect-square rounded-lg border flex flex-col items-center justify-center relative ${isToday ? 'bg-primary/20 border-primary' : hasBills ? 'bg-danger-500/10 border-danger-500/30' : 'bg-dark/40 border-white/5'}`}>
                                         <span className={`text-meta font-bold ${isToday ? 'text-primary' : 'text-ink-400'}`}>{day}</span>
-                                        {hasBills && <div className="mt-1 text-center"><div className="text-tiny font-bold text-white leading-none">{formatCAD(dailyTotal)}</div><div className="flex gap-0.5 justify-center mt-0.5">{bills.slice(0, 3).map((b, bi) => <div key={bi} className="w-1 h-1 rounded-full bg-danger-400" title={maskPayee(b.payee, isPrivacyMode)}></div>)}</div></div>}
+                                        {hasBills && <div className="mt-1 text-center"><div className="text-tiny font-bold text-white leading-none"><PrivateAmount>{formatCAD(dailyTotal)}</PrivateAmount></div><div className="flex gap-0.5 justify-center mt-0.5">{bills.slice(0, 3).map((b, bi) => <div key={bi} className="w-1 h-1 rounded-full bg-danger-400" title={maskPayee(b.payee, isPrivacyMode)}></div>)}</div></div>}
                                     </div>
                                 );
                             })}

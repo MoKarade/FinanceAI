@@ -21,14 +21,14 @@ import type { TimeView } from './pilotage';
  * Annoncer six mois chiffrés pour chacun noierait le lecteur d'écran sous des dizaines de tableaux
  * pour une information de FORME. Un sparkline se résume : sens et ampleur.
  *
- * ⚠️ Et il se résume SANS montant — donc sans rien à masquer. Le pourcentage de variation reste
- * lisible en mode discret (précédent du dépôt : un ratio n'est pas un montant), là où « de 820 $ à
- * 910 $ » aurait dû passer par `MASKED_AMOUNT_LABEL` et n'aurait plus rien dit.
+ * ⚠️ Et il se résume SANS montant. [PRIVACY-RATIOS-DUREES-UNIFORMES] Le pourcentage de variation, lui,
+ * est un ratio perso : décision de Marc (2026-09-29), il est RETIRÉ en mode discret (`masquer`), et
+ * seul le SENS reste annoncé. L'ancienne règle « un ratio n'est pas un montant » est abandonnée.
  *
  * Rend `null` quand la série ne permet AUCUNE description honnête (moins de deux points finis) :
  * l'appelant marque alors le graphe `aria-hidden`, plutôt que d'annoncer une tendance inventée.
  */
-export function tendanceSparkline(data: readonly number[]): string | null {
+export function tendanceSparkline(data: readonly number[], masquer = false): string | null {
     const finis = data.filter((v) => Number.isFinite(v));
     if (finis.length < 2) return null;
     const debut = finis[0];
@@ -39,13 +39,15 @@ export function tendanceSparkline(data: readonly number[]): string | null {
     const sens = ecart > 0 ? 'en hausse' : 'en baisse';
     // Un point de départ nul rend la variation relative infinie : on annonce le SENS seul plutôt
     // qu'un pourcentage fabriqué (no-fake-data vaut aussi pour un nom accessible).
-    if (debut === 0) return `${finis.length} mois, ${sens}`;
+    if (debut === 0 || masquer) return `${finis.length} mois, ${sens}`;
+    // MONTANT-MASQUE-AILLEURS : en mode discret, `masquer` (lu par l'appelant) a déjà rendu la phrase SANS le %.
     return `${finis.length} mois, ${sens} de ${formatPercent(Math.abs(ecart / debut) * 100, 0)}`;
 }
 
 const Sparkline = ({ data, color, poste }: { data: number[]; color: string; poste: string }) => {
     const chartData = data.map((val, i) => ({ i, val }));
-    const tendance = tendanceSparkline(data);
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
+    const tendance = tendanceSparkline(data, isPrivacyMode);
     const alternative = tendance
         ? { role: 'img' as const, 'aria-label': `Tendance de ${poste} sur ${tendance}` }
         : { 'aria-hidden': true };
@@ -184,7 +186,7 @@ export const BudgetGroupTable: React.FC<BudgetGroupTableProps> = ({
     const basculer = (id: string | undefined, ouvert: boolean) => onExpandToggle(ouvert ? null : (id ?? null));
     const barre = (l: typeof lignes[number], classe: string) => (
         <span className={`block h-1 rounded-full bg-white/8 overflow-hidden ${classe}`} aria-hidden="true">
-            <span className={`block h-full rounded-full ${l.couleurBarre}`} style={{ width: `${Math.min(100, l.percentSpent)}%` }} />
+            <span className={`block h-full rounded-full ${l.couleurBarre}`} style={{ width: `${isPrivacyMode ? 0 : Math.min(100, l.percentSpent)}%` }} />
         </span>
     );
     const reste = (l: typeof lignes[number]) => (
@@ -399,7 +401,7 @@ const EditeurPoste: React.FC<EditeurPosteProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-meta text-ink-300">
-                <span>Part du budget <span className="font-mono text-ink-100">{formatNumber(percentageOfBudget, { decimals: 1 })} %</span></span>
+                <span>Part du budget <span className="font-mono text-ink-100"><PrivateAmount>{formatNumber(percentageOfBudget, { decimals: 1 })} %</PrivateAmount></span></span>
                 <span className="font-mono">
                     {parts.map((p, i) => (
                         <React.Fragment key={p.nom}>

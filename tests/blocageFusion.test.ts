@@ -3,7 +3,7 @@
 // [GARDE-BLOCAGE-FUSION] Le workflow « Fusion automatique » ne doit JAMAIS armer l'auto-fusion d'une PR qui touche un
 // chemin sensible (hooks de l'agence, .github, réglages, commit-gate, .claude, CODEOWNERS, modeles/, et — pour FinanceAI
 // — le relais IA, l'authentification, vercel.json), ni d'une PR étiquetée validation-marc ou en brouillon.
-// La décision est celle du kit de l'Atelier 1.10.0, origin/main au commit 245364a (`peutArmer`, `decision`, inchangés côté FinanceAI ; frein visuel ACTIVÉ par #1095), copiée dans modeles/auto-merge/ ; le workflow
+// La décision est celle du kit de l'Atelier 1.14.0, origin/main au commit ef934d4 (resynchronisé depuis 1.10.0) (`peutArmer`, `decision`, inchangés côté FinanceAI ; frein visuel ACTIVÉ par #1095), copiée dans modeles/auto-merge/ ; le workflow
 // est un `pull_request_target` (lu sur `main`, jamais dans la PR). Ce fichier fige les deux : la décision (table
 // d'attaque) et le gabarit du workflow (grille de relecture sécurité A1-A9, lue comme DONNÉE).
 import { describe, it, expect } from 'vitest';
@@ -237,6 +237,10 @@ describe('workflow armement-auto-merge.yml — grille de relecture sécurité (l
         expect(code).toMatch(/^permissions: \{\}\s*$/m);
         expect(code.match(/contents: write/g)).toHaveLength(1);
         expect(code.match(/pull-requests: write/g)).toHaveLength(1);
+        // Kit 1.12.0+ (INC-13) : checks et statuses en LECTURE seulement, jamais en écriture.
+        expect(code).toMatch(/^\s+checks: read\s*$/m);
+        expect(code).toMatch(/^\s+statuses: read\s*$/m);
+        expect(code).not.toMatch(/(checks|statuses): write/);
     });
     it('A5 aucun texte de la PR (titre, corps, branche, message) dans le workflow', () => {
         expect(code).not.toMatch(/github\.event\.pull_request\.(title|body)|head_ref|github\.event\.head_commit|github\.event\.pull_request\.head\.label/);
@@ -251,7 +255,8 @@ describe('workflow armement-auto-merge.yml — grille de relecture sécurité (l
         for (const e of expressions) expect(permises.has(e), `expression non autorisée : ${e}`).toBe(true);
     });
     it('A6 toutes les actions épinglées par SHA de commit', () => {
-        const usages = [...code.matchAll(/uses:\s*(\S+)/g)].map((m) => m[1]);
+        // Clé YAML `uses:` seulement (début de ligne, éventuellement après `- `) : `statuses: read` (kit 1.12.0+) ne doit pas compter.
+        const usages = [...code.matchAll(/^\s*(?:-\s+)?uses:\s*(\S+)/gm)].map((m) => m[1]);
         expect(usages.length).toBeGreaterThan(0);
         for (const u of usages) expect(u, u).toMatch(/@[0-9a-f]{40}$/);
     });
@@ -281,7 +286,7 @@ describe('workflow armement-auto-merge.yml — grille de relecture sécurité (l
     });
 });
 
-describe('copies du kit 1.10.0 (origin/main de l\'Atelier, resynchronisé depuis 1.9.1) : COPIES.md atteste des copies FIDÈLES (hermétique, sans dépendre du checkout de l\'Atelier)', () => {
+describe('copies du kit 1.14.0 (origin/main de l\'Atelier, resynchronisé depuis 1.10.0) : COPIES.md atteste des copies FIDÈLES (hermétique, sans dépendre du checkout de l\'Atelier)', () => {
     const sha = (t: string) => createHash('sha256').update(t.replace(/\r\n/g, '\n')).digest('hex');
     const liste = lit('COPIES.md');
     const lignes = [...liste.matchAll(/^\| (\S+) \| ([0-9a-f]{64}) \| (\S+) \|$/gm)].map((m) => ({ chemin: m[1], sha: m[2], version: m[3] }));
@@ -290,18 +295,18 @@ describe('copies du kit 1.10.0 (origin/main de l\'Atelier, resynchronisé depuis
         'modeles/auto-merge/fusionner.mjs', 'modeles/auto-merge/armer.mjs', 'modeles/auto-merge/labels.mjs', 'modeles/auto-merge/verifier-copies.mjs',
         'modeles/auto-merge/surblocage.mjs', 'modeles/auto-merge/codes-raison.mjs', 'modeles/auto-merge/LISEZMOI.md',
     ];
-    it('anti-vacuité : COPIES.md liste exactement les 10 fichiers du lot, tous en 1.10.0 (armement-auto-merge.yml en est sorti : adapté, écart 5)', () => {
+    it('anti-vacuité : COPIES.md liste exactement les 10 fichiers du lot, tous en 1.14.0 (armement-auto-merge.yml en est sorti : adapté, écart 5)', () => {
         expect(lignes.map((l) => l.chemin).sort()).toEqual([...ATTENDUS].sort());
-        for (const l of lignes) expect(l.version, l.chemin).toBe('1.10.0');
+        for (const l of lignes) expect(l.version, l.chemin).toBe('1.14.0');
     });
     it.each(ATTENDUS)('%s : l\'empreinte de COPIES.md est celle du fichier (copie non retouchée)', (chemin) => {
         const l = lignes.find((x) => x.chemin === chemin);
         expect(l, chemin).toBeDefined();
         expect(sha(lit(chemin)), chemin).toBe(l!.sha);
     });
-    it('la source (kit 1.10.0, commit 245364a de l\'Atelier), le frein visuel ACTIVÉ et chaque écart FinanceAI sont déclarés', () => {
-        expect(liste).toContain('1.10.0');
-        expect(liste).toContain('245364a');
+    it('la source (kit 1.14.0, commit ef934d4 de l\'Atelier), le frein visuel ACTIVÉ et chaque écart FinanceAI sont déclarés', () => {
+        expect(liste).toContain('1.14.0');
+        expect(liste).toContain('ef934d4');
         // [GARDE-FREIN-VISUEL] Frein visuel ACTIVÉ par décision de Marc (#1095, 2026-09-29). La garde est RETOURNÉE,
         // pas retirée : la clé doit exister ET porter exactement les chemins décidés — ni retrait silencieux du
         // frein, ni chemin ajouté ou perdu sans passer par ce test.
@@ -333,9 +338,9 @@ describe('workflow armement-auto-merge.yml (gabarit adapté : armer-docs.mjs) �
         const copies = lit('COPIES.md');
         const sha = (t: string) => createHash('sha256').update(t.replace(/\r\n/g, '\n')).digest('hex');
         expect(copies).toContain(sha(yml));
-        expect(copies).toContain('455d424b79b2');
+        expect(copies).toContain('f970d3845332');
         const modele = yml.replace('run: node modeles/auto-merge/armer-docs.mjs', 'run: node modeles/auto-merge/armer.mjs');
-        expect(sha(modele).startsWith('455d424b79b2')).toBe(true);
+        expect(sha(modele).startsWith('f970d3845332')).toBe(true);
     });
 });
 

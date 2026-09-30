@@ -49,14 +49,17 @@ test.describe('Futur mobile — onglet Hypothèses (PR4)', () => {
         }
     });
 
-    test('[FUTUR-MOBILE-PR4] ordre mobile : Mode → macro (Flux Mensuels) → rendements (CELI) → sections repliées', async ({ page }) => {
+    test('[FUTUR-MOBILE-PR4] ordre mobile : Mode → macro (Facteurs Macro) → rendements (CELI) → sections repliées', async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 });
         await ouvrirFuturEtReveler(page);
         await ouvrirHypotheses(page);
         const topOf = async (locator: ReturnType<Page['locator']> | ReturnType<Page['getByText']>) =>
             (await locator.first().boundingBox())?.y ?? Number.POSITIVE_INFINITY;
         const modeTop = await topOf(page.locator('fieldset', { has: page.locator('legend', { hasText: 'Mode de simulation' }) }));
-        const fluxTop = await topOf(page.getByText('Flux Mensuels'));
+        // [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] La colonne « Flux Mensuels » est retirée : le repère
+        // du bloc macro est désormais son en-tête « Facteurs Macro ». L'ancien repère n'existait
+        // plus, et `boundingBox()` l'attendait jusqu'au plafond du test (2 min, 3 essais sur 3 en CI).
+        const fluxTop = await topOf(page.getByText('Facteurs Macro', { exact: true }));
         const rendementsTop = await topOf(page.getByRole('button', { name: /Rendements Estimés/ }));
         const inflationTop = await topOf(page.getByRole('button', { name: /Inflation par poste/ }));
         expect(modeTop).toBeLessThan(fluxTop);

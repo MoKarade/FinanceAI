@@ -32,7 +32,7 @@ export interface EnveloppeStore {
     readonly version: number;
 }
 
-export interface SauvegardeEtat {
+interface SauvegardeEtat {
     readonly version: typeof VERSION_SAUVEGARDE_ETAT;
     readonly timestamp: number;
     readonly store: EnveloppeStore;
@@ -50,7 +50,7 @@ export type ResultatSauvegarde =
     | { readonly ok: false; readonly cause: 'illisible' };
 
 /** L'objet a-t-il la forme d'une enveloppe persistée (`state` objet, `version` entier) ? */
-export function estEnveloppeStore(v: unknown): v is EnveloppeStore {
+function estEnveloppeStore(v: unknown): v is EnveloppeStore {
     if (v === null || typeof v !== 'object') return false;
     const { state, version } = v as { state?: unknown; version?: unknown };
     return state !== null && typeof state === 'object' && !Array.isArray(state)

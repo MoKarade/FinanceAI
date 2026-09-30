@@ -337,6 +337,12 @@
 > Jetons en mémoire (limite : redémarrage = nouvel aperçu). ADR 0023. Tests : `tests/mcp/confirmationEcritureMcp.test.ts`.
 > ⚠️ PR sensible (`mcp/**`) : brouillon, validation Marc, non armée. Déploiement Cloud Run via `deploy-mcp.yml` après fusion.
 >
+> ## 🟦 Session 2026-09-29 — **`[E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE]` + `[E2E-RAPIDE]` : suite E2E stable et 2× plus courte**
+> Récidive du test « clic partout » avec une AUTRE cause que le bandeau du 25/09 : le toast « Persona … chargé »
+> (4 s) recouvrait la bande basse visée ; 11 runs touchés sur 45. `activateTestMode` ferme les notifications
+> (`fermerLesNotifications`). `workers: 2` en CI : 6,5 → 3,1 min mesurés en local, 62/62 sur 3 suites.
+> Leçon : `docs/CONVENTIONS.md` `UNE-SURFACE-QUI-RECOUVRE-UNE-CIBLE-PEUT-ETRE-TEMPORAIRE`.
+>
 > ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**
 > Après #1009 + variables Vercel : `POST /api/claude/v1/messages` → **405**, `GET` → `index.html`. L'attrape-tout
 > `api/claude/[...path].ts` n'est pas routé sur ce projet Vite ; la réécriture SPA `/(.*)` avalait l'appel → toute l'IA

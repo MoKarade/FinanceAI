@@ -434,7 +434,13 @@ désinfecte le snapshot avant de le restaurer.
   (« Point mensuel — pas de détail au jour », « Aucun mouvement · marché seul »…).
   ⚠️ L'exposition a changé avec le panneau : la colonne est là en permanence.
 
-- [ ] 🔧 **`[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`** (S, à trier) — suite MESURÉE de l'item ci-dessous :
+- [ ] 🔧 **`[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) (branche
+  `agence/financeai-code/lot4-formatnumber-direct`, empilée sur le lot 3 ; à archiver au merge). Tri :
+  **2 fuites réelles corrigées** (`AddStockForm` récapitulatif : prix d'achat et montant investi →
+  `<PrivateAmount>`, test de rendu rouge avant correctif) ; **4 non concernés, prouvés** : `DebtManager`
+  (durée en années), `BudgetGroupTable` (ratio en %) → `NOMBRE-NON-MONETAIRE` ; `AddStockForm:464`
+  (cotation de marché) → `MONTANT-PUBLIC` ; `AiChatConfirmModal` (modale non rendue en mode discret)
+  → `MONTANT-MASQUE-AILLEURS`. La garde relève désormais les appels directs. (S) — suite MESURÉE de l'item ci-dessous :
   les appels DIRECTS à `formatNumber(` dans `components/` ne sont pas relevés par `amountPrivacyScan`
   (ils mêlent pourcentages et montants). Mesuré le 2026-09-29 en les ajoutant à titre d'essai :
   6 sites sans marque de mode discret dans la fenêtre — `DebtManager.tsx:449`,
@@ -442,6 +448,30 @@ désinfecte le snapshot avant de le restaurer.
   `investments/AddStockForm.tsx:464,570,571` (prix / total d'achat). ⚠️ Non vérifié à l'œil : certains
   peuvent être masqués plus haut ou être non personnels. Trier site par site (envelopper,
   `MONTANT-PUBLIC`, ou `MONTANT-MASQUE-AILLEURS`) PUIS étendre `MONEY_BASE` — sinon la garde rougit.
+
+- [ ] 🔧 **`[ADDSTOCK-RECAP-FUITES-INDIRECTES]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge ;
+  même branche que l'item ci-dessus). Décision de Marc (2026-09-29) : la **quantité** et le **« Gain
+  non-réalisé : +x,xx % »** du récapitulatif d'`AddStockForm` sont masqués (avec la cotation publique, ils
+  redonnaient le prix d'achat et le montant investi). Même lot : le **total du jour du calendrier des
+  factures** (`Planning.tsx`, `formatCAD(dailyTotal)`) sortait en clair. ⚠️ La garde `amountPrivacyScan`
+  ne le voyait pas : le `isPrivacyMode` du `maskPayee` de la MÊME ligne lui servait d'alibi
+  (→ `[PRIVACY-SCAN-ALIBI-MEME-LIGNE]`). Les ratios et durées dérivés (part du budget, « Liberté dans X
+  ans »…) : masqués partout par décision de Marc, lot séparé `[PRIVACY-RATIOS-DUREES-UNIFORMES]`.
+
+- [ ] 🔧 **`[PRIVACY-SCAN-ALIBI-MEME-LIGNE]`** (S) — `amountPrivacyScan` accepte une ligne qui porte un
+  montant dès qu'une marque de mode discret est dans sa fenêtre, même si cette marque masque AUTRE
+  chose sur la même ligne (mesuré : `Planning.tsx`, `formatCAD(dailyTotal)` à côté de
+  `maskPayee(b.payee, isPrivacyMode)`). Piste : exiger que le formateur soit DANS l'élément masquant
+  quand la ligne en porte plusieurs.
+
+- [ ] 🔧 **`[PRIVACY-RATIOS-DUREES-UNIFORMES]`** (M/L, **décision de Marc 2026-09-29**, relu par
+  pole-securite) — masquer en mode discret, dans toute l'app, les ratios et durées dérivés de données
+  perso. Inventaire du 2026-09-29 : ~50 sites dans ~20 fichiers (Investments, Budget, DualKPIStat,
+  FutureProjection, StrategyOptimizerPanel, HealthIndicator, AssetLocationCard, TaxCenter, immobilier…).
+  Arbitrages de Marc : masquer scores /100, barres qui trahissent un ratio, axes et tableaux sr-only qui
+  révèlent une durée, taux d'intérêt saisis, hausse d'abonnement ; laisser les variations de prix de
+  marché des titres et l'horizon (réglage). Inverser les jetons `NOMBRE-NON-MONETAIRE` de `DebtManager`
+  et `BudgetGroupTable` et le commentaire « un ratio n'est pas un montant » (`BudgetGroupTable.tsx`).
 
 - [ ] 🔧 **`[FUTUR-COURBE-DETTE-RENDU-NON-GARDE]`** (XS) — angle mort ASSUMÉ de
   `tests/components/futureCourbeDette.test.ts` : elle teste le module `detteSerie` et la config de

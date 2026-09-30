@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-09-29 — Mode discret : le récapitulatif d'ajout d'un placement ne montre plus tes montants
+
+- Dans la fenêtre « Ajouter un placement », le récapitulatif (« 5 × … = … investi le… ») affichait en
+  clair le prix d'achat et le montant investi même en mode discret. Ils sont maintenant masqués,
+  comme le champ de saisie du prix juste au-dessus. La quantité et le gain en % le sont aussi : avec
+  le cours du titre affiché plus haut, ils permettaient de retrouver ton prix d'achat.
+- Le calendrier des factures (Planification) affichait le total du jour en clair en mode discret :
+  il est masqué.
+
+## 2026-09-29 — Tests automatiques du navigateur : plus rapides et un faux rouge en moins
+
+- Rien ne change dans l'app. Les tests qui cliquent dans l'app (E2E) tournent maintenant sur deux
+  navigateurs en parallèle dans GitHub : 4,6 min au lieu de ~6,4 min (premier run mesuré).
+- Le test « clic partout sur la courbe du Futur » ne rougit plus au hasard : la notification
+  « Persona chargé » recouvrait le bas du graphe pendant 4 s. Les tests la ferment avant de cliquer.
+
 ## 2026-09-29 — Téléphone : les boutons et champs sont plus faciles à toucher
 
 - Le lien « ‹ Plus », les champs de la page verrouillée (salaire, âge de retraite…), les boutons « Revoir le

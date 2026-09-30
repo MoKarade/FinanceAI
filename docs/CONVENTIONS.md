@@ -17321,3 +17321,28 @@ de sécurité doit toujours échouer fermé ». Ce n'en est pas un.
   un contrôle de sécurité propre à UNE implémentation, vérifier ce que fait CHAQUE autre
   implémentation existante en l'absence du mécanisme — une valeur de repli n'est un fail-open que si
   le scénario de menace visé peut RÉELLEMENT atteindre ce chemin-là.
+
+## `UNE-SURFACE-QUI-RECOUVRE-UNE-CIBLE-PEUT-ETRE-TEMPORAIRE` (2026-09-29, `[E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE]`)
+
+Le 25/09, `[FUTUR-CLICK-ANYWHERE]` a été réparé pour un bandeau FIXE qui recouvrait le haut du
+graphe. Il a récidivé pour une autre surface : le toast « Persona … chargé », qui ne vit que 4 s.
+Un recouvrement temporaire se reconnaît à sa signature : il touche les runs les PLUS RAPIDES (le
+graphe est prêt avant la fin de la minuterie) et reste invisible si on lance le test seul.
+- Avant de cliquer à une coordonnée, fermer (ou attendre) les surfaces temporaires comme on écarte
+  le rail (`ecarterLeRail`) : `fermerLesNotifications` le fait dans `activateTestMode`.
+- Un diagnostic doit viser le rôle ACTUEL du conteneur : `closest('[role="img"]')` répondait
+  « NON » depuis la refonte S5 (`role="group"`), ce qui aurait pu égarer l'enquête.
+- Corréler durée du run et échec : les journaux CI suffisent (`gh run view --job <id> --log`).
+
+## `DELETE-PROCESS-ENV-TZ-NE-REMET-PAS-LE-FUSEAU` (2026-09-30, `[BUDGET-TEST-FUSEAU-FUITE]`)
+
+`Budget.test.tsx` a rougi sur `main` le 30/09 (bandeau « Dépassements détectés », 2 cas), et il
+bloquait tous les commits par la porte de commit. Le test passait seul et échouait dans le fichier
+entier. Cause mesurée : un test pose `process.env.TZ = 'Australia/Sydney'` et « restaure » par
+`delete process.env.TZ`. Node ne relit le fuseau que sur une ASSIGNATION : le décalage reste
+−600 min après le `delete`. La suite du fichier tournait donc à l'heure de Sydney, où l'on
+est déjà le 1er du mois suivant dès ~10 h au Québec le dernier jour du mois.
+- Pour restaurer un fuseau, on RÉASSIGNE le fuseau effectif lu au chargement du fichier
+  (`process.env.TZ ?? Intl.DateTimeFormat().resolvedOptions().timeZone`). Jamais `delete`.
+- Un test qui passe seul et échoue en groupe, à une date précise, signale une fuite d'état
+  global (fuseau, horloge simulée, store). On isole par `-t` avant de soupçonner le code.

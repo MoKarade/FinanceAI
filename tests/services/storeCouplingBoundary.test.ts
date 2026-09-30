@@ -30,6 +30,9 @@ import { stripComments } from '../../utils/stripComments';
 const SERVICES_STORE_AUTORISES = [
     'services/aiTools/appStateProvider.ts',
     'services/aiTools/writeExecutor.ts',
+    // [SANDBOX-PROMPTS-MARQUER-CONTEXTE] 2026-09-29 : lit `modeDonneesFictives()` au point de
+    // contact SDK pour marquer le `system` quand les données sont fictives (ARCHITECTURE §2).
+    'services/claude.ts',
     'services/fintable/autoSync.ts',
     'services/pdfReport.ts',
     'services/sync/syncPull.ts',

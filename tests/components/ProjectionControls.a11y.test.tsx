@@ -12,7 +12,6 @@ const proj = {
     years: 30, returnRate: 6, inflationRate: 2, savingsMode: 'manual', manualContribution: 0,
     usePortfolioRate: false, returnRates: { celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 },
     emergencyFundMonths: 6, salaryGrowth: 2, propertyGrowthRate: 3,
-    theoreticalIncome: 8000, theoreticalExpenses: 4000,
     usePerCategoryInflation: true, ltcEnabled: true,
     usEquityShareCeli: 0, usEquityDividendYield: 1.5,
 } as unknown as ProjectionConfig;
@@ -54,8 +53,8 @@ describe('ProjectionControls — noms accessibles des sliders (A11Y-SLIDERS)', (
     it('chaque slider (taux/% /coût ET monétaire) est trouvable par son nom accessible', () => {
         renderControls();
         for (const name of [
-            // monétaires (nommés au lot #279 — on garde la régression sous test ici aussi)
-            'Revenus (Net)', 'Dépenses',
+            // [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] « Revenus (Net) » et « Dépenses » (curseurs
+            // théoriques) sont retirés — leur absence est vérifiée plus bas.
             // taux / % / coût (ce lot)
             // [HORIZON-ESPERANCE-DE-VIE] plus de curseur « Horizon (Années) » (jusqu'à l'espérance de vie)
             'Inflation', 'Hausse Salaire (An)',
@@ -65,6 +64,14 @@ describe('ProjectionControls — noms accessibles des sliders (A11Y-SLIDERS)', (
         ]) {
             expect(screen.getByRole('slider', { name })).toBeInTheDocument();
         }
+    });
+
+    it('[SANDBOX-CURSEURS-THEORIQUES-RETRAIT] les curseurs Revenus/Dépenses théoriques ne sont plus rendus', () => {
+        renderControls();
+        expect(screen.queryByRole('slider', { name: 'Revenus (Net)' })).toBeNull();
+        expect(screen.queryByRole('slider', { name: 'Dépenses' })).toBeNull();
+        // Témoin : le rendu a bien eu lieu (un curseur voisin est là).
+        expect(screen.getByRole('slider', { name: 'Inflation' })).toBeInTheDocument();
     });
 
     it('les sliders de la boucle inflation/poste portent un nom (ex. « Logement (30%) »)', () => {

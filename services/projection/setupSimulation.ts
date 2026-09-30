@@ -135,8 +135,11 @@ interface IncomeBaselineResult {
 
 /**
  * Calcule les revenus de base (net mensuel + brut annuel) pour les 2 users.
- * Mode useTheoretical: split 55/45 du theoreticalIncome.
- * Mode réel: lit netSalary/grossSalary depuis config.users.
+ * Lit netSalary/grossSalary depuis config.users.
+ * [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] L'ancien mode `useTheoretical` (split 55/45 d'un
+ * `theoreticalIncome`) est NEUTRALISÉ : son interface a été retirée, et un dossier persisté à
+ * `true` serait resté coincé sur des revenus inventés sans bouton pour en sortir. Le paramètre
+ * `projection` a disparu de la signature : aucun appelant ne peut plus le rebrancher par mégarde.
  * Brut DÉDUIT du net par inversion EXACTE du calcul fiscal quand `grossSalary` est absent
  * ([MIGRATE-GROSS-135]). C'était `net * 1.35`, un facteur plat dont l'erreur MESURÉE sur le barème
  * 2026 change de SIGNE selon le revenu : +2 681 $ à 30 k$ de net annuel, mais −22 028 $ à 100 k$ et
@@ -153,7 +156,6 @@ interface IncomeBaselineResult {
  * revenu 12× trop bas → impôt d'emploi ~0 sur toute la projection.
  */
 export function computeIncomeBaseline(
-    projection: { useTheoretical?: boolean; theoreticalIncome?: number },
     // [GROSSFROMNET-CREDITS-65] `age`/`birthYear` AJOUTÉS au type : l'âge n'était pas transmis
     // jusqu'ici, donc l'inversion net→brut du socle ne pouvait PAS accorder les crédits de 65 ans et
     // plus, quand bien même l'appelant les connaissait. Champs optionnels, absents ⇒ comportement
@@ -162,11 +164,8 @@ export function computeIncomeBaseline(
     /** Année du barème pour l'inversion net→brut ([GROSSFROMNET-ANNEE-FIGEE]). Défaut NEUTRE. */
     startYear: number = TAX_BASE_YEAR,
 ): IncomeBaselineResult {
-    const useTheo = projection.useTheoretical;
-    const theoIncome = projection.theoreticalIncome || 8000;
-
-    const incomeMarcNetMonthly = useTheo ? (theoIncome * 0.55) : (users[0]?.netSalary || 0);
-    const incomeAnnaNetMonthly = useTheo ? (theoIncome * 0.45) : (users[1]?.netSalary || 0);
+    const incomeMarcNetMonthly = users[0]?.netSalary || 0;
+    const incomeAnnaNetMonthly = users[1]?.netSalary || 0;
     // ⚠️ UNITÉS : les salaires du store sont MENSUELS, `calculateGrossFromNet` travaille en ANNUEL.
     // [GROSSFROMNET-CREDITS-65] Crédits d'âge PAR UTILISATEUR. `activeUsersCount` est dérivé du
     // nombre d'utilisateurs porteurs d'un revenu — c'est lui qui pilote `hasSpouse`, et le confondre
@@ -177,12 +176,8 @@ export function computeIncomeBaseline(
             ? calculateGrossFromNet(netMensuel * 12, startYear,
                 ageOptsForSalaryInversion(u, startYear, nbUsersActifs))
             : 0);
-    const grossMarcBaseAnnual = useTheo
-        ? brutDeduit(incomeMarcNetMonthly, users[0])
-        : (users[0]?.grossSalary ? users[0].grossSalary * 12 : brutDeduit(incomeMarcNetMonthly, users[0]));
-    const grossAnnaBaseAnnual = useTheo
-        ? brutDeduit(incomeAnnaNetMonthly, users[1])
-        : (users[1]?.grossSalary ? users[1].grossSalary * 12 : brutDeduit(incomeAnnaNetMonthly, users[1]));
+    const grossMarcBaseAnnual = users[0]?.grossSalary ? users[0].grossSalary * 12 : brutDeduit(incomeMarcNetMonthly, users[0]);
+    const grossAnnaBaseAnnual = users[1]?.grossSalary ? users[1].grossSalary * 12 : brutDeduit(incomeAnnaNetMonthly, users[1]);
 
     return { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual };
 }

@@ -12,11 +12,9 @@ import { describe, it, expect } from 'vitest';
 import { computeIncomeBaseline } from '../../services/projection/setupSimulation';
 
 describe('[CPL-1] computeIncomeBaseline — conjoint vide = ZÉRO revenu fantôme', () => {
-    const real = { useTheoretical: false };
-
     it('solo vs couple-placeholder (salaires 0) : revenus de base IDENTIQUES', () => {
-        const solo = computeIncomeBaseline(real, [{ netSalary: 4000, grossSalary: 6000 }]);
-        const couple = computeIncomeBaseline(real, [
+        const solo = computeIncomeBaseline([{ netSalary: 4000, grossSalary: 6000 }]);
+        const couple = computeIncomeBaseline([
             { netSalary: 4000, grossSalary: 6000 },
             { netSalary: 0, grossSalary: 0 }, // placeholder « + Ajouter conjoint » d'avant le gate
         ]);
@@ -27,14 +25,7 @@ describe('[CPL-1] computeIncomeBaseline — conjoint vide = ZÉRO revenu fantôm
         expect(couple.grossAnnaBaseAnnual).toBe(0);
     });
 
-    it('mode THÉORIQUE : le split 55/45 fabrique un revenu au 2e user MÊME absent — documenté', () => {
-        // Connu/voulu : useTheoretical répartit le revenu théorique du MÉNAGE 55/45 sans regarder
-        // users[]. C'est un mode d'exploration explicite, pas le mode réel — le gate CPL-1 ne le
-        // change pas. Ce test documente le comportement pour qu'un futur refactor ne le découvre
-        // pas « par surprise ».
-        const theo = computeIncomeBaseline({ useTheoretical: true, theoreticalIncome: 8000 }, [
-            { netSalary: 4000, grossSalary: 6000 },
-        ]);
-        expect(theo.incomeAnnaNetMonthly).toBeCloseTo(8000 * 0.45, 6);
-    });
+    // [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] L'ancien cas « mode THÉORIQUE : split 55/45 fabrique un
+    // revenu au 2e user » a disparu avec le mode : `computeIncomeBaseline` ne lit plus que users[],
+    // donc un conjoint absent ne reçoit plus AUCUN revenu, quel que soit l'état persisté.
 });

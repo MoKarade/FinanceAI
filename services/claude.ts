@@ -20,7 +20,8 @@ import { importWithRetry } from '../utils/lazyWithRetry';
 import { z } from 'zod';
 import { Transaction, RecurringItem } from '../types';
 import { logError } from './errorLogger';
-import { sanitizePromptText, wrapUserData, VISION_INJECTION_GUARD } from '../utils/promptSafety';
+import { sanitizePromptText, wrapUserData, VISION_INJECTION_GUARD, marquerSystemFictif, type SystemTextBlock } from '../utils/promptSafety';
+import { modeDonneesFictives } from '../store/modeTestActif';
 import { isInternalTransferLabel } from '../utils/transactionParser';
 import { MODEL_IDS } from './aiChat/models';
 import { FED_BRACKETS, QC_BRACKETS } from '../utils/tax';
@@ -188,6 +189,24 @@ export const makeClient = async (apiKey: string, kind: 'text' | 'vision' = 'text
     });
 };
 
+/**
+ * [SANDBOX-PROMPTS-MARQUER-CONTEXTE] `system` à envoyer au SDK : celui reçu, plus le marqueur
+ * « scénario hypothétique » si l'app tourne sur des DONNÉES FICTIVES en ce moment.
+ *
+ * ⚠️ Appelé AU POINT DE CONTACT SDK (chaque `messages.create(`/`messages.stream(`), jamais chez
+ * l'appelant : `chat`/`chatStream` reçoivent `options.system` de leurs appelants, et marquer en
+ * amont obligerait chaque appelant futur à y penser — même raison qui a mis la garde CSV dans
+ * `downloadCSV`, le point de SORTIE. Garde : `tests/services/promptMarqueurFictif.test.ts` rougit
+ * sur tout site SDK qui n'enveloppe pas son `system` dans cette fonction.
+ * Prédicat lu FRAIS à chaque appel (le mode peut basculer entre deux tours de l'agent).
+ */
+export function systemPourAppel(system: string | undefined): string | undefined;
+export function systemPourAppel<B extends SystemTextBlock>(system: B[]): Array<B | SystemTextBlock>;
+export function systemPourAppel<B extends SystemTextBlock>(system: string | B[] | undefined): string | Array<B | SystemTextBlock> | undefined;
+export function systemPourAppel<B extends SystemTextBlock>(system: string | B[] | undefined): string | Array<B | SystemTextBlock> | undefined {
+    return marquerSystemFictif(system, modeDonneesFictives());
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 interface ChatMessage {
@@ -254,7 +273,7 @@ export async function chat(
             model: options.model ?? MODEL_SONNET,
             max_tokens: options.maxTokens ?? 1024,
             temperature: options.temperature ?? 0.7,
-            system: options.system,
+            system: systemPourAppel(options.system),
             messages,
         }, { signal });
         // La réponse Anthropic est un array de content blocks; on concatène les text.
@@ -286,7 +305,7 @@ export async function* chatStream(
             model: options.model ?? MODEL_SONNET,
             max_tokens: options.maxTokens ?? 2048,
             temperature: options.temperature ?? 0.7,
-            system: options.system,
+            system: systemPourAppel(options.system),
             messages,
         }, { signal });
         for await (const event of stream) {
@@ -1066,7 +1085,7 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
         model: MODEL_SONNET,
         max_tokens: 512,
         temperature: 0, // extraction déterministe (aligné sur les autres appels d'extraction du fichier)
-        system: `${QUEBEC_FISCAL_CONTEXT}\nTu analyses des fiches de paie québécoises (T4, RL-1, talons). Extrais les montants de la PÉRIODE COURANTE uniquement (pas les cumuls YTD).\n${VISION_INJECTION_GUARD}`,
+        system: systemPourAppel(`${QUEBEC_FISCAL_CONTEXT}\nTu analyses des fiches de paie québécoises (T4, RL-1, talons). Extrais les montants de la PÉRIODE COURANTE uniquement (pas les cumuls YTD).\n${VISION_INJECTION_GUARD}`),
         messages: [{
             role: 'user',
             content: [
@@ -1155,9 +1174,9 @@ export const analyzeBankStatement = async (file: File, apiKey: string): Promise<
         model: MODEL_SONNET,
         max_tokens: 16000, // un relevé peut contenir beaucoup de lignes ; non-stream OK ≤ ~16k
         temperature: 0, // extraction déterministe (aligné sur les autres appels d'extraction du fichier)
-        system: `${QUEBEC_FISCAL_CONTEXT}
+        system: systemPourAppel(`${QUEBEC_FISCAL_CONTEXT}
 Tu es un extracteur EXPERT de relevés bancaires et de cartes de crédit québécois (Desjardins, RBC, BMO, TD, Banque Nationale, Tangerine, etc.). Tu lis le document (image/PDF) et retournes des transactions structurées FIDÈLES au document, sans rien inventer ni omettre.
-${VISION_INJECTION_GUARD}`,
+${VISION_INJECTION_GUARD}`),
         messages: [{
             role: 'user',
             content: [

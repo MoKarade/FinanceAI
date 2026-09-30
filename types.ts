@@ -215,8 +215,11 @@ export interface ProjectionConfig {
   };
   emergencyFundMonths?: number;
   salaryGrowth?: number;
+  /** @deprecated [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] ignoré par le moteur, gardé pour les dossiers persistés (pas de migration). */
   theoreticalIncome?: number;
+  /** @deprecated [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] ignoré par le moteur, gardé pour les dossiers persistés (pas de migration). */
   theoreticalExpenses?: number;
+  /** @deprecated [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] ignoré par le moteur (interface retirée), gardé pour les dossiers persistés. */
   useTheoretical?: boolean;
   stressTestEnabled?: boolean;
   stressTestYear?: number;

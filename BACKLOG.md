@@ -43,6 +43,7 @@
 ## 🔒 Garde de la fusion auto — suites (2026-09-25)
 - [ ] 🔧 [GARDE-COMMIT-GATE-COMMUN] (S) Remplacer le commit-gate local par celui de `atelier/modeles/qualite/` quand il y sera publié (absent aujourd'hui : on garde celui de #1071).
 - [ ] 🧭 [GARDE-MODELE-HOOKS-REACT] (S) Faire adopter au modèle de l'Atelier une liste de base sans `hooks/**` ni `**/settings*` (faux positifs sur les dossiers React), pour supprimer l'adaptation locale de `chemins-interdits.json`.
+- [ ] 🔧 [GARDE-BRANCHE-A-JOUR-AVANT-FUSION] (M, chemin sensible : réglages de fusion / kit d'auto-merge) Exiger qu'une PR soit à jour avec `main` (CI relancée sur la base actuelle) avant de fusionner. Mesuré le 2026-09-29 : #1096 (garde « frein visuel absent ») et #1095 (frein activé) étaient VERTES chacune de leur côté — la CI de #1095 avait tourné avant l'arrivée de la garde — et leur combinaison a rendu `main` rouge pour toutes les PR (correctif : #1105). Le test tournait déjà en CI obligatoire : ce qui manque, c'est la base à jour. Remonté à pole-architecture pour le kit commun (toutes les apps).
 
 ## 🔐 Sécurité MCP (audit P3-P6, 26/09/2026)
 
@@ -179,15 +180,20 @@
   UNIQUE classé « Revenus divers » est moyenné comme un revenu mensuel ; et le cashflow publié
   (revenu réel − dépenses BUDGÉTÉES) est planché à 0 (`financialSnapshot.ts:183`), donc un déficit
   s'affiche « 0 $ ». Quatre définitions de l'épargne coexistent selon l'écran.
-- [ ] 🟠 **`[EXPORT-JSON-PERD-FINTABLE]`** (**M**, re-mesuré le 2026-09-24 — pas S) — l'export JSON
-  énumère ses champs à la main et la restauration vide le stockage : soldes et historique Fintable,
-  rôles, abonnements et taux perdus. ⚠️ La restauration passe par les clés LEGACY (`localStorage.clear()`
-  puis `app_*`, relues par `store/etatParDefaut.ts`) : exporter un champ de plus ne suffit pas, il lui
-  faut aussi un lecteur legacy — sinon il est perdu quand même. Plan proposé : restaurer en écrivant
-  le blob du store (`financeai-storage`) pour qu'il passe par `merge` + `verifierTypesRestaures`, garder
-  le chemin legacy pour les anciens backups, et une garde « toute clé persistée est exportée OU exclue
-  avec sa raison ». À trancher avec Marc : le backup contient-il aussi les conversations IA et les
-  documents (la synchro Drive les contient déjà).
+- [x] 🟠 **`[EXPORT-JSON-PERD-FINTABLE]`** (M) — ✅ **livré le 2026-09-25.** La sauvegarde JSON (claire
+  et chiffrée) porte l'enveloppe persistée ENTIÈRE (format `4.0`, celle que Drive pousse) ; la
+  restauration la réécrit sous `financeai-storage` et passe par `merge` + `verifierTypesRestaures` au
+  redémarrage. Décisions de Marc : conversations IA et documents INCLUS, restauration = TOUT
+  REMPLACER. Anciens backups `3.x` : chemin legacy inchangé. Export refusé en mode test. Revue :
+  blob illisible annoncé comme tel, écriture avec retour arrière (quota), filet de backup avant,
+  coffre des clés API conservé, `apiKeys`/mode test d'un fichier fabriqué jamais écrits. Garde :
+  `tests/components/sauvegardeJsonEtat.test.tsx` (clés du fichier = clés persistées). → à déménager
+  vers `BACKLOG_ARCHIVE` à la prochaine PR.
+- [ ] 🟠 **`[SYNC-PULL-APIKEYS-NON-FILTREES]`** (S, trouvé par la revue sécurité de #1065) —
+  `applyPulledPayload` (`services/sync/syncPull.ts`) écrit l'enveloppe Drive sans retirer
+  `state.apiKeys` : un blob Drive fabriqué poserait des clés API étrangères en mémoire au `merge`.
+  Même filtre que la restauration JSON (`enveloppeARestaurer`, `services/sauvegardeJson.ts`).
+  Surface plus étroite (il faut le compte Google), d'où non corrigé dans #1065.
 - [ ] 🟡 **`[PDF-PLACEMENTS-SANS-ECART-COURTIER]`** (S, jumeau de `[PDF-DETTES-SOLDE-BRUT]`) — la
   ligne « Non-Enregistré » du PDF est la somme des titres, l'actif net inclut l'écart courtier : la
   page ne s'additionne pas.
@@ -353,17 +359,6 @@ désinfecte le snapshot avant de le restaurer.
   Garde : une 6ᵉ surface SDK sans marqueur doit rougir (l'inventaire se dérive du grep, pas d'une
   liste écrite à la main).
 
-- [ ] 🟡 **`[CSV-EXPORTS-MORTS-SANS-GARDE]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) : les deux exports RETIRÉS
-  (décision du chef de projet), avec leurs tests (branche `agence/financeai-code/lot3-code-mort-privacy`,
-  à archiver au merge). (XS) — `exportHoldingsCSV` et `exportBudgetCSV`
-  (`utils/csvExport.ts`) n'ont **aucune** garde de mode discret, alors que leur voisin immédiat
-  `exportTransactionsCSV` en a une, 20 lignes plus haut, avec son commentaire expliquant pourquoi
-  (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`). ⚠️ **Mesuré avant d'écrire « fuite »** : les deux
-  n'ont **AUCUN appelant** dans tout le code de production — ce sont des exports MORTS, donc le
-  défaut est aujourd'hui **inatteignable**. Deux issues possibles (les retirer, ou les garder et
-  les brancher) ; trancher avant de coder. ⚠️ Le téléchargement, lui, est déjà couvert contre les
-  données fictives : la garde vit dans `downloadCSV`, le point de sortie commun.
-
 - [ ] 🔴 **`[SANDBOX-FUITE-VERS-LE-MCP]`** (M, money-critical) — un sandbox laissé ALLUMÉ sort de
   l'onglet Futur et atteint les outils MCP. Chaîne tracée : `buildSimulationParamsFromState`
   (`services/projection/buildSimulationParams.ts:318`) passe `state.projection` **ENTIER** au
@@ -439,12 +434,6 @@ désinfecte le snapshot avant de le restaurer.
   (« Point mensuel — pas de détail au jour », « Aucun mouvement · marché seul »…).
   ⚠️ L'exposition a changé avec le panneau : la colonne est là en permanence.
 
-- [ ] 🧹 **`[FUTUR-DETAIL-SHOWNASSETSSUM-MORT]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) (même branche, à archiver
-  au merge). (XS) — `FutureDetailModal.tsx` calcule
-  `shownAssetsSum` et ne la lit **jamais** (une seule occurrence dans tout le dépôt). Elle porte en
-  plus le `Number(...) || 0` que `[INFOBULLE-DETTE-NW-NON-FINI]` vient de condamner : la laisser,
-  c'est garder un exemple du motif corrigé à trois lignes du correctif.
-
 - [ ] 🔧 **`[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) (branche
   `agence/financeai-code/lot4-formatnumber-direct`, empilée sur le lot 3 ; à archiver au merge). Tri :
   **2 fuites réelles corrigées** (`AddStockForm` récapitulatif : prix d'achat et montant investi →
@@ -483,17 +472,6 @@ désinfecte le snapshot avant de le restaurer.
   révèlent une durée, taux d'intérêt saisis, hausse d'abonnement ; laisser les variations de prix de
   marché des titres et l'horizon (réglage). Inverser les jetons `NOMBRE-NON-MONETAIRE` de `DebtManager`
   et `BudgetGroupTable` et le commentaire « un ratio n'est pas un montant » (`BudgetGroupTable.tsx`).
-
-- [ ] 🔧 **`[PRIVACY-SCAN-ALIAS-FORMATNUMBER]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) : alias de `formatNumber`
-  reconnus (monétaires par défaut, jeton `NOMBRE-NON-MONETAIRE` sur la définition pour un
-  pourcentage : posé sur `pctTexte`, `RealEstateWorkspace.tsx`) ; témoin réel `fmtNu`. Même branche,
-  à archiver au merge. (S) — `amountPrivacyScan` ne connaît que
-  `formatCAD` / `formatCompactCAD` / `formatSigned(withCurrency)` et leurs alias : un
-  `const fmtNu = (n) => formatNumber(...)` lui est **structurellement invisible**. Le site réel
-  (`panneauJour/sections.tsx`, le gain affiché sous la valeur d'un compte) EST correctement
-  enveloppé dans `<PrivateAmount>` — vérifié à l'œil — mais la garde ne peut pas le dire, donc son
-  silence ne vaut rien ici. Trou d'outillage PRÉEXISTANT, simplement déménagé avec le code
-  (`UN-RELEVE-PAR-LE-NOM-CANONIQUE-EST-AVEUGLE-AUX-ALIAS` appliqué à un formateur SANS devise).
 
 - [ ] 🔧 **`[FUTUR-COURBE-DETTE-RENDU-NON-GARDE]`** (XS) — angle mort ASSUMÉ de
   `tests/components/futureCourbeDette.test.ts` : elle teste le module `detteSerie` et la config de

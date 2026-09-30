@@ -20,6 +20,10 @@ Branche `claude/<slug>` → commits français préfixés par l'ID (`[A12a] desc`
 (draft par défaut) → **Claude merge lui-même** (squash sur `main`). Le push sur `main`
 déclenche le déploiement Vercel : Claude en est responsable (choix Marc).
 
+- ⚠️ **Une branche par PR, jamais de branche de session réutilisée** (type `claude/progress-check-*`)
+  — règle adoptée par le gérant de l'agence le 2026-09-29. Une branche de session qui porte le
+  travail de plusieurs PR mélange leurs historiques : la PR `[EXPORT-JSON-PERD-FINTABLE]` (#1065)
+  vivait sur `claude/progress-check-yua8yy` et a dû être reprise sur une branche dédiée.
 - ⚠️ **Ne PAS fractionner le cycle sur plusieurs tours.** `git add && git commit && git push`
   chaînés en UN SEUL appel Bash, puis PR + auto-merge dans le MÊME tour. Un cycle étalé laisse
   un état à moitié fait dès qu'un tour est interrompu (commits poussés SANS PR = rien

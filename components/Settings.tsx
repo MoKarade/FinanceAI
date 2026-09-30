@@ -1,7 +1,7 @@
 // components/Settings.tsx
 // G22-N4 — Refonte en sous-onglets thématiques. Settings est désormais un
-// orchestrateur léger : il détient les données (pour construire le payload de
-// backup) et délègue chaque thème à une section dédiée sous components/settings/sections/.
+// orchestrateur léger : il délègue chaque thème à une section dédiée sous
+// components/settings/sections/ (la sauvegarde lit l'état persisté elle-même).
 //
 // Sous-onglets : Complétude | Comptes et soldes | Patrimoine | Clés API | Sauvegarde | Système et diagnostics
 // (+ lien « Profil ↗ » hors tablist : c'est une autre page, pas un onglet).
@@ -17,11 +17,7 @@ import React, { useState } from 'react';
 import { PageHeader } from './ui/PageHeader';
 import type { IconName } from './ui/Icon';
 import { SubTabs, TabPanel } from './ui/SubTabs';
-import {
-  AppState, BudgetCategory, Transaction, Asset, TravelGoal, Debt,
-  InvestmentAccount, InvestmentTransaction, LifeEvent, RetirementGoal, FinancialGoal,
-  RealEstateGoal, ChildGoal, Tab,
-} from '../types';
+import { AppState, Transaction, Tab } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { SetupHub, useCompletudeOnglets } from './setup/SetupHub';
 import { usePendingFocus } from '../utils/usePendingFocus';
@@ -41,24 +37,13 @@ interface SettingsProps {
   setApiKeys: (keys: AppState['apiKeys']) => void;
   config: AppState['config'];
   setConfig: (c: AppState['config']) => void;
-  budgetItems: BudgetCategory[];
   onImportData: (data: string) => void;
   initialBalances: Record<string, number>;
   setInitialBalances: (balances: Record<string, number>) => void;
   transactions: Transaction[];
-  setTransactions?: (t: Transaction[]) => void;
-  assets: Asset[];
-  travelGoals: TravelGoal[];
-  debts?: Debt[];
-  investmentAccounts?: InvestmentAccount[];
-  investmentTransactions?: InvestmentTransaction[];
-  lifeEvents?: LifeEvent[];
-  retirementGoal?: RetirementGoal;
-  realEstateGoals?: RealEstateGoal[];
-  setRealEstateGoals?: (g: RealEstateGoal[]) => void;
-  childGoal?: ChildGoal;
-  childGoals?: ChildGoal[];
-  financialGoals?: FinancialGoal[];
+  // [EXPORT-JSON-PERD-FINTABLE] Les quatorze collections qu'on passait ici ne servaient qu'à
+  // construire le payload de sauvegarde à la main. La sauvegarde lit désormais l'état persisté
+  // ENTIER (BackupPanel) : les garder aurait laissé une porte vers l'ancien export incomplet.
   // G22-N5 — état complet, forwardé à SystemView (sous-onglet diagnostics).
   appState: AppState;
 }
@@ -96,29 +81,9 @@ export const Settings: React.FC<SettingsProps> = ({
   initialBalances,
   setInitialBalances,
   transactions,
-  budgetItems,
   onImportData,
-  assets,
-  travelGoals,
-  debts = [],
-  investmentAccounts = [],
-  investmentTransactions = [],
-  lifeEvents = [],
-  retirementGoal,
-  realEstateGoals = [],
-  childGoal,
-  childGoals = [],
-  financialGoals = [],
   appState,
 }) => {
-  // Containers étendus (W5.x) — lus ici pour le payload de backup ; la section
-  // Patrimoine les lit/écrit de son côté (même store, pas de duplication d'état).
-  const insurancePolicies = useFinanceStore(s => s.insurancePolicies ?? []);
-  const rentalProperties = useFinanceStore(s => s.rentalProperties ?? []);
-  const privateBusinesses = useFinanceStore(s => s.privateBusinesses ?? []);
-  const vehicleReplacements = useFinanceStore(s => s.vehicleReplacements ?? []);
-  const majorRenovations = useFinanceStore(s => s.majorRenovations ?? []);
-  const charitableGoals = useFinanceStore(s => s.charitableGoals ?? []);
   const pendingFocus = useFinanceStore(s => s.pendingFocus);
 
   // Deep-link : on démarre sur le sous-onglet ciblé pour que le champ soit
@@ -133,42 +98,6 @@ export const Settings: React.FC<SettingsProps> = ({
 
   // Consomme pendingFocus + scroll vers le champ (one-shot).
   usePendingFocus(Tab.SETTINGS);
-
-  // C5 fix (Sprint 1) — Sécurité : apiKeys NE SONT PLUS incluses par défaut dans
-  // le backup. buildPayload({ includeApiKeys: true }) pour les inclure explicitement.
-  const buildBackupPayload = (opts: { includeApiKeys?: boolean } = {}) => ({
-    version: '3.2',
-    timestamp: Date.now(),
-    ...(opts.includeApiKeys ? { apiKeys } : {}),
-    config,
-    budgetItems,
-    assets,
-    initialBalances,
-    travelGoals,
-    debts,
-    investmentAccounts,
-    investmentTransactions,
-    lifeEvents,
-    retirementGoal,
-    realEstateGoals,
-    childGoal,
-    childGoals,
-    financialGoals,
-    transactions,
-    insurancePolicies,
-    rentalProperties,
-    privateBusinesses,
-    vehicleReplacements,
-    majorRenovations,
-    charitableGoals,
-    // [PTF-L1A] Grand livre courtier et référentiel : lus au moment de l'EXPORT (aucun abonnement de
-    // rendu pour deux tableaux que cet écran n'affiche pas). `undefined` reste `undefined` — JSON
-    // l'omet — et jamais `[]` : un backup d'un appareil qui n'a jamais importé ne doit pas restaurer
-    // un livre « importé et vide ».
-    brokerLedger: useFinanceStore.getState().brokerLedger,
-    instruments: useFinanceStore.getState().instruments,
-    brokerAccountRegimes: useFinanceStore.getState().brokerAccountRegimes,
-  });
 
   const { pct } = useCompletudeOnglets();
   const large = useViewportXl();
@@ -206,7 +135,7 @@ export const Settings: React.FC<SettingsProps> = ({
           </div>
         );
       case 'backup':
-        return <BackupSection buildPayload={buildBackupPayload} />;
+        return <BackupSection />;
       case 'system':
         return <SystemView state={appState} />;
     }

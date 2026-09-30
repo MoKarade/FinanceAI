@@ -17,7 +17,17 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  // [E2E-RAPIDE] 2 workers en CI, 1 en local. MESURÉ le 2026-09-29 : le job E2E passait 6,2 à
+  // 6,7 min dans ses tests (39 runs verts), et chaque test coûte surtout sa MISE EN PLACE
+  // (page neuve, activation du mode test, onglet Futur : ~6 s pour la plupart des 62 tests).
+  // Les tests ne partagent aucun état : chaque test a son propre contexte navigateur
+  // (localStorage et IndexedDB isolés), seul le serveur Vite est commun, et il sert en
+  // lecture. Mesuré en local, même suite, même machine : 6,5 min avec 1 worker, 3,1 min avec 2,
+  // 62/62 verts. Le runner `ubuntu-latest` d'un dépôt public a 4 cœurs : 2 workers en laissent
+  // 2 au serveur Vite. On ne monte pas plus haut : les specs du Futur font des rendus
+  // lourds (~11 000 points au jour) et le « element is not stable » du 21/09 est né sur le
+  // runner, pas en local. En local on garde 1 worker : d'autres sessions tournent sur ce PC.
+  workers: process.env.CI ? 2 : 1,
   reporter: [
     ['html', { open: 'never' }],
     ['list'],

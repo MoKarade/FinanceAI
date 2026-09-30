@@ -14,8 +14,10 @@
       { "matcher": "Task|Agent", "hooks": [ { "type": "command", "command": "node scripts/hooks/agent-status.mjs", "timeout": 10 } ] },
       { "matcher": "Bash", "hooks": [
         { "type": "command", "command": "node scripts/hooks/guard.mjs", "timeout": 10 },
-        { "type": "command", "command": "node scripts/hooks/commit-gate.mjs", "timeout": 600 },
         { "type": "command", "command": "node scripts/hooks/learn-on-push.mjs", "timeout": 10 }
+      ] },
+      { "matcher": "Bash|PowerShell", "hooks": [
+        { "type": "command", "command": "node scripts/hooks/commit-gate.mjs", "timeout": 600 }
       ] }
     ],
     "SubagentStop": [

@@ -50,6 +50,19 @@ const deplier = (nom: string) => fireEvent.click(screen.getByRole('button', { na
 /** Sections repliées (grand livre, outils) : dépliées avant d'y lire quoi que ce soit. */
 const ouvrir = (titre: RegExp) => fireEvent.click(screen.getByRole('button', { name: titre }));
 
+/**
+ * [BUDGET-TEST-FUSEAU-FUITE] Fuseau EFFECTIF du processus, lu au chargement du fichier, avant que
+ * le moindre test ne touche `process.env.TZ`. Les tests qui changent de fuseau le RÉASSIGNENT à
+ * cette valeur en sortie, au lieu de faire `delete process.env.TZ`. MESURÉ le 2026-09-30 sous
+ * vitest : après `process.env.TZ = 'Australia/Sydney'` puis `delete process.env.TZ`, le décalage
+ * reste −600 min (Sydney). Node ne relit le fuseau que sur une ASSIGNATION, pas sur une
+ * suppression. Tout le reste du fichier tournait donc à l'heure de Sydney, et le bandeau des
+ * dépassements échouait le dernier jour du mois dès ~10 h au Québec : il est alors déjà le 1er du
+ * mois suivant à Sydney, et la transaction « du mois courant » tombait hors période.
+ */
+const FUSEAU_INITIAL = process.env.TZ ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+const restaurerFuseau = () => { process.env.TZ = FUSEAU_INITIAL; };
+
 const baseProps = {
     transactions: [],
     config: defaultConfig,
@@ -317,14 +330,11 @@ describe('Budget — refonte UI (Phase C3)', () => {
     // fuseau est un PARAMÈTRE du test, pas un détail d'environnement (leçon
     // `UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`).
     describe('[BUDGET-INCOME-WINDOW-UTC-OFFBYONE] fenêtre revenus vs fuseau horaire', () => {
-        const originalTz = process.env.TZ;
         beforeEach(() => { process.env.TZ = 'America/Toronto'; });
         // [finding financial-integrity #751] `process.env.TZ = undefined` écrit la CHAÎNE
-        // "undefined", pas une absence — `delete` si le TZ n'était pas défini au départ, sinon les
-        // tests suivants tournent sous un fuseau nommé "undefined" plutôt que celui du conteneur.
-        afterEach(() => {
-            if (originalTz === undefined) delete process.env.TZ; else process.env.TZ = originalTz;
-        });
+        // "undefined", pas une absence. Et `delete` ne remet PAS le fuseau (mesuré, voir
+        // `FUSEAU_INITIAL`) : on réassigne le fuseau effectif lu au chargement du fichier.
+        afterEach(restaurerFuseau);
 
         it('un revenu daté du 1er du mois compte, même sous un fuseau à décalage négatif', () => {
             const now = new Date();
@@ -468,10 +478,11 @@ describe('Budget — refonte UI (Phase C3)', () => {
     // même helper (`toLocalDateStr`) doit aussi tenir sous un fuseau POSITIF (Sydney), où le piège
     // s'inverse : minuit local peut reculer d'un jour en UTC au lieu d'avancer.
     describe('[BUDGET-INCOME-WINDOW-UTC-OFFBYONE] défauts Custom vs fuseau à décalage POSITIF', () => {
-        const originalTz = process.env.TZ;
         afterEach(() => {
             vi.useRealTimers();
-            if (originalTz === undefined) delete process.env.TZ; else process.env.TZ = originalTz;
+            // [BUDGET-TEST-FUSEAU-FUITE] Réassigner, jamais `delete` : ce test pose Sydney, et un
+            // `delete` le laissait en place pour tout le reste du fichier.
+            restaurerFuseau();
         });
 
         it('les valeurs par défaut de la plage Custom reflètent le jour LOCAL juste après minuit', () => {

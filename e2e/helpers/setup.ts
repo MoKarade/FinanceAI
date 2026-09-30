@@ -104,7 +104,7 @@ export async function activateTestMode(page: Page): Promise<void> {
  * lieu d'attendre 4 s à chaque test. Attente courte et tolérante : si aucun toast n'apparaît
  * (texte ou minutage changé), on continue sans échouer — rien à fermer.
  */
-export async function fermerLesNotifications(page: Page): Promise<void> {
+async function fermerLesNotifications(page: Page): Promise<void> {
   const zone = page.getByRole('region', { name: 'Notifications' });
   const toasts = zone.locator('[role="status"], [role="alert"]');
   await toasts.first().waitFor({ state: 'visible', timeout: 2_000 }).catch(() => {});

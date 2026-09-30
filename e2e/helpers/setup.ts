@@ -82,4 +82,36 @@ export async function activateTestMode(page: Page): Promise<void> {
     () => document.body.innerText.includes('MODE TEST'),
     { timeout: 8_000 },
   );
+
+  await fermerLesNotifications(page);
+}
+
+/**
+ * [E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE] Ferme les notifications (toasts) encore affichées.
+ *
+ * L'activation du mode test affiche le toast « Persona « … » chargé. Tes vraies données sont
+ * sauvegardées. » pendant 4 s (`TOAST_LIFETIME_MS`, `components/ui/Toast.tsx`), en bas à droite,
+ * `pointer-events-auto`. MESURÉ le 2026-09-29 à 1280×720 : sa boîte va de x 684 à 1256 et de
+ * y 618 à 696 — elle contient le point (709, 675) de la « bande basse » que vise
+ * `[FUTUR-CLICK-ANYWHERE]`. Si le graphe du Futur est prêt en moins de 4 s, le clic tombe sur le
+ * toast et aucun jour n'est épinglé. Le journal CI le nomme mot pour mot (« sous le pointeur :
+ * div[role=status] .animate-toast-in ») : 11 runs touchés sur 45 (3 rouges, 8 « flaky »), et ce
+ * sont les runs les PLUS RAPIDES (4,4 à 4,8 min contre 6,4 min) — la signature d'une course
+ * contre la minuterie du toast, pas d'une zone morte de l'app.
+ *
+ * Ce n'est pas le contournement d'un défaut : un humain voit le toast et le ferme (ou attend).
+ * Le helper reproduit ce geste, par le bouton « Fermer la notification » du toast lui-même, au
+ * lieu d'attendre 4 s à chaque test. Attente courte et tolérante : si aucun toast n'apparaît
+ * (texte ou minutage changé), on continue sans échouer — rien à fermer.
+ */
+export async function fermerLesNotifications(page: Page): Promise<void> {
+  const zone = page.getByRole('region', { name: 'Notifications' });
+  const toasts = zone.locator('[role="status"], [role="alert"]');
+  await toasts.first().waitFor({ state: 'visible', timeout: 2_000 }).catch(() => {});
+  const fermer = zone.getByRole('button', { name: 'Fermer la notification' });
+  // Borne dure : jamais de boucle infinie si un toast réapparaissait en continu.
+  for (let i = 0; i < 5 && (await fermer.count()) > 0; i++) {
+    await fermer.first().click().catch(() => {});
+  }
+  await toasts.first().waitFor({ state: 'detached', timeout: 2_000 });
 }

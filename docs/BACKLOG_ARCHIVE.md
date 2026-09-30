@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-29 — Suite E2E : « clic partout » stabilisé (récidive) et job deux fois plus court
+
+- [x] 🟠 **`[E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE]`** (S) — ✅ 2026-09-29 : RÉCIDIVE avec une
+  AUTRE cause que celle du 25/09 (le bandeau, corrigé). Mesuré sur 45 runs CI (28-29/09) :
+  11 touchés (3 rouges dont 2 sur `main`, 8 « flaky »), toujours la « bande basse » (709, 675),
+  et le journal nomme le toast `div[role=status] .animate-toast-in` sous le pointeur. Le toast
+  « Persona … chargé » de l'activation du mode test vit 4 s en bas à droite ; boîte mesurée
+  x 684→1256, y 618→696 : elle contient le point visé. Les runs touchés sont les PLUS RAPIDES
+  (4,4-4,8 min contre 6,4) : une course contre la minuterie du toast. Reproduit de façon
+  déterministe (toast remis juste avant le clic → aucun jour épinglé). Correctif :
+  `activateTestMode` ferme les notifications (`fermerLesNotifications`, `e2e/helpers/setup.ts`),
+  et le diagnostic de `clickAndFreeze` reconnaît le graphe (`role="group"`, il répondait « NON »
+  à tort depuis la refonte S5).
+- [x] 🟡 **`[E2E-RAPIDE]`** (S) — ✅ 2026-09-29 : `workers` 1 → 2 en CI (`playwright.config.ts`).
+  Local, même machine : 6,5 min → 3,1 min, 62/62 verts sur 3 suites complètes, et 30/30 sur
+  `futureDailySelect` répété 5 fois à 2 workers.
+
 ## 2026-09-29 — Verrou d'écriture MCP hors du chat (Étape 2)
 
 - [x] 🔧 **`[VERROU-ECRITURE]`** (M) — verrou d'écriture désactivé par défaut, activable UNIQUEMENT

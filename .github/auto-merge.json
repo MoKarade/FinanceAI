@@ -1,5 +1,6 @@
 {
   "branche_base": "main",
+  "attestation_toutes_pr": true,
   "controles_requis": [
     "Lint / Typecheck / Tests / Build",
     "E2E (Playwright / Chromium)",

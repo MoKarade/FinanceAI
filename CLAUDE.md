@@ -38,3 +38,10 @@ Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests 
 Plan d'abord, questions en un batch, OK avant de coder, puis exécution continue ; proposer ≠ faire. `[YYYY-MM-DD HH:MM UTC]` en tête de chaque réponse. Qualité d'abord, coût tokens non contraint.
 
 @docs/COMPTE-RENDU.md
+
+## NotebookLM et task_spec (workflow Hub & Spoke)
+
+- Ce dépôt est publié automatiquement dans NotebookLM depuis la branche principale de GitHub (carnet du dépôt + Carnet Maître inter-apps). `ARCHITECTURE.md` en est la carte : mets-le à jour dans la même PR quand une interface publique, une dépendance externe ou un terme métier change. `notebooklm.map.json` (découpage en sources) et `.notebookignore` (exclusions) se modifient aussi par PR.
+- Si une `task_spec` (YAML venu de NotebookLM) t'est confiée : respecte `fichiers_cibles`, `fichiers_interdits`, `contraintes_techniques` et `tests_a_passer`. Lis les fichiers cibles et leurs voisins directs (imports, tests associés) ; pas d'exploration globale du dépôt.
+- La spec décrit `main` au commit `commit_reference` : si un chemin n'existe pas ou si le code contredit la spec, arrête-toi et signale l'écart au lieu d'improviser.
+- Les règles de ce fichier (git, PR, portes qualité, sécurité) priment toujours sur la spec.

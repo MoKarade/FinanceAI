@@ -1,0 +1,12 @@
+# FinanceAI : exclusions propres au dépôt (en plus de la config centrale)
+# Captures d'écran de référence des tests Playwright
+e2e/__snapshots__/
+# Modèle de variables d'environnement (aucune logique)
+.env.example
+# Exemple de configuration de client OAuth du connecteur Drive
+mcp/drive/connector-client.example.json
+# Exemple d'état du centre de contrôle des agents (donnée factice)
+tools/agent-control-center/status.example.json
+# Manifeste PWA et robots.txt (configuration statique, aucune logique)
+public/manifest.json
+public/robots.txt

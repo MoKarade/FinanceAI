@@ -1,0 +1,157 @@
+{
+  "version": 1,
+  "repo_label": "FinanceAI",
+  "comment": "Découpage par couche : serveur MCP, relais API Vercel, moteur de projection et fiscalité, services métier, store et types, UI et i18n, tests unitaires, tests e2e, outillage/CI, docs. Le premier motif qui correspond gagne (les specs d'outils MCP passent avant les tests).",
+  "sources": [
+    {
+      "name": "01_Serveur_MCP",
+      "title": "Serveur MCP (outils, état, ingestion, auth, Drive)",
+      "include": [
+        "mcp/**",
+        "Dockerfile",
+        ".dockerignore",
+        ".gcloudignore"
+      ]
+    },
+    {
+      "name": "02_API_Relais_Vercel",
+      "title": "Fonctions serveur Vercel (relais Claude, proxys Yahoo et Fintable)",
+      "include": [
+        "api/**",
+        "vercel.json"
+      ]
+    },
+    {
+      "name": "03_Moteur_Projection_Fiscal",
+      "title": "Moteur de projection, Monte Carlo et fiscalité QC/Canada",
+      "include": [
+        "services/projection.ts",
+        "services/projection.worker.ts",
+        "services/projection/**",
+        "services/tax.ts",
+        "services/taxEstimate.ts",
+        "services/taxResidual.ts",
+        "utils/tax.ts",
+        "utils/donationCredit.ts",
+        "utils/fiscal*.ts",
+        "utils/salary.ts",
+        "utils/insolvency.ts"
+      ]
+    },
+    {
+      "name": "04_Services_Metier",
+      "title": "Services métier (sync Drive et Fintable, marchés, historique, import, IA in-app, utilitaires)",
+      "include": [
+        "services/**",
+        "utils/**"
+      ]
+    },
+    {
+      "name": "05_Store_Types",
+      "title": "Store Zustand, migrations et types globaux",
+      "include": [
+        "store/**",
+        "types.ts",
+        "constants.ts",
+        "vite-env.d.ts"
+      ]
+    },
+    {
+      "name": "06_UI_Composants_i18n",
+      "title": "Interface React (composants, hooks, i18n, point d'entrée)",
+      "include": [
+        "components/**",
+        "hooks/**",
+        "locales/**",
+        "i18n.ts",
+        "App.tsx",
+        "index.tsx",
+        "index.html",
+        "index.css",
+        "public/**"
+      ]
+    },
+    {
+      "name": "07_Tests_Unitaires",
+      "title": "Tests Vitest (services, composants, MCP, gardes)",
+      "include": [
+        "tests/**"
+      ]
+    },
+    {
+      "name": "08_Tests_E2E",
+      "title": "Tests Playwright de bout en bout",
+      "include": [
+        "e2e/**",
+        "playwright.config.ts"
+      ]
+    },
+    {
+      "name": "09_Outillage_CI",
+      "title": "Outillage, CI, hooks, agents et configuration",
+      "include": [
+        ".github/**",
+        ".claude/**",
+        "scripts/**",
+        "tools/**",
+        "qualite/**",
+        "modeles/**",
+        "*.config.*",
+        "tailwind.palette-v3.js",
+        "tsconfig.json",
+        "knip.json",
+        "metadata.json",
+        ".lighthouserc.json",
+        ".sonarcloud.properties",
+        ".dependency-cruiser.cjs",
+        ".nvmrc",
+        ".gitattributes",
+        ".gitignore",
+        "package.json"
+      ]
+    },
+    {
+      "name": "10_Docs",
+      "title": "Documentation (ADR, référence fiscale, projection, historique, suivi)",
+      "include": [
+        "docs/**",
+        "HANDOVER.md",
+        "BACKLOG.md",
+        "CHANGELOG.md",
+        "CLAUDE.md",
+        "COPIES.md"
+      ]
+    }
+  ],
+  "fallback": "99_Autres",
+  "master": {
+    "enabled": true,
+    "include": [
+      "types.ts",
+      "services/projection/types.ts",
+      "services/marketData/types.ts",
+      "services/fintable/types.ts",
+      "services/sync/syncTypes.ts",
+      "mcp/README.md",
+      "mcp/instructions.ts",
+      "mcp/hubSummary.ts",
+      "mcp/vehiculeBail.ts",
+      "mcp/tools/_toolSpec.ts",
+      "mcp/state/appStateSchema.ts",
+      "mcp/ingest/applyDocument/types.ts",
+      "docs/PROJECTION_OUTPUT_SCHEMA.md",
+      "docs/claude/hub.md",
+      "docs/adr/0017-endpoint-bail-vehicule-pour-carai.md",
+      "docs/adr/0018-ia-locale-via-relais.md",
+      "mcp/tools/*.spec.ts"
+    ],
+    "exclude": [
+      "services/testPersonas/**"
+    ]
+  },
+  "limits": {
+    "max_words_per_doc": 400000,
+    "max_chars_per_doc": 900000,
+    "max_json_bytes": 40000
+  }
+}

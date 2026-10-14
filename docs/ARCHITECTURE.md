@@ -2,7 +2,7 @@
 
 > Vue d'ensemble destinée aux nouveaux contributeurs (humains ou agents).
 > Pour le détail du moteur de projection, voir [PROJECTION.md](PROJECTION.md).
-> Pour les wirings inter-onglets, voir [WIRING_NOTES.md](WIRING_NOTES.md).
+> Pour les wirings inter-onglets : l'ancien `WIRING_NOTES.md` a été consolidé dans [HISTORIQUE.md](HISTORIQUE.md) (#244, récit daté, non tenu à jour).
 > Pour la flotte d'agents de revue et le workflow, voir [agents.md](agents.md) + [workflow.md](workflow.md).
 > Pour les décisions d'architecture (ADR), voir [`docs/adr/`](adr/).
 
@@ -12,9 +12,9 @@
 
 | Couche | Technologie | Notes |
 |---|---|---|
-| UI | React 19 + TypeScript (strict) | `noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables` |
+| UI | React 19 + TypeScript 5.9 (strict) | `noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables` |
 | Bundler | Vite 8 (Rolldown) | esbuild en dev, Rollup pour le bundle prod, source-maps activées |
-| Styling | Tailwind CSS + index.css | Design tokens custom (couleurs sémantiques, scale typo) |
+| Styling | Tailwind CSS 4 + index.css | Design tokens custom (couleurs sémantiques, scale typo) |
 | State | Zustand 5 + `persist` middleware | Schema versionné (v1 → v7), migrations en code |
 | Charts | Recharts 3 | Bundle dédié `recharts-*.js`, lazy-chargé |
 | IA | `@anthropic-ai/sdk` (client-side) | `dangerouslyAllowBrowser: true` |
@@ -23,8 +23,8 @@
 | Crypto pricing | CoinGecko REST | Gratuit, sans clé, CORS-friendly |
 | Stock/ETF pricing | Finnhub REST | Clé gratuite optionnelle |
 | Tests | Vitest + React Testing Library | compte à jour dans `CLAUDE.md` (source unique) |
-| Auth | Cloudflare Access | Google OAuth, session 24h |
-| Hébergement | Vercel (auto) + GitHub Pages (workflow) | Preview par PR |
+| Auth | Gate Google in-app ; Cloudflare Access codé (#1074, ADR 0022) | Au 14/10/2026 : mise en service d'Access par Marc encore à faire (`docs/A_FAIRE_MOI.md`, `[CF-ACCESS-MISE-EN-SERVICE]`) |
+| Hébergement | Vercel (auto) ; serveur MCP sur Cloud Run (`deploy-mcp.yml`) | Preview par PR ; aucun workflow GitHub Pages au 14/10/2026 |
 
 Pas de backend. L'app vit côté navigateur, persiste localement via `persist`
 (chiffré en AES-256 pour les clés API), et appelle des APIs tierces (Anthropic,
@@ -340,6 +340,6 @@ Toutes les PR doivent passer **typecheck + tests + build**. Le pipeline CI
 
 - [../HANDOVER.md](../HANDOVER.md) — état courant + reprise rapide (lire EN PREMIER)
 - [PROJECTION.md](PROJECTION.md) — détail du moteur de projection (9 phases mensuelles, scénarios, MC)
-- [WIRING_NOTES.md](WIRING_NOTES.md) — wirings inter-onglets, `lastProjection`, deep-links
+- [HISTORIQUE.md](HISTORIQUE.md) — contient l'ancien `WIRING_NOTES.md` (wirings inter-onglets, `lastProjection`, deep-links), consolidé par #244
 - [../BACKLOG.md](../BACKLOG.md) — tâches ouvertes de Claude
 - [adr/](adr/) — Architecture Decision Records (décisions structurantes)

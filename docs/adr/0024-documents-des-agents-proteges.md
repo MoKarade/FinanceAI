@@ -1,6 +1,6 @@
 # ADR — Les documents que les agents relisent au démarrage sont protégés (pole-securite, 2026-09-26)
 
-**Statut** : proposé (PR en brouillon, `validation-marc`, non armée) ; s'applique dès la fusion.
+**Statut** : proposé (PR en brouillon, `validation-marc`, non armée) ; s'applique dès la fusion. *(Au 14/10/2026 : PR fusionnée sur `main` le 28/09, #1088 — la couche est en vigueur.)*
 
 ## Contexte
 

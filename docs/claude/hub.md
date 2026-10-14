@@ -28,7 +28,7 @@ données financières ne quittent pas la machine de Marc, donc le résumé se ca
   ouvrirait la valeur nette pour lire une mensualité). Il rend UNE dette, nomme ce que l'état ne
   porte pas, et **refuse 409** plutôt que de choisir entre deux véhicules. ADR 0017, détail dans
   `mcp/README.md`.
-- **Contrat pinné sur le tag `v1.3.0`** depuis le 14/09/2026. ⚠️ Re-pinner n'est pas optionnel
+- **Contrat pinné sur le tag `v1.3.1`** (`package.json`, au 14/10/2026 ; re-pin de `v1.3.0` → `v1.3.1` le 24/09/2026, #1049 — `v1.3.0` l'était depuis le 14/09/2026). ⚠️ Re-pinner n'est pas optionnel
   pour consommer un champ neuf : Zod STRIPPE les clés inconnues, donc sur un pin antérieur
   `validateSummary` retire `expectedMaxAgeSec`, `details`, `primary` et `recommendation` **en
   silence** — et les tests passent en n'affirmant plus rien sur eux.

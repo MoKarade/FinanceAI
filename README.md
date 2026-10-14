@@ -13,7 +13,6 @@ Application personnelle de planification financière complète : suivi en temps 
 ```bash
 npm install
 # Mettre ANTHROPIC_API_KEY dans .env.local (optionnel — assistant IA)
-# Mettre ERA_CONTEXT_TOKEN dans .env.local (optionnel — synchronisation transactions)
 npm run dev
 ```
 
@@ -87,7 +86,7 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 - `api/` : `api/_lib/relay.ts` et `api/claude/v1/messages.ts` (chemin statique, requis par Vercel). Le relais garde la clé Anthropic de l'utilisateur (BYOK) et peut router les appels texte ou à outils « custom » Haiku/Sonnet vers la passerelle IA locale (Ollama via l'Atelier), avec bascule automatique sur Anthropic. Décision : [`docs/adr/0018-ia-locale-via-relais.md`](docs/adr/0018-ia-locale-via-relais.md).
 - Le moteur de projection (`services/projection.ts` + `services/projection/` — une soixantaine de fichiers) est le coeur de l'app. Voir [`docs/PROJECTION.md`](docs/PROJECTION.md) pour les détails.
 - Le state global est Zustand v5 + persist (schema v7 avec migrations v1→v7).
-- `services/eraContext.ts` est dormant (MCP-only) — l'UI Era a été retirée.
+- L'intégration Era Context a été retirée entièrement le 2026-05-27 (`services/eraContext.ts` n'existe plus).
 
 ## 🔐 Sécurité
 
@@ -101,10 +100,10 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 
 ## 🛠️ Stack
 
-- **Frontend** : React 19.2 + Vite 8 (Rolldown) + TypeScript 5.8 strict + Tailwind CSS 3
+- **Frontend** : React 19.3 + Vite 8 (Rolldown) + TypeScript 5.9 strict + Tailwind CSS 4 (versions relevées dans `package.json` le 14/10/2026)
 - **State** : Zustand 5 (avec `persist` + `partialize`, schema v7 + migrations v1→v7)
 - **Tests** : Vitest 4 + @testing-library/react + axe-core (compte : voir `CLAUDE.md`, source unique)
-- **Validation** : Zod 3
+- **Validation** : Zod 4
 - **Charts** : Recharts 3 (lazy-loaded)
 - **Backend** : aucun — 100 % navigateur, déploiement statique **Vercel** (`vercel.json`)
 - **LLM** : Anthropic Claude (Haiku 4.5 + Sonnet 4.6 + Opus 4.8 via `@anthropic-ai/sdk` — choix du modèle par conversation, coût réel CAD)
@@ -116,7 +115,6 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 ## 📈 Fonctionnalités clés
 
 ### Suivi en temps réel
-- Synchronisation transactions Era Context (9 endpoints, AbortController)
 - Import OCR relevés/paies PDF (Claude Vision) — extraction montants, dates, catégories
 - Reconnaissance auto des catégories (rules + LLM)
 - Détection d'abonnements récurrents

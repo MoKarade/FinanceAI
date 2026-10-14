@@ -20,6 +20,16 @@ Branche `claude/<slug>` → commits français préfixés par l'ID (`[A12a] desc`
 (draft par défaut) → **Claude merge lui-même** (squash sur `main`). Le push sur `main`
 déclenche le déploiement Vercel : Claude en est responsable (choix Marc).
 
+> ⚠️ **À trancher par Marc (14/10)** : cette règle (« draft par défaut », « Claude merge lui-même »)
+> contredit d'autres textes en vigueur, que cette note ne tranche pas. `chemins-sensibles.md` : une PR
+> sensible n'est « JAMAIS fusionnée automatiquement ni à la main par Claude » ; `CLAUDE.md` de l'Atelier :
+> PR jamais en brouillon pour une app en fusion auto, « ne jamais fusionner à la main », GitHub fusionne
+> seul ; `claude-config` : « je fusionne moi-même » une PR verte hors brouillon. Mécanisme RÉEL au
+> 14/10 (lu dans `.github/`) : `armement-auto-merge.yml` arme la fusion automatique native de GitHub via
+> le kit de l'Atelier 1.14.0 (`modeles/auto-merge/`, couche `armer-docs.mjs` de l'ADR 0024) et refuse
+> brouillon, label `validation-marc`/`do-not-merge` et chemins sensibles ; `auto-merge.yml` (fusion
+> événementielle du kit, `fusionner.mjs`) fusionne aussi Dependabot après 3 jours de carence. Aucun fichier `CODEOWNERS` dans le dépôt.
+
 - ⚠️ **Ne PAS fractionner le cycle sur plusieurs tours.** `git add && git commit && git push`
   chaînés en UN SEUL appel Bash, puis PR + auto-merge dans le MÊME tour. Un cycle étalé laisse
   un état à moitié fait dès qu'un tour est interrompu (commits poussés SANS PR = rien

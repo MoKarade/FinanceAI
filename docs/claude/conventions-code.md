@@ -2,10 +2,10 @@
 
 ## 2. Conventions de code
 
-React 19.2 + Vite 8 (Rolldown) + TS 5.8 strict + Tailwind 3 · Zustand 5 (persist+partialize,
-schema v7) · Zod 3 · Recharts 3 (lazy) · Vitest 4 + Testing Library + axe-core ·
+React 19.3 + Vite 8 (Rolldown) + TS 5.9 strict + Tailwind 4 · Zustand 5 (persist+partialize,
+schema v7) · Zod 4 · Recharts 3 (lazy) · Vitest 4 + Testing Library + axe-core ·
 @anthropic-ai/sdk (Sonnet 4.6 + Haiku 4.5) · @modelcontextprotocol/sdk · Finnhub + CoinGecko ·
-i18next · jspdf. Prod : **Vercel**.
+i18next · jspdf. Prod : **Vercel**. *(Versions relevées dans `package.json` le 14/10/2026.)*
 
 Structure **PLATE** (pas de `src/`) : racine `App.tsx`, `index.tsx`, `constants.ts`, `types.ts`,
 `i18n.ts` ; dossiers `components/ hooks/ services/ store/ utils/ locales/ mcp/ e2e/ tests/

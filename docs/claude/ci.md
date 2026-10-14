@@ -18,6 +18,11 @@ version EXÉCUTÉE** (`^22` → `^20`) qui rend la classe impossible : `tsc` ref
 récente À L'ÉCRITURE. Face à un « vert local / rouge distant », distinguer l'artefact *déclaratif*
 de l'*exécutoire* — seul le second protège.
 
+> **État au 14/10/2026** (le récit ci-dessus date du 21/08 et parle de Node 20/22) : `.nvmrc` = `24`,
+> `engines.node` = `24.x`, `@types/node` `^24`, et tous les workflows qui installent Node le font par
+> `node-version-file: .nvmrc` (`ci.yml`, `auto-merge.yml`, `lighthouse.yml`, `mesure-sources.yml`,
+> `mutation.yml`, `refresh-screenshots.yml`). Plus aucun workflow n'épingle 20.
+
 ⚠️ Le workflow filtre sur `pull_request: branches: [main]` : une **PR EMPILÉE** (base `claude/xxx`)
 ne déclenche **aucun** run CI — Vercel et CodeQL partent quand même, ce qui donne l'illusion d'une
 vérification. `enable_pr_auto_merge` répond « unstable status » parce que les checks requis sont

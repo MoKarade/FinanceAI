@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-14 — Documentation remise à l'état réel (rien ne change dans l'app)
+
+- Aucune fonctionnalité ne change. Les documents de suivi (état, tâches, architecture, versions des
+  outils) décrivent maintenant ce qui est réellement en place au 14/10 : les tâches livrées fin
+  septembre sont archivées, les versions citées sont corrigées, et un gel des nouveaux travaux,
+  décidé par Marc le 14/10, est noté.
+
 ## 2026-09-29 — Futur : le commutateur « Bac à sable » et ses curseurs théoriques sont retirés ; l'IA sait quand les chiffres sont fictifs
 
 - L'onglet Futur n'affiche plus le commutateur « Données réelles / Bac à sable » ni les curseurs

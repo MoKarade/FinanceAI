@@ -1,6 +1,6 @@
 # ADR — Cloudflare Access devant finance.hubperso.com, jeton vérifié par l'API (Marc via pole-securite, 2026-09-25)
 
-**Statut** : accepté, code livré (PR `[CF-ACCESS]`, brouillon, non auto-fusionnée : `api/**`, `vercel.json`) ; mise en service par Marc
+**Statut** : accepté, code livré (PR `[CF-ACCESS]`, brouillon, non auto-fusionnée : `api/**`, `vercel.json`) ; mise en service par Marc *(Au 14/10/2026 : PR fusionnée sur `main` le 28/09, #1074 ; la mise en service par Marc reste à faire, `[CF-ACCESS-MISE-EN-SERVICE]`.)*
 (`docs/A_FAIRE_MOI.md` → `[CF-ACCESS-MISE-EN-SERVICE]`). Remplace en partie [0002](0002-app-personnelle-relais-byok.md) (accès
 au relais) et [0021](0021-relais-sans-jeton-public.md) (freins sans authentification). Remplace le lot A « passkey » (abandonné, ~28 h).
 

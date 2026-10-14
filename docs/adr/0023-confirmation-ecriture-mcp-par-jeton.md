@@ -1,6 +1,6 @@
 # ADR — Écriture MCP : confirmation à deux temps liée côté serveur (jeton à usage unique) (2026-09-26)
 
-**Statut** : livré (code + tests) ; PR sensible (`mcp/**`), validation Marc requise. Origine : audit sécurité P3-P6
+**Statut** : livré (code + tests) ; PR sensible (`mcp/**`), validation Marc requise. Origine : audit sécurité P3-P6 *(Au 14/10/2026 : PR fusionnée sur `main` le 29/09, #1076.)*
 du 26/09/2026, findings « élevée » 1 et 2 (`apply_*` sans confirmation ; `confirm:true` fourni par le modèle).
 
 ## Contexte

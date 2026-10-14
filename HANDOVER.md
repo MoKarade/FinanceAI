@@ -1,5 +1,49 @@
 # SESSION HANDOVER — pour le prochain Claude
 
+## État au 14/10/2026
+
+> Section ajoutée le 14/10/2026 (remise à jour de la documentation demandée par Marc). Tout ce qui suit
+> cette section est un journal de sessions daté : ses mentions « brouillon », « non armée » ou « en
+> attente » décrivent l'état du jour où elles ont été écrites. Les PR citées ci-dessous ont été
+> vérifiées contre `git log` de `main` et la liste des PR ouvertes sur GitHub le 14/10.
+
+**Gel décidé par Marc le 14/10 : aucun nouveau travail sur les apps tant que le plan de réduction du temps des PR est en cours.**
+
+**Ce qui tourne.** L'app web (Vercel, `finance.hubperso.com`) et le serveur MCP (Cloud Run). Dernier
+commit sur `main` : `4b53a712` (#1099, 30/09/2026). Aucun commit sur `main` du 01/10 au 14/10. Le
+déploiement de production de ce commit n'a pas été vérifié par la session du 14/10 [À vérifier].
+
+**Livré sur `main` du 28/09 au 30/09** (d'après `git log` ; plusieurs sessions ci-dessous les décrivent encore « en attente ») :
+- MCP : `[MCP-CONFIRM-TOKEN]` #1076, `[MCP-DURCISSEMENT]` #1080 (couvre `[MCP-RATE-LIMIT]` et
+  `[MCP-ACCESS-KEY-LONGUEUR-MIN]`), `[VERROU-ECRITURE]` #1093.
+- `[CHIFFREMENT-PHASE1]` #1094 ; refonte visuelle `[S5-REFONTE]` #1063, `[S5-REFONTE-R3]` #1097,
+  `[S5-A11Y-MOBILE]` #1098.
+- Mode discret et code mort : `[LOT3]` #1100, `[PRIVACY-SCAN-FORMATNUMBER-DIRECT]` #1109.
+- Futur : `[SANDBOX]` #1099 (curseurs théoriques retirés, marqueur « données fictives » dans les prompts).
+- Outillage : kit d'auto-fusion 1.10.0 puis 1.14.0 (#1096, #1113), frein visuel (#1095, #1105),
+  `[CODEQL-37]` #1108, `[E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE]` #1111, `[BUDGET-TEST-FUSEAU-FUITE]` #1117.
+- Les items `BACKLOG.md` correspondants, restés ouverts, ont été archivés le 14/10 dans
+  `docs/BACKLOG_ARCHIVE.md`.
+
+**En cours (PR ouvertes au 14/10, aucune fusionnée depuis le 30/09).** #1112
+`[PRIVACY-RATIOS-DUREES-UNIFORMES]` (brouillon), #1107 `[EXPORT-JSON-PERD-FINTABLE]`, #1103
+`[A11Y-PANNEAU]` (brouillon), #1101 `[A11Y-DETTE]` (brouillon), #1079 `[HOOKS-LECONS]` (brouillon),
+#1110 `[CI-GITLEAKS-8-30-1]` (gitleaks 8.30.1 est déjà sur `main` par #1113 : probablement sans
+objet [À vérifier]), #1122 (documentation), et cinq PR Dependabot (#1083, #1089, #1115, #1116, #1121).
+
+**Cassé ou à surveiller.**
+- Pas de mur d'authentification devant l'app tant que Marc n'a pas fait `[CF-ACCESS-MISE-EN-SERVICE]`
+  (code fusionné le 28/09, #1074 ; procédure dans `docs/A_FAIRE_MOI.md`).
+- Actions humaines ouvertes : clé d'accès MCP à régénérer puis mode STRICT, variables
+  `PROXY_ACCESS_TOKEN`/`VITE_PROXY_ACCESS_TOKEN` à retirer de Vercel (`docs/A_FAIRE_MOI.md`).
+- Mécanisme de fusion réel (lu dans `.github/` le 14/10) : `armement-auto-merge.yml` + kit Atelier
+  1.14.0 (`modeles/auto-merge/`, couche de l'ADR 0024) et `auto-merge.yml` ; aucun `CODEOWNERS`. Les
+  textes qui décrivent la règle de fusion se contredisent : note « À trancher par Marc (14/10) » dans
+  `docs/claude/workflow-git.md`.
+- Compte de tests : voir `CLAUDE.md` (valeur datée).
+- Le tableau « 1. État en une page » en bas de ce fichier date de juillet 2026 : historique, ne pas
+  le lire comme l'état courant.
+
 > **À lire EN PREMIER si tu reprends FinanceAI.** Ce document remplace
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
@@ -56,7 +100,7 @@
 > `tests/services/cloudBackup.migration.test.ts`.
 > ⚠️ Aucun chemin de la config `chemins_label_validation` actuelle n'est touché (vérifié), mais la
 > règle GLOBALE de l'Atelier (jamais armer une PR touchant la sécurité sans OK pole-securite)
-> s'applique : PR ouverte, **non armée**, attend confirmation que les 3 conditions pole-securite (verrou
+> s'applique : PR ouverte, **non armée** *(historique : fusionnée le 29/09, #1094)*, attend confirmation que les 3 conditions pole-securite (verrou
 > WebAuthn bloquant, filet 30j, copie rotation=révocation) sont bien implémentées telles que décrites.
 > Hors périmètre : Phase 2 (MCP+Infisical, bloquée) et Phase 3 (bascule du défaut), toutes deux plus tard.
 >
@@ -76,7 +120,7 @@
 > tiers). ADR 0025. Tests : `tests/mcp/verrouEcriture.test.ts`,
 > `tests/mcp/verrouEcritureIntegration.test.ts` (matrice 8 outils + structurel), `tests/services/writeLock.test.ts`.
 > ⚠️ PR sensible (`mcp/**`, `services/googleDrive/**`, `components/settings/**`) : brouillon, non
-> armée, relecture ligne à ligne de pole-securite obligatoire avant tout armement.
+> armée, relecture ligne à ligne de pole-securite obligatoire avant tout armement. *(Historique : fusionnée le 29/09, #1093.)*
 >
 > ## 🟦 Session 2026-09-26 — **`[MCP-DURCISSEMENT]` : limites de débit du MCP, message de parse sans extrait, clé d'accès faible signalée**
 > Audit P3-P6 (moyennes 5, 6, 8). (1) `parseRawToAppState` : message fixe (« contenu non affiché »), plus l'extrait de `JSON.parse`. (2) `mcp/auth/routeRateLimit.ts` : `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail`. RÈGLE : on VÉRIFIE D'ABORD le secret (mêmes comparaisons en temps constant que les handlers), on refuse après. Appels AUTHENTIFIÉS : plafond de volume (300/min, 12/h, 12/h, 120/h, 60/h) ; un appel non authentifié ne touche jamais ce budget. Appels NON authentifiés : compteur d'échecs PAR ADRESSE (dernier élément de `X-Forwarded-For`, seuil 100 par 15 min, table bornée) → 429 ; un secret valide n'est JAMAIS bloqué. Pas de blocage global (ce serait un déni de service ouvert à Internet). `/oauth/authorize` : même logique, compteur PAR ADRESSE (8 par 15 min) + plafond global de sécurité (200) appliqué SEULEMENT si la clé d'accès est faible (< 32) ; le blocage précède la comparaison de la clé (même pour la bonne clé depuis une adresse bloquée : sinon la clé se devinerait à la vitesse de la ligne) ; à vérifier en production que le dernier élément de `X-Forwarded-For` est l'adresse client (`docs/A_FAIRE_MOI.md`). (3) `FINANCEAI_ACCESS_KEY` < 32 caractères : le serveur DÉMARRE, alerte au journal (sans la clé ni sa longueur) et l'outil `ping` (derrière l'OAuth, donc visible de Marc seulement) ajoute « clé d'accès faible » ; `/health` ne dit rien. Avec `FINANCEAI_ACCESS_KEY_STRICT=1`, seule `/oauth/authorize` répond 503 (nouvelles autorisations) ; hub, véhicule, refresh, sync et les sessions déjà autorisées continuent.
@@ -98,7 +142,7 @@
 > `hooks/useFinancialSignals.ts` importe `mcp/financialSignals.ts`, un module RÉELLEMENT inclus dans le bundle web — l'exclure
 > aurait pu laisser une préversion stale sur un changement qui compte. Le script `qualite/portes.mjs` avait DÉJÀ une entrée npm
 > (`portes`/`portes:maj`) — vérifié avant de recréer quoi que ce soit, rien à faire de ce côté. Aucun code métier. PR brouillon,
-> chemin sensible (`vercel.json`), attend la relecture de pole-securite.
+> chemin sensible (`vercel.json`), attend la relecture de pole-securite. *(Historique : fusionnée le 28/09, #1091.)*
 >
 > ## 🟥 Session 2026-09-25 (suite) — **`[CF-ACCESS]` : le mur Cloudflare Access, vérifié côté API**
 > Marc a dit OUI (Access remplace la passkey ; ADR `0022`). **Code livré, sans effet tant que Marc n'a pas posé le mur**
@@ -109,7 +153,7 @@
 > cache (cache v4) ; `utils/sessionAccess.ts` (session expirée → rechargement) ; manifest `use-credentials`.
 > ⚠️ Valeur ABSENTE de `CF_ACCESS_REQUIRED` = EXIGER (sans config Access : tout refusé, échec fermé). ⚠️ Base = branche `durcissement` (#1072) : PR empilée, pas de CI
 > ⚠️ Changements de comportement : le service worker ne sert plus `/api/*` hors ligne (plus de cours Yahoo périmés) ; une session expirée affiche « Ta session de connexion a expiré » (cause `session-access`, `messageErreurIa`) et non « clé refusée » ; la sonde de session ne couvre que le retour dans l'onglet (≥ 1 min) / le retour du réseau. [À MESURER en prévisualisation] : que la réécriture vers une fonction conserve la requête d'origine (les proxys lisent aussi le chemin d'origine) ; Access 302 ou 401 sur `fetch` ; Host `*.vercel.app` jamais transmis par Cloudflare (sinon boucle de redirection).
-> tant que #1072 n'est pas fusionnée. Lot B (clé serveur) : BACKLOG, option non recommandée. Tests : `accessJwt`, `relaisAccess`, `accessConfigFichiers`, `sessionAccess`.
+> tant que #1072 n'est pas fusionnée *(historique : #1072 et #1074 fusionnées le 28/09)*. Lot B (clé serveur) : BACKLOG, option non recommandée. Tests : `accessJwt`, `relaisAccess`, `accessConfigFichiers`, `sessionAccess`.
 >
 > ## 🟦 Session 2026-09-28 — **`[DOCS-PROTECTION]` (v3) : couche « documents des agents protégés » reconstruite sur main (kit 1.9.1 + attestation réelle)**
 > Reconstruit PAR-DESSUS main (contient déjà `[KIT-191]` + `[#1086]` + le correctif a11y `#1087` fusionnés) : `modeles/auto-merge/armer-docs.mjs`
@@ -127,7 +171,7 @@
 > module l'admet SEUL (contenu surveillé) ; corrigé dans l'ADR ici. Le test a11y `chartAlternativeTexteGuard.test.ts`, trouvé rouge en cours de
 > route (préexistant, pas causé par ce lot), a été DIAGNOSTIQUÉ à tort comme « role="img" manquant sur FutureProjection.tsx » puis correctement
 > identifié comme un bug du TEST lui-même (Windows, voir session suivante) et corrigé en PR séparée #1087 AVANT de continuer ce lot (base à jour).
-> PR brouillon, `validation-marc`, **NON armée** (chemins sensibles ; attend la relecture ligne à ligne de pole-securite).
+> PR brouillon, `validation-marc`, **NON armée** (chemins sensibles ; attend la relecture ligne à ligne de pole-securite). *(Historique : fusionnée le 28/09, #1088.)*
 >
 > ## 🟩 Session 2026-09-28 — **`[WIN-GARDES-A11Y-FUTUREPROJECTION]` : la garde a11y des graphes était rouge sous Windows, pas le composant**
 > `tests/components/chartAlternativeTexteGuard.test.ts` ligne 83 lisait `GRAPHES_INTERACTIFS[path.relative(ROOT, file)]` SANS `toPosix()` :
@@ -149,7 +193,7 @@
 > les efface, voir `ECRIRE-COPIES-EFFACE-LA-DOC-MANUELLE-DE-COPIES-MD` dans `docs/CONVENTIONS.md`). `tests/blocageFusion.test.ts`
 > mis à jour (1.9.0/`kit-1.9.0`/`a17b41d` → 1.9.1/`kit-1.9.1`/`df55f4c`). Commit séparé (`ba609fab`) pour une relecture du
 > delta seul par pole-securite ; PR brouillon, étiquette `validation-marc`, **NON armée** (chemins sensibles, pas d'attestation
-> possible avant `securite_login`).
+> possible avant `securite_login`). *(Historique : fusionnée le 28/09, #1085 ; kit depuis passé en 1.14.0, #1113.)*
 >
 > ## 🟦 Session 2026-09-27 — **`[KIT-190]` : le kit d'auto-merge de l'Atelier passe en 1.9.0 (tag `kit-1.9.0`) — Dependabot re-fusionné**
 > Copies exactes du tag `kit-1.9.0` (commit `a17b41d`) dans `modeles/auto-merge/` (+ `codes-raison.mjs`), `COPIES.md` refait (écarts un à un). NOUVEAU workflow
@@ -360,7 +404,7 @@
 > Désormais 8 outils via `mcp/tools/_writeTool.ts` : 1er appel = aperçu + `confirmToken` (usage unique, 5 min, lié session/outil/arguments/changements),
 > 2e appel = mêmes arguments + jeton. `confirm` retiré du schéma MCP. Plafond 500 éléments, annotations MCP, journal d'audit sans donnée.
 > Jetons en mémoire (limite : redémarrage = nouvel aperçu). ADR 0023. Tests : `tests/mcp/confirmationEcritureMcp.test.ts`.
-> ⚠️ PR sensible (`mcp/**`) : brouillon, validation Marc, non armée. Déploiement Cloud Run via `deploy-mcp.yml` après fusion.
+> ⚠️ PR sensible (`mcp/**`) : brouillon, validation Marc, non armée. Déploiement Cloud Run via `deploy-mcp.yml` après fusion. *(Historique : fusionnée le 29/09, #1076.)*
 >
 > ## 🟦 Session 2026-09-29 — **`[E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE]` + `[E2E-RAPIDE]` : suite E2E stable et 2× plus courte**
 > Récidive du test « clic partout » avec une AUTRE cause que le bandeau du 25/09 : le toast « Persona … chargé »
@@ -10266,6 +10310,8 @@ de dev).
 ---
 
 ## 1. État en une page
+
+> ⚠️ **Historique** (tableau de juillet 2026, dernière PR citée #532) : l'état courant est la section « État au 14/10/2026 » en tête de ce fichier.
 
 | Indicateur | Valeur |
 |---|---|

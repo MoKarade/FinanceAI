@@ -1,10 +1,10 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planification financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite, assistant Claude).
-100 % navigateur : React 19 + Vite 8 + TS 5.8 strict + Tailwind 3, Zustand 5 (persist), Zod, Recharts, Vitest 4.
+100 % navigateur : React 19 + Vite 8 + TS 5.9 strict + Tailwind 4, Zustand 5 (persist), Zod 4, Recharts, Vitest 4 (versions : `package.json`).
 Hors navigateur : `api/` (relais Anthropic, Vercel) et `mcp/` (serveur MCP + hub). Prod : Vercel. Tout en français.
 Structure plate (pas de `src/`) : `components/ hooks/ services/ store/ utils/ mcp/ api/ tests/ docs/`. Moteur : `services/projection/`.
-Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests / 638 fichiers**. Détail du comptage : `docs/claude/entete.md`.
+Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests / 638 fichiers**. Au 14/10/2026 (`4b53a712`) : 706 fichiers `tests/**/*.test.ts(x)` comptés, nombre de tests NON re-mesuré. Détail : `docs/claude/entete.md`.
 
 ## Index — le détail vit dans `docs/claude/` (ce fichier reste ≤ 60 lignes / ≤ 10 Ko)
 - Principes complets : `docs/claude/principes.md` · Conventions de code : `docs/claude/conventions-code.md`

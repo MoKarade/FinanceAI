@@ -369,7 +369,7 @@
 > Ce que **Claude ne peut pas faire seul** (comptes Google/Drive/Cloudflare/Vercel,
 > ressenti visuel sur device, secrets) + les **blocages** que Claude découvre en
 > chemin. Claude **ajoute** ici ; Marc coche. Détail des tests manuels par onglet :
-> `docs/MANUAL_TEST_CHECKLIST.md`. Tâches que Claude peut faire : `BACKLOG.md`.
+> `docs/HISTORIQUE.md` (l'ancien `docs/MANUAL_TEST_CHECKLIST.md` y a été consolidé). Tâches que Claude peut faire : `BACKLOG.md`.
 
 ---
 

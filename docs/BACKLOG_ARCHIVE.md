@@ -10,6 +10,124 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-14 — Archivage des items livrés et fusionnés entre le 28/09 et le 30/09
+
+> Remise à jour de la documentation (demande de Marc, 14/10). Chaque item ci-dessous était encore
+> ouvert dans `BACKLOG.md` alors que sa PR était fusionnée sur `main` (vérifié dans `git log`).
+> Texte d'origine conservé tel quel ; la ligne « Archivé » donne la PR qui l'a livré.
+
+- [x] 🔧 [GARDE-JQ-AUTO-MERGE-LENGTH] `tests/journauxCiSansDonnees.test.ts` (liste blanche des programmes `jq` des workflows, `[PTF-JOURNAL-PUBLIC-ERREURS]`) était ROUGE sur `main` : `.github/workflows/auto-merge.yml:77` utilise `gh pr list --json number --jq 'length'` (compte de PR ouvertes pour décider si le workflow continue, jamais de contenu de PR) mais ce fichier n'était pas dans la liste blanche — toute PR basée sur `main` échouait la porte Tests. Introduit par `[KIT-191]`/#1085 sans mise à jour de cette garde. Découvert en fusionnant #1076 avec `main` (pas causé par `[MCP-CONFIRM-TOKEN]`). Corrigé ici : ajout de `'auto-merge.yml': ['length']` à `PROGRAMMES_JQ_AUTORISES` (aucun changement au workflow lui-même).
+  Archivé le 2026-10-14 : livré par #1092 (fusionnée le 28/09).
+
+- [x] 🔧 [A11Y-FUTUREPROJECTION-ROLE-IMG] `tests/components/chartAlternativeTexteGuard.test.ts` rouge sur `components/FutureProjection.tsx` (« manque role="img" ») — préexistant, non causé par `[DOCS-PROTECTION]`. Diagnostic affiné : PAS un manque dans le composant (déjà `role="group"` correct, graphe interactif #599) — le TEST lisait `path.relative()` sans `toPosix()` (bug Windows, même classe que `[WIN-GARDES]`). Corrigé en PR séparée et isolée #1087 (armée, gate vert 6963 tests). Piste notée : `[WIN-GARDES-PATH-RELATIVE-BALAYAGE]`.
+  Archivé le 2026-10-14 : livré par #1087 (fusionnée le 28/09).
+
+- [x] 🧭 [MCP-RATE-LIMIT] (M) Limite de débit sur `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail` (audit finding moyenne 6, suite de `[MCP-CONFIRM-TOKEN]` #1076 fusionnée le 29/09).
+  Archivé le 2026-10-14 : livré par #1080 (`[MCP-DURCISSEMENT]`, fusionnée le 29/09) : garde de débit sur les cinq routes.
+
+- [x] 🔧 [MCP-ACCESS-KEY-LONGUEUR-MIN] (S) Longueur minimale de `FINANCEAI_ACCESS_KEY` (audit finding moyenne 8).
+  Archivé le 2026-10-14 : livré par #1080 (`[MCP-DURCISSEMENT]`, fusionnée le 29/09) : `MIN_ACCESS_KEY_LENGTH = 32`, alerte + mode STRICT optionnel.
+
+- [x] 🔧 **`[CHIFFREMENT-PHASE1]`** (M) — écran de création d'une passphrase (rétabli, retiré en
+  juin) : force minimale, confirmation, avertissement + carte imprimable/téléchargeable, case
+  « copie hors ligne » obligatoire. Mémorisation par appareil (clé AES non extractible IndexedDB)
+  verrouillée par WebAuthn biométrique à CHAQUE usage (authentificateur de plateforme,
+  `userVerification: required`, condition bloquante pole-securite) ; échec fermé partout, filet
+  d'expiration 30j non bloquant, rotation de la phrase = révocation de tous les appareils. Nettoyage
+  des anciennes sauvegardes Drive en clair (`.bak.json`) sur confirmation explicite. ADR 0026. À
+  archiver quand fusionnée.
+  Archivé le 2026-10-14 : livré par #1094 (fusionnée le 29/09).
+
+- [x] 🔒 **`[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]`** — ✅ **livré 2026-09-29** (à cocher au merge) (branche
+  `agence/financeai-code/sandbox-curseurs-marqueur`, PR à venir ; à archiver au merge). Le commutateur
+  « Données réelles / Bac à sable » de `FutureProjection.tsx` est retiré AUSSI (il ne pilotait que
+  `useTheoretical`). (S, **OK de Marc**) — retirer les deux curseurs
+  `theoreticalIncome`/`theoreticalExpenses` **ET neutraliser `useTheoretical` dans le moteur**. La
+  PAIRE est obligatoire : un dossier déjà persisté à `useTheoretical: true` resterait sur des
+  revenus splittés 55/45 **sans plus aucun bouton pour revenir** — l'interface qui le permettait
+  venant de disparaître (`RETIRER-UN-REGLAGE-NUISIBLE-EXIGE-DE-NEUTRALISER-SA-VALEUR-PERSISTEE`,
+  re-payée à l'identique sur T1213). Sites moteur à neutraliser : `setupSimulation.ts`
+  (`computeIncomeBaseline`), `projection.ts` (base de dépenses), `projection.ts` (sensibilité
+  d'épargne). Les trois champs restent `@deprecated` dans le type : les supprimer exigerait une
+  migration du schéma persisté, soit un risque sur les données pour un gain nul.
+  Archivé le 2026-10-14 : livré par #1099 (fusionnée le 30/09).
+
+- [x] 🔒 **`[SANDBOX-PROMPTS-MARQUER-CONTEXTE]`** — ✅ **livré 2026-09-29** (à cocher au merge) (même branche ;
+  `systemPourAppel`, garde `tests/services/promptMarqueurFictif.test.ts` ; à archiver au merge). (S, **décision de Marc le 2026-09-22**, contre
+  l'option « refuser ») — quand l'app tourne sur des données fictives, le `system` envoyé au modèle
+  DIT que les chiffres sont un scénario hypothétique. Rien n'est refusé : demander conseil **sur**
+  un scénario est l'usage même du bac à sable ; ce qu'on corrige est que le modèle traite du fictif
+  comme des faits. ⚠️ **Périmètre RE-MESURÉ, et il corrige ce que j'avais publié** : j'avais écrit
+  « pas de point d'entrée unique, sept fonctions, trois appels SDK directs » — faux dans les deux
+  sens. Mesuré sur `\.messages\.(create|stream)\(` : **CINQ** points de contact, tous porteurs
+  d'un `system` → `claude.ts` ×4 (`chat`, `chatStream`, `analyzePayslip`, `analyzeBankStatement`) et
+  `services/aiTools/agentLoop.ts` ×1 (l'agent d'outils, celui qui porte le contexte financier).
+  ⚠️ Le marqueur s'injecte **au point de contact SDK**, jamais chez l'appelant : `chat`/`chatStream`
+  reçoivent `options.system` de leurs appelants, donc une injection en amont obligerait chaque
+  appelant futur à y penser (même raison qui a mis la garde CSV dans `downloadCSV`, le point de
+  SORTIE). ⚠️ Le patron existe déjà : `VISION_INJECTION_GUARD` (`utils/promptSafety.ts`) est un
+  fragment de `system` partagé, injecté dans les `system` littéraux — c'est son domicile naturel.
+  Garde : une 6ᵉ surface SDK sans marqueur doit rougir (l'inventaire se dérive du grep, pas d'une
+  liste écrite à la main).
+  Archivé le 2026-10-14 : livré par #1099 (fusionnée le 30/09).
+
+- [x] 🟡 **`[CSV-EXPORTS-MORTS-SANS-GARDE]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) : les deux exports RETIRÉS
+  (décision du chef de projet), avec leurs tests (branche `agence/financeai-code/lot3-code-mort-privacy`,
+  à archiver au merge). (XS) — `exportHoldingsCSV` et `exportBudgetCSV`
+  (`utils/csvExport.ts`) n'ont **aucune** garde de mode discret, alors que leur voisin immédiat
+  `exportTransactionsCSV` en a une, 20 lignes plus haut, avec son commentaire expliquant pourquoi
+  (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`). ⚠️ **Mesuré avant d'écrire « fuite »** : les deux
+  n'ont **AUCUN appelant** dans tout le code de production — ce sont des exports MORTS, donc le
+  défaut est aujourd'hui **inatteignable**. Deux issues possibles (les retirer, ou les garder et
+  les brancher) ; trancher avant de coder. ⚠️ Le téléchargement, lui, est déjà couvert contre les
+  données fictives : la garde vit dans `downloadCSV`, le point de sortie commun.
+  Archivé le 2026-10-14 : livré par #1100 (fusionnée le 29/09).
+
+- [x] 🧹 **`[FUTUR-DETAIL-SHOWNASSETSSUM-MORT]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) (même branche, à archiver
+  au merge). (XS) — `FutureDetailModal.tsx` calcule
+  `shownAssetsSum` et ne la lit **jamais** (une seule occurrence dans tout le dépôt). Elle porte en
+  plus le `Number(...) || 0` que `[INFOBULLE-DETTE-NW-NON-FINI]` vient de condamner : la laisser,
+  c'est garder un exemple du motif corrigé à trois lignes du correctif.
+  Archivé le 2026-10-14 : livré par #1100 (fusionnée le 29/09).
+
+- [x] 🔧 **`[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) (branche
+  `agence/financeai-code/lot4-formatnumber-direct`, empilée sur le lot 3 ; à archiver au merge). Tri :
+  **2 fuites réelles corrigées** (`AddStockForm` récapitulatif : prix d'achat et montant investi →
+  `<PrivateAmount>`, test de rendu rouge avant correctif) ; **4 non concernés, prouvés** : `DebtManager`
+  (durée en années), `BudgetGroupTable` (ratio en %) → `NOMBRE-NON-MONETAIRE` ; `AddStockForm:464`
+  (cotation de marché) → `MONTANT-PUBLIC` ; `AiChatConfirmModal` (modale non rendue en mode discret)
+  → `MONTANT-MASQUE-AILLEURS`. La garde relève désormais les appels directs. (S) — suite MESURÉE de l'item ci-dessous :
+  les appels DIRECTS à `formatNumber(` dans `components/` ne sont pas relevés par `amountPrivacyScan`
+  (ils mêlent pourcentages et montants). Mesuré le 2026-09-29 en les ajoutant à titre d'essai :
+  6 sites sans marque de mode discret dans la fenêtre — `DebtManager.tsx:449`,
+  `aiChat/AiChatConfirmModal.tsx:35`, `budget/BudgetGroupTable.tsx:402` (pourcentage),
+  `investments/AddStockForm.tsx:464,570,571` (prix / total d'achat). ⚠️ Non vérifié à l'œil : certains
+  peuvent être masqués plus haut ou être non personnels. Trier site par site (envelopper,
+  `MONTANT-PUBLIC`, ou `MONTANT-MASQUE-AILLEURS`) PUIS étendre `MONEY_BASE` — sinon la garde rougit.
+  Archivé le 2026-10-14 : livré par #1109 (fusionnée le 30/09).
+
+- [x] 🔧 **`[ADDSTOCK-RECAP-FUITES-INDIRECTES]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge ;
+  même branche que l'item ci-dessus). Décision de Marc (2026-09-29) : la **quantité** et le **« Gain
+  non-réalisé : +x,xx % »** du récapitulatif d'`AddStockForm` sont masqués (avec la cotation publique, ils
+  redonnaient le prix d'achat et le montant investi). Même lot : le **total du jour du calendrier des
+  factures** (`Planning.tsx`, `formatCAD(dailyTotal)`) sortait en clair. ⚠️ La garde `amountPrivacyScan`
+  ne le voyait pas : le `isPrivacyMode` du `maskPayee` de la MÊME ligne lui servait d'alibi
+  (→ `[PRIVACY-SCAN-ALIBI-MEME-LIGNE]`). Les ratios et durées dérivés (part du budget, « Liberté dans X
+  ans »…) : masqués partout par décision de Marc, lot séparé `[PRIVACY-RATIOS-DUREES-UNIFORMES]`.
+  Archivé le 2026-10-14 : livré par #1109 (fusionnée le 30/09).
+
+- [x] 🔧 **`[PRIVACY-SCAN-ALIAS-FORMATNUMBER]`** — ✅ **livré 2026-09-29** (en local, à cocher au merge) : alias de `formatNumber`
+  reconnus (monétaires par défaut, jeton `NOMBRE-NON-MONETAIRE` sur la définition pour un
+  pourcentage : posé sur `pctTexte`, `RealEstateWorkspace.tsx`) ; témoin réel `fmtNu`. Même branche,
+  à archiver au merge. (S) — `amountPrivacyScan` ne connaît que
+  `formatCAD` / `formatCompactCAD` / `formatSigned(withCurrency)` et leurs alias : un
+  `const fmtNu = (n) => formatNumber(...)` lui est **structurellement invisible**. Le site réel
+  (`panneauJour/sections.tsx`, le gain affiché sous la valeur d'un compte) EST correctement
+  enveloppé dans `<PrivateAmount>` — vérifié à l'œil — mais la garde ne peut pas le dire, donc son
+  silence ne vaut rien ici. Trou d'outillage PRÉEXISTANT, simplement déménagé avec le code
+  (`UN-RELEVE-PAR-LE-NOM-CANONIQUE-EST-AVEUGLE-AUX-ALIAS` appliqué à un formateur SANS devise).
+  Archivé le 2026-10-14 : livré par #1100 (fusionnée le 29/09).
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

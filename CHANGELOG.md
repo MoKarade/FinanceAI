@@ -6,6 +6,18 @@
   « Epargne Mensuelle » et « Liquidites ». Elle dit maintenant « Flux net », « Dépenses (avec
   inflation) », « Épargne mensuelle » et « Liquidités ». Aucun chiffre ne change.
 
+## 2026-10-15 — Contrat du hub en v1.4.0
+
+- Le contrat du hub passe de `v1.3.1` à `v1.4.0` : ajout d'un sous-chemin `/session`, rien ne change pour FinanceAI (même version de contrat, même résumé publié).
+
+## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
+
+- Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
+
+## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
+
+- Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.
+
 ## 2026-09-29 — Futur : le commutateur « Bac à sable » et ses curseurs théoriques sont retirés ; l'IA sait quand les chiffres sont fictifs
 
 - L'onglet Futur n'affiche plus le commutateur « Données réelles / Bac à sable » ni les curseurs

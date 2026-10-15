@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planification financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite, assistant Claude).
-100 % navigateur : React 19 + Vite 8 + TS 5.8 strict + Tailwind 3, Zustand 5 (persist), Zod, Recharts, Vitest 4.
+100 % navigateur : React 19 + Vite 8 + TS 5.9 (strict partiel : pas de `strict`, `strictNullChecks` + `noImplicitAny` actifs) + Tailwind 4, Zustand 5 (persist), Zod, Recharts, Vitest 4.
 Hors navigateur : `api/` (relais Anthropic, Vercel) et `mcp/` (serveur MCP + hub). Prod : Vercel. Tout en français.
 Structure plate (pas de `src/`) : `components/ hooks/ services/ store/ utils/ mcp/ api/ tests/ docs/`. Moteur : `services/projection/`.
 Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests / 638 fichiers**. Détail du comptage : `docs/claude/entete.md`.
@@ -35,6 +35,6 @@ Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests 
 11. **Déploiement** : après un merge qui change ce qui est servi, vérifier un déploiement Vercel production `READY` sur le bon SHA (CSP de `vercel.json` enforcée).
 
 ## Conduite
-Plan d'abord, questions en un batch, OK avant de coder, puis exécution continue ; proposer ≠ faire. `[YYYY-MM-DD HH:MM UTC]` en tête de chaque réponse. Qualité d'abord, coût tokens non contraint.
+Mode de travail : instructions du projet Claude « Apps » (mode PDG depuis le 15/10/2026) ; proposer ≠ faire. `[YYYY-MM-DD HH:MM UTC]` en tête de chaque réponse. Qualité d'abord, coût tokens non contraint.
 
 @docs/COMPTE-RENDU.md

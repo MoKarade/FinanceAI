@@ -4,6 +4,9 @@
 
 - Les contours de « ← Veille », « Lendemain → », « Revenir à aujourd'hui » et « Détail complet → » sont
   plus marqués : on distingue enfin les boutons du fond, même avec une vue fatiguée.
+## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
+
+- Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
 
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 

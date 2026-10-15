@@ -244,7 +244,8 @@ export const Retirement: React.FC<RetirementProps> = ({
         : 'bg-success-500/10 border-success-400/30 text-success-400';
     const statut = (
         <span className={`h-[30px] lg:h-9 px-2.5 lg:px-3.5 rounded-full border text-meta lg:text-[13px] font-semibold flex items-center whitespace-nowrap ${pastilleStatut}`}>
-            {bankruptcyAge ? `Épuisé à ${bankruptcyAge} ans` : `Tient jusqu'à ${lifeExpectancy} ans`}
+            {/* [PRIVACY-RATIOS-DUREES-UNIFORMES] L'âge d'épuisement vient de la projection : masqué. « Tient jusqu'à » = réglage. */}
+            {bankruptcyAge ? <>Épuisé à <PrivateAmount>{bankruptcyAge}</PrivateAmount> ans</> : `Tient jusqu'à ${lifeExpectancy} ans`}
         </span>
     );
     const etiquette = 'text-meta xl:text-[11px] xl:font-semibold xl:tracking-[0.06em] xl:uppercase text-ink-400';

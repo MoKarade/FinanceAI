@@ -13,6 +13,8 @@ import React, { useMemo } from 'react';
 import type { RecurringItem } from '../../types';
 import { Tab } from '../../types';
 import { useFinanceStore } from '../../store/useFinanceStore';
+import { PrivateAmount } from '../ui/PrivateAmount';
+import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
 import { useAutoritePlacements } from '../../hooks/useEcartAutoritePlacements';
 import { useTodayIsoLocal } from '../../hooks/useSimulationParams';
 import { useProjectionSelector } from '../../hooks/useProjectionSelector';
@@ -36,6 +38,8 @@ export const FutureHealthSummary: React.FC = () => {
     const subscriptions = useFinanceStore(s => s.subscriptions) ?? EMPTY_SUBS;
     const fxRates = useFinanceStore(s => s.fxRates);
     const storedWeights = useFinanceStore(s => s.healthWeights);
+    // [PRIVACY-RATIOS-DUREES-UNIFORMES] Score de santé = dérivé du dossier : masqué en mode discret.
+    const isPrivacyMode = useFinanceStore(s => s.isPrivacyMode);
     const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
     const projectionFireTarget = useProjectionSelector(selectFireTarget, 0);
     // [FINTABLE-AUTORITE-PARTOUT étape 3] Le patrimoine noté ici est celui que Marc voit ailleurs.
@@ -104,10 +108,10 @@ export const FutureHealthSummary: React.FC = () => {
         <button
             type="button"
             onClick={goToDetail}
-            aria-label={`Santé financière : ${totalScore} sur 100.${suffixeInvalide} Voir le détail.`}
+            aria-label={`Santé financière : ${isPrivacyMode ? MASKED_AMOUNT_LABEL : `${totalScore} sur 100`}.${suffixeInvalide} Voir le détail.`}
             className={`${pastille} ${teinte} ${colors.text} hover:brightness-110`}
         >
-            <span aria-hidden="true">Santé {totalScore}/100</span>
+            <span aria-hidden="true">Santé <PrivateAmount>{totalScore}</PrivateAmount>/100</span>
             {nbInvalides > 0 && (
                 <span
                     data-testid="pastille-donnee-invalide"

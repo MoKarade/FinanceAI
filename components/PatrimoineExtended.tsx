@@ -155,7 +155,7 @@ export const RentalPropertyPanel: React.FC<{
                                 Le NOM de l'immeuble et le CAP RATE restent visibles — le nom identifie
                                 le bloc qu'on déplie, et un taux n'est pas une somme. */}
                             <summary className="text-meta font-bold text-white cursor-pointer py-1.5">
-                                {rp.name} — NOI: <PrivateAmount>{formatCAD(noi)}</PrivateAmount> · Cap: {capRate}%
+                                {rp.name} — NOI: <PrivateAmount>{formatCAD(noi)}</PrivateAmount> · Cap: <PrivateAmount>{capRate}%</PrivateAmount>
                             </summary>
                             <div className="mt-2 grid grid-cols-3 gap-1">
                                 <input aria-label="Nom de l'immeuble locatif" placeholder="Nom" value={rp.name} onChange={e => update(i, { name: e.target.value })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
@@ -191,6 +191,7 @@ export const RentalPropertyPanel: React.FC<{
                 <p className="text-tiny text-ink-400 italic">
                     L'impôt sur le revenu locatif (net des intérêts hypothécaires, qui sont déduits) est
                     estimé à un taux marginal forfaitaire de{' '}
+                    {/* MONTANT-PUBLIC : taux forfaitaire du modèle (FISCAL_REFERENCE), pas un ratio de l'utilisateur. */}
                     {formatPercent(RENTAL_NOI_TAX_PROXY * 100, 0)}, pas calculé au barème. C'est prudent
                     en dessous d'environ 125 000 $ de revenu total (jusqu'à ~140 000 $ pour un gros
                     revenu locatif), et optimiste au-dessus.
@@ -231,6 +232,7 @@ export const BusinessPanel: React.FC<{
                     modèle ne distingue pas dividende déterminé et ordinaire. */}
                 <p className="text-tiny text-ink-400 italic">
                     L'impôt sur le dividende est estimé à un taux forfaitaire de{' '}
+                    {/* MONTANT-PUBLIC : taux forfaitaire du modèle (FISCAL_REFERENCE), pas un ratio de l'utilisateur. */}
                     {formatPercent(CCPC_DIVIDEND_TAX_PROXY * 100, 0)}, sans distinguer dividende déterminé
                     et ordinaire. Un dividende déterminé est moins imposé qu'un dividende ordinaire.
                 </p>

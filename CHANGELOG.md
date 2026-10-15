@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-15 — Budget : les dates de la période personnalisée sont assez larges
+
+- Dans le Budget, en choisissant « Dates », les deux champs de date (début et fin) affichent maintenant la date en entier, sans la couper.
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

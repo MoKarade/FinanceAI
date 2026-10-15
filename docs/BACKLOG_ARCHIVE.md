@@ -10,6 +10,10 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — Budget : dates de la période personnalisée assez larges
+
+- [x] `[BUDGET-DATES-PERSO-LARGES]` Les champs « Date de début » / « Date de fin » (`components/budget/pilotage.tsx`) passent de `w-28` à `w-36` pour montrer la date complète. Test : `tests/components/budget.periodePerso.test.tsx`.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

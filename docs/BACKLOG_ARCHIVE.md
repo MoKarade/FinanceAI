@@ -10,6 +10,10 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — `[REGLE-SUPPRESSION-CONFIRMATION]` suppression d'une règle de classement avec confirmation
+
+`components/Transactions.tsx` : la croix ouvre `ConfirmModal`, la suppression a lieu à la confirmation puis toast « Règle supprimée ». Test : `tests/components/Transactions.regleSuppression.test.tsx`. PR : à renseigner à l'ouverture.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

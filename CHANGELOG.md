@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-15 — Transactions : supprimer une règle de classement demande d'abord confirmation
+
+- Un clic sur la croix d'une règle ouvre « Supprimer cette règle ? » (Annuler / Supprimer) ; une fois supprimée, « Règle supprimée » s'affiche. Avant : la règle disparaissait d'un clic, sans avertissement.
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

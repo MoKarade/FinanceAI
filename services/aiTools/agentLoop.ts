@@ -15,7 +15,7 @@
 
 import type Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
-import { makeClient, makeTimeoutSignal, MODEL_SONNET } from '../claude';
+import { makeClient, makeTimeoutSignal, MODEL_SONNET, systemPourAppel } from '../claude';
 import { isLocalModel } from '../aiChat/models';
 import { logError } from '../errorLogger';
 import { sanitizePromptText } from '../../utils/promptSafety';
@@ -247,7 +247,9 @@ export async function runAgentLoop(
             const stream = client.messages.stream({
                 model: opts.model ?? MODEL_SONNET,
                 max_tokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS,
-                system,
+                // [SANDBOX-PROMPTS-MARQUER-CONTEXTE] marqueur « scénario hypothétique » si données
+                // fictives, relu à CHAQUE tour (bloc ajouté en dernier : le cache du 1er bloc tient).
+                system: systemPourAppel(system),
                 messages,
                 tools,
             }, { signal });

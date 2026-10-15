@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
+
+- Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
+
+## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
+
+- Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.
+
+## 2026-09-29 — Futur : le commutateur « Bac à sable » et ses curseurs théoriques sont retirés ; l'IA sait quand les chiffres sont fictifs
+
+- L'onglet Futur n'affiche plus le commutateur « Données réelles / Bac à sable » ni les curseurs
+  « Revenus (Net) » / « Dépenses » de la section Hypothèses. Ils remplaçaient tes vrais revenus et
+  dépenses par des valeurs inventées (et répartissaient le revenu 55/45 entre deux personnes, même
+  seul). La projection se fait désormais TOUJOURS sur tes vraies données. Un dossier resté en
+  « Bac à sable » revient automatiquement au réel, sans rien à faire. Le vrai bac à sable (une copie
+  complète de ton dossier) reviendra dans un lot suivant.
+- Quand l'app tourne sur des données fictives (mode test), l'assistant IA est prévenu que les
+  chiffres sont un scénario hypothétique : il répond normalement, mais ne les présente plus comme
+  tes finances réelles. Rien n'est refusé.
+
 ## 2026-09-29 — Mode discret : le récapitulatif d'ajout d'un placement ne montre plus tes montants
 
 - Dans la fenêtre « Ajouter un placement », le récapitulatif (« 5 × … = … investi le… ») affichait en

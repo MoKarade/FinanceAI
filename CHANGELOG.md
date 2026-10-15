@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-15 — Fintable : l'échec d'une synchro est dit en mots simples
+
+- Quand la synchro Fintable échoue, la carte dit « Fintable refuse la connexion : renouvelle ton jeton » ou « Fintable ne répond pas, réessaie dans un instant ». Le message technique est replié sous « Détail technique ».
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

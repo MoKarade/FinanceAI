@@ -10,6 +10,11 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — Entreprises : libellés en mots simples
+
+- [x] **`[ENTREPRISE-LIBELLES-SIMPLES]`** — `PatrimoineExtended.tsx` (`BusinessPanel`) : textes indicatifs « Valeur marchande $ » et
+  « Dividende annuel $ », nom accessible du bouton supprimer « Supprimer cette entreprise ». Test : `tests/components/PatrimoineExtended.entrepriseLibelles.test.tsx`.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

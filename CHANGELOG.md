@@ -14,6 +14,9 @@
 
 - Le contrat du hub passe de `v1.3.1` à `v1.4.0` : ajout d'un sous-chemin `/session`, rien ne change pour FinanceAI (même version de contrat, même résumé publié).
 
+## 2026-10-15 — Google Drive : l'erreur de synchro est une phrase simple
+
+- Quand la synchronisation avec Google Drive échoue, l'app dit « Drive ne répond pas, réessaie dans un instant » au lieu d'afficher « Sync (pull) : » suivi d'un message technique.
 ## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).

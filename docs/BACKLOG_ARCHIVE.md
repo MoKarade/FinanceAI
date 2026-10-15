@@ -21,6 +21,13 @@
 
 Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions périmées retirées (curseurs, données théoriques, « Départ en 2026 », « v4.0 »). Test : `tests/components/GuideModal.langue.test.tsx`.
 
+## 2026-10-15 — Fintable : l'échec d'une passe est dit en mots simples
+
+- [x] **`[FINTABLE-ERREUR-SIMPLE]`** — `FintableSyncCard.tsx` affichait « échec — Appel Fintable /… : HTTP 401 … ».
+  Il affiche « Fintable refuse la connexion : renouvelle ton jeton » (401/403) ou « Fintable ne répond pas, réessaie
+  dans un instant » (le reste) ; le texte brut est dans un « Détail technique » replié. Helper pur :
+  `services/fintable/phraseErreurFintable.ts`. Test : `tests/services/fintable/phraseErreurFintable.test.ts`.
+
 ## 2026-10-15 — Google Drive : l'erreur de synchro est une phrase simple
 
 - [x] **`[DRIVE-ERREUR-SIMPLE]`** — `services/sync/syncErrors.ts` affichait « Sync (pull) : <message brut> ». Il affiche

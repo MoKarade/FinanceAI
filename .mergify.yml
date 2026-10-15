@@ -15,7 +15,18 @@ queue_rules:
       - base = main
       - -draft
       - label != hold
-      - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env|\.claude/|api/|mcp/|vite\.config\.ts|index\.html)|(^|/)(settings|commit-gate)[^/]*$'
+      # Chemins protégés : Marc fusionne. SEULE exception (oui de Marc du 15/10/2026, MoKarade/.github#26) :
+      # montée mineure ou corrective des actions, ouverte par Dependabot, rien hors de .github/,
+      # aucun commit d'un autre auteur que Dependabot ou Mergify. Les majeures restent à Marc.
+      - or:
+          - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env|\.mergify\.yml|\.claude/|api/|mcp/|vite\.config\.ts|index\.html)|(^|/)(settings|commit-gate)[^/]*$'
+          - and:
+              - 'author = dependabot[bot]'
+              - 'head ~= ^dependabot/github_actions/'
+              - '-files ~= ^(?!\.github/)'
+              - 'dependabot-update-type ~= ^version-update:semver-(minor|patch)$'
+              - '-dependabot-update-type = version-update:semver-major'
+              - '-commits[*].gh_author_login ~= ^(?!(dependabot\[bot\]|mergify\[bot\])$)'
       - 'check-success = Lint / Typecheck / Tests / Build'
       - 'check-success = E2E (Playwright / Chromium)'
       - 'check-success = Analyze (javascript-typescript)'
@@ -26,7 +37,18 @@ queue_rules:
       - base = main
       - -draft
       - label != hold
-      - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env|\.claude/|api/|mcp/|vite\.config\.ts|index\.html)|(^|/)(settings|commit-gate)[^/]*$'
+      # Chemins protégés : Marc fusionne. SEULE exception (oui de Marc du 15/10/2026, MoKarade/.github#26) :
+      # montée mineure ou corrective des actions, ouverte par Dependabot, rien hors de .github/,
+      # aucun commit d'un autre auteur que Dependabot ou Mergify. Les majeures restent à Marc.
+      - or:
+          - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env|\.mergify\.yml|\.claude/|api/|mcp/|vite\.config\.ts|index\.html)|(^|/)(settings|commit-gate)[^/]*$'
+          - and:
+              - 'author = dependabot[bot]'
+              - 'head ~= ^dependabot/github_actions/'
+              - '-files ~= ^(?!\.github/)'
+              - 'dependabot-update-type ~= ^version-update:semver-(minor|patch)$'
+              - '-dependabot-update-type = version-update:semver-major'
+              - '-commits[*].gh_author_login ~= ^(?!(dependabot\[bot\]|mergify\[bot\])$)'
       - 'check-success = Lint / Typecheck / Tests / Build'
       - 'check-success = E2E (Playwright / Chromium)'
       - 'check-success = Analyze (javascript-typescript)'
@@ -38,4 +60,15 @@ merge_protections_settings:
     - base = main
     - -draft
     - label != hold
-    - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env|\.claude/|api/|mcp/|vite\.config\.ts|index\.html)|(^|/)(settings|commit-gate)[^/]*$'
+    # Chemins protégés : Marc fusionne. SEULE exception (oui de Marc du 15/10/2026, MoKarade/.github#26) :
+    # montée mineure ou corrective des actions, ouverte par Dependabot, rien hors de .github/,
+    # aucun commit d'un autre auteur que Dependabot ou Mergify. Les majeures restent à Marc.
+    - or:
+        - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env|\.mergify\.yml|\.claude/|api/|mcp/|vite\.config\.ts|index\.html)|(^|/)(settings|commit-gate)[^/]*$'
+        - and:
+            - 'author = dependabot[bot]'
+            - 'head ~= ^dependabot/github_actions/'
+            - '-files ~= ^(?!\.github/)'
+            - 'dependabot-update-type ~= ^version-update:semver-(minor|patch)$'
+            - '-dependabot-update-type = version-update:semver-major'
+            - '-commits[*].gh_author_login ~= ^(?!(dependabot\[bot\]|mergify\[bot\])$)'

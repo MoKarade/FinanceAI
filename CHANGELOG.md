@@ -21,9 +21,17 @@
 ## 2026-10-15 — Contrat du hub en v1.4.0
 
 - Le contrat du hub passe de `v1.3.1` à `v1.4.0` : ajout d'un sous-chemin `/session`, rien ne change pour FinanceAI (même version de contrat, même résumé publié).
+
+## 2026-10-15 — Google Drive : l'erreur de synchro est une phrase simple
+
+- Quand la synchronisation avec Google Drive échoue, l'app dit « Drive ne répond pas, réessaie dans un instant » au lieu d'afficher « Sync (pull) : » suivi d'un message technique.
 ## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
+
+## 2026-10-15 — Entreprises : libellés en mots simples
+
+- Ligne « Entreprise » (Patrimoine) : « JVM $ » devient « Valeur marchande $ », « Div annuel $ » devient « Dividende annuel $ », et le bouton supprimer annonce « Supprimer cette entreprise » (il parlait d'un immeuble).
 
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
@@ -166,6 +174,21 @@
 - L'IA locale (ton PC) n'est plus servie qu'à TA clé Anthropic (organisation ou empreinte que tu poses toi-même sur
   Vercel) ; sans ce réglage, tout part chez Anthropic. Attention : nettoyer les documents ne change pas l'historique
   public du dépôt, où d'anciennes valeurs restent lisibles.
+
+## 2026-09-25 — La sauvegarde JSON contient tout ton dossier
+
+- « Exporter JSON » (et l'export chiffré) sauvegarde maintenant tout ce que l'app garde : en plus de
+  tes transactions et placements, les soldes et l'historique Fintable, les rôles de tes comptes, les
+  abonnements écartés, les taux de change, tes conversations avec l'assistant et la liste de tes
+  documents. Avant, tout ça était perdu à la restauration.
+- Restaurer remplace tout : l'app redevient exactement la sauvegarde. Tes clés API ne sont jamais
+  dans le fichier, et elles sont désormais CONSERVÉES à la restauration (avant, il fallait les
+  re-saisir). Un backup automatique est fait juste avant, pour pouvoir annuler. Les anciennes
+  sauvegardes se restaurent toujours.
+- Si le navigateur refuse d'écrire la sauvegarde (stockage plein), ton dossier actuel est remis en
+  place au lieu de laisser une app vide. Un dossier local illisible est annoncé comme tel à l'export
+  (avant : « rien à sauvegarder »).
+- En mode test, l'export est refusé : il sauvegarderait des données fictives.
 
 ## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit
 

@@ -33,6 +33,13 @@ Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions 
   Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
   `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
 
+## 2026-10-15 — Téléphone : le bandeau d'installation ne passe plus sous la barre du bas
+
+- [x] **`[BANDEAU-INSTALL-BARRE-NAV]`** — `components/PwaInstallBanner.tsx` se posait à `bottom-4`, sous la barre de
+  navigation mobile ; il se pose maintenant au-dessus (`lg:bottom-4` inchangé). Test :
+  `tests/components/PwaInstallBannerPosition.test.tsx`. Le bandeau « mesure d'audience » de la carte 2 n'existe pas
+  dans ce dépôt (aucun `ConsentBanner`, aucun texte d'audience) : rien à corriger.
+
 ## 2026-10-15 — Téléphone : les notifications ne cachent plus la barre du bas
 
 - [x] **`[TOAST-BARRE-NAV-MOBILE]`** — le conteneur des notifications (`components/ui/Toast.tsx`) se posait à
@@ -43,6 +50,7 @@ Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions 
 
 - [x] **`[ENTREPRISE-LIBELLES-SIMPLES]`** — `PatrimoineExtended.tsx` (`BusinessPanel`) : textes indicatifs « Valeur marchande $ » et
   « Dividende annuel $ », nom accessible du bouton supprimer « Supprimer cette entreprise ». Test : `tests/components/PatrimoineExtended.entrepriseLibelles.test.tsx`.
+
 
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 

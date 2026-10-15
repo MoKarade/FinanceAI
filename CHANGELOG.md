@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-15 — Retraite : la bulle du graphique est en français
+
+- Passer la souris sur le graphique de Retraite affichait « Cashflow », « Depenses (Infl.) »,
+  « Epargne Mensuelle » et « Liquidites ». Elle dit maintenant « Flux net », « Dépenses (avec
+  inflation) », « Épargne mensuelle » et « Liquidités ». Aucun chiffre ne change.
+
+## 2026-10-15 — Guide d'aide (bouton ?) réécrit : accents, tutoiement, plus de fonctions retirées
+
+- Le guide de chaque onglet est écrit en français correct, avec les accents et en tutoyant. Il ne parle plus des curseurs ni des « données théoriques » (retirés le 2026-09-29), du « Départ en 2026 » ni de « v4.0 ».
+
+## 2026-10-15 — Contrat du hub en v1.4.0
+
+- Le contrat du hub passe de `v1.3.1` à `v1.4.0` : ajout d'un sous-chemin `/session`, rien ne change pour FinanceAI (même version de contrat, même résumé publié).
+
 ## 2026-10-15 — Google Drive : l'erreur de synchro est une phrase simple
 
 - Quand la synchronisation avec Google Drive échoue, l'app dit « Drive ne répond pas, réessaie dans un instant » au lieu d'afficher « Sync (pull) : » suivi d'un message technique.

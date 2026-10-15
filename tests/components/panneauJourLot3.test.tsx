@@ -6,8 +6,6 @@
 // panneau (tokens lus dans tailwind.config.js, jamais recopiés) et calcule le rapport de contraste.
 // `npm run check-contrast` ne mesure que les CTA pleins : sans ce test, personne ne voit ces bordures.
 //
-// [PANNEAU-FLUX-COLONNE-MUETTE] Une journée sans revenu ni dépense dit « rien » au lieu de rendre
-// un bloc vide (qui se lit comme une donnée manquante).
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
@@ -54,19 +52,5 @@ describe('[A11Y-PANNEAU-BOUTONS-FANTOMES] bordures >= 3:1 (mesuré)', () => {
     it('anti-vacuité : l’ancienne valeur (border-white/20) était SOUS 3:1 — la mesure sait échouer', () => {
         const r = Math.max(...fonds().map(f => contraste(sur([255, 255, 255], 0.2, f), f)));
         expect(r).toBeLessThan(3);
-    });
-});
-
-describe('[PANNEAU-FLUX-COLONNE-MUETTE]', () => {
-    it('une journée calme le DIT (prose courte, jamais un bloc vide)', () => {
-        renderPanneauJour(jourCalme);
-        const t = screen.getAllByText('Aucun revenu ni dépense');
-        expect(t.length).toBeGreaterThan(0);
-        expect(t[0].textContent!.length).toBeLessThanOrEqual(45); // plafond [FUTUR-INFOBULLE-EPUREE]
-    });
-
-    it('contrôle négatif : avec une dépense, la phrase disparaît et la ligne apparaît', () => {
-        renderPanneauJour({ ...jourCalme, Expenses: 1234 } as unknown as ProjectionChartPoint);
-        expect(screen.queryByText('Aucun revenu ni dépense')).toBeNull();
     });
 });

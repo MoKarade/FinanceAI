@@ -305,7 +305,10 @@ Une perte en capital n'est PAS perdue : elle s'accumule dans `capitalLossBank` e
     montre la nécessité d'autonomie financière dans la première décennie.
 
 ### Section Données réelles / Sandbox
-- `useTheoretical` : bascule entre revenus/dépenses réels du CSV et mode bac-à-sable.
+- `useTheoretical` : **neutralisé** (`[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]`, 2026-09-29) — interface
+  retirée, ignoré par le moteur avec `theoreticalIncome`/`theoreticalExpenses` (champs `@deprecated`
+  gardés pour les dossiers persistés). Le futur bac à sable passera par une copie du dossier
+  (`[SANDBOX-MODE-TEST-GENERALISE]`).
 
 ### Toggles événements stochastiques (MC requis)
 - ⚰️ **Mortalité stochastique** (D2.8)
@@ -337,7 +340,7 @@ Une perte en capital n'est PAS perdue : elle s'accumule dans `capitalLossBank` e
 - `totalTaxesPaid`, `totalGrowth`, `totalExpenses`
 - `minNetWorth`, `shortfallMonths`, `shortfallRate`
 - `gainVsAuto` (vs BASE)
-- `savingsSensitivity` (résultat global, `[BUDGET-SENSIBILITE-MOTEUR]`, lot 198) — `{ extraMonthlySavings: 100, deltaEstateNetWorth, deltaFinalNetWorth }` : second scénario BASE déterministe à dépenses − 100 $/mois (`theoreticalExpenses` en mode théorique), mêmes stratégie/report/leviers ; `null` sous `onlyStratTypes` (goal seek, stress-test) ou valeur non finie. Coût mesuré : +2,5 à 4,1 % d'une projection MC 100.
+- `savingsSensitivity` (résultat global, `[BUDGET-SENSIBILITE-MOTEUR]`, lot 198) — `{ extraMonthlySavings: 100, deltaEstateNetWorth, deltaFinalNetWorth }` : second scénario BASE déterministe à dépenses − 100 $/mois (`baseMonthlyExpenses` ; la branche `theoreticalExpenses` a disparu avec la neutralisation de `useTheoretical`), mêmes stratégie/report/leviers ; `null` sous `onlyStratTypes` (goal seek, stress-test) ou valeur non finie. Coût mesuré : +2,5 à 4,1 % d'une projection MC 100.
 
 ### Si Monte Carlo activé
 - `successRate` (%) — itérations qui ne finissent pas en faillite

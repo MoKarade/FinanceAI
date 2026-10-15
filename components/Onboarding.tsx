@@ -111,11 +111,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-9999 bg-[#080b10] flex flex-col items-center justify-center p-4">
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-[120px]" />
-                <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-secondary/5 rounded-full blur-[100px]" />
-            </div>
+        // [S5-REFONTE-R3] Fond noir uni de la refonte (#07090D) : plus de halos flous.
+        <div className="fixed inset-0 z-9999 bg-dark flex flex-col items-center justify-center p-4">
 
             <div className="relative w-full max-w-lg">
                 <div className="mb-8">
@@ -132,7 +129,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                         aria-label="Progression de la configuration"
                     >
                         <div
-                            className="h-full bg-linear-to-r/srgb from-primary to-success-400 transition-all duration-500"
+                            className="h-full bg-primary transition-all duration-500"
                             style={{ width: `${progress}%` }}
                         />
                     </div>
@@ -140,7 +137,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
                 {step === 'welcome' && (
                     <div className="text-center space-y-6 animate-fade-in">
-                        <div className="w-20 h-20 mx-auto rounded-2xl bg-linear-to-br/srgb from-primary to-emerald-300 flex items-center justify-center text-4xl shadow-[0_0_40px_rgba(16,185,129,0.3)]" aria-hidden="true">
+                        <div className="w-20 h-20 mx-auto rounded-2xl bg-primary text-dark font-bold flex items-center justify-center text-4xl" aria-hidden="true">
                             Fi
                         </div>
                         <div>

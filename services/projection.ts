@@ -399,7 +399,9 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
     const adjustedRealExpenses = (savingsMult !== 1 && realMonthlySavings > 0)
         ? Math.max(0, baseNetAnnual / 12 - realMonthlySavings * savingsMult)
         : baseMonthlyExpenses;
-    const effectiveBaseExpenses = projection.useTheoretical ? (projection.theoreticalExpenses || 4000) : adjustedRealExpenses;
+    // [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] `useTheoretical`/`theoreticalExpenses` NEUTRALISÉS : leur
+    // interface est retirée, un dossier persisté à `true` ne doit plus projeter des dépenses inventées.
+    const effectiveBaseExpenses = adjustedRealExpenses;
     const fireTargetAnnual = effectiveBaseExpenses * 12;
     // Règle des 4 % (Trinity Study, 1998) — justification et source unique du multiple :
     // `services/projection/modelAssumptions.ts`.
@@ -468,7 +470,7 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
 
     // Cycle 22 split: revenus net/brut baseline → ./projection/setupSimulation
     const { incomeMarcNetMonthly, incomeAnnaNetMonthly, grossMarcBaseAnnual, grossAnnaBaseAnnual } =
-        computeIncomeBaseline(projection, config.users, startYear);
+        computeIncomeBaseline(config.users, startYear);
 
     // Registre REER PAR CONJOINT maintenu EN PARALLÈLE du solde commun (qui reste la vérité). Clé de
     // répartition = part salariale (proxy d'historique de cotisation ; `rrspContributed` prévu — ITEM-2C
@@ -1223,6 +1225,8 @@ const runScenario = (params: SimulationParams, strategy: AllocationStrategy, ena
             // lit : −12 173 $/an de droits mesurés (−50 159 $ de NW à 12 ans). MÊME critère que
             // reerShares (l. 438) — pas soloHousehold : après décès/divorce, activeIncome met déjà
             // le brut du conjoint à 0 et le repli est alors un no-op.
+            // [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] Le split 55/45 n'existe plus (mode neutralisé) :
+            // le repli reste en filet, sans effet tant qu'un solo n'a aucun brut à l'index 1.
             // [RRSP-FIRST-YEAR-13M] Le revenu gagné du mois est mis EN ATTENTE ici et versé à
             // l'accumulateur annuel APRÈS le reset de janvier (juste après le bloc `janResult`).
             // Versé ici, le revenu de JANVIER entrait dans l'assiette de l'année qui venait de se
@@ -2741,14 +2745,13 @@ export const calculateFutureProjection = (params: SimulationParams, runMC: boole
     // d'`onlyStratTypes`) : goal seek dichotomise en appelant `['BASE']` 10 à 25 fois et le
     // stress-test cible ses scénarios — leur ajouter un run doublerait leur coût pour une valeur
     // qu'ils ne lisent pas. Coût mesuré sur le chemin de production (MC 100 itérations) : +2,5 à
-    // 4,1 %. ⚠️ En mode « dépenses théoriques », c'est `theoreticalExpenses` que le moteur lit
-    // (`effectiveBaseExpenses`) : réduire `baseMonthlyExpenses` seul rendrait un delta NUL et
-    // crédible — la classe « un paramètre non câblé rend la mesure MUETTE et fausse ».
+    // 4,1 %. [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] L'ancienne branche « dépenses théoriques »
+    // (réduire `theoreticalExpenses`) a disparu avec la neutralisation de `useTheoretical` : le
+    // moteur ne lit plus que `baseMonthlyExpenses` (via `effectiveBaseExpenses`), c'est donc lui
+    // qu'on réduit — un paramètre non câblé rendrait la mesure MUETTE et fausse.
     let savingsSensitivity: ProjectionResult['savingsSensitivity'] = null;
     if (!onlyStratTypes) {
-        const plus: SimulationParams = effectiveParams.projection.useTheoretical
-            ? { ...effectiveParams, projection: { ...effectiveParams.projection, theoreticalExpenses: Math.max(0, (effectiveParams.projection.theoreticalExpenses || 0) - SAVINGS_SENSITIVITY_MONTHLY) } }
-            : { ...effectiveParams, baseMonthlyExpenses: Math.max(0, effectiveParams.baseMonthlyExpenses - SAVINGS_SENSITIVITY_MONTHLY) };
+        const plus: SimulationParams = { ...effectiveParams, baseMonthlyExpenses: Math.max(0, effectiveParams.baseMonthlyExpenses - SAVINGS_SENSITIVITY_MONTHLY) };
         const withExtra = runScenario(plus, selectedDef.strategy, false, selectedDef.delayPensions, 0, selectedDef.stratType, appliedOverrides);
         const dEstate = (withExtra.estateNetWorth ?? NaN) - (resBase.estateNetWorth ?? NaN);
         const dFinal = (withExtra.finalNetWorth ?? NaN) - (resBase.finalNetWorth ?? NaN);

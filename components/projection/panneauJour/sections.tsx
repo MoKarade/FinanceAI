@@ -166,22 +166,28 @@ export const SectionValeurNette = ({ data }: { data: PointJour }) => {
 export const SectionFlux = ({ data, userName1, userName2 }: { data: PointJour; userName1?: string; userName2?: string }) => {
     const portfolioOutflow = (data.RetraitREER || 0) + (data.RetraitCELI || 0);
     const aDesImpots = Math.abs(data.FluxImpots || 0) > 0.5 || Math.abs(data.ImpotLatent || 0) > 0.5;
-    // [PANNEAU-FLUX-COLONNE-MUETTE] MÊMES prédicats que les huit lignes ci-dessous : une journée calme
-    // rendait un bloc VIDE, qui se lit comme une donnée manquante alors que les trois autres colonnes
-    // disent explicitement « rien ». Prose visible courte (plafond `[FUTUR-INFOBULLE-EPUREE]`).
+    // [PANNEAU-FLUX-COLONNE-MUETTE] Même seuils que les lignes ci-dessous : si AUCUNE ne s'affiche,
+    // on le dit plutôt que de rendre une colonne vide, qui se lit comme une donnée manquante.
     const aDesFlux = [data.IncomeMarc, data.IncomeAnna, data.IncomeRetirement, data.RentalIncome,
-        data.childBenefits, data.ReeePayout, data.Expenses].some(v => (v || 0) > 0) || portfolioOutflow > 0;
+        data.childBenefits, data.ReeePayout, data.Expenses].some((v) => (v || 0) > 0) || portfolioOutflow > 0;
+    // Un champ PRÉSENT mais non fini (NaN, ±Infinity) n'est pas « zéro flux » : on ne l'affirme pas.
+    // `undefined` reste légitime (un point mensuel sans ce champ = flux nul).
+    const fluxIllisible = [data.IncomeMarc, data.IncomeAnna, data.IncomeRetirement, data.RentalIncome,
+        data.childBenefits, data.ReeePayout, data.Expenses, data.RetraitREER, data.RetraitCELI,
+        data.FluxImpots, data.ImpotLatent].some((v) => v != null && !Number.isFinite(v));
     return (
         <div className="space-y-2.5">
+            {!aDesFlux && !aDesImpots && (
+                <div className="text-[10px] text-ink-400">
+                    {fluxIllisible
+                        ? 'Flux illisibles pour ce point'
+                        : data.isDailyPoint === true ? 'Aucune entrée ni sortie ce jour-là' : 'Aucune entrée ni sortie ce mois-là'}
+                </div>
+            )}
             {/* Revenus / dépenses — du MOIS sur un point mensuel, du JOUR sur un point quotidien.
                 [FUTUR-DAILY-FULL] `dailyLedger` ventile ces mêmes champs au jour : rien à changer ici
                 hormis les libellés, ce qui élimine tout risque de divergence entre les deux vues. */}
             <div className="space-y-1 text-meta">
-                {!aDesFlux && (
-                    <div className="text-tiny text-ink-400" title="Ni revenu ni dépense sur ce point : rien n'entre ni ne sort de tes comptes. L'écran n'est pas vide par oubli.">
-                        Aucun revenu ni dépense
-                    </div>
-                )}
                 {(data.IncomeMarc || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName1 || 'Util. 1'}</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeMarc || 0)}</PrivateAmount></div>}
                 {(data.IncomeAnna || 0) > 0 && <div className="flex justify-between"><span className="text-ink-300">Paye {userName2 || 'Util. 2'}</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeAnna || 0)}</PrivateAmount></div>}
                 {(data.IncomeRetirement || 0) > 0 && <div className="flex justify-between" title="Rentes et prestations de retraite (RRQ, PSV, régimes)"><span className="text-ink-300">Rentes</span><PrivateAmount className="font-mono text-green-400">+{fmt(data.IncomeRetirement || 0)}</PrivateAmount></div>}

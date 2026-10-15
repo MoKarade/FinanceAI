@@ -9,7 +9,6 @@ import { AdvancedProjectionParams } from '../AdvancedProjectionParams';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { esperanceDeVieEffective } from '../../services/projection/horizon';
 import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
-import { FluxMensuelsFields } from './macroFields/FluxMensuelsFields';
 import { ValeurMaxMaisonField } from './macroFields/ValeurMaxMaisonField';
 import { ProjectionControlsMobile } from './ProjectionControlsMobile';
 
@@ -94,7 +93,8 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
     // Grilles de la branche desktop : colonnes FIXES dans le tiroir latéral (440px, viewport ≥1024px
     // garanti donc `md:`/`lg:` toujours actifs et sans rapport avec la largeur réelle du tiroir),
     // seuils `md:` d'origine conservés dans la feuille mobile (`w-full`, où ils restent justes).
-    const gridHypotheses = isLateralDrawer ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6';
+    // 3 colonnes au bureau depuis le retrait de « Flux Mensuels » ([SANDBOX-CURSEURS-THEORIQUES-RETRAIT]).
+    const gridHypotheses = isLateralDrawer ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
     const gridInflationCategories = isLateralDrawer ? 'grid grid-cols-2 gap-3 mt-3 p-3 rounded-card border border-warning-border bg-warning-bg' : 'grid grid-cols-2 md:grid-cols-3 gap-3 mt-3 p-3 rounded-card border border-warning-border bg-warning-bg';
     const gridUsWithholding = isLateralDrawer ? 'grid grid-cols-1 gap-4 p-3 rounded-card border border-white/5 bg-black/30' : 'grid grid-cols-1 md:grid-cols-2 gap-4 p-3 rounded-card border border-white/5 bg-black/30';
     const gridStochastic = isLateralDrawer ? 'grid grid-cols-2 gap-2 mt-3' : 'grid grid-cols-1 md:grid-cols-3 gap-2 mt-3';
@@ -226,8 +226,8 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                 defaultOpen={true}
             >
                 <div className={gridHypotheses}>
-                    <FluxMensuelsFields projection={projection} updateProj={updateProj} useTheoretical={!!projection.useTheoretical} isPrivacyMode={isPrivacyMode} />
-
+                    {/* [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] Colonne « Flux Mensuels » (curseurs Revenus /
+                        Dépenses théoriques) retirée : `useTheoretical` est neutralisé dans le moteur. */}
                     <div className="space-y-4">
                         <h4 className="text-tiny uppercase text-ink-400 border-b border-white/10 pb-1">Facteurs Macro</h4>
                         {/* [HORIZON-ESPERANCE-DE-VIE] Plus de curseur : la projection va toujours jusqu'à

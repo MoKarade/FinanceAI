@@ -94,7 +94,10 @@ describe('[FISC-RRSP-ROOM-PER-USER] le tuple CÂBLÉ dans projection.ts (espion,
         expect(jan!.byUser[1]).toBeGreaterThanOrEqual(0);
     });
 
-    it('[ÉLEVÉ-1] ménage SOLO en mode sandbox : les 45 % du split théorique ne sont PLUS droppés', () => {
+    // [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] Ce cas prouvait que la part 45 % du split théorique n'était
+    // pas perdue en solo. Le mode est NEUTRALISÉ : un dossier persisté à `useTheoretical: true` ne
+    // fabrique plus AUCUN revenu — un solo sans salaire a des droits REER de brut NUL.
+    it('[ÉLEVÉ-1] ménage SOLO persisté en mode sandbox : aucun revenu théorique n\'est fabriqué', () => {
         const soloUser = couple(0, 0).slice(0, 1);
         run(params({
             config: { users: soloUser, splitMode: '50/50' } as unknown as BudgetConfig,
@@ -107,13 +110,8 @@ describe('[FISC-RRSP-ROOM-PER-USER] le tuple CÂBLÉ dans projection.ts (espion,
         }));
         const jan = janCalls.find(c => c.monthIndex === 0 && c.m > 0);
         expect(jan, 'aucun janvier capturé').toBeTruthy();
-        // computeIncomeBaseline splitte le théorique 55/45 MÊME en solo : sans le repli, la part
-        // 45 % (brut ≈ 67 629 $/an) atterrissait à l'index 1 qu'aucun roomUsers ne lit — MESURÉ
-        // −12 173 $/an de droits, −50 159 $ de NW à 12 ans. Le repli remet TOUT à l'index 0.
+        // Avant la neutralisation : byUser[0] > 120 000 (le théorique de 9 000 $/mois net, réuni).
         expect(jan!.byUser[1]).toBeCloseTo(0, 6);
-        // Le brut total solo (55 % ET 45 % réunis) dépasse largement le seul 55 % (86 022) : on
-        // exige > 120 000 pour prouver que la part 45 % est bien LÀ. Le seuil est inchangé au
-        // lot 113 — il était déjà largement au-dessus des deux valeurs, avec ou sans le 13e mois.
-        expect(jan!.byUser[0]).toBeGreaterThan(120_000);
+        expect(jan!.byUser[0]).toBeCloseTo(0, 6);
     });
 });

@@ -82,4 +82,42 @@ export async function activateTestMode(page: Page): Promise<void> {
     () => document.body.innerText.includes('MODE TEST'),
     { timeout: 8_000 },
   );
+
+  await fermerLesNotifications(page);
+}
+
+/**
+ * [E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE] Ferme les notifications (toasts) encore affichées.
+ *
+ * L'activation du mode test affiche le toast « Persona « … » chargé. Tes vraies données sont
+ * sauvegardées. » pendant 4 s (`TOAST_LIFETIME_MS`, `components/ui/Toast.tsx`), en bas à droite,
+ * `pointer-events-auto`. MESURÉ le 2026-09-29 à 1280×720 : sa boîte va de x 684 à 1256 et de
+ * y 618 à 696 — elle contient le point (709, 675) de la « bande basse » que vise
+ * `[FUTUR-CLICK-ANYWHERE]`. Si le graphe du Futur est prêt en moins de 4 s, le clic tombe sur le
+ * toast et aucun jour n'est épinglé. Le journal CI le nomme mot pour mot (« sous le pointeur :
+ * div[role=status] .animate-toast-in ») : 11 runs touchés sur 45 (3 rouges, 8 « flaky »), et ce
+ * sont les runs les PLUS RAPIDES (4,4 à 4,8 min contre 6,4 min) — la signature d'une course
+ * contre la minuterie du toast, pas d'une zone morte de l'app.
+ *
+ * Ce n'est pas le contournement d'un défaut : un humain voit le toast et le ferme (ou attend).
+ * Le helper reproduit ce geste, par le bouton « Fermer la notification » du toast lui-même, au
+ * lieu d'attendre 4 s à chaque test. Attente courte et tolérante : si aucun toast n'apparaît
+ * (texte ou minutage changé), on continue sans échouer — rien à fermer.
+ */
+async function fermerLesNotifications(page: Page): Promise<void> {
+  const zone = page.getByRole('region', { name: 'Notifications' });
+  const toasts = zone.locator('[role="status"], [role="alert"]');
+  await toasts.first().waitFor({ state: 'visible', timeout: 2_000 }).catch(() => {});
+  const fermer = zone.getByRole('button', { name: 'Fermer la notification' });
+  // Borne dure : jamais de boucle infinie si un toast réapparaissait en continu.
+  // ⚠️ Chaque clic a SON délai (1 s). Sans lui, un toast qui expire tout seul entre `count()` et
+  // `click()` laisse le clic attendre un bouton qui ne reviendra jamais, jusqu'au plafond du test :
+  // MESURÉ en CI sur la 1re version de ce helper (PR #1111), 3 specs expirées à 2-3 min, alors
+  // que le même code passait 62/62 en local, où le clic gagne toujours la course.
+  for (let i = 0; i < 5 && (await fermer.count()) > 0; i++) {
+    await fermer.first().click({ timeout: 1_000 }).catch(() => {});
+  }
+  // Filet : si un clic a raté (toast déjà en sortie, élément instable), le toast expire de toute
+  // façon en 4 s + 0,2 s d'animation. 6 s couvrent ce cas ; au-delà, c'est une vraie anomalie.
+  await toasts.first().waitFor({ state: 'detached', timeout: 6_000 });
 }

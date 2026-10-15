@@ -10,15 +10,33 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — Retraite : libellés de la bulle du graphique
+
+- [x] 🌐 **`[RETRAITE-BULLE-FRANCAIS]`** (XS) — ✅ 2026-10-15 : `RetirementTooltip` (`components/Retirement.tsx`)
+  affichait « Cashflow », « Depenses (Infl.) », « Epargne Mensuelle », « Liquidites ». Corrigé en
+  « Flux net », « Dépenses (avec inflation) », « Épargne mensuelle », « Liquidités ». Test :
+  `tests/components/retirementTooltipLibelles.test.tsx`. Hors carte : « Non-Enreg. » (ligne 415) reste.
+
 ## 2026-10-15 — `[GUIDE-AIDE-REECRIT]` guide d'aide réécrit
 
 Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions périmées retirées (curseurs, données théoriques, « Départ en 2026 », « v4.0 »). Test : `tests/components/GuideModal.langue.test.tsx`.
 
+## 2026-10-15 — Google Drive : l'erreur de synchro est une phrase simple
+
+- [x] **`[DRIVE-ERREUR-SIMPLE]`** — `services/sync/syncErrors.ts` affichait « Sync (pull) : <message brut> ». Il affiche
+  maintenant « Drive ne répond pas, réessaie dans un instant » ; la phase (`errorPhase`) est conservée et le détail
+  technique reste dans le journal d'erreurs. Test : `tests/services/sync/syncErrors.test.ts`. Les messages propres de
+  `syncPull.ts` (passphrase, sauvegarde corrompue) sont déjà en français et inchangés.
 ## 2026-10-15 — Restauration : fichier refusé en mots simples
 
 - [x] **`[BACKUP-INVALIDE-SIMPLE]`** — `BackupPanel.tsx` (restauration JSON et chiffrée) affichait « Backup invalide (chemin) : message Zod ».
   Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
   `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
+
+## 2026-10-15 — Entreprises : libellés en mots simples
+
+- [x] **`[ENTREPRISE-LIBELLES-SIMPLES]`** — `PatrimoineExtended.tsx` (`BusinessPanel`) : textes indicatifs « Valeur marchande $ » et
+  « Dividende annuel $ », nom accessible du bouton supprimer « Supprimer cette entreprise ». Test : `tests/components/PatrimoineExtended.entrepriseLibelles.test.tsx`.
 
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
@@ -47,6 +65,36 @@ Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions 
   Local, même machine : 6,5 min → 3,1 min, 62/62 verts sur 3 suites complètes, et 30/30 sur
   `futureDailySelect` répété 5 fois à 2 workers. En CI (PR #1111) : 62/62 en 4,6 min contre
   6,2-6,7 min sur les 39 runs verts précédents.
+
+## 2026-09-29 — Code mort CSV/shownAssetsSum + garde vie privée des alias de `formatNumber` (PR #1100)
+
+- [x] 🟡 **`[CSV-EXPORTS-MORTS-SANS-GARDE]`** — ✅ **livré 2026-09-29** : les deux exports RETIRÉS
+  (décision du chef de projet), avec leurs tests (branche `agence/financeai-code/lot3-code-mort-privacy`,
+  à archiver au merge). (XS) — `exportHoldingsCSV` et `exportBudgetCSV`
+  (`utils/csvExport.ts`) n'ont **aucune** garde de mode discret, alors que leur voisin immédiat
+  `exportTransactionsCSV` en a une, 20 lignes plus haut, avec son commentaire expliquant pourquoi
+  (`PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`). ⚠️ **Mesuré avant d'écrire « fuite »** : les deux
+  n'ont **AUCUN appelant** dans tout le code de production — ce sont des exports MORTS, donc le
+  défaut est aujourd'hui **inatteignable**. Deux issues possibles (les retirer, ou les garder et
+  les brancher) ; trancher avant de coder. ⚠️ Le téléchargement, lui, est déjà couvert contre les
+  données fictives : la garde vit dans `downloadCSV`, le point de sortie commun.
+
+- [x] 🧹 **`[FUTUR-DETAIL-SHOWNASSETSSUM-MORT]`** — ✅ **livré 2026-09-29** (même branche, à archiver
+  au merge). (XS) — `FutureDetailModal.tsx` calcule
+  `shownAssetsSum` et ne la lit **jamais** (une seule occurrence dans tout le dépôt). Elle porte en
+  plus le `Number(...) || 0` que `[INFOBULLE-DETTE-NW-NON-FINI]` vient de condamner : la laisser,
+  c'est garder un exemple du motif corrigé à trois lignes du correctif.
+
+- [x] 🔧 **`[PRIVACY-SCAN-ALIAS-FORMATNUMBER]`** — ✅ **livré 2026-09-29** : alias de `formatNumber`
+  reconnus (monétaires par défaut, jeton `NOMBRE-NON-MONETAIRE` sur la définition pour un
+  pourcentage : posé sur `pctTexte`, `RealEstateWorkspace.tsx`) ; témoin réel `fmtNu`. Même branche,
+  à archiver au merge. (S) — `amountPrivacyScan` ne connaît que
+  `formatCAD` / `formatCompactCAD` / `formatSigned(withCurrency)` et leurs alias : un
+  `const fmtNu = (n) => formatNumber(...)` lui est **structurellement invisible**. Le site réel
+  (`panneauJour/sections.tsx`, le gain affiché sous la valeur d'un compte) EST correctement
+  enveloppé dans `<PrivateAmount>` — vérifié à l'œil — mais la garde ne peut pas le dire, donc son
+  silence ne vaut rien ici. Trou d'outillage PRÉEXISTANT, simplement déménagé avec le code
+  (`UN-RELEVE-PAR-LE-NOM-CANONIQUE-EST-AVEUGLE-AUX-ALIAS` appliqué à un formateur SANS devise).
 
 ## 2026-09-29 — Verrou d'écriture MCP hors du chat (Étape 2)
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-15 — Téléphone : les notifications ne cachent plus la barre du bas
+
+- Sur téléphone, les petits messages (« Enregistré »…) s'affichaient par-dessus la barre de navigation.
+  Ils se posent maintenant juste au-dessus. Sur ordinateur, rien ne change.
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

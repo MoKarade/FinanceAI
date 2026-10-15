@@ -10,6 +10,12 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — Téléphone : les notifications ne cachent plus la barre du bas
+
+- [x] **`[TOAST-BARRE-NAV-MOBILE]`** — le conteneur des notifications (`components/ui/Toast.tsx`) se posait à
+  `bottom-6`, sous la barre de navigation mobile (76 px + zone sûre, `Layout.tsx`). Il se pose maintenant au-dessus
+  sur mobile (`lg:bottom-6` inchangé). Test : `tests/components/ui/ToastPosition.test.tsx`.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

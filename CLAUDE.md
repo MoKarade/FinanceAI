@@ -36,5 +36,3 @@ Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests 
 
 ## Conduite
 Mode de travail : instructions du projet Claude « Apps » (mode PDG depuis le 15/10/2026) ; proposer ≠ faire. `[YYYY-MM-DD HH:MM UTC]` en tête de chaque réponse. Qualité d'abord, coût tokens non contraint.
-
-@docs/COMPTE-RENDU.md

@@ -1,7 +1,7 @@
 # Mises à jour de dépendances proposées automatiquement (porte sécurité de l'Atelier, S6).
 # Groupées pour limiter le bruit : une PR par semaine pour les versions mineures/correctives.
 # Chaque PR passe par la CI complète (gate, E2E, qualité, sécurité) et fusionne seule si tout
-# est vert — Dependabot est fusionné par auto-merge.yml (fusion événementielle, carence de 3 jours) ; armement-auto-merge.yml ne l'arme pas.
+# est vert — la fusion automatique est faite par Mergify (.mergify.yml, depuis le 15/10/2026).
 version: 2
 updates:
   - package-ecosystem: npm
@@ -61,5 +61,11 @@ updates:
     directory: /
     schedule: { interval: weekly, day: monday }
     groups:
-      actions:
+      # Mineures et correctives : fusionnées seules par Mergify quand la CI est verte (MoKarade/.github#26).
+      # Majeures dans leur propre groupe : Marc les fusionne, et elles ne bloquent pas les mineures.
+      actions-mineures:
         patterns: ["*"]
+        update-types: [minor, patch]
+      actions-majeures:
+        patterns: ["*"]
+        update-types: [major]

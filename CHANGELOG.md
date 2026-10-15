@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-15 — Google Drive : l'erreur de synchro est une phrase simple
+
+- Quand la synchronisation avec Google Drive échoue, l'app dit « Drive ne répond pas, réessaie dans un instant » au lieu d'afficher « Sync (pull) : » suivi d'un message technique.
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

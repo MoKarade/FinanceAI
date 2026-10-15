@@ -10,6 +10,13 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — Google Drive : l'erreur de synchro est une phrase simple
+
+- [x] **`[DRIVE-ERREUR-SIMPLE]`** — `services/sync/syncErrors.ts` affichait « Sync (pull) : <message brut> ». Il affiche
+  maintenant « Drive ne répond pas, réessaie dans un instant » ; la phase (`errorPhase`) est conservée et le détail
+  technique reste dans le journal d'erreurs. Test : `tests/services/sync/syncErrors.test.ts`. Les messages propres de
+  `syncPull.ts` (passphrase, sauvegarde corrompue) sont déjà en français et inchangés.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

@@ -11,6 +11,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Icon } from '../ui/Icon';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { useFinanceStore } from '../../store/useFinanceStore';
 import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
 import type { SimulationParams, ConfigResult } from '../../services/projection';
 import { formatCompactCAD } from '../../utils/format';
@@ -73,15 +74,19 @@ function successColor(rate: number): string {
 }
 
 // Une barre de sous-score 0..1 (détail du score).
-const ScoreBar: React.FC<{ label: string; value: number }> = ({ label, value }) => (
+// [PRIVACY-RATIOS-DUREES-UNIFORMES] Score = dérivé du dossier : largeur ET chiffre masqués en mode discret.
+const ScoreBar: React.FC<{ label: string; value: number }> = ({ label, value }) => {
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    return (
     <div className="flex items-center gap-2">
         <span className="text-tiny text-ink-400 w-24 shrink-0">{label}</span>
         <div className="h-1.5 flex-1 rounded-full bg-white/10 overflow-hidden">
-            <div className="h-full bg-indigo-400" style={{ width: `${Math.round(value * 100)}%` }} />
+            <div className="h-full bg-indigo-400" style={{ width: `${isPrivacyMode ? 0 : Math.round(value * 100)}%` }} />
         </div>
-        <span className="text-tiny text-ink-300 tabular-nums w-9 text-right">{Math.round(value * 100)}</span>
+        <span className="text-tiny text-ink-300 tabular-nums w-9 text-right"><PrivateAmount>{Math.round(value * 100)}</PrivateAmount></span>
     </div>
-);
+    );
+};
 
 export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => {
     // [FUTUR-MOBILE-PR5] Leviers en puces + CTA 56 px — mobile UNIQUEMENT (desktop inchangé,
@@ -359,7 +364,7 @@ const WinnerCard: React.FC<{
 
             {/* Métriques clés */}
             <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <Metric label="Succès" value={`${r.successRate}%`} />
+                <Metric label="Succès" value={`${r.successRate}%`} privacy />
                 <Metric label="Patrimoine méd." value={fmtM(r.finalNWp50)} privacy />
                 {/* [ENG-RANKTAX-ESTATE] lifetimeTax est désormais l'impôt TOTAL MODÉLISÉ (A4) :
                     régularisations d'avril + solde à l'horizon + impôt SUCCESSORAL. ⚠️ Sémantique
@@ -372,7 +377,7 @@ const WinnerCard: React.FC<{
                     privacy
                     title="Impôt total du scénario : soldes/remboursements d'avril sur l'horizon, + le solde de la dernière année, + l'impôt successoral de liquidation (décision : l'impôt successoral entre dans « impôt minimum »). N'inclut PAS l'impôt retenu à la source sur les salaires. Négatif = remboursements nets supérieurs au reste."
                 />
-                <Metric label="FIRE" value={r.fireAge !== null ? `${Math.round(r.fireAge)} ans` : '—'} />
+                <Metric label="FIRE" value={r.fireAge !== null ? `${Math.round(r.fireAge)} ans` : '—'} privacy />
             </div>
 
             {/* Tous les leviers en clair (LEVER_LIBRARY) */}
@@ -499,12 +504,12 @@ const ResultsTable: React.FC<{
                                 <td className="px-2 py-1.5 font-mono text-ink-400">{row.rank}</td>
                                 <td className="px-2 py-1.5 text-right">
                                     <span className={`inline-block h-1.5 w-1.5 rounded-full ${successColor(row.result.successRate)} mr-1`} aria-hidden="true" />
-                                    <span className="tabular-nums text-white">{row.result.successRate}%</span>
+                                    <span className="tabular-nums text-white"><PrivateAmount>{row.result.successRate}%</PrivateAmount></span>
                                 </td>
                                 <td className="px-2 py-1.5 text-right tabular-nums text-ink-200"><PrivateAmount>{fmtM(row.result.finalNWp50)}</PrivateAmount></td>
                                 <td className="px-2 py-1.5 text-right tabular-nums text-ink-300"><PrivateAmount>{fmtM(row.result.lifetimeTax)}</PrivateAmount></td>
-                                <td className="px-2 py-1.5 text-right tabular-nums text-ink-300">{row.result.fireAge !== null ? `${Math.round(row.result.fireAge)}` : '—'}</td>
-                                <td className="px-2 py-1.5 text-right tabular-nums font-bold text-indigo-300">{Math.round(row.score * 100)}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-ink-300">{row.result.fireAge !== null ? <PrivateAmount>{Math.round(row.result.fireAge)}</PrivateAmount> : '—'}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums font-bold text-indigo-300"><PrivateAmount>{Math.round(row.score * 100)}</PrivateAmount></td>
                             </tr>
                         ))}
                     </tbody>

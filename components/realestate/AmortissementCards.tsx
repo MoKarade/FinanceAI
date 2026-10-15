@@ -68,14 +68,14 @@ export const AmortissementCards: React.FC<AmortissementCardsProps> = ({
                                             {row.calendarYear}
                                             {isRenewal && <span className="ml-1.5 text-tiny text-orange-400 border border-orange-500/30 rounded-sm px-1">Renouvellement</span>}
                                         </td>
-                                        <td className="py-2 pr-4 text-orange-300">{row.TauxEnVigueur}</td>
+                                        <td className="py-2 pr-4 text-orange-300"><PrivateAmount>{row.TauxEnVigueur}</PrivateAmount></td>
                                         <td className="py-2 pr-4 text-right text-danger-400"><PrivateAmount>{formatCurrency(row.PartInteretAnnuelle)}</PrivateAmount></td>
                                         <td className="py-2 pr-4 text-right text-info-400"><PrivateAmount>{formatCurrency(row.PartPrincipalAnnuelle)}</PrivateAmount></td>
                                         <td className="py-2 pr-4 text-right text-white"><PrivateAmount>{formatCurrency(row.Solde)}</PrivateAmount></td>
                                         <td className="py-2 pr-4 text-right text-purple-300"><PrivateAmount>{formatCurrency(row.ValeuréPropriété)}</PrivateAmount></td>
                                         <td className="py-2 text-right">
                                             <PrivateAmount className="text-success-400 font-bold">{formatCurrency(row.Équité)}</PrivateAmount>
-                                            <span className="text-ink-400 ml-1">({equityPct}%)</span>
+                                            <span className="text-ink-400 ml-1">(<PrivateAmount>{equityPct}%</PrivateAmount>)</span>
                                         </td>
                                     </tr>
                                 );

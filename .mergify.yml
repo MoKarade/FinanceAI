@@ -2,7 +2,8 @@
 # Remplace l'ancienne fusion automatique de l'Atelier (auto-merge.yml, armement, kit modeles/auto-merge).
 # Une PR prête (pas en brouillon, sans label « hold ») est fusionnée en squash dès que tous les
 # contrôles obligatoires sont verts. Fichiers sensibles (.github/, scripts/hooks/, qualite/,
-# vercel.json, drizzle/, .env) : jamais fusionnés automatiquement, c'est Marc qui fusionne.
+# vercel.json, drizzle/, .env) et ceux de la règle 4 du CLAUDE.md (.claude/, api/, mcp/,
+# vite.config.ts, index.html, settings*, commit-gate*) : jamais fusionnés automatiquement, c'est Marc qui fusionne.
 # Branche protégée « à jour avant fusion » : Mergify exige une seule vérification à la fois.
 merge_queue:
   max_parallel_checks: 1
@@ -14,7 +15,7 @@ queue_rules:
       - base = main
       - -draft
       - label != hold
-      - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env)'
+      - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env|\.claude/|api/|mcp/|vite\.config\.ts|index\.html)|(^|/)(settings|commit-gate)[^/]*$'
       - 'check-success = Lint / Typecheck / Tests / Build'
       - 'check-success = E2E (Playwright / Chromium)'
       - 'check-success = Analyze (javascript-typescript)'
@@ -25,7 +26,7 @@ queue_rules:
       - base = main
       - -draft
       - label != hold
-      - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env)'
+      - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env|\.claude/|api/|mcp/|vite\.config\.ts|index\.html)|(^|/)(settings|commit-gate)[^/]*$'
       - 'check-success = Lint / Typecheck / Tests / Build'
       - 'check-success = E2E (Playwright / Chromium)'
       - 'check-success = Analyze (javascript-typescript)'
@@ -37,4 +38,4 @@ merge_protections_settings:
     - base = main
     - -draft
     - label != hold
-    - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env)'
+    - '-files~=^(\.github/|scripts/hooks/|qualite/|vercel\.json|drizzle/|\.env|\.claude/|api/|mcp/|vite\.config\.ts|index\.html)|(^|/)(settings|commit-gate)[^/]*$'

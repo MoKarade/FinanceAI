@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-15 — Transactions : « Exporter (CSV) » et message « Fichier téléchargé : N transactions »
+
+- Le bouton d'export s'appelle « Exporter (CSV) » et, une fois le fichier téléchargé, un message dit combien de transactions il contient. Un export refusé (mode discret, données fictives) n'affiche jamais ce message.
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

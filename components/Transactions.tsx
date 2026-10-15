@@ -500,6 +500,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         const { exportTransactionsCSV, downloadCSV, dateForFilename } = await import('../utils/csvExport');
         try {
             downloadCSV(`transactions-${dateForFilename()}`, exportTransactionsCSV(transactions));
+            showToast(`Fichier téléchargé : ${transactions.length} transaction${transactions.length > 1 ? 's' : ''}`, 'success');
         } catch (e) {
             if (refusExportCsvTraite(e)) return;
             throw e;
@@ -556,7 +557,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
             )}
             {etroit && transactions.length > 0 && (
                 <button type="button" onClick={() => { void exporterTout(); }} className={ligneOutil}>
-                    Exporter CSV<span className="text-ink-400" aria-hidden="true">›</span>
+                    Exporter (CSV)<span className="text-ink-400" aria-hidden="true">›</span>
                 </button>
             )}
         </section>
@@ -614,7 +615,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                 className="h-10 px-4 rounded-lg border border-white/40 text-body text-ink-100 hover:bg-white/5 focus-ring"
                                 title="Exporter toutes les transactions en CSV"
                             >
-                                Exporter CSV
+                                Exporter (CSV)
                             </button>
                         )}
                         {!etroit && (

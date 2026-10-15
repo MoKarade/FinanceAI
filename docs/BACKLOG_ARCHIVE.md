@@ -16,6 +16,11 @@
   maintenant « Drive ne répond pas, réessaie dans un instant » ; la phase (`errorPhase`) est conservée et le détail
   technique reste dans le journal d'erreurs. Test : `tests/services/sync/syncErrors.test.ts`. Les messages propres de
   `syncPull.ts` (passphrase, sauvegarde corrompue) sont déjà en français et inchangés.
+## 2026-10-15 — Restauration : fichier refusé en mots simples
+
+- [x] **`[BACKUP-INVALIDE-SIMPLE]`** — `BackupPanel.tsx` (restauration JSON et chiffrée) affichait « Backup invalide (chemin) : message Zod ».
+  Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
+  `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
 
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 

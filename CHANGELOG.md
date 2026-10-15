@@ -18,6 +18,10 @@
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
 
+## 2026-10-15 — Entreprises : libellés en mots simples
+
+- Ligne « Entreprise » (Patrimoine) : « JVM $ » devient « Valeur marchande $ », « Div annuel $ » devient « Dividende annuel $ », et le bouton supprimer annonce « Supprimer cette entreprise » (il parlait d'un immeuble).
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

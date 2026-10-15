@@ -27,6 +27,11 @@ Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions 
   Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
   `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
 
+## 2026-10-15 — Entreprises : libellés en mots simples
+
+- [x] **`[ENTREPRISE-LIBELLES-SIMPLES]`** — `PatrimoineExtended.tsx` (`BusinessPanel`) : textes indicatifs « Valeur marchande $ » et
+  « Dividende annuel $ », nom accessible du bouton supprimer « Supprimer cette entreprise ». Test : `tests/components/PatrimoineExtended.entrepriseLibelles.test.tsx`.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

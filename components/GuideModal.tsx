@@ -37,50 +37,48 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
             // (deep-link #DASHBOARD → #FUTURE dans App.tsx).
             case Tab.FUTURE:
                  return {
-                    title: "Machine a Voyager dans le Temps",
-                    desc: "Simulation mensuelle de votre vie financiere. Inclut la gestion des objectifs (anciennement onglet Objectifs).",
+                    title: "Machine à voyager dans le temps",
+                    desc: "Une simulation mois par mois de ta vie financière. Tes objectifs s'y trouvent aussi.",
                     features: [
-                        "**Depart en 2026** : Le simulateur projette mois par mois votre avenir a partir de Janvier 2026.",
-                        "**Moteur Hybride** : Basculez entre vos donnees reelles (Budget) et des donnees theoriques via les sliders.",
-                        "**Enfant & Maison** : Les achats de maison coupent le loyer et activent l'hypotheque. L'enfant coute de l'argent jusqu'a 18 ans avec une pique pour les etudes.",
-                        "**Impot Latent** : Represente sous la barre du zero, c'est la dette fiscale accumulee sur vos gains non-realises.",
-                        "**Objectifs IA** : Cliquez sur le bouton IA pour que Claude lise vos comptes et vous propose des objectifs pertinents (ex: remplir REER, rembourser telle dette).",
-                        "**Connexion Auto** : Un objectif de type 'CELI' se mettra a jour tout seul quand la valeur de votre CELI monte dans le Google Sheet."
+                        "**Tes vraies données** : la projection part de tes comptes, de ton budget et de tes revenus réels.",
+                        "**Enfant et maison** : acheter une maison arrête le loyer et démarre l'hypothèque. Un enfant coûte de l'argent jusqu'à ses 18 ans, avec une hausse pour les études.",
+                        "**Impôt latent** : affiché sous la ligne du zéro, c'est l'impôt que tu devras payer sur tes gains pas encore encaissés.",
+                        "**Objectifs avec l'IA** : clique sur le bouton IA pour que Claude lise tes comptes et te propose des objectifs (par exemple remplir ton REER ou rembourser une dette)."
                     ],
-                    tip: "Survolez le graphique avec la souris : l'info-bulle Expert montre la variation exacte (+/- X$) de votre patrimoine et de vos comptes par rapport au mois precedent !"
+                    tip: "Passe la souris sur le graphique : la bulle d'info montre de combien ton patrimoine et tes comptes ont changé depuis le mois précédent."
                 };
             case Tab.INVESTMENTS:
                  return {
-                    title: "Investissements & Actifs",
-                    desc: "Analyse profonde de votre Google Sheet.",
+                    title: "Investissements et actifs",
+                    desc: "Un regard détaillé sur tes placements.",
                     features: [
-                        "**Lecture Directe CSV** : Aucune saisie requise. Le systeme lit votre fichier Google et applique un 'Forward Fill' pour combler les trous de donnees.",
-                        "**Repartition** : Decouvrez instantanement votre exposition Geographique et Sectorielle.",
-                        "**Calendrier de Rente** : Estimation de la date et du montant de vos prochains dividendes."
+                        "**Aucune saisie en double** : tes placements sont lus directement depuis ton fichier, sans que tu aies à les retaper.",
+                        "**Répartition** : vois tout de suite où ton argent est placé, par pays et par secteur.",
+                        "**Calendrier des revenus** : une estimation de la date et du montant de tes prochains dividendes."
                     ],
-                    tip: "Utilisez le bouton 'Base 100 (%)' sur le graphique pour comparer la performance relative de chaque actif depuis le debut de la periode."
+                    tip: "Utilise le bouton « Base 100 (%) » sur le graphique pour comparer la performance de chaque placement depuis le début de la période."
                 };
             case Tab.TAX:
                  return {
-                    title: "Simulateur Fiscal Verrouille",
-                    desc: "Calculateur de l'impot sur le revenu (Quebec/Canada).",
+                    title: "Simulateur d'impôt",
+                    desc: "Un calcul de ton impôt sur le revenu (Québec et Canada).",
                     features: [
-                        "**Sync Globale** : Vos revenus bruts sont directement extraits de l'onglet 'Reglages'. Plus besoin de les saisir manuellement.",
-                        "**IA Documentaire** : Deposez vos T4/Releves. L'IA Claude lira les montants d'impots deja payes pour calculer votre remboursement.",
-                        "**Paliers Marginaux** : Observez visuellement comment votre dernier dollar est taxe a travers les tranches."
+                        "**Revenus repris des réglages** : tes revenus bruts viennent de l'onglet « Réglages ». Pas besoin de les retaper.",
+                        "**Documents lus par l'IA** : dépose tes T4 et tes relevés. Claude lit les impôts déjà payés pour calculer ton remboursement.",
+                        "**Paliers d'imposition** : vois comment ton dernier dollar gagné est taxé, tranche par tranche."
                     ],
-                    tip: "Modifiez votre salaire dans Reglages -> Profils, et regardez les barres rouges s'ajuster ici."
+                    tip: "Change ton salaire dans Réglages, puis regarde les barres s'ajuster ici."
                 };
             default:
                 return {
                     title: "Bienvenue sur FinanceAI",
-                    desc: "L'Architecte Patrimonial (v4.0)",
+                    desc: "Ton outil de planification financière.",
                     features: [
-                        "**Local First & Persistance** : Vos donnees restent dans votre navigateur. Si vous changez de page, le systeme sauvegarde votre etat.",
-                        "**Mode Discret** : Le bouton Oeil en haut masque absolument tous les montants pour plus d'intimite.",
-                        "**Cerveau Central** : La 'Config' (Salaires, Budget) irrigue tous les autres onglets automatiquement."
+                        "**Tes données restent chez toi** : elles sont gardées dans ton navigateur. Si tu changes de page, ton travail est conservé.",
+                        "**Mode discret** : le bouton en forme d'œil, en haut, cache tous les montants.",
+                        "**Les réglages servent partout** : tes salaires et ton budget alimentent automatiquement tous les autres onglets."
                     ],
-                    tip: "Naviguez sans crainte. Le systeme conserve tout en memoire."
+                    tip: "Navigue sans crainte : l'application garde tout en mémoire."
                 };
         }
     };
@@ -109,7 +107,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ activeTab, onClose }) =>
         >
                 <div className="space-y-6">
                     <div>
-                        <h3 className="text-body font-bold text-ink-300 uppercase tracking-widest mb-3">Guide Contextuel</h3>
+                        <h3 className="text-body font-bold text-ink-300 uppercase tracking-widest mb-3">Guide de cet onglet</h3>
                         <ul className="space-y-3">
                             {content.features?.map((feat, idx) => (
                                 <li key={idx} className="flex gap-3 text-body text-ink-200 leading-relaxed">

@@ -10,6 +10,23 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — Retraite : libellés de la bulle du graphique
+
+- [x] 🌐 **`[RETRAITE-BULLE-FRANCAIS]`** (XS) — ✅ 2026-10-15 : `RetirementTooltip` (`components/Retirement.tsx`)
+  affichait « Cashflow », « Depenses (Infl.) », « Epargne Mensuelle », « Liquidites ». Corrigé en
+  « Flux net », « Dépenses (avec inflation) », « Épargne mensuelle », « Liquidités ». Test :
+  `tests/components/retirementTooltipLibelles.test.tsx`. Hors carte : « Non-Enreg. » (ligne 415) reste.
+
+## 2026-10-15 — `[GUIDE-AIDE-REECRIT]` guide d'aide réécrit
+
+Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions périmées retirées (curseurs, données théoriques, « Départ en 2026 », « v4.0 »). Test : `tests/components/GuideModal.langue.test.tsx`.
+
+## 2026-10-15 — Restauration : fichier refusé en mots simples
+
+- [x] **`[BACKUP-INVALIDE-SIMPLE]`** — `BackupPanel.tsx` (restauration JSON et chiffrée) affichait « Backup invalide (chemin) : message Zod ».
+  Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
+  `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

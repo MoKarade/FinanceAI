@@ -21,6 +21,11 @@
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
 
+## 2026-10-15 — Téléphone : le bandeau « Installer FinanceAI » ne passe plus sous la barre du bas
+
+- Sur téléphone, le bandeau d'installation était recouvert par la barre de navigation. Il se pose maintenant
+  juste au-dessus. Sur ordinateur, rien ne change.
+
 ## 2026-10-15 — Téléphone : les notifications ne cachent plus la barre du bas
 
 - Sur téléphone, les petits messages (« Enregistré »…) s'affichaient par-dessus la barre de navigation.
@@ -29,6 +34,7 @@
 ## 2026-10-15 — Entreprises : libellés en mots simples
 
 - Ligne « Entreprise » (Patrimoine) : « JVM $ » devient « Valeur marchande $ », « Div annuel $ » devient « Dividende annuel $ », et le bouton supprimer annonce « Supprimer cette entreprise » (il parlait d'un immeuble).
+
 
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 

@@ -8,6 +8,7 @@ import { downloadBackup, readBackupFile, defaultBackupFilename, CloudBackupError
 import { markBackupDone } from '../../services/backupReminder';
 import { logAudit } from '../../services/auditLog';
 import { logError } from '../../services/errorLogger';
+import { SAUVEGARDE_INVALIDE } from '../../services/backupMessages';
 import { MIN_PASSPHRASE_LENGTH } from '../../services/sync/syncOrchestrator';
 import { verifierTypesRestaures, messageDeRefusTypes } from '../../services/verifierTypesRestaures';
 import { getLocalPayload } from '../../services/sync/syncSnapshot';
@@ -239,7 +240,8 @@ export const BackupPanel: React.FC = () => {
       if (!parsed.success) {
         const issue = parsed.error.issues[0];
         const path = issue.path.length > 0 ? issue.path.join('.') : 'racine';
-        showToast(`Backup déchiffré invalide (${path}) : ${issue.message}`, "error");
+        logError({ source: 'storage', severity: 'warning', message: `Sauvegarde chiffrée invalide (${path}) : ${issue.message}` });
+        showToast(SAUVEGARDE_INVALIDE, "error");
         return;
       }
       setEncryptedFile(null);
@@ -268,7 +270,8 @@ export const BackupPanel: React.FC = () => {
         if (!parsed.success) {
           const issue = parsed.error.issues[0];
           const path = issue.path.length > 0 ? issue.path.join('.') : 'racine';
-          showToast(`Backup invalide (${path}) : ${issue.message}`, "error");
+          logError({ source: 'storage', severity: 'warning', message: `Sauvegarde JSON invalide (${path}) : ${issue.message}` });
+          showToast(SAUVEGARDE_INVALIDE, "error");
           return;
         }
         setRestoreConfirmPhrase('');

@@ -10,6 +10,12 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — Restauration : fichier refusé en mots simples
+
+- [x] **`[BACKUP-INVALIDE-SIMPLE]`** — `BackupPanel.tsx` (restauration JSON et chiffrée) affichait « Backup invalide (chemin) : message Zod ».
+  Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
+  `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

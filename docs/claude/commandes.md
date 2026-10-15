@@ -9,7 +9,7 @@ npm run test:e2e             # Playwright / Chromium
 npm run typecheck · lint     # tsc --noEmit · ESLint
 npm run build                # ⚠️ prebuild = lint : le build CASSE si le lint échoue
 npm run knip · check-contrast
-npm run portes               # portes qualité de l'Atelier (cliquet, qualite/seuils.json) — ≈ 20 min
+npm run portes               # portes qualité de l'Atelier (cliquet, qualite/seuils.json) — en série, long ; la CI les répartit en tranches (docs/ETAT.md)
 npm run portes:maj           # resserre les seuils après une amélioration (jamais l'inverse)
 npm run mcp:dev | mcp:auth | mcp:connect | mcp:pack
 ```

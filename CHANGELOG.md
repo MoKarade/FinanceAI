@@ -14,12 +14,21 @@
 
 - Le contrat du hub passe de `v1.3.1` à `v1.4.0` : ajout d'un sous-chemin `/session`, rien ne change pour FinanceAI (même version de contrat, même résumé publié).
 
+## 2026-10-15 — Fintable : l'échec d'une synchro est dit en mots simples
+
+- Quand la synchro Fintable échoue, la carte dit « Fintable refuse la connexion : renouvelle ton jeton » ou « Fintable ne répond pas, réessaie dans un instant ». Le message technique est replié sous « Détail technique ».
+
 ## 2026-10-15 — Google Drive : l'erreur de synchro est une phrase simple
 
 - Quand la synchronisation avec Google Drive échoue, l'app dit « Drive ne répond pas, réessaie dans un instant » au lieu d'afficher « Sync (pull) : » suivi d'un message technique.
 ## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
+
+## 2026-10-15 — Téléphone : le bandeau « Installer FinanceAI » ne passe plus sous la barre du bas
+
+- Sur téléphone, le bandeau d'installation était recouvert par la barre de navigation. Il se pose maintenant
+  juste au-dessus. Sur ordinateur, rien ne change.
 
 ## 2026-10-15 — Téléphone : les notifications ne cachent plus la barre du bas
 
@@ -29,6 +38,7 @@
 ## 2026-10-15 — Entreprises : libellés en mots simples
 
 - Ligne « Entreprise » (Patrimoine) : « JVM $ » devient « Valeur marchande $ », « Div annuel $ » devient « Dividende annuel $ », et le bouton supprimer annonce « Supprimer cette entreprise » (il parlait d'un immeuble).
+
 
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 

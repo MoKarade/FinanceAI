@@ -374,7 +374,7 @@ interface RetirementTooltipProps {
     label?: number | string;
 }
 
-const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProps) => {
+export const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProps) => {
     if (!active || !payload || !payload.length) return null;
     const data = payload[0].payload;
     const isRetired = (data.age ?? 0) >= (data.RetirementAge ?? 65);
@@ -417,7 +417,7 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
                         </div>
                     )}
                     <div className="bg-black/30 p-2 rounded-lg border border-white/5">
-                        <div className="text-tiny text-[#9b8fcf] font-bold mb-1">Liquidites</div>
+                        <div className="text-tiny text-[#9b8fcf] font-bold mb-1">Liquidités</div>
                         <PrivateAmount as="div" className="text-meta font-black text-ink-50">{formatCAD(data.Liquidites)}</PrivateAmount>
                     </div>
                 </div>
@@ -428,15 +428,15 @@ const RetirementTooltip = React.memo(({ active, payload }: RetirementTooltipProp
                     <div className="text-tiny font-bold text-ink-300 uppercase tracking-widest mb-1">Flux Mensuel</div>
                     <div className="bg-black/30 rounded-lg p-3 border border-danger-500/20 space-y-2">
                         <div className="flex justify-between text-meta"><span className="text-ink-300">Revenu total</span><PrivateAmount className="text-success-400 font-bold">{formatSigned(data.Income || 0, { withCurrency: true })}</PrivateAmount></div>
-                        <div className="flex justify-between text-meta"><span className="text-ink-300">Depenses (Infl.)</span><PrivateAmount className="text-danger-400 font-bold">{formatSigned(-(data.Expenses || 0), { withCurrency: true })}</PrivateAmount></div>
-                        <div className="flex justify-between text-meta pt-1 border-t border-white/5"><span className="text-ink-300">Cashflow</span><PrivateAmount className={`font-bold ${((data.Income ?? 0) - (data.Expenses ?? 0)) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>{formatCAD((data.Income ?? 0) - (data.Expenses ?? 0))}</PrivateAmount></div>
+                        <div className="flex justify-between text-meta"><span className="text-ink-300">Dépenses (avec inflation)</span><PrivateAmount className="text-danger-400 font-bold">{formatSigned(-(data.Expenses || 0), { withCurrency: true })}</PrivateAmount></div>
+                        <div className="flex justify-between text-meta pt-1 border-t border-white/5"><span className="text-ink-300">Flux net</span><PrivateAmount className={`font-bold ${((data.Income ?? 0) - (data.Expenses ?? 0)) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>{formatCAD((data.Income ?? 0) - (data.Expenses ?? 0))}</PrivateAmount></div>
                     </div>
                 </div>
             ) : (
                 <div className="space-y-2">
-                    <div className="text-tiny font-bold text-ink-300 uppercase tracking-widest mb-1">Epargne Mensuelle</div>
+                    <div className="text-tiny font-bold text-ink-300 uppercase tracking-widest mb-1">Épargne mensuelle</div>
                     <div className="bg-black/30 rounded-lg p-3 border border-success-500/20">
-                        <div className="flex justify-between text-meta"><span className="text-ink-300">Cashflow</span><PrivateAmount className="text-success-400 font-bold">{formatSigned(data.Savings || 0, { withCurrency: true })}</PrivateAmount></div>
+                        <div className="flex justify-between text-meta"><span className="text-ink-300">Flux net</span><PrivateAmount className="text-success-400 font-bold">{formatSigned(data.Savings || 0, { withCurrency: true })}</PrivateAmount></div>
                     </div>
                 </div>
             )}

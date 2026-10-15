@@ -10,6 +10,16 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
+
+- [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements
+  détectés » rouges sur `main`. Ils bloquaient tous les commits via la porte de commit (kit 1.15.0).
+  Le test passait seul et échouait dans le fichier. Cause mesurée : le test « défauts Custom »
+  pose `TZ=Australia/Sydney` puis fait `delete process.env.TZ`, ce qui ne remet pas le fuseau
+  (décalage −600 min après suppression). Le 30/09 en après-midi, il était déjà le 1er octobre à
+  Sydney. Correctif : réassigner le fuseau effectif lu au chargement du fichier
+  (`restaurerFuseau`). Aucun code de l'app ne change.
+
 ## 2026-09-29 — Suite E2E : « clic partout » stabilisé (récidive) et job deux fois plus court
 
 - [x] 🟠 **`[E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE]`** (S) — ✅ 2026-09-29 : RÉCIDIVE avec une

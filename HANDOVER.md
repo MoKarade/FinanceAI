@@ -20,6 +20,21 @@
 > `[PRIVACY-SCAN-ALIAS-FORMATNUMBER]` : `amountPrivacyScan` voit les alias de `formatNumber` ; nouveau jeton
 > `NOMBRE-NON-MONETAIRE` (définition d'alias seulement, jamais pour un alias de `formatCAD`). Les appels
 > DIRECTS restent hors garde : 6 sites mesurés, à trier → `[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`.
+> ## 🟦 Session 2026-09-29 (suite) — **`[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]` + `[SANDBOX-PROMPTS-MARQUER-CONTEXTE]`**
+> **Retrait** (OK de Marc) : `useTheoretical`/`theoreticalIncome`/`theoreticalExpenses` NEUTRALISÉS dans le
+> moteur (3 sites : `computeIncomeBaseline` perd son paramètre `projection`, base de dépenses
+> `effectiveBaseExpenses`, sensibilité d'épargne) ; les 3 champs restent `@deprecated` dans `types.ts`
+> (pas de migration du schéma persisté). Interface retirée : `macroFields/FluxMensuelsFields.tsx`
+> (supprimé, grille Hypothèses bureau 4 → 3 colonnes) ET le commutateur « Données réelles / Bac à
+> sable » de `FutureProjection.tsx` (il ne pilotait que `useTheoretical` ; gardé, il aurait affiché
+> « Bac à sable » sur du réel — option A validée par financeai-chef). ⚠️ `[SANDBOX-MODE-TEST-GENERALISE]`
+> devra reposer un point d'entrée. Effet de bord utile : `[SANDBOX-FUITE-VERS-LE-MCP]` perd sa cause
+> moteur (un `useTheoretical: true` persisté n'a plus d'effet sur `get_projection` & co.).
+> **Marqueur** (décision Marc 22/09) : `systemPourAppel` (`services/claude.ts`) ajoute
+> `DONNEES_FICTIVES_MARQUEUR` (`utils/promptSafety.ts`) au `system` des 5 points de contact SDK quand
+> `modeDonneesFictives()` ; bloc ajouté EN DERNIER côté agent (cache du 1er bloc intact).
+> `services/claude.ts` rejoint l'inventaire `[SVC-STORE-COUPLING]`. Garde dérivée du grep :
+> `tests/services/promptMarqueurFictif.test.ts`. Tests moteur : `tests/services/useTheoreticalNeutralise.test.ts`.
 >
 > ## 🟦 Session 2026-09-29 — **`[CHIFFREMENT-PHASE1]` : création de passphrase + mémorisation WebAuthn**
 > Phase 1 (app web seule, aucune dépendance Infisical) du plan de chiffrement par défaut. Le chemin de

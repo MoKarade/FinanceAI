@@ -10,6 +10,13 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — Téléphone : le bandeau d'installation ne passe plus sous la barre du bas
+
+- [x] **`[BANDEAU-INSTALL-BARRE-NAV]`** — `components/PwaInstallBanner.tsx` se posait à `bottom-4`, sous la barre de
+  navigation mobile ; il se pose maintenant au-dessus (`lg:bottom-4` inchangé). Test :
+  `tests/components/PwaInstallBannerPosition.test.tsx`. Le bandeau « mesure d'audience » de la carte 2 n'existe pas
+  dans ce dépôt (aucun `ConsentBanner`, aucun texte d'audience) : rien à corriger.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

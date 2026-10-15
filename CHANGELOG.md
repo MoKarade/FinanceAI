@@ -6,6 +6,10 @@
   « Epargne Mensuelle » et « Liquidites ». Elle dit maintenant « Flux net », « Dépenses (avec
   inflation) », « Épargne mensuelle » et « Liquidités ». Aucun chiffre ne change.
 
+## 2026-10-15 — Guide d'aide (bouton ?) réécrit : accents, tutoiement, plus de fonctions retirées
+
+- Le guide de chaque onglet est écrit en français correct, avec les accents et en tutoyant. Il ne parle plus des curseurs ni des « données théoriques » (retirés le 2026-09-29), du « Départ en 2026 » ni de « v4.0 ».
+
 ## 2026-10-15 — Contrat du hub en v1.4.0
 
 - Le contrat du hub passe de `v1.3.1` à `v1.4.0` : ajout d'un sous-chemin `/session`, rien ne change pour FinanceAI (même version de contrat, même résumé publié).

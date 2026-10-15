@@ -17,6 +17,10 @@
   « Flux net », « Dépenses (avec inflation) », « Épargne mensuelle », « Liquidités ». Test :
   `tests/components/retirementTooltipLibelles.test.tsx`. Hors carte : « Non-Enreg. » (ligne 415) reste.
 
+## 2026-10-15 — `[GUIDE-AIDE-REECRIT]` guide d'aide réécrit
+
+Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions périmées retirées (curseurs, données théoriques, « Départ en 2026 », « v4.0 »). Test : `tests/components/GuideModal.langue.test.tsx`.
+
 ## 2026-10-15 — Restauration : fichier refusé en mots simples
 
 - [x] **`[BACKUP-INVALIDE-SIMPLE]`** — `BackupPanel.tsx` (restauration JSON et chiffrée) affichait « Backup invalide (chemin) : message Zod ».
@@ -5952,7 +5956,6 @@ ensuite.
   Aucun montant ancré : les gardes visent la RELATION (rapport mensualité/solde = l'échéancier).
   Chemin DÉCÈS vérifié : rien à partager, le survivant hérite. Leçon :
   `LE-SIGNE-D-UN-CORRECTIF-PEUT-DEPENDRE-D-UN-ECART-DE-TAUX`.
-
 ## 2026-08-25 — La sync bancaire auto se verrouille enfin ENTRE ONGLETS
 
 - [x] **`[FINTABLE-SYNC-XTAB-MUTEX]`** (S, sœur de `STALE-BASE`) — PR #736, gate vert.
@@ -5993,7 +5996,6 @@ ensuite.
   `UN-PARTAGE-A-50-POURCENT-NE-DISTINGUE-PAS-KEEP-DE-SON-COMPLEMENT` — à 50 %, `keep` et `1 − keep`
   sont indiscernables ; publier la part CONSERVÉE laissait le test à 50 % VERT.
   Découvertes routées : `[ENG-CELIAPP-TRANSFERT-FLUX-MUET]`, `[ENG-LIQUID-FLUX-FORM]`.
-
 ## 2026-08-25 — La bannière « Drive déconnecté » ne ment plus au chargement
 
 - [x] **`[BUDGET-DRIVE-BANNER-FLASH]`** (S) — PR #738, gate vert.
@@ -6027,7 +6029,6 @@ ensuite.
   CELIAPP seul → 2 ; MOITIÉ du montant → 2). Leçon :
   `UN-REGISTRE-RECONCILIE-A-UNE-CLE-REND-SES-FLUX-DECORATIFS`.
   Découverte routée : `[ENG-REERBYUSER-FLUX-DECORATIF]`.
-
 ## 2026-08-25 — La section « Améliorer mon budget » est retirée
 
 - [x] **`[BUDGET-REMOVE-AMELIORER]`** (S) — PR #740, gate vert. Demande directe de Marc.
@@ -6577,7 +6578,6 @@ Contexte d'origine :
   autres par scan, plus une garde qui interdit une quatrième liste locale. **2 perturbations prouvées
   rouges.** ⚠️ L'anti-vacuité a de nouveau attrapé ma fixture : sans les flèches Veille/Lendemain, le
   dialogue n'a qu'UN élément focusable et le cycle boucle sur lui-même.
-
 ## 2026-08-24 — Le facteur d'inflation est validé à l'entrée de décembre, et son repli est DIT
 
 - [x] **`[TAXDEC-INFLATIONFACTOR-AMONT]`** — une seule valeur assainie en tête de
@@ -6771,7 +6771,6 @@ Contexte d'origine :
   test voisin de `realEstateMonth` dont la fixture coïncidait avec l'ancien taux figé.
   ⚠️ Aucun golden n'a bougé, et c'est VÉRIFIÉ : aucun n'active le levier.
   Gate vert : 4 691 tests / 425 fichiers (après rebase sur #707).
-
 ## 2026-08-24 — Les crédits d'âge 65+ entrent enfin dans l'inversion net→brut
 
 - [x] **`[GROSSFROMNET-CREDITS-65]`** — instruit d'abord (mesures + obstacles + trois options), puis
@@ -6830,7 +6829,6 @@ Contexte d'origine :
   6 tests neufs, **3 perturbations prouvées rouges** — dont les DEUX demi-correctifs que le ticket
   interdisait à juste titre, chacun produisant une incohérence VISIBLE entre des barres et la somme
   affichée juste en dessous. Gate vert : 4 674 tests / 423 fichiers (après rebase sur #704).
-
 ## 2026-08-22 — La bascule CELI→REER est réelle, et la fixture qui l'a cachée trois fois
 
 - [x] **`[AUTOMARGINAL-BASCULE-SILENCIEUSE]`** — la bascule est **RÉELLE**, mesurée : `reerFirst`
@@ -6986,7 +6984,6 @@ d'hypothèses et se re-mesure ; l'ancrer ferait de ce test une bombe au premier 
 d'indexation. Perturbations prouvées : section supprimée → 5 rouges, hypothèse de cotisation
 retirée → 1 rouge.
 Gate vert : 4 648 tests / 419 fichiers, build inclus.
-
 ## 2026-08-21 — Dette technique XS : deux angles morts qui rendaient le code INTROUVABLE
 
 > Lot réuni non par la zone touchée mais par le SYMPTÔME : dans les deux cas, du code parfaitement
@@ -8270,7 +8267,6 @@ maintenant quand on retire la ligne.
 
 - [x] **`[COUPLE-CTX-FAKE-ZERO]`** (XS, MOYEN) — ✅ 2026-08-19, PR #664.
 - [x] **`[TOOL-TAXSITUATION-FAKE-ZERO]`** (XS, MOYEN) — ✅ 2026-08-19, PR #664.
-
 ## 2026-08-19 — Vague 1d (fin) : deux conteneurs W5 qui n'existaient pas au bilan
 
 > Un immeuble locatif ne montrait que son NOI ; une entreprise privée que son dividende. **Leur
@@ -8421,7 +8417,6 @@ correctif de FLUX qui déplacerait de l'ARGENT serait pire que le défaut.
 
 - [x] **`[ENG-INV-FLUXFORM-COVERAGE]`** (S) — ✅ 2026-08-19, PR #658.
 - [x] **`[ENG-FERR-NETTRANSFER-MUET]`** (S) — ✅ 2026-08-19, PR #658 (découvert par l'item ci-dessus).
-
 ## 2026-08-19 — Vague 1d (suite) : le bilan au jour, et un ticket fermé sans code
 
 ### Corrigé — `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`

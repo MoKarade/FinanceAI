@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const logError = vi.fn();
-vi.mock('../../../services/errorLogger', () => ({ logError: (...a: unknown[]) => logError(...a) }));
+vi.mock('../../../services/errorLogger', () => ({ logError: (...a: unknown[]) => logError(...a), logErrorThrottled: vi.fn() }));
 
 import { handleError, DRIVE_ERREUR_SIMPLE } from '../../../services/sync/syncErrors';
 import { getSyncStatus } from '../../../services/sync/syncStatusStore';

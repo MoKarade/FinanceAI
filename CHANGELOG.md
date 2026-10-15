@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-15 — Profils : un profil abîmé est dit en mots simples
+
+- Charger un profil sauvegardé illisible affiche « Le profil « X » est abîmé, impossible de le charger » au lieu d'un message technique (le détail reste dans le journal d'erreurs).
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

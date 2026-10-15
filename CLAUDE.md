@@ -35,6 +35,6 @@ Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests 
 11. **Déploiement** : après un merge qui change ce qui est servi, vérifier un déploiement Vercel production `READY` sur le bon SHA (CSP de `vercel.json` enforcée).
 
 ## Conduite
-Plan d'abord, questions en un batch, OK avant de coder, puis exécution continue ; proposer ≠ faire. `[YYYY-MM-DD HH:MM UTC]` en tête de chaque réponse. Qualité d'abord, coût tokens non contraint.
+Mode de travail : instructions du projet Claude « Apps » (mode PDG depuis le 15/10/2026) ; proposer ≠ faire. `[YYYY-MM-DD HH:MM UTC]` en tête de chaque réponse. Qualité d'abord, coût tokens non contraint.
 
 @docs/COMPTE-RENDU.md

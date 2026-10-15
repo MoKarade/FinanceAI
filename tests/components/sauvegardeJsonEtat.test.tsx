@@ -18,6 +18,7 @@ import { BackupPanel, BackupSchema } from '../../components/settings/BackupPanel
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { extrairePersistable, fusionnerEtatPersiste } from '../../store/optionsPersistance';
 import { initialState } from '../../store/etatParDefaut';
+import { SAUVEGARDE_INVALIDE } from '../../services/backupMessages';
 import { CLES_JAMAIS_RESTAUREES, construireSauvegardeEtat, remplacerLeStockage, resumeSauvegarde, VERSION_SAUVEGARDE_ETAT } from '../../services/sauvegardeJson';
 import type { AppState } from '../../types';
 import type { FinanceState } from '../../store/useFinanceStore';
@@ -263,7 +264,7 @@ describe('Refus qui laissent le stockage intact', () => {
         localStorage.setItem(STORE, avant);
         render(<BackupPanel />);
         await restaurer({ version: '4.0', timestamp: 1, store: { state: { transactions: [{ id: 't', amount: '10' }] }, version: 7 } });
-        await waitFor(() => expect(vi.mocked(showToast)).toHaveBeenCalledWith(expect.stringMatching(/Backup invalide/), 'error'));
+        await waitFor(() => expect(vi.mocked(showToast)).toHaveBeenCalledWith(SAUVEGARDE_INVALIDE, 'error'));
         expect(screen.queryByText('Restauration Complète')).toBeNull();
         expect(localStorage.getItem(STORE)).toBe(avant);
     });

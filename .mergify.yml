@@ -16,6 +16,7 @@ queue_rules:
       - base = main
       - -draft
       - label != hold
+      - label != do-not-merge
       # Chemins protégés : fusionnés si le contrôle « Garde-fou » est vert (oui écrit de Marc, 15/10/2026). Il est vert
       # d'office hors chemins protégés. Exception Dependabot conservée (oui de Marc, MoKarade/.github#26) : montée
       # mineure ou corrective des actions, rien hors de .github/, aucun commit d'un autre auteur. Les majeures :
@@ -39,6 +40,7 @@ queue_rules:
       - base = main
       - -draft
       - label != hold
+      - label != do-not-merge
       # Chemins protégés : fusionnés si le contrôle « Garde-fou » est vert (oui écrit de Marc, 15/10/2026). Il est vert
       # d'office hors chemins protégés. Exception Dependabot conservée (oui de Marc, MoKarade/.github#26) : montée
       # mineure ou corrective des actions, rien hors de .github/, aucun commit d'un autre auteur. Les majeures :
@@ -63,6 +65,7 @@ merge_protections_settings:
     - base = main
     - -draft
     - label != hold
+    - label != do-not-merge
     # Chemins protégés : fusionnés si le contrôle « Garde-fou » est vert (oui écrit de Marc, 15/10/2026). Il est vert
     # d'office hors chemins protégés. Exception Dependabot conservée (oui de Marc, MoKarade/.github#26) : montée
     # mineure ou corrective des actions, rien hors de .github/, aucun commit d'un autre auteur. Les majeures :

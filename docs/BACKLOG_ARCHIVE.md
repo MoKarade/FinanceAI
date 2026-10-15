@@ -33,6 +33,12 @@ Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions 
   Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
   `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
 
+## 2026-10-15 — Téléphone : les notifications ne cachent plus la barre du bas
+
+- [x] **`[TOAST-BARRE-NAV-MOBILE]`** — le conteneur des notifications (`components/ui/Toast.tsx`) se posait à
+  `bottom-6`, sous la barre de navigation mobile (76 px + zone sûre, `Layout.tsx`). Il se pose maintenant au-dessus
+  sur mobile (`lg:bottom-6` inchangé). Test : `tests/components/ui/ToastPosition.test.tsx`.
+
 ## 2026-10-15 — Entreprises : libellés en mots simples
 
 - [x] **`[ENTREPRISE-LIBELLES-SIMPLES]`** — `PatrimoineExtended.tsx` (`BusinessPanel`) : textes indicatifs « Valeur marchande $ » et

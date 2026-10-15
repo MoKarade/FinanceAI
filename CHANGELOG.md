@@ -21,6 +21,11 @@
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
 
+## 2026-10-15 — Téléphone : les notifications ne cachent plus la barre du bas
+
+- Sur téléphone, les petits messages (« Enregistré »…) s'affichaient par-dessus la barre de navigation.
+  Ils se posent maintenant juste au-dessus. Sur ordinateur, rien ne change.
+
 ## 2026-10-15 — Entreprises : libellés en mots simples
 
 - Ligne « Entreprise » (Patrimoine) : « JVM $ » devient « Valeur marchande $ », « Div annuel $ » devient « Dividende annuel $ », et le bouton supprimer annonce « Supprimer cette entreprise » (il parlait d'un immeuble).

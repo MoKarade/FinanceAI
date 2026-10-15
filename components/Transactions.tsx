@@ -356,7 +356,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     ? { ...t, category: cat, status: 'processed' as const, isTransfer: cat === 'Transfert' ? true : t.isTransfer, isAiProcessed: false, confidence: 100 }
                     : t;
             }));
-            setLiveLogs(prev => [...prev, `${ruled.size} classee(s) par regles (sans IA)${promoted > 0 ? `, dont ${promoted} abonnement(s) reconnu(s) a la recurrence` : ''}.`]);
+            setLiveLogs(prev => [...prev, `${ruled.size} classée(s) par règles (sans IA)${promoted > 0 ? `, dont ${promoted} abonnement(s) reconnu(s) à la récurrence` : ''}.`]);
             targetTxs = targetTxs.filter(t => !ruled.has(t.id));
         }
         if (targetTxs.length === 0) {

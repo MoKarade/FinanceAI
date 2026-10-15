@@ -10,6 +10,12 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — Simulations : échec en mots simples
+
+- [x] **`[SIMULATION-ERREUR-SIMPLE]`** — `StressTestPanel.tsx` et `StrategyOptimizerPanel.tsx` affichaient le message brut
+  de l'exception. Ils affichent « La simulation n'a pas pu finir, réessaie » ; l'optimiseur journalise maintenant
+  aussi l'erreur (`logError`). Constante : `services/simulationMessages.ts`. Test : `tests/services/simulationMessages.test.ts`.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

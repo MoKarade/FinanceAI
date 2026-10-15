@@ -10,6 +10,8 @@
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Icon } from '../ui/Icon';
+import { logError } from '../../services/errorLogger';
+import { SIMULATION_ECHEC } from '../../services/simulationMessages';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
 import type { SimulationParams, ConfigResult } from '../../services/projection';
@@ -159,7 +161,8 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
                 setComposerOpen(true);
                 return;
             }
-            setError(msg || 'Échec de la recherche de stratégie');
+            logError({ source: 'projection', severity: 'warning', message: `StrategyOptimizerPanel : échec de la recherche de stratégie (${msg})`, error: e instanceof Error ? e : new Error(msg) });
+            setError(SIMULATION_ECHEC);
             setStatus('error');
         }
     }, [params, selection, ctx, configCount, iters]);

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-15 — Simulations : un échec est dit en mots simples
+
+- Quand les stress-tests ou la recherche de stratégie échouent, l'écran dit « La simulation n'a pas pu finir, réessaie » au lieu d'un message technique (le détail reste dans le journal d'erreurs).
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

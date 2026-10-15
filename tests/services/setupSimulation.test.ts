@@ -23,7 +23,7 @@ import type { FutureScenarioType } from '../../services/projection';
 
 describe('computeIncomeBaseline — régression bug « revenu ×12 »', () => {
     it('mode réel : grossSalary MENSUEL est annualisé ×12 (et non lu tel quel)', () => {
-        const r = computeIncomeBaseline({}, [{ netSalary: 6000, grossSalary: 8000 }, undefined]);
+        const r = computeIncomeBaseline([{ netSalary: 6000, grossSalary: 8000 }, undefined]);
         // 8000 $/mois → 96 000 $/an. Le bug lisait 8000 comme un brut ANNUEL → impôt ~0.
         expect(r.grossMarcBaseAnnual).toBe(96000);
         expect(r.incomeMarcNetMonthly).toBe(6000);
@@ -36,7 +36,7 @@ describe('computeIncomeBaseline — régression bug « revenu ×12 »', () => {
         // Ancre APRÈS : 86 967,77 $. Δ = +5 968 $ de brut annuel, à 60 000 $ de net.
         // Le facteur plat sous-estimait donc l'assiette d'impôt — et l'écart s'aggrave avec le
         // revenu (mesuré : −22 028 $ à 100 k$ de net, −132 196 $ à 250 k$).
-        const r = computeIncomeBaseline({}, [{ netSalary: 5000 }, undefined]);
+        const r = computeIncomeBaseline([{ netSalary: 5000 }, undefined]);
         // L'assertion vise la PROPRIÉTÉ, pas le nombre : le brut déduit doit redonner le net visé.
         // ⚠️ Tolérance alignée sur la GARANTIE de `calculateGrossFromNet` (`< 1 $`), pas plus
         // serrée : `toBeCloseTo(x, 0)` exige `< 0,5 $`, et sur 2 951 cibles mesurées 43 %
@@ -46,31 +46,22 @@ describe('computeIncomeBaseline — régression bug « revenu ×12 »', () => {
         expect(r.grossMarcBaseAnnual).not.toBeCloseTo(5000 * 12 * 1.35, 0);
     });
 
-    it('mode théorique : split 55/45 du theoreticalIncome', () => {
-        const r = computeIncomeBaseline({ useTheoretical: true, theoreticalIncome: 10000 }, []);
-        expect(r.incomeMarcNetMonthly).toBe(5500);
-        expect(r.incomeAnnaNetMonthly).toBe(4500);
-        // [MIGRATE-GROSS-135] — RE-BASÉ. Ancre AVANT : 89 100 $ (= 5 500 × 12 × 1,35).
-        // Ancre APRÈS : 96 423,89 $. Δ = +7 324 $. Même propriété : le brut déduit redonne le net
-        // visé, ce que le facteur plat ne faisait pour AUCUN revenu.
-        // ⚠️ Tolérance alignée sur la GARANTIE de `calculateGrossFromNet` (`< 1 $`), pas plus
-        // serrée : `toBeCloseTo(x, 0)` exige `< 0,5 $`, et sur 2 951 cibles mesurées 43 %
-        // dépassent ce seuil (résidu max 0,998 $). Cette ancre-ci passait par CHANCE.
-        expect(Math.abs(calculateFiscalReport(r.grossMarcBaseAnnual, 0, 0).netIncome - 66000)).toBeLessThan(1);
-    });
+    // [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] Les cas « mode théorique : split 55/45 » ont disparu avec
+    // le mode : `computeIncomeBaseline` ne reçoit plus `projection`. La neutralisation d'un dossier
+    // persisté à `useTheoretical: true` est prouvée bout en bout dans useTheoreticalNeutralise.test.ts.
 
     it('[GROSSFROMNET-ANNEE-FIGEE] le CÂBLAGE de startYear est effectif, pas seulement la feuille', () => {
         // ⚠️ Trou relevé en revue : les 3 tests du lot visaient `calculateGrossFromNet` en direct.
         // Retirer `startYear` de l'appel dans `projection.ts` n'aurait fait rougir AUCUN test — le
         // no-op est exact tant que l'année courante vaut 2026. C'est la LIVRAISON du lot qui n'était
         // pas couverte, pas la fonction.
-        const a2026 = computeIncomeBaseline({}, [{ netSalary: 5000 }, undefined], 2026);
-        const a2030 = computeIncomeBaseline({}, [{ netSalary: 5000 }, undefined], 2030);
+        const a2026 = computeIncomeBaseline([{ netSalary: 5000 }, undefined], 2026);
+        const a2030 = computeIncomeBaseline([{ netSalary: 5000 }, undefined], 2030);
         // Indexer les paliers allège l'impôt → il faut MOINS de brut pour le même net.
         expect(a2030.grossMarcBaseAnnual).toBeLessThan(a2026.grossMarcBaseAnnual);
         expect(a2026.grossMarcBaseAnnual - a2030.grossMarcBaseAnnual).toBeGreaterThan(1000);
         // Et le défaut reste NEUTRE (rétrocompat bit-identique).
-        expect(computeIncomeBaseline({}, [{ netSalary: 5000 }, undefined]).grossMarcBaseAnnual)
+        expect(computeIncomeBaseline([{ netSalary: 5000 }, undefined]).grossMarcBaseAnnual)
             .toBe(a2026.grossMarcBaseAnnual);
     });
 
@@ -96,7 +87,7 @@ describe('computeIncomeBaseline — régression bug « revenu ×12 »', () => {
         };
         expect(lire('services/projection.ts'),
             'projection.ts ne passe plus startYear à computeIncomeBaseline')
-            .toMatch(/computeIncomeBaseline\(\s*projection,\s*config\.users,\s*startYear\s*\)/);
+            .toMatch(/computeIncomeBaseline\(\s*config\.users,\s*startYear\s*\)/);
         expect(lire('services/projection/buildSimulationParams.ts'),
             'buildSimulationParams ne passe plus l’année à computeBaseGrossAnnual')
             .toMatch(/computeBaseGrossAnnual\(\s*users,\s*inputs\.startYear\s*\)/);
@@ -105,13 +96,8 @@ describe('computeIncomeBaseline — régression bug « revenu ×12 »', () => {
         expect(lire('mcp/tools/getTaxSituation.spec.ts')).toMatch(/computeBaseGrossAnnual\(\s*users,\s*year\s*\)/);
     });
 
-    it('mode théorique : theoreticalIncome par défaut = 8000', () => {
-        const r = computeIncomeBaseline({ useTheoretical: true }, []);
-        expect(r.incomeMarcNetMonthly).toBeCloseTo(8000 * 0.55, 5);
-    });
-
     it('aucun user : tout à zéro (pas de NaN)', () => {
-        expect(computeIncomeBaseline({}, [undefined, undefined])).toEqual({
+        expect(computeIncomeBaseline([undefined, undefined])).toEqual({
             incomeMarcNetMonthly: 0,
             incomeAnnaNetMonthly: 0,
             grossMarcBaseAnnual: 0,

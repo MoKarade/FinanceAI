@@ -1,5 +1,82 @@
 # Changelog
 
+## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
+
+- Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
+
+## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
+
+- Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.
+
+## 2026-09-29 — Futur : le commutateur « Bac à sable » et ses curseurs théoriques sont retirés ; l'IA sait quand les chiffres sont fictifs
+
+- L'onglet Futur n'affiche plus le commutateur « Données réelles / Bac à sable » ni les curseurs
+  « Revenus (Net) » / « Dépenses » de la section Hypothèses. Ils remplaçaient tes vrais revenus et
+  dépenses par des valeurs inventées (et répartissaient le revenu 55/45 entre deux personnes, même
+  seul). La projection se fait désormais TOUJOURS sur tes vraies données. Un dossier resté en
+  « Bac à sable » revient automatiquement au réel, sans rien à faire. Le vrai bac à sable (une copie
+  complète de ton dossier) reviendra dans un lot suivant.
+- Quand l'app tourne sur des données fictives (mode test), l'assistant IA est prévenu que les
+  chiffres sont un scénario hypothétique : il répond normalement, mais ne les présente plus comme
+  tes finances réelles. Rien n'est refusé.
+
+## 2026-09-29 — Mode discret : le récapitulatif d'ajout d'un placement ne montre plus tes montants
+
+- Dans la fenêtre « Ajouter un placement », le récapitulatif (« 5 × … = … investi le… ») affichait en
+  clair le prix d'achat et le montant investi même en mode discret. Ils sont maintenant masqués,
+  comme le champ de saisie du prix juste au-dessus. La quantité et le gain en % le sont aussi : avec
+  le cours du titre affiché plus haut, ils permettaient de retrouver ton prix d'achat.
+- Le calendrier des factures (Planification) affichait le total du jour en clair en mode discret :
+  il est masqué.
+
+## 2026-09-29 — Tests automatiques du navigateur : plus rapides et un faux rouge en moins
+
+- Rien ne change dans l'app. Les tests qui cliquent dans l'app (E2E) tournent maintenant sur deux
+  navigateurs en parallèle dans GitHub : 4,6 min au lieu de ~6,4 min (premier run mesuré).
+- Le test « clic partout sur la courbe du Futur » ne rougit plus au hasard : la notification
+  « Persona chargé » recouvrait le bas du graphe pendant 4 s. Les tests la ferment avant de cliquer.
+
+## 2026-09-29 — Téléphone : les boutons et champs sont plus faciles à toucher
+
+- Le lien « ‹ Plus », les champs de la page verrouillée (salaire, âge de retraite…), les boutons « Revoir le
+  tutoriel » et « Choisir un persona », « Retirer le conjoint » et la ligne des interrupteurs du Profil font
+  maintenant au moins 44 px de haut (norme d'accessibilité). L'apparence ne change presque pas.
+
+## 2026-09-29 — Réglages : tu peux maintenant créer une phrase secrète pour chiffrer ta sauvegarde
+
+- Nouveau bouton « Créer une phrase secrète » dans Réglages (section synchro Google Drive). Une fois
+  activée, ta sauvegarde Drive devient illisible sans cette phrase — même pour Google. Écran en 3
+  étapes : choix de la phrase, avertissement clair (« si elle est perdue, tes données deviennent
+  irrécupérables ») avec une carte à imprimer ou télécharger, puis confirmation.
+- Sur les appareils qui le permettent (empreinte digitale, reconnaissance faciale, Windows Hello), tu
+  peux choisir de mémoriser la phrase : elle ne sera plus redemandée sur CET appareil, mais un
+  déverrouillage biométrique est exigé à chaque fois (un appareil volé mais déjà déverrouillé par
+  quelqu'un d'autre reste protégé). En cas de perte/vol, changer la phrase depuis un autre appareil
+  coupe la mémorisation de tous les autres d'un coup.
+- Nouveau bouton « Nettoyer les anciennes sauvegardes non chiffrées » : affiche d'abord le nombre de
+  fichiers concernés, ne supprime qu'après ta confirmation.
+- Le comportement PAR DÉFAUT ne change pas : rien n'est chiffré tant que tu n'actives rien toi-même.
+
+## 2026-09-29 — Réglages : un nouveau bouton pour autoriser temporairement les écritures de claude.ai
+
+- Nouvelle carte « Écritures MCP » dans Réglages. Par défaut, claude.ai ne peut RIEN écrire dans tes
+  finances, même si tu le lui demandes dans la conversation — il faut d'abord cliquer « Autoriser »
+  ici, pour une durée courte (15, 30 ou 60 minutes), avant de lui demander d'importer un document. Un
+  bouton « Verrouiller maintenant » referme avant l'échéance. Rien à faire si tu ne veux que discuter
+  ou consulter tes chiffres.
+
+## 2026-09-28 — Correctif technique : un contrôle interne bloquait toutes les PR
+
+- Aucun changement dans l'app. Un contrôle qui vérifie qu'aucun journal public ne publie de données ne connaissait
+  pas un petit compteur ajouté récemment dans le mécanisme de fusion automatique (il compte des PR ouvertes,
+  jamais leur contenu) : toute nouvelle PR était bloquée par erreur. Corrigé côté contrôle seulement.
+
+## 2026-09-28 — Certaines préversions inutiles ne se construisent plus sur Vercel
+
+- Aucun changement visible dans l'app. Une PR qui ne touche que la documentation n'ouvre plus de préversion Vercel
+  (moins de minutes de build consommées) ; toute autre modification continue de construire normalement, y compris un
+  simple doute sur ce qui a changé.
+
 ## 2026-09-28 — Les documents que les sessions relisent au démarrage sont mieux protégés
 
 - Aucun changement visible dans l'app. Les fichiers que les sessions Claude relisent (règles, leçons, état du projet) sont
@@ -35,6 +112,15 @@
 - Aucun changement dans l'app : la suite de tests complète passe maintenant sur ton PC (33 tests-gardes
   échouaient à cause des fins de ligne et des `\` de Windows, alors qu'ils passaient sur GitHub).
   Ajout de `.gitattributes` (fins de ligne uniformes) et d'un petit utilitaire de chemins pour les tests.
+
+## 2026-09-26 — Connecteur claude.ai : toute écriture demande maintenant un aperçu puis une confirmation
+
+- Quand claude.ai modifie tes finances (paie, relevé, dette, solde, budget, suppression), il doit d'abord te
+  montrer un aperçu ; l'écriture n'a lieu qu'au second appel, avec un jeton que seul le serveur peut émettre
+  (usage unique, 5 min, lié à ces changements exacts). Avant, cinq de ces gestes écrivaient directement.
+- Un document piégé ne peut donc plus faire écrire ton état en un seul appel. Limite : c'est toujours à toi
+  d'approuver l'appel dans claude.ai ; la sauvegarde horodatée reste annulable.
+
 ## 2026-09-25 — Fusion automatique : les changements sensibles attendent ta validation
 
 - Une modification des hooks, des workflows, des réglages, du relais IA, de l'authentification ou de `vercel.json` n'est plus

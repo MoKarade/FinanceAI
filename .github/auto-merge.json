@@ -48,5 +48,13 @@
     "BACKLOG.md",
     "HANDOVER.md",
     "CHANGELOG.md"
+  ],
+  "chemins_validation_visuelle": [
+    "components/ui/**",
+    "components/Layout.tsx",
+    "components/TabRouter.tsx",
+    "**/*.css",
+    "tailwind.config.js",
+    "tailwind.palette-v3.js"
   ]
 }

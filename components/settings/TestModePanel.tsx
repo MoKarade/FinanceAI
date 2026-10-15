@@ -79,7 +79,7 @@ export const TestModePanel: React.FC<{ compact?: boolean }> = ({ compact = false
     );
 
     const desactivation = !confirmDisable ? (
-        <button type="button" onClick={() => setConfirmDisable(true)} className={`${compact ? 'flex-1' : ''} h-10 px-3 rounded-lg border border-warning-400/50 text-body font-semibold text-warning-400 hover:bg-warning-500/10 transition-colors focus-ring`}>
+        <button type="button" onClick={() => setConfirmDisable(true)} className={`${compact ? 'flex-1' : ''} h-11 px-3 rounded-lg border border-warning-400/50 text-body font-semibold text-warning-400 hover:bg-warning-500/10 transition-colors focus-ring`}>
             {compact ? 'Désactiver' : 'Désactiver le mode test'}
         </button>
     ) : (
@@ -126,7 +126,7 @@ export const TestModePanel: React.FC<{ compact?: boolean }> = ({ compact = false
                             onClick={() => setListeOuverte((v) => !v)}
                             aria-expanded={listeOuverte}
                             aria-controls="mode-test-liste"
-                            className="flex-1 h-10 px-3 rounded-lg border border-white/15 text-body text-ink-100 hover:bg-white/5 transition-colors focus-ring"
+                            className="flex-1 h-11 px-3 rounded-lg border border-white/15 text-body text-ink-100 hover:bg-white/5 transition-colors focus-ring"
                         >
                             {isTestMode ? 'Changer de persona' : 'Choisir un persona'}
                         </button>

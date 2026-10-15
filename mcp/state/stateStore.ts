@@ -33,6 +33,15 @@ export interface StateStore {
     save(next: AppState, expectedVersion?: StateVersion): Promise<SaveResult>;
     /** La source configurée sait-elle écrire ? (fichier = oui ; aucune source = non). */
     readonly canWrite: boolean;
+    /**
+     * [VERROU-ECRITURE] Étape 2 — le verrou d'écriture MCP est-il OUVERT ? Optionnel (comme
+     * `WritableStateSource.checkWriteLock`) pour ne pas casser un `StateStore` minimal construit à la
+     * main (tests sans rapport avec l'écriture). `runApply` traite son absence comme `true` : le
+     * mécanisme ne porte AUCUNE sémantique de sécurité pour un store qui ne l'implémente pas (jamais
+     * un fail-open sur une ERREUR — quand la source EST Drive, `DriveStateSource.checkWriteLock`
+     * échoue déjà fermé en interne, et `makeStateStore` l'expose toujours dans ce cas).
+     */
+    checkWriteLock?(): Promise<boolean>;
 }
 
 export function makeStateStore(
@@ -114,5 +123,14 @@ export function makeStateStore(
         }
     };
 
-    return { get, getWithVersion, save, canWrite: isWritableSource(source) };
+    /** [VERROU-ECRITURE] Délègue à la source si elle porte le mécanisme (Drive) ; sinon `true` — le
+     *  verrou n'est pas applicable à cette forme de déploiement (jamais un fail-open sur une ERREUR :
+     *  quand la source EST Drive, `DriveStateSource.checkWriteLock` échoue déjà fermé en interne). */
+    const checkWriteLock = async (): Promise<boolean> => {
+        const src = source as Partial<import('./loadAppState').WritableStateSource> | null;
+        if (src && typeof src.checkWriteLock === 'function') return src.checkWriteLock();
+        return true;
+    };
+
+    return { get, getWithVersion, save, canWrite: isWritableSource(source), checkWriteLock };
 }

@@ -275,7 +275,7 @@ export const Layout: React.FC<LayoutProps> = ({
             <button
               type="button"
               onClick={() => setShowMobileDrawer(true)}
-              className="lg:hidden -mb-3 text-meta text-ink-400 hover:text-ink-100 focus-ring rounded-sm"
+              className="lg:hidden -my-3.5 -ml-2 px-2 min-h-11 min-w-11 inline-flex items-center text-meta text-ink-400 hover:text-ink-100 focus-ring rounded-sm"
             >
               ‹ Plus
             </button>

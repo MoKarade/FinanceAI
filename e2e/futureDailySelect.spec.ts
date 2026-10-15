@@ -77,7 +77,9 @@ async function clickAndFreeze(page: Page, x: number, y: number, zone = 'clic') {
         + `${n.getAttribute('aria-label') ? `[aria-label="${n.getAttribute('aria-label')}"]` : ''}`
         + ` .${String(n.getAttribute('class') ?? '').trim().split(/\s+/).slice(0, 4).join('.')}`;
       const bouton = el.closest('button, a, [role="button"]');
-      const graphe = el.closest('[role="img"]');
+      // [S5-REFONTE-FUTUR] Le conteneur est `role="group"` (plus `img`) : l'ancien sélecteur
+      // répondait « NON » même pour un nœud DANS la courbe (vu en CI : `circle .recharts-dot`).
+      const graphe = el.closest('[aria-roledescription="graphique"]');
       return `${decrire(el)} | bouton ancêtre : ${bouton ? decrire(bouton) : 'aucun'}`
         + ` | dans le graphe : ${graphe ? 'oui' : 'NON'}`;
     }, [cx, cy]);

@@ -17129,6 +17129,13 @@ activé ». Le test accusait une zone morte du graphe alors que le clic n'atteig
 
 ---
 
+### `UN-JOURNAL-PUBLIC-IMPRIME-UN-MODELE-FIXE-PAS-UN-MESSAGE-D-ERREUR` — 2026-09-26
+
+Lot `[PTF-JOURNAL-PUBLIC-ERREURS]`. Un message d'exception est du texte libre : `JSON.parse` de Node y reproduit un morceau de l'entrée, une erreur réseau cite une URL. Dans un dépôt PUBLIC, tout ce qu'un workflow imprime est public.
+
+- Imprimer des booléens et des codes énumérés (`erreur_signalee: (.error != null)`), jamais `.error`, `.body`, `.message`, `.detail`, `.stack`, `.erreur`.
+- Chaque valeur imprimée est normalisée : booléen, nombre ou code d'une liste fermée (sinon « autre »). La garde est une LISTE BLANCHE des programmes `jq` (`tests/journauxCiSansDonnees.test.ts`) : un détecteur de noms de champs se contourne (`jq .`, `..`, `to_entries`, `@json`), une égalité exacte non.
+
 ### `UN-HOOK-DE-COMMIT-LIT-LA-COMMANDE-PAS-LE-TEXTE-NI-L-INDEX-D-AVANT` — 2026-09-25
 
 Lot `[GATE-COMMIT-ANALYSE]`. Trois défauts mesurés dans `scripts/hooks/commit-gate.mjs` : (1) il réagissait à
@@ -17145,6 +17152,15 @@ dépassement de tampon d'`execSync` perdait tout).
   complète : la logique pure est testable (`tests/gateCommitAnalyse.test.ts`), le défaut reste le cas sûr.
 - L'erreur d'origine sort en entier sur stderr, avec code/signal, et `maxBuffer` relevé.
 - Revue sécurité #1070 : un hook qui décide « pas un commit » doit échouer FERMÉ — préfiltre sur le texte normalisé (guillemets/antislash retirés), enveloppes (bash -c, env, sudo, xargs…) et alias git = incertain, chemins de la commande jamais passés à un shell (execFileSync + tableau), entrée illisible = exit 2, liste BLANCHE des fichiers sans effet (*.md, docs/**).
+
+### `ON-VERIFIE-D-ABORD-ON-REFUSE-APRES` — 2026-09-26
+
+Lot `[MCP-DURCISSEMENT]`. Le premier jet bloquait globalement après 20 échecs d'authentification : sur un service public, 20 requêtes invalides toutes les 15 min coupaient le connecteur du propriétaire (déni de service ouvert à Internet) sans rien protéger (secrets ≥ 16 caractères, force brute hors de portée).
+
+- Un limiteur ne touche JAMAIS une requête qui porte un secret VALIDE : on vérifie le secret d'abord (mêmes comparaisons en temps constant), on refuse après.
+- Le budget de volume ne compte que les appels authentifiés : une requête sans secret valide ne le consomme pas, même en flot concurrent (un remboursement après coup ne suffit pas).
+- Les échecs se comptent PAR ADRESSE (dernier élément de `X-Forwarded-For` derrière Cloud Run : les précédents sont forgeables), seuil haut, table bornée ; en mémoire, limite assumée.
+- Un message d'erreur de parse ne cite jamais l'entrée. Durcir une longueur de secret ne doit pas couper le service : alerte + état visible par défaut, refus seulement sur réglage explicite (STRICT) et limité à la porte concernée.
 ---
 
 ### `UN-SECRET-LIVRE-AU-NAVIGATEUR-N-EST-PAS-UN-SECRET` — 2026-09-25
@@ -17203,6 +17219,15 @@ bloquait tout commit (le hook lance la suite complète). Deux causes, aucune dan
   suffit donc pas seule : un `grep -rn "path.relative(" tests/` après le lot n'aurait pas suffi non plus, puisque ce fichier n'existait pas
   encore — la règle doit être réappliquée à CHAQUE nouveau marcheur de fichiers, pas seulement balayée une fois.
 
+### `UNE-CONFIRMATION-QUE-L-APPELANT-S-ACCORDE-N-EST-PAS-UNE-CONFIRMATION` — 2026-09-26
+
+Lot `[MCP-CONFIRM-TOKEN]`. Les outils d'écriture MCP se protégeaient par un booléen `confirm:true` passé par le MODÈLE ; les `apply_*` n'avaient rien. Un document piégé fait envoyer le booléen au premier appel.
+
+- Une porte de confirmation doit être un SECRET émis par le serveur en réponse à l'aperçu, à usage unique, court, lié à la session, à l'outil, aux arguments exacts et aux changements calculés. Jamais un flag que le demandeur remplit.
+- Un point d'enregistrement unique (`registerWriteTool`) + un test qui interdit `runApply` dans les `*.tool.ts` : impossible d'ajouter un outil d'écriture sans la porte.
+- Dire la limite : le jeton ne prouve pas qu'un humain a lu ; l'approbation par appel du client reste la barrière (annotations MCP).
+- Journal d'audit d'écriture : outil, phase, nombre, code de résultat ; jamais de montant ni de nom.
+
 ## `ECRIRE-COPIES-EFFACE-LA-DOC-MANUELLE-DE-COPIES-MD` (2026-09-28, `[KIT-191]`)
 
 Resynchronisation du kit d'auto-merge 1.9.0 → 1.9.1 (2 fichiers sur 10 changés : `verifier-copies.mjs`, `LISEZMOI.md`).
@@ -17235,3 +17260,50 @@ n'a été vue qu'en reconstruisant le document depuis zéro, comparé ligne à l
   qu'il prétend décrire, pas seulement contre les numéros de version.
 - Piste : un test qui dérive automatiquement la liste « strict vs souple » d'un ADR depuis `auto-merge.json`
   éviterait qu'un texte descriptif diverge silencieusement de la configuration qu'il documente.
+
+## `UN-MECANISME-DE-SECURITE-PROPRE-A-UNE-SOURCE-N-A-PAS-DE-SEMANTIQUE-AILLEURS` (2026-09-29, `[VERROU-ECRITURE]`)
+
+Le verrou d'écriture MCP (ADR 0025) vit dans un fichier Drive, lu par `DriveStateSource.checkWriteLock()`.
+`StateStore.checkWriteLock()` (méthode optionnelle, comme `loadRawVersioned`) délègue à la source si elle
+l'implémente, sinon renvoie `true` (ouvert). Une lecture rapide pourrait crier au fail-open : « une erreur
+de sécurité doit toujours échouer fermé ». Ce n'en est pas un.
+
+- Distinction cruciale : **absence de mécanisme** (source ≠ Drive, ex. fichier local dev/tests) ≠
+  **échec d'une lecture** (Drive configuré mais le fichier de verrou est illisible). Le premier cas
+  renvoie `true` par construction (le verrou n'est pas applicable à cette forme de déploiement,
+  jamais exposée à un document tiers) ; le second échoue TOUJOURS fermé, à l'intérieur même de
+  `creerVerificateurVerrou` (`mcp/drive/writeLockStore.ts`), avant même d'atteindre ce point.
+- Ce choix a évité de casser ~6 fichiers de tests préexistants (`setCash.test.ts`,
+  `applyDebt.test.ts`, etc.) qui construisent un `StateStore` réel via `makeStateStore(new
+  FileStateSource(...))` sans rien savoir du verrou — les rendre tous fail-closed aurait exigé de
+  les modifier un par un pour un mécanisme hors de leur scope, en plus de casser silencieusement
+  tout usage local/stdio légitime (le vrai déploiement exposé au risque est TOUJOURS Drive-backé).
+- Règle générale : avant d'étendre une interface partagée (`StateStore`, `WritableStateSource`) avec
+  un contrôle de sécurité propre à UNE implémentation, vérifier ce que fait CHAQUE autre
+  implémentation existante en l'absence du mécanisme — une valeur de repli n'est un fail-open que si
+  le scénario de menace visé peut RÉELLEMENT atteindre ce chemin-là.
+
+## `UNE-SURFACE-QUI-RECOUVRE-UNE-CIBLE-PEUT-ETRE-TEMPORAIRE` (2026-09-29, `[E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE]`)
+
+Le 25/09, `[FUTUR-CLICK-ANYWHERE]` a été réparé pour un bandeau FIXE qui recouvrait le haut du
+graphe. Il a récidivé pour une autre surface : le toast « Persona … chargé », qui ne vit que 4 s.
+Un recouvrement temporaire se reconnaît à sa signature : il touche les runs les PLUS RAPIDES (le
+graphe est prêt avant la fin de la minuterie) et reste invisible si on lance le test seul.
+- Avant de cliquer à une coordonnée, fermer (ou attendre) les surfaces temporaires comme on écarte
+  le rail (`ecarterLeRail`) : `fermerLesNotifications` le fait dans `activateTestMode`.
+- Un diagnostic doit viser le rôle ACTUEL du conteneur : `closest('[role="img"]')` répondait
+  « NON » depuis la refonte S5 (`role="group"`), ce qui aurait pu égarer l'enquête.
+- Corréler durée du run et échec : les journaux CI suffisent (`gh run view --job <id> --log`).
+
+## `DELETE-PROCESS-ENV-TZ-NE-REMET-PAS-LE-FUSEAU` (2026-09-30, `[BUDGET-TEST-FUSEAU-FUITE]`)
+
+`Budget.test.tsx` a rougi sur `main` le 30/09 (bandeau « Dépassements détectés », 2 cas), et il
+bloquait tous les commits par la porte de commit. Le test passait seul et échouait dans le fichier
+entier. Cause mesurée : un test pose `process.env.TZ = 'Australia/Sydney'` et « restaure » par
+`delete process.env.TZ`. Node ne relit le fuseau que sur une ASSIGNATION : le décalage reste
+−600 min après le `delete`. La suite du fichier tournait donc à l'heure de Sydney, où l'on
+est déjà le 1er du mois suivant dès ~10 h au Québec le dernier jour du mois.
+- Pour restaurer un fuseau, on RÉASSIGNE le fuseau effectif lu au chargement du fichier
+  (`process.env.TZ ?? Intl.DateTimeFormat().resolvedOptions().timeZone`). Jamais `delete`.
+- Un test qui passe seul et échoue en groupe, à une date précise, signale une fuite d'état
+  global (fuseau, horloge simulée, store). On isole par `-t` avant de soupçonner le code.

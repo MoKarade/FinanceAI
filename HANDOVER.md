@@ -4,6 +4,102 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-29 (lot 4) — **`[PRIVACY-SCAN-FORMATNUMBER-DIRECT]` : fuite du mode discret corrigée**
+> Le récapitulatif d'`AddStockForm` affichait en clair, en mode discret, le prix d'achat et le montant
+> investi → `<PrivateAmount>` (test de rendu dans `tests/components/investments/AddStockForm.test.tsx`).
+> `amountPrivacyScan` relève maintenant les appels DIRECTS à `formatNumber(` ; un site non monétaire le
+> déclare par `NOMBRE-NON-MONETAIRE` (±2 lignes, jamais sur une ligne qui porte aussi un montant CAD).
+> Élargi sur décision de Marc : quantité et gain % du récapitulatif masqués, et total du jour du calendrier
+> des factures (`Planning.tsx`) masqué — la garde ne le voyait pas (alibi d'une autre marque sur la même
+> ligne → `[PRIVACY-SCAN-ALIBI-MEME-LIGNE]`). Ratios et durées perso partout : lot à part
+> `[PRIVACY-RATIOS-DUREES-UNIFORMES]` (il inversera les jetons de `DebtManager` et `BudgetGroupTable`).
+>
+> ## 🟦 Session 2026-09-29 (lot 3) — **code mort + garde vie privée `formatNumber`**
+> `[CSV-EXPORTS-MORTS-SANS-GARDE]` : `exportHoldingsCSV`/`exportBudgetCSV` retirés (aucun appelant).
+> `[FUTUR-DETAIL-SHOWNASSETSSUM-MORT]` : variable morte retirée de `FutureDetailModal.tsx`.
+> `[PRIVACY-SCAN-ALIAS-FORMATNUMBER]` : `amountPrivacyScan` voit les alias de `formatNumber` ; nouveau jeton
+> `NOMBRE-NON-MONETAIRE` (définition d'alias seulement, jamais pour un alias de `formatCAD`). Les appels
+> DIRECTS restent hors garde : 6 sites mesurés, à trier → `[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`.
+> ## 🟦 Session 2026-09-29 (suite) — **`[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]` + `[SANDBOX-PROMPTS-MARQUER-CONTEXTE]`**
+> **Retrait** (OK de Marc) : `useTheoretical`/`theoreticalIncome`/`theoreticalExpenses` NEUTRALISÉS dans le
+> moteur (3 sites : `computeIncomeBaseline` perd son paramètre `projection`, base de dépenses
+> `effectiveBaseExpenses`, sensibilité d'épargne) ; les 3 champs restent `@deprecated` dans `types.ts`
+> (pas de migration du schéma persisté). Interface retirée : `macroFields/FluxMensuelsFields.tsx`
+> (supprimé, grille Hypothèses bureau 4 → 3 colonnes) ET le commutateur « Données réelles / Bac à
+> sable » de `FutureProjection.tsx` (il ne pilotait que `useTheoretical` ; gardé, il aurait affiché
+> « Bac à sable » sur du réel — option A validée par financeai-chef). ⚠️ `[SANDBOX-MODE-TEST-GENERALISE]`
+> devra reposer un point d'entrée. Effet de bord utile : `[SANDBOX-FUITE-VERS-LE-MCP]` perd sa cause
+> moteur (un `useTheoretical: true` persisté n'a plus d'effet sur `get_projection` & co.).
+> **Marqueur** (décision Marc 22/09) : `systemPourAppel` (`services/claude.ts`) ajoute
+> `DONNEES_FICTIVES_MARQUEUR` (`utils/promptSafety.ts`) au `system` des 5 points de contact SDK quand
+> `modeDonneesFictives()` ; bloc ajouté EN DERNIER côté agent (cache du 1er bloc intact).
+> `services/claude.ts` rejoint l'inventaire `[SVC-STORE-COUPLING]`. Garde dérivée du grep :
+> `tests/services/promptMarqueurFictif.test.ts`. Tests moteur : `tests/services/useTheoreticalNeutralise.test.ts`.
+>
+> ## 🟦 Session 2026-09-29 — **`[CHIFFREMENT-PHASE1]` : création de passphrase + mémorisation WebAuthn**
+> Phase 1 (app web seule, aucune dépendance Infisical) du plan de chiffrement par défaut. Le chemin de
+> CRÉATION d'une passphrase (retiré en juin) est RÉTABLI : `components/settings/PassphraseCreate.tsx`
+> (3 étapes — saisie/confirmation, avertissement + carte imprimable/téléchargeable en Blob local sans
+> réseau, case « copie hors ligne » obligatoire avant le bouton Activer). Mémorisation par appareil
+> (`services/deviceKeyStore.ts`) : clé AES-256-GCM non extractible en IndexedDB, verrouillée par
+> **WebAuthn biométrique à CHAQUE usage** (authentificateur de PLATEFORME, `userVerification:
+> "required"` — condition BLOQUANTE de pole-securite donnée AVANT tout code, 28/09) ; échec fermé
+> partout (plateforme indisponible/refusée, IndexedDB absent, blob altéré → phrase complète
+> redemandée, jamais un repli plus faible). Filet non bloquant : expiration 30j d'inactivité. Pas de
+> révocation à distance par construction : l'outil de Marc en cas de vol est de CHANGER LA PHRASE
+> depuis un autre appareil (coupe tous les appareils mémorisés d'un coup — copie explicite à l'écran).
+> `PassphraseGate.tsx` tente le déverrouillage automatique au montage (verrou WebAuthn + déchiffrement
+> local, aucun réseau) avant d'afficher le formulaire. `services/googleDrive/backupCleanup.ts` :
+> nettoyage des anciens `.bak.json` en clair, compte AVANT, supprime SEULEMENT sur confirmation
+> explicite ; un backup illisible n'est ni compté ni supprimé (prudence). ADR 0026. Tests :
+> `tests/services/passphraseCreate.test.ts`, `tests/services/deviceKeyStore.test.ts` (15 cas),
+> `tests/services/cloudBackup.migration.test.ts`.
+> ⚠️ Aucun chemin de la config `chemins_label_validation` actuelle n'est touché (vérifié), mais la
+> règle GLOBALE de l'Atelier (jamais armer une PR touchant la sécurité sans OK pole-securite)
+> s'applique : PR ouverte, **non armée**, attend confirmation que les 3 conditions pole-securite (verrou
+> WebAuthn bloquant, filet 30j, copie rotation=révocation) sont bien implémentées telles que décrites.
+> Hors périmètre : Phase 2 (MCP+Infisical, bloquée) et Phase 3 (bascule du défaut), toutes deux plus tard.
+>
+> ## 🟦 Session 2026-09-29 — **`[VERROU-ECRITURE]` : Étape 2, verrou d'écriture MCP hors du chat**
+> Suite de `[MCP-CONFIRM-TOKEN]` (#1076, fusionnée) : le jeton d'aperçu empêche une écriture en UN
+> appel mais pas l'injection de consigne (aperçu+confirme enchaînés par un modèle piégé). Verrou
+> **désactivé par défaut**, activable UNIQUEMENT depuis l'app web (Réglages → Écritures MCP, nouvelle
+> `WriteLockCard`), jamais depuis claude.ai. État dans `financeai-write-lock.json` (appDataFolder,
+> même dossier que `financeai-sync.json`, aucun nouveau scope OAuth). **Lecture SEULE côté MCP**
+> (`mcp/drive/writeLockStore.ts` — n'expose AUCUNE fonction d'écriture, vérifié par test structurel) ;
+> **écriture SEULE côté app web** (`services/googleDrive/writeLock.ts`). Vérifié dans `runApply`
+> AVANT la logique d'aperçu/jeton de #1076 (les deux se cumulent, défense en profondeur) : un verrou
+> refermé refuse même un `confirmToken` valide émis pendant une fenêtre désormais close. Échec fermé
+> partout (réseau, fichier absent, JSON invalide, exception) — jamais un repli ouvert ; une source
+> d'état SANS Drive (fichier local, tests) n'implémente pas le mécanisme, ce n'est PAS un fail-open
+> (le verrou ne s'applique qu'aux déploiements Drive-backed, la seule forme exposée à un document
+> tiers). ADR 0025. Tests : `tests/mcp/verrouEcriture.test.ts`,
+> `tests/mcp/verrouEcritureIntegration.test.ts` (matrice 8 outils + structurel), `tests/services/writeLock.test.ts`.
+> ⚠️ PR sensible (`mcp/**`, `services/googleDrive/**`, `components/settings/**`) : brouillon, non
+> armée, relecture ligne à ligne de pole-securite obligatoire avant tout armement.
+>
+> ## 🟦 Session 2026-09-26 — **`[MCP-DURCISSEMENT]` : limites de débit du MCP, message de parse sans extrait, clé d'accès faible signalée**
+> Audit P3-P6 (moyennes 5, 6, 8). (1) `parseRawToAppState` : message fixe (« contenu non affiché »), plus l'extrait de `JSON.parse`. (2) `mcp/auth/routeRateLimit.ts` : `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail`. RÈGLE : on VÉRIFIE D'ABORD le secret (mêmes comparaisons en temps constant que les handlers), on refuse après. Appels AUTHENTIFIÉS : plafond de volume (300/min, 12/h, 12/h, 120/h, 60/h) ; un appel non authentifié ne touche jamais ce budget. Appels NON authentifiés : compteur d'échecs PAR ADRESSE (dernier élément de `X-Forwarded-For`, seuil 100 par 15 min, table bornée) → 429 ; un secret valide n'est JAMAIS bloqué. Pas de blocage global (ce serait un déni de service ouvert à Internet). `/oauth/authorize` : même logique, compteur PAR ADRESSE (8 par 15 min) + plafond global de sécurité (200) appliqué SEULEMENT si la clé d'accès est faible (< 32) ; le blocage précède la comparaison de la clé (même pour la bonne clé depuis une adresse bloquée : sinon la clé se devinerait à la vitesse de la ligne) ; à vérifier en production que le dernier élément de `X-Forwarded-For` est l'adresse client (`docs/A_FAIRE_MOI.md`). (3) `FINANCEAI_ACCESS_KEY` < 32 caractères : le serveur DÉMARRE, alerte au journal (sans la clé ni sa longueur) et l'outil `ping` (derrière l'OAuth, donc visible de Marc seulement) ajoute « clé d'accès faible » ; `/health` ne dit rien. Avec `FINANCEAI_ACCESS_KEY_STRICT=1`, seule `/oauth/authorize` répond 503 (nouvelles autorisations) ; hub, véhicule, refresh, sync et les sessions déjà autorisées continuent.
+> Marc : régénère la clé (64 caractères hex) quand tu veux, puis pose la variable GitHub `MCP_ACCESS_KEY_STRICT=1` (câblée par `mcp/deploy.sh` et `deploy-mcp.yml` vers `FINANCEAI_ACCESS_KEY_STRICT=1`) (`docs/A_FAIRE_MOI.md`). Chiffres de débit = estimation de l'usage (`ROUTE_LIMITS`), cadence réelle du hub à confirmer.
+>
+> ## 🟥 Session 2026-09-28 (suite) — **`[GARDE-JQ-AUTO-MERGE-LENGTH]` : `main` bloquait toute PR sur une garde anti-fuite**
+> `tests/journauxCiSansDonnees.test.ts` (liste blanche des programmes `jq` des workflows) ne connaissait pas
+> `gh pr list --json number --jq 'length'` de `.github/workflows/auto-merge.yml:77` (compte de PR ouvertes,
+> jamais de contenu) — introduit par `[KIT-191]`/#1085 sans mise à jour de la garde, découvert en fusionnant
+> #1076. `main` lui-même était rouge sur cette porte : **toute PR en échouait**, sans rapport avec son propre
+> contenu. Corrigé : `'auto-merge.yml': ['length']` ajouté à `PROGRAMMES_JQ_AUTORISES`, aucun changement au
+> workflow. PR isolée et minimale, pas de chemin sensible (`tests/**` seul), armable dès portes vertes.
+>
+> ## 🟦 Session 2026-09-28 (suite) — **`[STRUCTURE-COMMUNE]` : docs/ETAT.md + ignoreCommand Vercel (structure commune aux 7 apps, spec pole-architecture)**
+> Vague 3 de l'alignement structurel : `docs/ETAT.md` créé (seul `docs/ARCHITECTURE.md` existait), même patron que BatchChef
+> (photographie datée, sourcée, pointeurs vers `HANDOVER.md`/`BACKLOG.md`/`docs/A_FAIRE_MOI.md`). `vercel.json` gagne un
+> `ignoreCommand` : saute la préversion Vercel quand la PR ne touche QUE `*.md`/`docs/**`/`.github/**` (échec fermé — tout
+> doute construit). ⚠️ `mcp/**` volontairement HORS de la liste ignorable, malgré le déploiement séparé du MCP sur Cloud Run :
+> `hooks/useFinancialSignals.ts` importe `mcp/financialSignals.ts`, un module RÉELLEMENT inclus dans le bundle web — l'exclure
+> aurait pu laisser une préversion stale sur un changement qui compte. Le script `qualite/portes.mjs` avait DÉJÀ une entrée npm
+> (`portes`/`portes:maj`) — vérifié avant de recréer quoi que ce soit, rien à faire de ce côté. Aucun code métier. PR brouillon,
+> chemin sensible (`vercel.json`), attend la relecture de pole-securite.
+>
 > ## 🟥 Session 2026-09-25 (suite) — **`[CF-ACCESS]` : le mur Cloudflare Access, vérifié côté API**
 > Marc a dit OUI (Access remplace la passkey ; ADR `0022`). **Code livré, sans effet tant que Marc n'a pas posé le mur**
 > (`A_FAIRE_MOI` → `[CF-ACCESS-MISE-EN-SERVICE]`, dans l'ordre : test iPhone → application Access → variables Vercel AVEC
@@ -259,6 +355,20 @@
 > ni assertion assouplis, aucun code de production touché. Suite : 6832/6832. ⚠️ Une copie déjà extraite reste CRLF
 > tant qu'on ne la ré-extrait pas. Leçon : `docs/CONVENTIONS.md` `UNE-GARDE-VERTE-EN-CI-LINUX-PEUT-ETRE-ROUGE-SOUS-WINDOWS`.
 >
+> ## 🟦 Session 2026-09-26 — **`[MCP-CONFIRM-TOKEN]` : les écritures du connecteur claude.ai exigent un aperçu puis un jeton serveur**
+> Audit sécurité P3-P6 (findings élevés 1-2) : `apply_*` écrivaient sans confirmation et `confirm:true` était fourni par le modèle.
+> Désormais 8 outils via `mcp/tools/_writeTool.ts` : 1er appel = aperçu + `confirmToken` (usage unique, 5 min, lié session/outil/arguments/changements),
+> 2e appel = mêmes arguments + jeton. `confirm` retiré du schéma MCP. Plafond 500 éléments, annotations MCP, journal d'audit sans donnée.
+> Jetons en mémoire (limite : redémarrage = nouvel aperçu). ADR 0023. Tests : `tests/mcp/confirmationEcritureMcp.test.ts`.
+> ⚠️ PR sensible (`mcp/**`) : brouillon, validation Marc, non armée. Déploiement Cloud Run via `deploy-mcp.yml` après fusion.
+>
+> ## 🟦 Session 2026-09-29 — **`[E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE]` + `[E2E-RAPIDE]` : suite E2E stable et 2× plus courte**
+> Récidive du test « clic partout » avec une AUTRE cause que le bandeau du 25/09 : le toast « Persona … chargé »
+> (4 s) recouvrait la bande basse visée ; 11 runs touchés sur 45. `activateTestMode` ferme les notifications
+> (`fermerLesNotifications`). `workers: 2` en CI : 6,5 → 3,1 min en local (62/62 ×3) ; en CI 6,2-6,7 → 4,6 min (62/62, PR #1111).
+> ⚠️ Un 1er essai du helper (clic « fermer » sans délai) a fait expirer 3 specs en CI : tout clic d'un helper doit être borné.
+> Leçon : `docs/CONVENTIONS.md` `UNE-SURFACE-QUI-RECOUVRE-UNE-CIBLE-PEUT-ETRE-TEMPORAIRE`.
+>
 > ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**
 > Après #1009 + variables Vercel : `POST /api/claude/v1/messages` → **405**, `GET` → `index.html`. L'attrape-tout
 > `api/claude/[...path].ts` n'est pas routé sur ce projet Vite ; la réécriture SPA `/(.*)` avalait l'appel → toute l'IA
@@ -267,6 +377,9 @@
 > ⚠️ Après un rollback, Vercel coupe l'auto-assignation du domaine de prod : le prochain déploiement doit être
 > **promu** (Vercel → Deployments → Promote) — sinon finance.hubperso.com reste sur l'ancien.
 > Leçon : `docs/CONVENTIONS.md` `UN-RELAIS-NON-TESTE-EN-PROD-N-EST-PAS-UN-RELAIS`.
+>
+> ## 🟦 Session 2026-09-26 — **`[PTF-JOURNAL-PUBLIC-ERREURS]` : le journal PUBLIC des crons n'imprime plus le texte des erreurs**
+> Audit P3-P6 (moyenne 5) : `fintable-sync.yml` imprimait `error` du serveur, `refresh-prices.yml` `error` et `fx.erreur` — des messages d'exception libres (l'erreur de `JSON.parse` cite un extrait du texte fautif). Désormais modèle fixe : `erreur_signalee` (booléen) ; `ok`, `conflict`, `saved` normalisés en booléens ; `sautes`, `fx.ecriture`, `fx.cause` en codes d'une liste fermée (sinon « autre »). Garde : LISTE BLANCHE des programmes jq (`tests/journauxCiSansDonnees.test.ts`). Filtre exécuté sous jq réel sur 3 entrées piégées (texte libre partout) : rien de libre ne sort. Reste (hors lot) : le message de `parseRawToAppState` (`mcp/state/loadAppState.ts`) cite toujours le texte de `JSON.parse` côté serveur.
 >
 > ## 🟦 Session 2026-09-23 — **`[IA-LOCALE]` : le relais route un maximum d'appels Claude vers l'IA locale de Marc**
 > 🔎 Marc : « continue avec financeai … faire passer un max par ollama ». L'Atelier (dépôt MoKarade/atelier)

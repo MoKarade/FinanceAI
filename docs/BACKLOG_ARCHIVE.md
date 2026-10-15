@@ -10,6 +10,57 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — Restauration : fichier refusé en mots simples
+
+- [x] **`[BACKUP-INVALIDE-SIMPLE]`** — `BackupPanel.tsx` (restauration JSON et chiffrée) affichait « Backup invalide (chemin) : message Zod ».
+  Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
+  `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
+
+## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
+
+- [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements
+  détectés » rouges sur `main`. Ils bloquaient tous les commits via la porte de commit (kit 1.15.0).
+  Le test passait seul et échouait dans le fichier. Cause mesurée : le test « défauts Custom »
+  pose `TZ=Australia/Sydney` puis fait `delete process.env.TZ`, ce qui ne remet pas le fuseau
+  (décalage −600 min après suppression). Le 30/09 en après-midi, il était déjà le 1er octobre à
+  Sydney. Correctif : réassigner le fuseau effectif lu au chargement du fichier
+  (`restaurerFuseau`). Aucun code de l'app ne change.
+
+## 2026-09-29 — Suite E2E : « clic partout » stabilisé (récidive) et job deux fois plus court
+
+- [x] 🟠 **`[E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE]`** (S) — ✅ 2026-09-29 : RÉCIDIVE avec une
+  AUTRE cause que celle du 25/09 (le bandeau, corrigé). Mesuré sur 45 runs CI (28-29/09) :
+  11 touchés (3 rouges dont 2 sur `main`, 8 « flaky »), toujours la « bande basse » (709, 675),
+  et le journal nomme le toast `div[role=status] .animate-toast-in` sous le pointeur. Le toast
+  « Persona … chargé » de l'activation du mode test vit 4 s en bas à droite ; boîte mesurée
+  x 684→1256, y 618→696 : elle contient le point visé. Les runs touchés sont les PLUS RAPIDES
+  (4,4-4,8 min contre 6,4) : une course contre la minuterie du toast. Reproduit de façon
+  déterministe (toast remis juste avant le clic → aucun jour épinglé). Correctif :
+  `activateTestMode` ferme les notifications (`fermerLesNotifications`, `e2e/helpers/setup.ts`),
+  et le diagnostic de `clickAndFreeze` reconnaît le graphe (`role="group"`, il répondait « NON »
+  à tort depuis la refonte S5).
+- [x] 🟡 **`[E2E-RAPIDE]`** (S) — ✅ 2026-09-29 : `workers` 1 → 2 en CI (`playwright.config.ts`).
+  Local, même machine : 6,5 min → 3,1 min, 62/62 verts sur 3 suites complètes, et 30/30 sur
+  `futureDailySelect` répété 5 fois à 2 workers. En CI (PR #1111) : 62/62 en 4,6 min contre
+  6,2-6,7 min sur les 39 runs verts précédents.
+
+## 2026-09-29 — Verrou d'écriture MCP hors du chat (Étape 2)
+
+- [x] 🔧 **`[VERROU-ECRITURE]`** (M) — verrou d'écriture désactivé par défaut, activable UNIQUEMENT
+  depuis l'app web (Réglages → Écritures MCP), jamais depuis la conversation claude.ai : défense en
+  profondeur par-dessus le jeton de `[MCP-CONFIRM-TOKEN]` contre l'injection de consigne. PR #1093
+  fusionnée le 29/09/2026 (mergedAt 02:41:50Z), OK sécurité pole-securite (2 relectures, dont
+  recommandation non bloquante `isDrive` sur `/health`), gate vert. ADR 0025.
+
+## 2026-09-29 — Confirmation à deux temps des écritures MCP (audit P3-P6)
+
+- [x] 🔧 **`[MCP-CONFIRM-TOKEN]`** (M) — confirmation à deux temps liée côté serveur pour les 8 outils
+  d'écriture MCP (aperçu + jeton à usage unique, `confirm:true` retiré du schéma). PR #1076 fusionnée
+  le 29/09/2026 (mergedAt 01:03:03Z), OK sécurité pole-securite, gate vert (typecheck/lint/7217
+  tests/build). ADR 0023. Suite non faite, reste au BACKLOG courant sous un autre ID : rate limit sur
+  `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail` ; longueur minimale de
+  `FINANCEAI_ACCESS_KEY` (audit findings moyenne 6 et 8).
+
 ## 2026-09-25 — Lot L2 de l'audit sur les 7 autres dépôts (case restée ouverte sept jours)
 
 - [x] 🔧 **`[AUDIT-L2-AUTRES]` Le même lot L2 sur les 7 autres dépôts** (S) — ✅ livré le

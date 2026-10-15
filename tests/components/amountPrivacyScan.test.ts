@@ -84,8 +84,10 @@ const files = readdirSync(path.join(ROOT, 'components'), { recursive: true, enco
     .map((f) => path.join(ROOT, 'components', f));
 
 /**
- * Jeton posé sur la DÉFINITION d'un alias de `formatNumber` (sur sa ligne ou celle du dessus) qui
- * formate un nombre qui n'est PAS un montant de l'utilisateur (pourcentage d'hypothèse, durée…).
+ * Jeton posé sur la DÉFINITION d'un alias de `formatNumber` (sur sa ligne ou celle du dessus), ou au-dessus
+ * d'un appel direct / d'un ratio, pour un nombre qui n'est PAS une donnée de l'utilisateur (hypothèse
+ * saisie, qualité d'un outil…). ⚠️ Depuis `[PRIVACY-RATIOS-DUREES-UNIFORMES]` (Marc, 2026-09-29), un
+ * ratio ou une durée DÉRIVÉ du dossier ne se déclare PLUS ainsi : il se masque.
  * Honoré pour `formatNumber` SEULEMENT : un alias de `formatCAD` est un montant par construction.
  */
 const NOMBRE_NON_MONETAIRE = /NOMBRE-NON-MONETAIRE/;
@@ -122,6 +124,15 @@ export function aliasMonetaires(src: string, brut?: string): string[] {
  */
 const NOMBRE_DIRECT = /\bformatNumber\s*\(/;
 
+/**
+ * [PRIVACY-RATIOS-DUREES-UNIFORMES] Décision de Marc (2026-09-29) : un RATIO dérivé des données de
+ * l'utilisateur (part du budget, poids d'un titre, taux d'épargne, variation du portefeuille, gain %)
+ * se masque comme un montant. Relevés ici : `formatPercent(`, `formatVariationPct(`, et un
+ * `.toFixed(n)` suivi d'un `%` sur la même ligne. Un pourcentage NON personnel (hypothèse de marché,
+ * réglage de simulation, barème légal) le DÉCLARE par `NOMBRE-NON-MONETAIRE` ou `MONTANT-PUBLIC`.
+ */
+const RATIO_BASE = /\bformatPercent\s*\(|\bformatVariationPct\s*\(|\.toFixed\(\s*\d*\s*\)[^\n%]{0,6}%/;
+
 interface Site { fichier: string; ligne: number; texte: string }
 
 function sitesNonMasques(): Site[] {
@@ -141,7 +152,7 @@ function sitesNonMasquesDans(brut: string, fichier: string): Site[] {
         const ALIAS = alias.length ? new RegExp(`\\b(${alias.join('|')})\\s*\\(`) : null;
         lines.forEach((l, i) => {
             const monetaire = MONEY_BASE.test(l) || (ALIAS !== null && ALIAS.test(l));
-            const nombre = NOMBRE_DIRECT.test(l);
+            const nombre = NOMBRE_DIRECT.test(l) || RATIO_BASE.test(l);
             if (!monetaire && !nombre) return;
             // La DÉFINITION d'un alias n'est pas un rendu — c'est son point d'APPEL qui compte.
             if (/const\s+\w+\s*[:=][^\n]*=>/.test(l) && (MONEY_BASE.test(l) || nombre)) return;
@@ -241,6 +252,17 @@ describe('[A11Y-PRIVACY-SCAN-GLOBAL] aucun montant rendu n\'échappe au mode dis
         // Le jeton d'un site du DESSOUS n'excuse pas un montant du dessus.
         const dessus = '<b>{formatNumber(total)}</b>\n{/* NOMBRE-NON-MONETAIRE */}\n<span>{formatNumber(part)} %</span>';
         expect(sitesNonMasquesDans(dessus, 'synthese.tsx').map((s) => s.ligne)).toEqual([1]);
+    });
+
+    it('[PRIVACY-RATIOS-DUREES-UNIFORMES] un ratio rendu en clair est relevé, sauf masqué ou déclaré', () => {
+        const pct = 'const a = 1;\n<span>{formatPercent(taux, 1)}</span>\nconst b = 2;';
+        expect(sitesNonMasquesDans(pct, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        const toFixed = 'const a = 1;\n<div>{a.weight.toFixed(1)}%</div>\nconst b = 2;';
+        expect(sitesNonMasquesDans(toFixed, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        const variation = 'const a = 1;\n<div>{formatVariationPct(v, 2)}</div>\nconst b = 2;';
+        expect(sitesNonMasquesDans(variation, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        expect(sitesNonMasquesDans(pct.replace('{formatPercent(taux, 1)}', '<PrivateAmount>{formatPercent(taux, 1)}</PrivateAmount>'), 's.tsx')).toEqual([]);
+        expect(sitesNonMasquesDans('{/* MONTANT-PUBLIC : barème */}\n<span>{formatPercent(taux, 1)}</span>', 's.tsx')).toEqual([]);
     });
 
     it('le jeton de dette `MONTANT-CHAINE-A-DECOUPER` a bien disparu du dépôt', () => {

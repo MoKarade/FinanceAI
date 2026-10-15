@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
+
+- Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.
+
 ## 2026-09-29 — Futur : le commutateur « Bac à sable » et ses curseurs théoriques sont retirés ; l'IA sait quand les chiffres sont fictifs
 
 - L'onglet Futur n'affiche plus le commutateur « Données réelles / Bac à sable » ni les curseurs

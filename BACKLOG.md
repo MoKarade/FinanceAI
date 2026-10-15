@@ -438,7 +438,7 @@ désinfecte le snapshot avant de le restaurer.
   au lieu d'apparaître au survol. Corriger = monter l'opacité du fond/bordure, et la valeur se
   choisit par MESURE, jamais au jugé.
 
-- [ ] 🔧 **`[PANNEAU-FLUX-COLONNE-MUETTE]`** (XS) — **PRÉEXISTANT** (hérité de l'infobulle, vérifié
+- [ ] 🔧 **`[PANNEAU-FLUX-COLONNE-MUETTE]`** — ✅ **livré 2026-10-14** (à archiver au merge) (XS) — **PRÉEXISTANT** (hérité de l'infobulle, vérifié
   contre `f2d0ee69`), signalé par la chasse aux échecs silencieux. `SectionFlux` rend un bloc VIDE
   quand aucun revenu ni dépense n'est non nul (une journée calme) : une colonne sans texte se lit
   comme une donnée manquante, alors que ses trois sœurs disent toutes explicitement qu'il n'y a rien

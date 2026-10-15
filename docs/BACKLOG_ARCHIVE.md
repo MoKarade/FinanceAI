@@ -21,6 +21,12 @@
 
 Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions périmées retirées (curseurs, données théoriques, « Départ en 2026 », « v4.0 »). Test : `tests/components/GuideModal.langue.test.tsx`.
 
+## 2026-10-15 — Google Drive : l'erreur de synchro est une phrase simple
+
+- [x] **`[DRIVE-ERREUR-SIMPLE]`** — `services/sync/syncErrors.ts` affichait « Sync (pull) : <message brut> ». Il affiche
+  maintenant « Drive ne répond pas, réessaie dans un instant » ; la phase (`errorPhase`) est conservée et le détail
+  technique reste dans le journal d'erreurs. Test : `tests/services/sync/syncErrors.test.ts`. Les messages propres de
+  `syncPull.ts` (passphrase, sauvegarde corrompue) sont déjà en français et inchangés.
 ## 2026-10-15 — Restauration : fichier refusé en mots simples
 
 - [x] **`[BACKUP-INVALIDE-SIMPLE]`** — `BackupPanel.tsx` (restauration JSON et chiffrée) affichait « Backup invalide (chemin) : message Zod ».

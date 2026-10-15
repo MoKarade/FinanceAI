@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-15 — Transactions : accents et tutoiement
+
+- Les messages et libellés de l'onglet Transactions sont écrits en français correct : « Filtre par catégorie », « Catégorie à appliquer », « Choisir une catégorie… », « transaction(s) mises à jour », « classée(s) par règles — rien à envoyer à l'IA », « Tout semble déjà classé ! Utilise le mode manuel si besoin. ».
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

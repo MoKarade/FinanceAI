@@ -10,6 +10,10 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — `[TRANSACTIONS-LANGUE]` Transactions : accents et tutoiement
+
+Libellés sans accent (« categorie », « deja classe », « mises a jour », « par regles ») et vouvoiement corrigés dans `components/Transactions.tsx`. Test : `tests/components/Transactions.langue.test.tsx`. PR : carte 12.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

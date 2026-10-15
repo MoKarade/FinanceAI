@@ -4,6 +4,10 @@
 
 - Le guide de chaque onglet est écrit en français correct, avec les accents et en tutoyant. Il ne parle plus des curseurs ni des « données théoriques » (retirés le 2026-09-29), du « Départ en 2026 » ni de « v4.0 ».
 
+## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
+
+- Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

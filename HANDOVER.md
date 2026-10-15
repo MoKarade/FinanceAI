@@ -4,6 +4,16 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-15 — **`[CI-QUALITE-EN-PARALLELE]` : le contrôle « Qualité » ne fait plus attendre la file** (FinanceAI#1181)
+> Avant : 10 à 13 min par passage (runs 38800255547 et 38802214924), dont l'essentiel en tests sous couverture
+> exécutés un fichier à la fois ; Mergify (`max_parallel_checks: 1`) faisait attendre chaque PR d'autant.
+> Après : 4 tranches de tests en parallèle (`qualite/portes.mjs --tranche i/4`) + contrôles statiques à côté
+> (`--statique`) ; le job « Qualité (lint · couverture · code mort · architecture) » — nom inchangé, contrôle
+> obligatoire — fusionne (`--fusion 4`) et juge au même cliquet. Aucun test retiré ni affaibli : mesuré en local,
+> 7 244 tests / 0 échec et 93,56 % de lignes / 84,12 % de branches, identiques à la mesure en une pièce. La fusion
+> échoue si une tranche manque. ⚠️ Le « 4 » est écrit dans la matrice, `--tranche` et `--fusion` du workflow.
+> ⚠️ `.github/` et `qualite/` sont des chemins protégés : Marc fusionne cette PR. Mesure en CI : voir la PR.
+>
 > ## 🟦 Session 2026-09-29 (lot 4) — **`[PRIVACY-SCAN-FORMATNUMBER-DIRECT]` : fuite du mode discret corrigée**
 > Le récapitulatif d'`AddStockForm` affichait en clair, en mode discret, le prix d'achat et le montant
 > investi → `<PrivateAmount>` (test de rendu dans `tests/components/investments/AddStockForm.test.tsx`).

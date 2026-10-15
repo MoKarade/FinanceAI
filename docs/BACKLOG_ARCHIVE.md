@@ -16,6 +16,11 @@
   Il affiche « Fintable refuse la connexion : renouvelle ton jeton » (401/403) ou « Fintable ne répond pas, réessaie
   dans un instant » (le reste) ; le texte brut est dans un « Détail technique » replié. Helper pur :
   `services/fintable/phraseErreurFintable.ts`. Test : `tests/services/fintable/phraseErreurFintable.test.ts`.
+## 2026-10-15 — Restauration : fichier refusé en mots simples
+
+- [x] **`[BACKUP-INVALIDE-SIMPLE]`** — `BackupPanel.tsx` (restauration JSON et chiffrée) affichait « Backup invalide (chemin) : message Zod ».
+  Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
+  `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
 
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 

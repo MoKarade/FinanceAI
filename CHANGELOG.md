@@ -3,6 +3,9 @@
 ## 2026-10-15 — Fintable : l'échec d'une synchro est dit en mots simples
 
 - Quand la synchro Fintable échoue, la carte dit « Fintable refuse la connexion : renouvelle ton jeton » ou « Fintable ne répond pas, réessaie dans un instant ». Le message technique est replié sous « Détail technique ».
+## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
+
+- Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
 
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 

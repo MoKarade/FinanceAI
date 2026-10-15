@@ -88,7 +88,7 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                         rows={4}
                         onChange={(e) => { const v = e.target.value; if (v.trim()) parse(v); else reset(); }}
                         placeholder={'Symbol,Quantity,Average Cost,Currency,Account\nAAPL,10,150.25,USD,TFSA'}
-                        className="w-full bg-dark border border-white/10 rounded px-3 py-2 text-white font-mono text-tiny outline-none focus:border-primary"
+                        className="w-full bg-dark border border-white/10 rounded-sm px-3 py-2 text-white font-mono text-tiny outline-hidden focus:border-primary"
                     />
                 </div>
 
@@ -136,14 +136,14 @@ export const ImportBrokerPositions: React.FC<Props> = ({ isOpen, onClose, onImpo
                 )}
 
                 <div className="flex justify-end gap-2 pt-2">
-                    <button type="button" onClick={handleClose} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-ink-200 rounded font-bold text-body transition-colors">
+                    <button type="button" onClick={handleClose} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-ink-200 rounded-sm font-bold text-body transition-colors">
                         Annuler
                     </button>
                     <button
                         type="button"
                         onClick={confirm}
                         disabled={!preview}
-                        className="px-4 py-2 bg-primary hover:bg-primary/80 text-dark rounded font-bold text-body transition-colors disabled:opacity-50"
+                        className="px-4 py-2 bg-primary hover:bg-primary/80 text-dark rounded-sm font-bold text-body transition-colors disabled:opacity-50"
                     >
                         Importer{preview ? ` ${preview.imported} position(s)` : ''}
                     </button>

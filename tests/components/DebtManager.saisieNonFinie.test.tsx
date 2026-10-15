@@ -15,7 +15,7 @@ import type { Debt } from '../../types';
 vi.mock('recharts', async () => {
     const R = await import('react');
     const P = ({ children }: { children?: React.ReactNode }) => R.createElement('div', null, children);
-    return { ResponsiveContainer: P, AreaChart: P, Area: () => null, XAxis: () => null, YAxis: () => null, Tooltip: () => null, CartesianGrid: () => null };
+    return { ResponsiveContainer: P, AreaChart: P, ComposedChart: P, Area: () => null, Line: () => null, XAxis: () => null, YAxis: () => null, Tooltip: () => null, CartesianGrid: () => null };
 });
 
 const dette = (over: Partial<Debt> = {}): Debt =>
@@ -59,7 +59,7 @@ describe('[DEBT-BALANCE-NAN-SILENCIEUX] à l’ÉDITION, un solde vidé ne s’e
 describe('[DEBT-BALANCE-NAN-SILENCIEUX] le refus est un ÉTAT qui se remet à zéro au changement de formulaire (revue du lot 213)', () => {
     it('un refus à l’ajout ne s’affiche PAS sur une dette saine ouverte ensuite en édition', () => {
         render(<DebtManager debts={[dette()]} setDebts={vi.fn()} />);
-        fireEvent.click(screen.getByRole('button', { name: '+ Ajouter' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Ajouter une dette' }));
         fireEvent.change(screen.getByLabelText('Nom de la dette'), { target: { value: 'Auto' } });
         // Saisir PUIS vider : un champ déjà vide ne déclenche aucun changement (0 reste 0, pas NaN).
         fireEvent.change(screen.getAllByLabelText('Solde de la dette (dollars)')[0], { target: { value: '5000' } });
@@ -75,7 +75,7 @@ describe('[DEBT-BALANCE-NAN-SILENCIEUX] à l’AJOUT, un taux vidé est refusé 
     it('nom + solde valides, taux vidé → refus nommé, rien d’ajouté', () => {
         const setDebts = vi.fn();
         render(<DebtManager debts={[]} setDebts={setDebts} />);
-        fireEvent.click(screen.getByRole('button', { name: '+ Ajouter' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Ajouter une dette' }));
         fireEvent.change(screen.getByLabelText('Nom de la dette'), { target: { value: 'Auto' } });
         fireEvent.change(screen.getByLabelText('Solde de la dette (dollars)'), { target: { value: '12000' } });
         fireEvent.change(screen.getByLabelText("Taux d'intérêt (pourcentage)"), { target: { value: '7' } });
@@ -103,6 +103,6 @@ describe('[DEBT-BALANCE-NAN-SILENCIEUX] la simulation dit « — » quand une de
 
     it('contrôle — dette saine : une durée en années est affichée', () => {
         render(<DebtManager debts={[dette()]} setDebts={vi.fn()} />);
-        expect(screen.getByText('Liberté dans').parentElement!.textContent).toMatch(/\d\.\d ans/);
+        expect(screen.getByText('Liberté dans').parentElement!.textContent).toMatch(/\d,\d ans/); // [S5-REFONTE-DETTES] virgule décimale fr-CA
     });
 });

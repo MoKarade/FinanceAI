@@ -123,7 +123,7 @@ en découlent, toutes fondées sur la MESURE et non sur la doc :
    plutôt que par une intention — l'intention était sincère et fausse. À réévaluer si la fenêtre
    s'élargit (les connexions sont peut-être récentes), mais **jamais de suppression sur une promesse**.
 3. **Mapping des comptes, décidé par Marc** (le champ `type` est du texte libre, la doc interdit d'en
-   déduire quoi que ce soit) : les deux comptes Disnat (`investment / brokerage`, l'un USD l'autre CAD)
+   déduire quoi que ce soit) : les comptes de courtier (`investment / brokerage`, l'un USD l'autre CAD)
    sont **non-enregistrés** ; la Mastercard Desjardins (`credit / credit card`) doit alimenter une
    **dette**, pas les liquidités — la majorité des transactions en viennent, et confondre son solde avec du
    cash gonflerait le patrimoine du montant dû.
@@ -149,13 +149,13 @@ transactions réelles) et peut avancer.
 
 **1. Les positions détaillées sont hors de portée via Fintable [Certain, mesuré].** L'annuaire PUBLIC
 (`GET /institutions?provider=SNAPTRADE&country=CA`, sans authentification) rend **exactement trois
-courtiers** : Webull Canada, Questrade, Wealthsimple Trade. `q=disnat` → **0 résultat** ; l'entrée
-« Desjardins Online Solutions » est `supported: false`. Le compte Disnat de Marc est donc lié par un
+courtiers** : Webull Canada, Questrade, Wealthsimple Trade. `q=<courtier>` → **0 résultat** ; l'entrée
+« l'institution » est `supported: false`. Le compte courtier de Marc est donc lié par un
 lien **bancaire** (PLAID), qui expose le `balance` du compte mais jamais ses `holdings`.
 
 Ce n'est pas une configuration à corriger, c'est une **limite du produit**. Conséquences :
 - volet positions du `[FINTABLE-2]` **abandonné** (pas « différé ») ;
-- les positions continuent de passer par `apply_broker_statement` — dépôt d'un relevé Disnat dans le
+- les positions continuent de passer par `apply_broker_statement` — dépôt d'un relevé courtier dans le
   chat — qui fonctionne déjà et ne coûte rien ;
 - les soldes des comptes de placement sont conservés comme **valeur de RÉFÉRENCE du courtier**, à
   comparer au patrimoine calculé. C'est précisément le garde-fou qui manquait lors de l'incident

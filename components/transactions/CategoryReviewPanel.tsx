@@ -30,10 +30,13 @@ interface Props {
     onChange: (next: CategoryReviewState | undefined) => void;
     /** Ouvre la correction d'une transaction jugée mal classée (réutilise l'édition existante). */
     onFixCategory: (id: number) => void;
+    /** [S5-REFONTE-TRANSACTIONS] Rendu DANS le panneau d'outil de la page (qui porte titre et
+     *  fermeture) : ouvert d'emblée, sans son propre en-tête ni cadre. */
+    integre?: boolean;
 }
 
-export const CategoryReviewPanel: React.FC<Props> = ({ transactions, review, onChange, onFixCategory }) => {
-    const [open, setOpen] = useState(false);
+export const CategoryReviewPanel: React.FC<Props> = ({ transactions, review, onChange, onFixCategory, integre = false }) => {
+    const [open, setOpen] = useState(integre);
 
     const poolSize = useMemo(
         () => (open ? eligibleForReview(transactions).length : 0),
@@ -82,8 +85,8 @@ export const CategoryReviewPanel: React.FC<Props> = ({ transactions, review, onC
     const remaining = sample.length - (review?.reviewedIds.length ?? 0);
 
     return (
-        <div className="rounded-xl border border-primary/20 bg-primary/5">
-            <button
+        <div className={integre ? '' : 'rounded-xl border border-primary/20 bg-primary/5'}>
+            {!integre && <button
                 onClick={() => setOpen((p) => !p)}
                 aria-expanded={open}
                 className="w-full flex items-center justify-between px-4 py-3 text-meta font-bold text-ink-200 hover:text-ink-50 transition-colors"
@@ -98,10 +101,10 @@ export const CategoryReviewPanel: React.FC<Props> = ({ transactions, review, onC
                     )}
                 </span>
                 <span className={`transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">▼</span>
-            </button>
+            </button>}
 
             {open && (
-                <div className="px-4 pb-4 space-y-3">
+                <div className={integre ? 'space-y-3' : 'px-4 pb-4 space-y-3'}>
                     {!review && (
                         <>
                             <p className="text-meta text-ink-300">

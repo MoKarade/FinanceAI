@@ -21,9 +21,11 @@ import { usePendingFocus } from '../../utils/usePendingFocus';
 import { Budget } from '../Budget';
 import { Planning } from '../Planning';
 import { HealthIndicator } from '../dashboard/HealthIndicator';
-import { ProfileFieldsMoved } from '../settings/ProfileFieldsMoved';
 import { PageHeader } from '../ui/PageHeader';
-import { Icon, type IconName } from '../ui/Icon';
+import { type IconName } from '../ui/Icon';
+import { useViewportBelowLg } from '../../hooks/useViewportBelowLg';
+import { isCoupleMode } from '../../services/couple/netWorthByOwner';
+import { useBudgetPilotage, ChoixPeriode, NavigateurPeriode, ChoixPersonne } from './pilotage';
 import { SubTabs, TabPanel } from '../ui/SubTabs';
 
 interface BudgetWorkspaceProps {
@@ -38,7 +40,7 @@ type SubTab = 'budget' | 'fixed' | 'sante';
 
 const SUB_TABS: ReadonlyArray<{ id: SubTab; label: string; icon: IconName }> = [
     { id: 'budget', label: 'Budget', icon: 'chart' },
-    { id: 'fixed', label: 'Charges fixes & Abos', icon: 'clock' },
+    { id: 'fixed', label: 'Charges fixes et abonnements', icon: 'clock' },
     { id: 'sante', label: 'Santé', icon: 'health' }, // [PH4-D] indicateur de santé financière ramené du Dashboard
 ];
 
@@ -66,29 +68,50 @@ export const BudgetWorkspace: React.FC<BudgetWorkspaceProps> = ({
     // Consomme pendingFocus + scroll vers le poste ciblé (one-shot).
     usePendingFocus(Tab.BUDGET);
 
+    // [S5-REFONTE-BUDGET] En-tête des maquettes : onglets à côté du titre ; période, mois affiché et
+    // personne à droite (sous-onglet Budget seulement). Sur mobile : le mois à droite du titre, la
+    // période et la personne sous les onglets.
+    const pilotage = useBudgetPilotage();
+    const etroit = useViewportBelowLg();
+    const noms: [string, string] | null = isCoupleMode(config.users)
+        ? [config.users[0]?.name || 'P1', config.users[1]?.name || 'P2']
+        : null;
+    const surBudget = sub === 'budget';
+
     return (
-        <div className="space-y-4 stagger-in">
+        <div className="space-y-5 stagger-in">
             {/* [REFONTE-NAV-L5] En-tête de page : titre = TAB_LABELS (cohérence de la destination
                 Transactions), stable quel que soit le sous-onglet actif. */}
             <PageHeader
-                icon={<Icon name="budget" size={28} />}
                 title={TAB_LABELS[Tab.BUDGET]}
-                subtitle="Budget, charges fixes & abonnements et santé — ton argent au quotidien."
+                nav={
+                    <SubTabs<SubTab>
+                        idPrefix="budget"
+                        label="Sections Budget"
+                        tabs={SUB_TABS}
+                        active={sub}
+                        onSelect={setSub}
+                    />
+                }
+                actions={surBudget ? (
+                    etroit ? <NavigateurPeriode p={pilotage} /> : (
+                        <span className="flex flex-wrap items-center justify-end gap-2">
+                            <ChoixPeriode p={pilotage} />
+                            <NavigateurPeriode p={pilotage} />
+                            {noms && <ChoixPersonne p={pilotage} noms={noms} />}
+                        </span>
+                    )
+                ) : undefined}
             />
-
-            <SubTabs<SubTab>
-                idPrefix="budget"
-                label="Sections Budget"
-                tabs={SUB_TABS}
-                active={sub}
-                onSelect={setSub}
-            />
-
-            {/* PH3 — mode de répartition (couple) déplacé dans l'onglet Profil unifié. */}
-            <ProfileFieldsMoved what="Le mode de répartition du couple" />
+            {surBudget && etroit && (
+                <div className="flex flex-wrap items-center gap-2">
+                    <ChoixPeriode p={pilotage} />
+                    {noms && <ChoixPersonne p={pilotage} noms={noms} />}
+                </div>
+            )}
 
             <TabPanel idPrefix="budget" tab="budget" when={sub === 'budget'}>
-                <Budget transactions={transactions} config={config} budgetItems={budgetItems} setBudgetItems={setBudgetItems} apiKey={apiKey} />
+                <Budget transactions={transactions} config={config} budgetItems={budgetItems} setBudgetItems={setBudgetItems} apiKey={apiKey} pilotage={pilotage} />
             </TabPanel>
             <TabPanel idPrefix="budget" tab="fixed" when={sub === 'fixed'}>
                 <Planning transactions={transactions} apiKey={apiKey} />

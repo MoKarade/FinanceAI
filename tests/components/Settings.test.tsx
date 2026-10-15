@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Settings } from '../../components/Settings';
+import { _resetViewportXlMqlForTests } from '../../hooks/useViewportXl';
 import type { AppState, BudgetConfig, User } from '../../types';
 
 vi.mock('../../services/cloudBackup', () => ({
@@ -66,9 +67,12 @@ describe('Settings', () => {
 
     // G22-N4 : la sauvegarde est désormais dans le sous-onglet « Sauvegarde ».
     // On y navigue avant de chercher les boutons d'export.
-    const goToBackupTab = () => {
-        fireEvent.click(screen.getByRole('tab', { name: 'Sauvegarde' }));
+    // [S5-REFONTE-REGLAGES] jsdom n'a pas matchMedia → mise en page MOBILE (liste de sections à ouvrir).
+    const ouvrirSection = (nom: string) => {
+        const nav = screen.getByRole('navigation', { name: 'Sections des réglages' });
+        fireEvent.click(within(nav).getByRole('button', { name: new RegExp(`^${nom}`) }));
     };
+    const goToBackupTab = () => ouvrirSection('Sauvegarde');
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -80,6 +84,42 @@ describe('Settings', () => {
         global.URL.revokeObjectURL = vi.fn();
         // Prevent jsdom navigation error from <a>.click()
         HTMLAnchorElement.prototype.click = vi.fn();
+    });
+
+    afterEach(() => { vi.unstubAllGlobals(); _resetViewportXlMqlForTests(); });
+
+    it('mobile : carte du mode test, liste des sections, complétude ; une section s\'ouvre et se referme', () => {
+        render(<Settings {...baseProps} />);
+        expect(screen.getByRole('heading', { name: /Mode test/ })).toBeInTheDocument();
+        const nav = screen.getByRole('navigation', { name: 'Sections des réglages' });
+        const lignes = within(nav).getAllByRole('button').map((b) => b.textContent?.replace(/[›\s]+$/, '').trim());
+        expect(lignes).toEqual(['Profil', 'Comptes et soldes', 'Patrimoine', 'Clés API', 'Sauvegarde', 'Système et diagnostics']);
+        expect(screen.queryByRole('tab')).toBeNull();
+
+        ouvrirSection('Sauvegarde');
+        expect(screen.getByRole('heading', { level: 2, name: 'Sauvegarde' })).toBeInTheDocument();
+        expect(screen.queryByRole('navigation', { name: 'Sections des réglages' })).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: /Toutes les sections/ }));
+        expect(screen.getByRole('navigation', { name: 'Sections des réglages' })).toBeInTheDocument();
+    });
+
+    it('mobile : « à faire » sur Clés API tant que la clé Anthropic manque', () => {
+        render(<Settings {...baseProps} apiKeys={{ ...defaultApiKeys, anthropic: '' }} />);
+        const nav = screen.getByRole('navigation', { name: 'Sections des réglages' });
+        expect(within(nav).getByRole('button', { name: /^Clés API/ }).textContent).toContain('à faire');
+    });
+
+    it('bureau large (≥ xl) : menu en onglets VERTICAUX, « Complétude » ouvert par défaut', () => {
+        vi.stubGlobal('matchMedia', (q: string) => ({
+            media: q, matches: true, addEventListener: () => {}, removeEventListener: () => {},
+        }));
+        render(<Settings {...baseProps} />);
+        const menu = screen.getByRole('tablist', { name: 'Sections des réglages' });
+        expect(menu).toHaveAttribute('aria-orientation', 'vertical');
+        expect(within(menu).getAllByRole('tab')).toHaveLength(6);
+        expect(within(menu).getByRole('tab', { name: /Complétude/ })).toHaveAttribute('aria-selected', 'true');
+        fireEvent.click(within(menu).getByRole('tab', { name: 'Sauvegarde' }));
+        expect(within(menu).getByRole('tab', { name: 'Sauvegarde' })).toHaveAttribute('aria-selected', 'true');
     });
 
     it('se rend sans erreur', () => {
@@ -129,10 +169,10 @@ describe('Settings', () => {
     // [FINTABLE-7 Lot 2] Marc, DEUX fois : « je ne vois pas pour mettre la clé api ».
     // Les tests de `FintableSyncCard` la rendent en ISOLATION — ils passeraient à l'identique
     // si `Settings.tsx` cessait de la monter. Ce test-ci verrouille le CÂBLAGE : depuis
-    // l'onglet réellement libellé « Clés API », le champ du jeton doit exister.
+    // la section réellement libellée « Clés API », le champ du jeton doit exister.
     it('le champ du jeton Fintable est ATTEIGNABLE depuis le sous-onglet « Clés API »', () => {
         render(<Settings {...baseProps} />);
-        fireEvent.click(screen.getByRole('tab', { name: 'Clés API' }));
+        ouvrirSection('Clés API');
         expect(screen.getByLabelText(/Jeton Fintable/i)).toBeInTheDocument();
     });
 

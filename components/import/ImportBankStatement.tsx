@@ -116,7 +116,7 @@ export const ImportBankStatement: React.FC<ImportBankStatementProps> = ({ onImpo
             <label className={`group flex flex-col items-center justify-center w-full h-36 rounded-card border-2 border-dashed transition-all duration-300 ${
                 analyzing
                     ? 'border-warning-400/40 bg-warning-400/5 cursor-wait'
-                    : 'border-white/15 bg-white/[0.02] cursor-pointer hover:border-primary/40 hover:bg-primary/5'
+                    : 'border-white/15 bg-white/2 cursor-pointer hover:border-primary/40 hover:bg-primary/5'
             }`}>
                 <input
                     type="file"

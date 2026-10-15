@@ -57,11 +57,16 @@ jobs:
           # ⚠️ [PTF-JOURNAL-PUBLIC] Ce journal est PUBLIC (dépôt public). Le corps de la réponse
           # listait les symboles rafraîchis et sautés, donc la composition du portefeuille réel, à
           # chaque passe. On n'en imprime que des COMPTES et des raisons : assez pour diagnostiquer,
-          # rien qui décrive le portefeuille. Garde : tests/journauxCiSansDonnees.test.ts.
-          jq -c '{ok, conflict, error, saved,
+          # rien qui décrive le portefeuille. Modèle FIXE aussi pour les erreurs : jamais le texte `error` ni
+          # `fx.erreur` (message d'exception libre), seulement des booléens et des codes. Garde : tests/journauxCiSansDonnees.test.ts.
+          # Chaque valeur imprimée est NORMALISÉE : booléen, nombre ou code d'une LISTE FERMÉE (sinon « autre » / null).
+          jq -c 'def b: if type == "boolean" then . else null end;
+                 def code(liste): if . as $v | liste | index($v) then . else "autre" end;
+                 {ok: (.ok | b), conflict: (.conflict | b), erreur_signalee: (.error != null), saved: (.saved | b),
                   rafraichis: ((.refreshed // []) | length), inchanges: ((.unchanged // []) | length),
-                  sautes: ((.skipped // []) | map(.reason) | group_by(.) | map({(.[0]): length}) | add),
-                  fx}' /tmp/refresh_out || echo "(réponse non JSON, non affichée)"
+                  sautes: ((.skipped // []) | map(.reason | code(["no-quote","invalid-price","currency-mismatch","error"])) | group_by(.) | map({(.[0]): length}) | add),
+                  fx: {ecriture: (.fx.ecriture | code(["taux","diagnostic","aucune","echec"])),
+                       cause: (.fx.cause | code(["ok","partiel","perimee","reseau","http","reponse-illisible","manuel","jamais-tente"]))}}' /tmp/refresh_out || echo "(réponse non JSON, non affichée)"
           # 200 = OK (ok:true) ou conflit transitoire (ok:false, conflict:true — réessai au tick suivant).
           # 5xx = panne RÉELLE (Drive KO, jeton révoqué, coffre chiffré) → le job rougit et alerte.
           test "${code}" = "200"

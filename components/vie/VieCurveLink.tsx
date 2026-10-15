@@ -6,22 +6,20 @@
 // et du placement : ne pas dupliquer ce lien à la main dans une page Vie.
 
 import React from 'react';
-import { Button } from '../ui/Button';
-import { Icon } from '../ui/Icon';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Tab } from '../../types';
 
+// [S5-REFONTE] Bouton des maquettes : contour clair, texte seul (plus d'icône).
 export const VieCurveLink: React.FC = () => {
     const navigateWithFocus = useFinanceStore(s => s.navigateWithFocus);
     return (
-        <Button
-            variant="ghost"
-            size="md"
-            icon={<Icon name="future" size={16} />}
+        <button
+            type="button"
             onClick={() => navigateWithFocus(Tab.FUTURE)}
             title="Ouvrir l'onglet Futur"
+            className="h-11 lg:h-10 px-4 rounded-lg border border-white/40 text-body text-ink-100 hover:bg-white/5 transition-colors focus-ring whitespace-nowrap"
         >
             Voir l'effet sur ma courbe
-        </Button>
+        </button>
     );
 };

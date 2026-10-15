@@ -1,6 +1,6 @@
 // CA-04 — smoke test : TaxCenter (money-critical fiscal, aucun test direct jusqu'ici).
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { TaxCenter } from '../../components/TaxCenter';
 import type { BudgetConfig, User } from '../../types';
 
@@ -31,6 +31,8 @@ describe('TaxCenter — smoke (CA-04)', () => {
 
     it('[A11Y-SLIDERS] les sliders réducteurs d\'impôt portent un nom accessible', () => {
         render(<TaxCenter config={config} assets={[]} />);
+        // [S5-REFONTE-IMPOTS] Les curseurs vivent dans « Simuler une cotisation » (replié, absent des maquettes).
+        fireEvent.click(screen.getByRole('button', { name: /Simuler une cotisation/ }));
         expect(screen.getByRole('slider', { name: 'Cotisation REER' })).toBeInTheDocument();
         expect(screen.getByRole('slider', { name: 'CELIAPP' })).toBeInTheDocument();
     });

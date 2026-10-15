@@ -129,6 +129,10 @@ describe('MCP Streamable HTTP — /mcp + /health', () => {
         const body = await res.json();
         expect(body.status).toBe('ok');
         expect(body.version).toBe(MCP_SERVER_VERSION);
+        // [VERROU-ECRITURE] recommandation pole-securite (PR #1093) : `isDrive` visible sur la sonde
+        // de santé — une dégradation Drive→fichier local (verrou d'écriture non applicable, ADR 0025)
+        // doit se voir plutôt que rester silencieuse. Fixture http (ligne ~20) : isDrive=false.
+        expect(body.isDrive).toBe(false);
     });
 
     it('route inconnue → 404', async () => {

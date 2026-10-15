@@ -7,7 +7,10 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
-import { decision, peutArmer, LABEL_VALIDATION } from "./autoMerge.mjs";
+import { decision, peutArmer, codeRaison, rattacherCreateurs } from "./autoMerge.mjs";
+import { assurerLabels, corpsRefus, LABEL_ALERTE, LABELS, raisonLabelDejaPose } from "./labels.mjs";
+
+export { LABEL_ALERTE };
 
 const TENTATIVES = 5;
 
@@ -32,7 +35,6 @@ const json = (texte, quoi) => {
 
 /** Texte sûr pour un commentaire : sans caractère de contrôle, sans backtick ni retour à la ligne, borné (un nom de fichier peut être hostile). */
 export function sansRisque(texte, max = 300) {
-  // eslint-disable-next-line no-control-regex
   return String(texte).replace(/[\u0000-\u001f\u007f`]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
@@ -42,7 +44,7 @@ export function marqueurRefus(raison) {
 }
 
 /** Le refus vient-il d'un chemin ou d'un label (à expliquer à la PR) plutôt que d'un brouillon, d'un fork ou d'une config ? */
-const refusAExpliquer = (raison) => /^(attestation de pole-securite|fichier sensible|chemin |label |tests affaiblis|code .* sans test associé)/.test(raison);
+const refusAExpliquer = (raison) => /^(attestation de pole-securite|fichier sensible|chemin |label |validation visuelle|tests affaiblis|code .* sans test associé)/.test(raison);
 
 /**
  * Revues de la PR (attestation de pole-securite) : `gh api --paginate repos/R/pulls/N/reviews`, réduites aux champs utiles. Lecture ratée ou illisible = `null`
@@ -52,13 +54,10 @@ const refusAExpliquer = (raison) => /^(attestation de pole-securite|fichier sens
 export async function lireRevues(gh, repo, numero, attente = pause) {
   try {
     const brut = await avecReessais(() => gh(["api", "--paginate", `repos/${repo}/pulls/${numero}/reviews`, "--jq",
-      ".[] | {user: {login: .user.login, id: .user.id}, state: .state, commit_id: .commit_id, submitted_at: .submitted_at}"]), attente);
+      ".[] | {user: {login: .user.login, id: .user.id, type: .user.type}, state: .state, commit_id: .commit_id, submitted_at: .submitted_at}"]), attente);
     return brut.split("\n").filter((l) => l !== "").map((l) => JSON.parse(l));
   } catch { return null; }
 }
-
-/** Label des issues d'alerte, lues par le gérant et le cockpit (`gh issue list --label alerte-auto-merge`). */
-export const LABEL_ALERTE = "alerte-auto-merge";
 
 /**
  * Catégories FIXES des issues d'alerte. Une issue est bâtie UNIQUEMENT à partir de ce modèle (catégorie, numéro de PR, SHA court, lien du run) :
@@ -90,7 +89,7 @@ const enCode = (t) => `\`${sansRisque(t, 200)}\``;
  * @param {(ms: number) => Promise<void>} [p.attente]
  * @returns {Promise<{fusionnees: number[], alertes: string[], erreurs: string[]}>}
  */
-export async function executer({ gh, config, env, maintenant, ecrire, attente = pause }) {
+export async function executer({ gh, config, env, maintenant, ecrire, sortie = () => {}, attente = pause }) {
   const repo = env.REPO;
   const res = { fusionnees: [], alertes: [], erreurs: [], signaux: [] };
   /** Enregistre une alerte (catégorie fixe + PR + SHA) : l'issue est créée à la fin, une fois par signal. */
@@ -115,12 +114,17 @@ export async function executer({ gh, config, env, maintenant, ecrire, attente = 
   if (cibles.length === 0) { ecrire("- aucune PR ouverte à examiner."); return res; }
 
   let shaCourant;   // SHA de la PR en cours d'examen (pour le modèle des alertes)
+  // Les labels utiles EXISTENT avant d'être posés (liste puis création des seuls absents, jamais --force : voir labels.mjs). Échec = erreur BLOQUANTE (le job échoue, alerte), jamais un silence.
+  const labelsAssures = new Set();
   const poserLabels = (n, labels) => {
+    const aAssurer = labels.filter((l) => LABELS[l] && !labelsAssures.has(l));
+    if (aAssurer.length) {
+      try { assurerLabels(gh, ["--repo", repo], aAssurer); aAssurer.forEach((l) => labelsAssures.add(l)); }
+      catch (e) { res.erreurs.push(`PR #${n} : ${String(e.message).slice(0, 160)}`); signaler("label_non_pose", n, shaCourant); return; }
+    }
     for (const label of labels) {
-      try {
-        if (label === LABEL_VALIDATION) gh(["label", "create", label, "--repo", repo, "--color", "FBCA04", "--description", "La fusion attend la validation de Marc", "--force"]);
-        gh(["pr", "edit", String(n), "--repo", repo, "--add-label", label]);
-      } catch (e) { res.erreurs.push(`PR #${n} : label ${label} non posé (${String(e.message).slice(0, 80)})`); signaler("label_non_pose", n, shaCourant); }
+      try { gh(["pr", "edit", String(n), "--repo", repo, "--add-label", label]); }
+      catch (e) { res.erreurs.push(`PR #${n} : label ${label} non posé (${String(e.message).slice(0, 80)})`); signaler("label_non_pose", n, shaCourant); }
     }
   };
 
@@ -129,7 +133,7 @@ export async function executer({ gh, config, env, maintenant, ecrire, attente = 
     const marqueur = marqueurRefus(raison);
     const existants = await avecReessais(() => gh(["api", "--paginate", `repos/${repo}/issues/${n}/comments`, "--jq", ".[].body"]), attente);
     if (existants.includes(marqueur)) return false;
-    const corps = `Cette PR ne sera pas fusionnée automatiquement.\n\nRaison : \`${sansRisque(raison)}\`\n\nElle attend l'attestation de pole-securite (revue APPROVED du compte dédié sur ce commit) ; le label \`${LABEL_VALIDATION}\` est informatif.\n\n${marqueur}`;
+    const corps = corpsRefus(raison, marqueur, sansRisque);
     try { gh(["pr", "comment", String(n), "--repo", repo, "--body", corps]); return true; }
     catch (e) { res.erreurs.push(`PR #${n} : commentaire de refus non posé (${String(e.message).slice(0, 80)})`); signaler("commentaire_non_pose", n, shaCourant); return false; }
   };
@@ -165,7 +169,13 @@ export async function executer({ gh, config, env, maintenant, ecrire, attente = 
         const [nom, id] = l.split("\t");
         apps.set(nom, apps.has(nom) && apps.get(nom) !== Number(id) ? "ambigu" : Number(id));
       }
-      const checks = (pr.statusCheckRollup || []).map((c) => (c && c.name && apps.has(c.name) ? { ...c, appId: apps.get(c.name) } : c));
+      let checks = (pr.statusCheckRollup || []).map((c) => (c && c.name && apps.has(c.name) ? { ...c, appId: apps.get(c.name) } : c));
+      // statut du vérificateur local (config `statut_local`) : créateur du dernier statut de commit de ce contexte (id + login + type), lu seulement si configuré
+      if (config.statut_local) {
+        const jq = '.[] | [.context, .state, ((.creator.id // 0) | tostring), (.creator.login // ""), (.creator.type // "")] | @tsv';
+        const brutStatuts = await avecReessais(() => gh(["api", "--paginate", `repos/${repo}/commits/${pr.headRefOid}/statuses`, "--jq", jq]), attente);
+        checks = rattacherCreateurs(checks, brutStatuts, config.statut_local.contexte);
+      }
 
       // revues (attestation de pole-securite) : lues seulement si le dépôt a un compte dédié (`securite_login`), sinon aucune attestation n'est possible
       const reviews = config.securite_login ? await lireRevues(gh, repo, n, attente) : [];
@@ -177,9 +187,13 @@ export async function executer({ gh, config, env, maintenant, ecrire, attente = 
       const armement = peutArmer(entree, config);
       if (!armement.armer) {
         poserLabels(n, armement.etiqueter);
-        const commente = refusAExpliquer(armement.raison) ? await expliquer(n, armement.raison) : false;
+        // Un label do-not-merge DÉJÀ présent (posé au passage précédent, ou à la main) n'est pas réexpliqué : sa raison générique « label do-not-merge » donnerait un commentaire FAUX
+        // (« attend l'attestation ») qui contredit le commentaire précis du premier passage ; qui pose ce label à la main sait pourquoi. Les autres refus gardent leur commentaire.
+        const commente = refusAExpliquer(armement.raison) && !raisonLabelDejaPose(armement.raison) ? await expliquer(n, armement.raison) : false;
         if (armement.code) signaler(armement.code, n, shaCourant);
-        ecrire(`- PR #${n} : pas d'armement — ${enCode(armement.raison)}${commente ? " (commentaire posé)" : ""}`);
+        const codeArmement = codeRaison(armement);
+        sortie(`code_pr_${n}=${codeArmement}`);
+        ecrire(`- PR #${n} : pas d'armement [${codeArmement}] — ${enCode(armement.raison)}${commente ? " (commentaire posé)" : ""}`);
         continue;
       }
 
@@ -193,7 +207,9 @@ export async function executer({ gh, config, env, maintenant, ecrire, attente = 
       if (!d.merger) {
         const commente = d.etiqueter.length ? await expliquer(n, d.raison) : false;
         if (d.code) signaler(d.code, n, shaCourant);                      // frein horaire : alerte, sans label ni commentaire
-        ecrire(`- PR #${n} : pas de fusion — ${enCode(d.raison)}${d.etiqueter.length ? ` (label ${d.etiqueter.join(", ")} posé)` : ""}${commente ? " (commentaire posé)" : ""}`);
+        const codeRefus = codeRaison(d);
+        sortie(`code_pr_${n}=${codeRefus}`);
+        ecrire(`- PR #${n} : pas de fusion [${codeRefus}] — ${enCode(d.raison)}${d.etiqueter.length ? ` (label ${d.etiqueter.join(", ")} posé)` : ""}${commente ? " (commentaire posé)" : ""}`);
         continue;
       }
 
@@ -207,6 +223,7 @@ export async function executer({ gh, config, env, maintenant, ecrire, attente = 
       }
       if (!fait) { res.erreurs.push(`PR #${n} : fusion impossible après ${TENTATIVES} essais`); signaler("fusion_impossible", n, shaCourant); ecrire(`- PR #${n} : ⚠️ fusion impossible (${enCode(d.raison)})`); continue; }
       res.fusionnees.push(n);
+      sortie(`code_pr_${n}=merge_ok`);
       ecrire(`- PR #${n} : ✅ fusionnée (${d.sha.slice(0, 8)}) — ${enCode(d.raison)}`);
       // trace sur la PR elle-même : une ligne par fusion automatique (une fois par SHA)
       try {
@@ -250,11 +267,11 @@ export async function executer({ gh, config, env, maintenant, ecrire, attente = 
       const marqueur = `<!-- auto-merge-alerte:${createHash("sha256").update(`${categorie}|${n}|${sha}`).digest("hex").slice(0, 16)} -->`;
       const ouvertes = gh(["issue", "list", "--repo", repo, "--label", LABEL_ALERTE, "--state", "open", "--limit", "100", "--json", "body", "--jq", ".[].body"]);
       if (ouvertes.includes(marqueur)) continue;
-      gh(["label", "create", LABEL_ALERTE, "--repo", repo, "--color", "B60205", "--description", "Alerte de la fusion automatique (lue par le gérant et le cockpit)", "--force"]);
+      if (!labelsAssures.has(LABEL_ALERTE)) { assurerLabels(gh, ["--repo", repo], [LABEL_ALERTE]); labelsAssures.add(LABEL_ALERTE); }
       const corps = `Catégorie : ${nom}\nPR : #${Number(n)}\nCommit : ${sha8}${urlRun ? `\nRun : ${urlRun}` : ""}\n\n${marqueur}`;
       gh(["issue", "create", "--repo", repo, "--title", `Alerte fusion automatique : ${nom} (PR #${Number(n)})`, "--label", LABEL_ALERTE, "--body", corps]);
       ecrire(`- 🚨 issue ${enCode(LABEL_ALERTE)} créée : ${nom} (PR #${Number(n)})`);
-    } catch (e) { ecrire("- ⚠️ issue d'alerte non créée"); }
+    } catch (e) { ecrire("- ⚠️ issue d'alerte non créée"); res.erreurs.push(`issue d'alerte non créée (${String(e && e.message).slice(0, 100)})`); }
   }
   return res;
 }
@@ -265,9 +282,11 @@ async function main() {
   const config = JSON.parse(readFileSync(configPath, "utf8"));
   const resume = process.env.GITHUB_STEP_SUMMARY;
   const ecrire = (ligne) => { console.log(ligne); if (resume) appendFileSync(resume, ligne + "\n"); };
+  const sortieJob = process.env.GITHUB_OUTPUT;
+  const sortie = (ligne) => { if (sortieJob && /^code_pr_[1-9][0-9]{0,8}=[a-z_]+$/.test(ligne)) appendFileSync(sortieJob, ligne + "\n"); };
   ecrire("### Fusion automatique");
   const r = await executer({
-    gh: ghReel, config, maintenant: () => Date.now(), ecrire,
+    gh: ghReel, config, maintenant: () => Date.now(), ecrire, sortie,
     env: { REPO: process.env.REPO, BRANCHE: process.env.BRANCHE || undefined, SHA_EVENT: process.env.SHA_EVENT || undefined, AUTOMERGE_OFF: process.env.AUTOMERGE_OFF,
       NUMERO: process.env.NUMERO || undefined,
       RUN_URL: process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_SERVER_URL}/${process.env.REPO}/actions/runs/${process.env.GITHUB_RUN_ID}` : undefined },

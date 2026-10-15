@@ -9,7 +9,7 @@
 // MAIN de la fixture (jamais recopié du code — un test qui contient l'expression du code testé
 // teste sa copie).
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
 import type { BudgetConfig, BudgetCategory, User } from '../../types';
 
@@ -47,9 +47,14 @@ const items: BudgetCategory[] = [
     { id: 'c2', name: 'Gym Anna', target: 400, frequency: 'Monthly', type: 'Perso 2', nature: 'Envie' } as BudgetCategory,
 ];
 
-const renderBudget = () => render(
-    <Budget transactions={[]} config={config} budgetItems={items} setBudgetItems={() => {}} apiKey="" />,
-);
+const renderBudget = () => {
+    const r = render(
+        <Budget transactions={[]} config={config} budgetItems={items} setBudgetItems={() => {}} apiKey="" />,
+    );
+    // [S5-REFONTE-BUDGET] Le détail par personne (effort, parts) est replié sous « Épargne possible ».
+    fireEvent.click(r.getByRole('button', { name: /Détail par personne/ }));
+    return r;
+};
 
 describe('[BUDGET-EFFORT-NOMMER-LA-BASE] le badge Effort nomme sa base', () => {
     it('chaque badge porte son pourcentage (dérivé à la main) ET la mention « de la paie déclarée »', () => {
@@ -74,7 +79,7 @@ describe('[BUDGET-EFFORT-NOMMER-LA-BASE] le badge Effort nomme sa base', () => {
             .filter((el) => (el.getAttribute('title') ?? '').includes('paie déclarée'));
         expect(badges.length).toBe(2);
         for (const b of badges) {
-            expect(b.getAttribute('title')).toContain('Revenu Net Disponible');
+            expect(b.getAttribute('title')).toContain('Revenu net disponible');
         }
     });
 });

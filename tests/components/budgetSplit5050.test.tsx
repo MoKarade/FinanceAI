@@ -8,7 +8,7 @@
 //   custom 70 → Marc 1 050 $ (21 %), Anna 450 $ (11,25 % → « 11% ») — contrôle : la branche
 //   custom, elle, marchait déjà ; elle ne doit pas bouger.
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
 import type { BudgetConfig, BudgetCategory, User } from '../../types';
 
@@ -37,9 +37,11 @@ const items: BudgetCategory[] = [
 ];
 
 const rendu = (c: BudgetConfig) => {
-    const { container } = render(
+    const { container, getByRole } = render(
         <Budget transactions={[]} config={c} budgetItems={items} setBudgetItems={() => {}} apiKey="" />,
     );
+    // [S5-REFONTE-BUDGET] Le détail par personne (effort, parts) est replié sous « Épargne possible ».
+    if (c.users[1]?.name) fireEvent.click(getByRole('button', { name: /Détail par personne/ }));
     return (container.textContent ?? '').replace(/\s+/g, ' ');
 };
 
@@ -77,6 +79,6 @@ describe('[BUDGET-SPLIT-5050-RATIO-1] le mode 50/50 partage vraiment en deux', (
         const t = rendu(c);
         // 1 500 / 5 000 = 30 % pour l'unique utilisateur — la carte couple n'existe pas, mais le
         // ratio1 = 1 du solo ne doit pas être avalé par la nouvelle branche.
-        expect(t).not.toContain('du Couple');
+        expect(t).not.toContain('du couple');
     });
 });

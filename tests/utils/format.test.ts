@@ -7,6 +7,7 @@ import {
     formatDate,
     formatMonthYear,
     formatCompactCAD,
+    formatVariationPct,
 } from '../../utils/format';
 
 // fr-CA Intl uses U+202F (NARROW NO-BREAK SPACE) for thousands separators
@@ -49,6 +50,11 @@ describe('formatNumber', () => {
 
     it('respects 2 decimals', () => {
         expect(norm(formatNumber(1111.555, { decimals: 2 }))).toBe('1 111,56');
+    });
+
+    it('respects 1 decimal (durées : « 2,9 ans »)', () => {
+        expect(norm(formatNumber(34 / 12, { decimals: 1 }))).toBe('2,8');
+        expect(norm(formatNumber(3, { decimals: 1 }))).toBe('3,0');
     });
 
     it('returns dash for invalid', () => {
@@ -127,5 +133,29 @@ describe('formatCompactCAD', () => {
 
     it('falls back to standard for small amounts', () => {
         expect(norm(formatCompactCAD(500))).toBe('500 $');
+    });
+
+    it('précis : une décimale au besoin en k$ (8,5 k$ et non 9 k$), rien de changé ailleurs', () => {
+        expect(norm(formatCompactCAD(8_500, { precis: true }))).toBe('8,5 k$');
+        expect(norm(formatCompactCAD(12_000, { precis: true }))).toBe('12 k$');
+        expect(norm(formatCompactCAD(1_500_000, { precis: true }))).toBe('1,50 M$');
+        expect(norm(formatCompactCAD(500, { precis: true }))).toBe('500 $');
+    });
+
+    it('repère d\'axe : zéro nu, M$ sans décimales inutiles, k$ inchangé', () => {
+        expect(formatCompactCAD(0, { repere: true })).toBe('0');
+        expect(norm(formatCompactCAD(1_000_000, { repere: true }))).toBe('1 M$');
+        expect(norm(formatCompactCAD(1_250_000, { repere: true }))).toBe('1,25 M$');
+        expect(norm(formatCompactCAD(750_000, { repere: true }))).toBe('750 k$');
+    });
+});
+
+describe('formatVariationPct', () => {
+    it('signe, une décimale, jamais « −0,0 % »', () => {
+        expect(norm(formatVariationPct(14.66))).toBe('+14,7 %');
+        expect(norm(formatVariationPct(-2.4))).toBe('−2,4 %');
+        expect(norm(formatVariationPct(-0.02))).toBe('0,0 %');
+        expect(norm(formatVariationPct(0.25, 2))).toBe('+0,25 %');
+        expect(formatVariationPct(NaN)).toBe('—');
     });
 });

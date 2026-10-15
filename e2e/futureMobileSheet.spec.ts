@@ -33,7 +33,7 @@ async function chartBox(page: Page) {
   const voirDirect = page.getByRole('button', { name: /projection actuelle.*sans optimiser/i });
   await voirDirect.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
   if (await voirDirect.isVisible().catch(() => false)) await voirDirect.click();
-  const chart = page.getByRole('img', { name: /Courbe de vie/ });
+  const chart = page.getByRole('group', { name: /Courbe de vie/ });
   await expect(chart).toBeVisible({ timeout: 15_000 });
   await chart.scrollIntoViewIfNeeded();
   await page.locator('.recharts-cartesian-grid').first().waitFor({ state: 'visible', timeout: 15_000 });
@@ -112,9 +112,13 @@ test.describe('Futur mobile — le panneau du jour, dans le flux', () => {
 
     await panneau.scrollIntoViewIfNeeded();
     const pb = (await panneau.boundingBox())!;
-    const viewport = page.viewportSize()!;
-    // Occupe la largeur disponible (moins les marges de la page), sans être une feuille ancrée.
-    expect(pb.width).toBeGreaterThan(viewport.width * 0.8);
+    // Occupe la largeur disponible, sans être une feuille ancrée. [S5-REFONTE] Mesuré contre la zone de
+    // contenu de <main> (marges de page ôtées) et non le viewport : les marges suivent les maquettes.
+    const largeurContenu = await page.locator('main#main').evaluate((m) => {
+      const cs = getComputedStyle(m);
+      return m.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    });
+    expect(pb.width).toBeGreaterThan(largeurContenu * 0.85);
     // ⚠️ DANS LE FLUX, donc SOUS le graphe : c'est la demande de Marc, et c'est aussi ce qui
     // distingue ce panneau de la feuille qu'il remplace (elle, collait au bas du viewport).
     expect(pb.y).toBeGreaterThanOrEqual(box.y);

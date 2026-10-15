@@ -5,7 +5,7 @@
 // « premier message » demandé : on déverrouille avant d'entrer dans l'app. Aucune donnée locale n'est
 // touchée tant qu'on n'a pas la bonne passphrase (zéro perte).
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { showToast } from '../ui/Toast';
 import {
     setSyncPassphrase,
@@ -14,11 +14,27 @@ import {
     MIN_PASSPHRASE_LENGTH,
     type SyncStatus,
 } from '../../services/sync/syncOrchestrator';
+import { tryUnlockRememberedPassphrase } from '../../services/deviceKeyStore';
 
 export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => {
     const [value, setValue] = useState('');
     const [busy, setBusy] = useState(false);
     const [localError, setLocalError] = useState<string | null>(null);
+    // [CHIFFREMENT-PHASE1, C4] Tenté UNE fois au montage : verrou WebAuthn + déchiffrement local
+    // (aucun réseau). Échec (rien de mémorisé, verrou refusé, appareil non reconnu) → formulaire
+    // normal ci-dessous, aucune dégradation visible. Succès → `needsPassphrase` repasse à false via
+    // `setSyncPassphrase`, ce gate se démonte tout seul (le parent arrête de le rendre).
+    const [autoTente, setAutoTente] = useState(false);
+    useEffect(() => {
+        let annule = false;
+        void (async () => {
+            const remembered = await tryUnlockRememberedPassphrase();
+            if (annule) return;
+            if (remembered) await setSyncPassphrase(remembered);
+            if (!annule) setAutoTente(true);
+        })();
+        return () => { annule = true; };
+    }, []);
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,6 +68,18 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
 
     const titreId = React.useId();
 
+    // [CHIFFREMENT-PHASE1, C4] Tant que la tentative automatique (verrou WebAuthn + déchiffrement
+    // local) n'a pas résolu, on n'affiche PAS le formulaire : sur un appareil mémorisé, elle finit en
+    // général en un instant (aucun réseau) — inutile de faire clignoter un champ de saisie qu'on
+    // n'aura peut-être pas besoin de remplir.
+    if (!autoTente) {
+        return (
+            <div className="fixed inset-0 z-100 flex items-center justify-center bg-dark/95 backdrop-blur-xs p-4">
+                <p className="text-body text-ink-300">Déverrouillage…</p>
+            </div>
+        );
+    }
+
     return (
         // [A11Y-MODAL-GUIDE-NODIALOG] Ce gate recouvre l'app sans être une `<Modal>`, et c'est
         // VOULU : il n'a pas de fermeture (pas de ✕, pas d'Échap, pas de clic-dehors) — la seule
@@ -59,7 +87,7 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
         // en revanche ce qui ne dépend pas de la fermeture : dire qu'il est un dialogue, et lequel.
         // `aria-modal` annonce que le reste de la page est hors d'atteinte ; sans lui, un lecteur
         // d'écran laisse parcourir l'application recouverte comme si de rien n'était.
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-dark/95 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-dark/95 backdrop-blur-xs p-4">
             <form
                 onSubmit={onSubmit}
                 role="dialog"
@@ -84,7 +112,7 @@ export const PassphraseGate: React.FC<{ status: SyncStatus }> = ({ status }) => 
                     placeholder="Ta passphrase"
                     autoComplete="off"
                     autoFocus
-                    className="w-full rounded-card border border-white/10 bg-black/40 px-3 py-2 text-ink-100 placeholder:text-ink-400 focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded-card border border-white/10 bg-black/40 px-3 py-2 text-ink-100 placeholder:text-ink-400 focus:border-primary/50 focus:outline-hidden"
                 />
                 {(localError || status.error) && (
                     <p className="text-tiny italic text-rose-400">{localError || status.error}</p>

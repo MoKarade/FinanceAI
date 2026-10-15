@@ -20,7 +20,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
 import { getViewContext, _resetViewContextForTests, type BudgetViewDetail } from '../../services/aiChat/viewContext';
 import { useFinanceStore } from '../../store/useFinanceStore';
@@ -57,6 +57,8 @@ const projectionVivante = (savingsSensitivity: { extraMonthlySavings: number; de
     chartData: Array.from({ length: 360 }, (_, i) => ({ NetWorth: 1000 + i, year: 2026 + Math.floor(i / 12), monthIndex: i })),
 });
 const SENS = { extraMonthlySavings: 100, deltaEstateNetWorth: 87654, deltaFinalNetWorth: 65432 };
+/** [S5-REFONTE-BUDGET] L'impact à long terme vit, replié, dans « Outils du budget ». */
+const ouvrirOutils = () => fireEvent.click(screen.getByRole('button', { name: /Outils du budget/ }));
 const norm = (t: string | null | undefined) => (t ?? '').replace(/&nbsp;|\u00a0|\u202f/g, ' ');
 
 beforeEach(() => {
@@ -67,6 +69,7 @@ describe('[BUDGET-SENSIBILITE-MOTEUR] la sensibilité vient du moteur, ou ne vie
     it('ÉCRAN : publiée par le moteur → affichée, avec le delta du moteur (pas une formule)', () => {
         useFinanceStore.setState({ isPrivacyMode: false, lastProjection: projectionVivante(SENS) } as never);
         const { container } = render(<Budget {...props} />);
+        ouvrirOutils();
         expect(screen.getByText(/Impact à long terme/)).toBeTruthy(); // anti-vacuité
         const texte = norm(container.textContent);
         expect(texte).toContain('Sensibilité');
@@ -77,6 +80,7 @@ describe('[BUDGET-SENSIBILITE-MOTEUR] la sensibilité vient du moteur, ou ne vie
     it('ÉCRAN : non publiée (`null`) → RIEN, jamais un 0 crédible (no-fake-data)', () => {
         useFinanceStore.setState({ isPrivacyMode: false, lastProjection: projectionVivante(null) } as never);
         const { container } = render(<Budget {...props} />);
+        ouvrirOutils();
         expect(screen.getByText(/Impact à long terme/)).toBeTruthy(); // la carte reste, la ligne non
         expect(norm(container.textContent)).not.toContain('Sensibilité');
     });
@@ -84,6 +88,8 @@ describe('[BUDGET-SENSIBILITE-MOTEUR] la sensibilité vient du moteur, ou ne vie
     it('MODE DISCRET : le delta est masqué', () => {
         useFinanceStore.setState({ isPrivacyMode: true, lastProjection: projectionVivante(SENS) } as never);
         const { container } = render(<Budget {...props} />);
+        ouvrirOutils(); // déplié : sinon le test passerait à vide (rien de rendu)
+        expect(screen.getByText(/Impact à long terme/)).toBeTruthy();
         expect(norm(container.textContent)).not.toContain('87 654');
     });
 

@@ -28,7 +28,7 @@ async function chartBox(page: Page) {
   const voirDirect = page.getByRole('button', { name: /projection actuelle.*sans optimiser/i });
   await voirDirect.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
   if (await voirDirect.isVisible().catch(() => false)) await voirDirect.click();
-  const chart = page.getByRole('img', { name: /Courbe de vie/ });
+  const chart = page.getByRole('group', { name: /Courbe de vie/ });
   await expect(chart).toBeVisible({ timeout: 15_000 });
   await chart.scrollIntoViewIfNeeded();
   await page.locator('.recharts-cartesian-grid').first().waitFor({ state: 'visible', timeout: 15_000 });
@@ -77,7 +77,9 @@ async function clickAndFreeze(page: Page, x: number, y: number, zone = 'clic') {
         + `${n.getAttribute('aria-label') ? `[aria-label="${n.getAttribute('aria-label')}"]` : ''}`
         + ` .${String(n.getAttribute('class') ?? '').trim().split(/\s+/).slice(0, 4).join('.')}`;
       const bouton = el.closest('button, a, [role="button"]');
-      const graphe = el.closest('[role="img"]');
+      // [S5-REFONTE-FUTUR] Le conteneur est `role="group"` (plus `img`) : l'ancien sélecteur
+      // répondait « NON » même pour un nœud DANS la courbe (vu en CI : `circle .recharts-dot`).
+      const graphe = el.closest('[aria-roledescription="graphique"]');
       return `${decrire(el)} | bouton ancêtre : ${bouton ? decrire(bouton) : 'aucun'}`
         + ` | dans le graphe : ${graphe ? 'oui' : 'NON'}`;
     }, [cx, cy]);
@@ -178,7 +180,7 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
     // mêmes boutons. Ici on prouve : focus → Entrée → jour DATÉ figé → Échap → relâché ET focus
     // restitué au graphe (le hook comptait sur la focusabilité du conteneur — désormais tabIndex 0).
     await chartBox(page);
-    const chart = page.getByRole('img', { name: /Courbe de vie/ });
+    const chart = page.getByRole('group', { name: /Courbe de vie/ });
     await chart.focus();
     await expect(chart).toBeFocused();
     await page.keyboard.press('Enter');
@@ -229,7 +231,7 @@ test.describe('Futur — sélection d’un JOUR directement sur la courbe (natif
     expect(await page.locator('.recharts-area').count()).toBeGreaterThan(1);
 
     // Clic DANS les aires après zoom (la boîte a pu bouger — re-mesurer).
-    const zoomedBox = (await page.getByRole('img', { name: /Courbe de vie/ }).boundingBox())!;
+    const zoomedBox = (await page.getByRole('group', { name: /Courbe de vie/ }).boundingBox())!;
     const y = Math.min(zoomedBox.y + zoomedBox.height * 0.8, (page.viewportSize()?.height ?? 720) - 24);
     const frozen = await clickAndFreeze(page, zoomedBox.x + zoomedBox.width * 0.5, y);
     expect(((await frozen.textContent()) ?? '').match(DAY_RE)).not.toBeNull();

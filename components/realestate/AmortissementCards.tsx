@@ -63,10 +63,10 @@ export const AmortissementCards: React.FC<AmortissementCardsProps> = ({
                                 const isRenewal = idx > 0 && idx % 5 === 0;
                                 const equityPct = row.ValeuréPropriété > 0 ? Math.round((row.Équité / row.ValeuréPropriété) * 100) : 0;
                                 return (
-                                    <tr key={row.year} className={`border-b border-white/5 ${isRenewal ? 'bg-orange-900/10' : idx % 2 === 0 ? 'bg-white/[0.02]' : ''} hover:bg-white/5 transition-colors`}>
+                                    <tr key={row.year} className={`border-b border-white/5 ${isRenewal ? 'bg-orange-900/10' : idx % 2 === 0 ? 'bg-white/2' : ''} hover:bg-white/5 transition-colors`}>
                                         <td className="py-2 pr-4 font-bold">
                                             {row.calendarYear}
-                                            {isRenewal && <span className="ml-1.5 text-tiny text-orange-400 border border-orange-500/30 rounded px-1">Renouvellement</span>}
+                                            {isRenewal && <span className="ml-1.5 text-tiny text-orange-400 border border-orange-500/30 rounded-sm px-1">Renouvellement</span>}
                                         </td>
                                         <td className="py-2 pr-4 text-orange-300">{row.TauxEnVigueur}</td>
                                         <td className="py-2 pr-4 text-right text-danger-400"><PrivateAmount>{formatCurrency(row.PartInteretAnnuelle)}</PrivateAmount></td>

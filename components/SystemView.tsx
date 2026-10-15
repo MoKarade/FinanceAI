@@ -232,7 +232,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                             <span className="text-tiny text-ink-400 uppercase tracking-widest">État runtime</span>
                             <button
                                 onClick={() => setRefreshKey(k => k + 1)}
-                                className="text-tiny text-success-400 hover:text-emerald-300 px-2 py-0.5 rounded bg-success-500/10 hover:bg-success-500/20 transition-colors"
+                                className="text-tiny text-success-400 hover:text-emerald-300 px-2 py-0.5 rounded-sm bg-success-500/10 hover:bg-success-500/20 transition-colors"
                                 aria-label="Rafraîchir le diagnostic"
                             >
                                 ⟳ Refresh
@@ -254,7 +254,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
 
                 <div className="lg:col-span-1 space-y-6">
                     <div className="grid grid-cols-2 gap-4">
-                        <Card className="!p-4 bg-white/5 border-white/10">
+                        <Card className="p-4! bg-white/5 border-white/10">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Base de Données</div>
                             {/* [SYSVIEW-DBSIZE-ZERO] « — » honnête plutôt qu'un « 0 KB » crédible.
                                 `title` porte la raison : l'écart se voit ET s'explique. */}
@@ -265,7 +265,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                                 {dbSize === null ? '—' : `${dbSize.toFixed(0)} KB`}
                             </div>
                         </Card>
-                        <Card className="!p-4 bg-white/5 border-white/10">
+                        <Card className="p-4! bg-white/5 border-white/10">
                             <div className="text-tiny text-ink-400 uppercase font-bold">Objectifs</div>
                             <div className="text-xl font-bold text-white">{state.financialGoals.length}</div>
                         </Card>
@@ -302,7 +302,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ state }) => {
                                     </span>
                                 </div>
                                 {fintableReportSafe.report.error && (
-                                    <p className="text-meta text-danger-400 break-words py-2 border-b border-white/5">
+                                    <p className="text-meta text-danger-400 wrap-break-word py-2 border-b border-white/5">
                                         {fintableReportSafe.report.error}
                                     </p>
                                 )}

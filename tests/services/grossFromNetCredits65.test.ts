@@ -96,9 +96,8 @@ describe('[GROSSFROMNET-CREDITS-65] la CHAÎNE — le socle du moteur le passe v
     it('le brut de base d’un 66 ans SANS brut saisi baisse ; celui d’un 40 ans ne bouge pas', () => {
         // C'est LE test qui prouve que le lot n'est pas inerte : `computeIncomeBaseline` ne recevait
         // même pas l'âge avant ce lot (son type était `{ netSalary?, grossSalary? }`).
-        const proj = {};
         const base = (age: number) => computeIncomeBaseline(
-            proj, [{ netSalary: 3_000, age }], AN,
+            [{ netSalary: 3_000, age }], AN,
         ).grossMarcBaseAnnual;
 
         const jeune = base(40);
@@ -113,7 +112,7 @@ describe('[GROSSFROMNET-CREDITS-65] la CHAÎNE — le socle du moteur le passe v
         // L'explication de « aucun golden n'a bougé » : il faut les DEUX conditions (65+ ET pas de
         // brut saisi). Les fixtures de goldens ont un brut, donc ne passent jamais par ce chemin.
         const avecBrut = computeIncomeBaseline(
-            {}, [{ netSalary: 3_000, grossSalary: 4_200, age: 66 }], AN,
+            [{ netSalary: 3_000, grossSalary: 4_200, age: 66 }], AN,
         ).grossMarcBaseAnnual;
         expect(avecBrut, 'le brut saisi doit être utilisé tel quel (×12)').toBe(4_200 * 12);
     });

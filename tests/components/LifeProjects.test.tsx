@@ -1,9 +1,8 @@
-// [REFONTE-NAV-L4] LifeProjects — page « Projets de vie » de la famille Vie :
-// UN SEUL h1 (les ex-PageHeaders de Travel/LifeEvents sont rétrogradés en h2 de
-// section), lien commun « Voir l'effet sur ma courbe », filtre Pill, empty states
-// avec CTA.
+// [S5-REFONTE-PROJETS] LifeProjects — page « Projets de vie » (maquettes E-projets / M-projets) :
+// UN SEUL h1, frise (clavier = changer d'année), liste filtrable, carte d'impact du projet choisi,
+// lien commun « Voir l'effet sur ma courbe », état vide avec CTA.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { LifeProjects } from '../../components/LifeProjects';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { TAB_LABELS } from '../../constants';
@@ -30,44 +29,57 @@ const baseProps = {
     returnRate: 6,
 };
 
-describe('LifeProjects — harmonisation Vie (REFONTE-NAV-L4)', () => {
+const ITALIE: TravelGoal = { id: 't1', destination: 'Italie', date: '2099-06-14', totalCost: 8500, image: '✈️' };
+const RENO = { id: 'e1', name: 'Rénovation cuisine', type: 'RENOVATION', date: '2099-05-01', impactAmount: 25000 } as unknown as LifeEvent;
+
+describe('LifeProjects — maquettes S5 (frise, liste, impact)', () => {
     beforeEach(() => {
         navSpy.mockClear();
         useFinanceStore.setState({ navigateWithFocus: navSpy as never });
     });
 
-    it('un SEUL h1 (titre = TAB_LABELS) ; Voyages et Événements sont des h2 de section', () => {
-        render(<LifeProjects {...baseProps} />);
+    it('un SEUL h1 (titre = TAB_LABELS) ; résumé « N projets · voyages · événements »', () => {
+        render(<LifeProjects {...baseProps} travelGoals={[ITALIE]} lifeEvents={[RENO]} />);
         const h1s = screen.getAllByRole('heading', { level: 1 });
         expect(h1s).toHaveLength(1);
         expect(h1s[0].textContent).toBe(TAB_LABELS[Tab.LIFE_PROJECTS]);
-        const h2Texts = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent);
-        expect(h2Texts).toContain('Voyages');
-        expect(h2Texts).toContain('Événements de vie');
+        expect(screen.getByText('2 projets · 1 voyage · 1 événement')).toBeTruthy();
+        const h2 = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+        expect(h2.some((t) => t?.startsWith('Frise '))).toBe(true);
     });
 
     it('le lien « Voir l\'effet sur ma courbe » navigue vers Futur', () => {
-        render(<LifeProjects {...baseProps} />);
+        render(<LifeProjects {...baseProps} travelGoals={[ITALIE]} />);
         fireEvent.click(screen.getByRole('button', { name: /Voir l'effet sur ma courbe/ }));
         expect(navSpy).toHaveBeenCalledWith(Tab.FUTURE);
     });
 
-    it('sans projet : empty states honnêtes avec CTA (voyage + événement)', () => {
+    it('sans projet : état vide honnête ; « Nouveau projet » ouvre le formulaire', () => {
         render(<LifeProjects {...baseProps} />);
-        expect(screen.getByText('Aucun voyage prévu')).toBeTruthy();
-        expect(screen.getByText('Aucun événement')).toBeTruthy();
-        // Le CTA de l'empty state (2e bouton, après celui du header de section)
-        // ouvre le formulaire d'ajout de voyage.
-        const addButtons = screen.getAllByRole('button', { name: '+ Nouveau Voyage' });
-        expect(addButtons).toHaveLength(2);
-        fireEvent.click(addButtons[1]);
-        expect(screen.getByText('Budget Total ($)')).toBeTruthy();
+        expect(screen.getByText('Aucun projet')).toBeTruthy();
+        fireEvent.click(screen.getAllByRole('button', { name: 'Nouveau projet' })[0]);
+        expect(screen.getByRole('heading', { name: 'Nouveau projet' })).toBeTruthy();
+        expect(screen.getByLabelText('Budget total ($)')).toBeTruthy();
     });
 
-    it('le filtre Pill masque les sections non sélectionnées', () => {
-        render(<LifeProjects {...baseProps} />);
-        fireEvent.click(screen.getByRole('radio', { name: 'Voyages' }));
-        expect(screen.queryByRole('heading', { level: 2, name: 'Événements de vie' })).toBeFalsy();
-        expect(screen.getByRole('heading', { level: 2, name: 'Voyages' })).toBeTruthy();
+    it('la liste suit le filtre, et le projet choisi pilote la carte d\'impact', () => {
+        render(<LifeProjects {...baseProps} travelGoals={[ITALIE]} lifeEvents={[RENO]} />);
+        const liste = screen.getByRole('region', { name: 'Projets' });
+        // Par défaut, le prochain à venir (la rénovation, en mai) est choisi.
+        expect(screen.getByRole('heading', { name: 'Impact · Rénovation cuisine' })).toBeTruthy();
+        fireEvent.click(within(liste).getByRole('button', { name: /Italie/ }));
+        expect(screen.getByRole('heading', { name: 'Impact · Italie' })).toBeTruthy();
+
+        fireEvent.click(within(liste).getByRole('button', { name: 'Voyages' }));
+        expect(within(liste).queryByRole('button', { name: /Rénovation cuisine/ })).toBeNull();
+        expect(within(liste).getByRole('button', { name: /Italie/ })).toBeTruthy();
+    });
+
+    it('frise : ← → au clavier déplace le projet d\'une année (mois et jour conservés)', () => {
+        const setTravelGoals = vi.fn();
+        render(<LifeProjects {...baseProps} travelGoals={[{ ...ITALIE, date: '2030-06-14' }]} setTravelGoals={setTravelGoals} />);
+        const frise = screen.getByRole('region', { name: /Frise/ });
+        fireEvent.keyDown(within(frise).getByRole('button', { name: /Italie/ }), { key: 'ArrowRight' });
+        expect(setTravelGoals).toHaveBeenCalledWith([expect.objectContaining({ id: 't1', date: '2031-06-14' })]);
     });
 });

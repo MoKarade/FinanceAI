@@ -63,7 +63,7 @@ describe('[BANDEAUX-VERS-PROFIL] le Profil consomme le deep-link', () => {
     beforeEach(() => useFinanceStore.setState(etatInitial, true));
 
     const cas: Array<{ section: string; onglet: RegExp }> = [
-        { section: 'profile-lifeExpectancy', onglet: /Retraite & enfants/ },
+        { section: 'profile-lifeExpectancy', onglet: /Retraite (&|et) enfants/ },
         { section: 'profile-user1-grossSalary', onglet: /Revenus/ },
         { section: 'profile-user1-card', onglet: /Identité/ },
     ];

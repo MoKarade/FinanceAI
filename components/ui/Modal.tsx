@@ -106,7 +106,7 @@ export const Modal: React.FC<ModalProps> = ({
     return (
         <div
             role="presentation"
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+            className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fade-in"
             onClick={closeOnBackdrop ? onClose : undefined}
         >
             <div
@@ -123,15 +123,15 @@ export const Modal: React.FC<ModalProps> = ({
                 ].filter(Boolean).join(' ')}
             >
                 {(title || headerActions) && (
-                    <div className="flex items-start justify-between gap-3 p-4 border-b border-white/10 flex-shrink-0">
+                    <div className="flex items-start justify-between gap-3 p-4 border-b border-white/10 shrink-0">
                         <div className="flex items-center gap-3 min-w-0">
-                            {icon && <span className="text-h1 flex-shrink-0" aria-hidden="true">{icon}</span>}
+                            {icon && <span className="text-h1 shrink-0" aria-hidden="true">{icon}</span>}
                             <div className="min-w-0">
                                 {title && <h2 id={titleId} className="text-h2 text-ink-50 truncate">{title}</h2>}
                                 {subtitle && <p className="text-meta text-ink-400 mt-0.5">{subtitle}</p>}
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2 shrink-0">
                             {headerActions}
                             <button
                                 ref={closeBtnRef}
@@ -151,7 +151,7 @@ export const Modal: React.FC<ModalProps> = ({
                 </div>
 
                 {footer && (
-                    <div className="flex items-center justify-end gap-2 p-4 border-t border-white/10 flex-shrink-0">
+                    <div className="flex items-center justify-end gap-2 p-4 border-t border-white/10 shrink-0">
                         {footer}
                     </div>
                 )}

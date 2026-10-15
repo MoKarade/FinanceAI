@@ -94,7 +94,7 @@ export const SyncConflictModal: React.FC = () => {
 
     return (
         <div
-            className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+            className="fixed inset-0 z-10000 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fade-in"
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="sync-conflict-title"

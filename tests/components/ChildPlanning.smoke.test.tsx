@@ -2,11 +2,11 @@
 // [REFONTE-NAV-L4] étendu : header harmonisé (titre = TAB_LABELS), empty state honnête
 // avec CTA quand aucun enfant (avant : page blanche `return null`), lien commun vers Futur.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { ChildPlanning } from '../../components/ChildPlanning';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { INITIAL_CHILD_GOAL, TAB_LABELS } from '../../constants';
-import { DAYCARE_INFO, SCHOOL_INFO } from '../../services/projection/childCosts';
+import { LIBELLES_CHOIX } from '../../components/child/ChoixDeVie';
 import { Tab } from '../../types';
 import type { ProjectionConfig } from '../../types';
 
@@ -61,16 +61,21 @@ describe('ChildPlanning — smoke (CA-04) + harmonisation (REFONTE-NAV-L4)', () 
         const goals = [{ ...INITIAL_CHILD_GOAL, id: 'c1', name: 'Léo' }];
         render(<ChildPlanning goals={goals} setGoals={vi.fn()} projection={proj} currentRESP={0} />);
 
-        const groupe = (libelles: readonly string[]) => libelles.map((l) => {
-            const bouton = screen.getAllByRole('button').find((b) => b.textContent?.includes(l));
-            expect(bouton, `option introuvable à l'écran : ${l}`).toBeTruthy();
-            return bouton as HTMLElement;
-        });
+        // [S5-REFONTE-ENFANTS] Chaque groupe est un `role="group"` nommé : on cherche ses options DANS
+        // le groupe (plusieurs groupes ont une option « Aucune »).
+        const groupe = (nom: string, libelles: readonly string[]) => {
+            const g = screen.getByRole('group', { name: nom });
+            return libelles.map((l) => {
+                const bouton = within(g).getAllByRole('button').find((b) => b.textContent?.includes(l));
+                expect(bouton, `option introuvable dans « ${nom} » : ${l}`).toBeTruthy();
+                return bouton as HTMLElement;
+            });
+        };
         const presses = (boutons: readonly HTMLElement[]) =>
             boutons.filter((b) => b.getAttribute('aria-pressed') === 'true').length;
 
-        const garde = groupe(Object.values(DAYCARE_INFO).map((i) => i.label));
-        const ecole = groupe(Object.values(SCHOOL_INFO).map((i) => i.label));
+        const garde = groupe('Garde (0 à 5 ans)', Object.values(LIBELLES_CHOIX.garde));
+        const ecole = groupe('École (6 à 17 ans)', Object.values(LIBELLES_CHOIX.ecole));
         // Anti-vacuité : sans plusieurs options par groupe, « une seule active » est trivial.
         expect(garde.length).toBeGreaterThanOrEqual(3);
         expect(ecole.length).toBeGreaterThanOrEqual(2);
@@ -93,8 +98,10 @@ describe('ChildPlanning — smoke (CA-04) + harmonisation (REFONTE-NAV-L4)', () 
         const goals = [{ ...INITIAL_CHILD_GOAL, id: 'c1', name: 'Léo' }];
         render(<ChildPlanning goals={goals} setGoals={vi.fn()} projection={proj} currentRESP={0} />);
         expect(screen.getByRole('heading', { level: 1, name: TAB_LABELS[Tab.CHILD] })).toBeTruthy();
-        expect(screen.getByText('Choix de Vie')).toBeTruthy();
-        fireEvent.click(screen.getByRole('button', { name: /Voir l'effet sur ma courbe/ }));
+        expect(screen.getByRole('heading', { name: 'Choix de vie' })).toBeTruthy();
+        // [S5-REFONTE-ENFANTS] Deux exemplaires dans le DOM : en-tête (bureau) et bas de page (mobile),
+        // l'un ou l'autre masqué par CSS selon la largeur — jsdom ne l'applique pas.
+        fireEvent.click(screen.getAllByRole('button', { name: /Voir l'effet sur ma courbe/ })[0]);
         expect(navSpy).toHaveBeenCalledWith(Tab.FUTURE);
     });
 });

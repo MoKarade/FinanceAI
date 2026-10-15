@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, fireEvent, within } from '@testing-library/react';
+import { render, fireEvent, within, screen } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { getViewContext, _resetViewContextForTests } from '../../services/aiChat/viewContext';
@@ -43,6 +43,26 @@ const defaultBudget: BudgetCategory[] = [
     { id: 'cat3', name: 'CELI', target: 500, frequency: 'Monthly', type: 'Commun', nature: 'Epargne' },
 ];
 
+/** [S5-REFONTE-BUDGET] La tuile KPI par son libellé (`data-kpi`) : réel, prévu, objectif y sont balisés. */
+const tuileKpi = (c: HTMLElement, libelle: string) => c.querySelector(`[data-kpi="${libelle}"]`) as HTMLElement;
+/** L'édition d'un poste est repliée (maquettes) : on la déplie en cliquant son nom. */
+const deplier = (nom: string) => fireEvent.click(screen.getByRole('button', { name: nom }));
+/** Sections repliées (grand livre, outils) : dépliées avant d'y lire quoi que ce soit. */
+const ouvrir = (titre: RegExp) => fireEvent.click(screen.getByRole('button', { name: titre }));
+
+/**
+ * [BUDGET-TEST-FUSEAU-FUITE] Fuseau EFFECTIF du processus, lu au chargement du fichier, avant que
+ * le moindre test ne touche `process.env.TZ`. Les tests qui changent de fuseau le RÉASSIGNENT à
+ * cette valeur en sortie, au lieu de faire `delete process.env.TZ`. MESURÉ le 2026-09-30 sous
+ * vitest : après `process.env.TZ = 'Australia/Sydney'` puis `delete process.env.TZ`, le décalage
+ * reste −600 min (Sydney). Node ne relit le fuseau que sur une ASSIGNATION, pas sur une
+ * suppression. Tout le reste du fichier tournait donc à l'heure de Sydney, et le bandeau des
+ * dépassements échouait le dernier jour du mois dès ~10 h au Québec : il est alors déjà le 1er du
+ * mois suivant à Sydney, et la transaction « du mois courant » tombait hors période.
+ */
+const FUSEAU_INITIAL = process.env.TZ ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+const restaurerFuseau = () => { process.env.TZ = FUSEAU_INITIAL; };
+
 const baseProps = {
     transactions: [],
     config: defaultConfig,
@@ -66,20 +86,23 @@ describe('Budget — refonte UI (Phase C3)', () => {
         // L'ancien h1 « Pilotage Budget » est demoté (un seul h1 par destination, porté par le workspace).
         expect(container.querySelector('h1')).toBeNull();
         expect(container.textContent).not.toContain('Pilotage Budget');
-        // La barre de pilotage reste : vision de la période + bouton Diagnostic.
+        // La barre de pilotage reste (Budget rendu seul) ; vision de la période + Diagnostic vivent,
+        // repliés, dans « Outils du budget » ([S5-REFONTE-BUDGET]).
+        expect(screen.getByRole('radiogroup', { name: 'Période' })).toBeTruthy();
+        ouvrir(/Outils du budget/);
         expect(container.textContent).toContain('Vision tactique (Mois en cours)');
         expect(container.textContent).toContain('Diagnostic');
     });
 
-    it('Phase D\'.5 — affiche les 4 tuiles dual prévu/réel (Budget / Revenus / Dépenses / Restant)', () => {
+    it('Phase D\'.5 — affiche les 4 tuiles dual prévu/réel (Revenus / Dépenses / Fin de mois / Restant)', () => {
         const { container } = render(<Budget {...baseProps} />);
-        const text = container.textContent || '';
-        expect(text).toContain('Budget');
-        expect(text).toContain('Revenus');
-        expect(text).toContain('Dépenses');
-        expect(text).toContain('Restant');
-        // Les tuiles affichent toutes le label "Réel / Prévu"
-        expect(text.match(/Réel \/ Prévu/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+        // [S5-REFONTE-BUDGET] Chaque tuile : le réel en grand, puis « Prévu ».
+        for (const libelle of ['Revenus', 'Dépenses', 'Fin de mois (projection)', 'Restant']) {
+            const tile = tuileKpi(container, libelle);
+            expect(tile, libelle).toBeTruthy();
+            expect(tile.querySelector('[data-kpi-reel]'), libelle).toBeTruthy();
+            expect(tile.querySelector('[data-kpi-prevu]')?.textContent, libelle).toMatch(/^Prévu/);
+        }
     });
 
     // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] les 4 tuiles passent de Réel/Prévu à Réel/Prévu/OBJECTIF.
@@ -88,21 +111,16 @@ describe('Budget — refonte UI (Phase C3)', () => {
     // ce test — vérifié en local).
     it('[BUDGET-REEL-PREVISIONNEL-OBJECTIF] les 4 tuiles affichent une 3e valeur Objectif', () => {
         const { container } = render(<Budget {...baseProps} />);
-        const text = container.textContent || '';
-        expect(text.match(/Réel \/ Prévu \/ Objectif/g)?.length ?? 0).toBe(4);
-        // [a11y panel] Le libellé est un `sr-only` INLINE (plus un `title` HTML, non fiable sur un span).
-        const objectifNodes = [...container.querySelectorAll('.sr-only')].filter((n) => (n.textContent ?? '').startsWith('Objectif'));
-        expect(objectifNodes.length).toBe(4);
+        // [S5-REFONTE-BUDGET] « Objectif » est désormais un libellé VISIBLE à côté de « Prévu ».
+        const objectifs = [...container.querySelectorAll('[data-kpi-objectif]')];
+        expect(objectifs.length).toBe(4);
+        for (const o of objectifs) expect(o.parentElement?.textContent).toMatch(/Obj(ectif|\.)/);
     });
 
     it('[BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif Dépenses = somme des cibles de catégorie, Objectif Restant = Objectif Revenus − Objectif Dépenses', () => {
         const { container } = render(<Budget {...baseProps} />);
         const parseObjectif = (label: string): number => {
-            const labelNode = [...container.querySelectorAll('.kpi-label')].find((l) => (l.textContent ?? '').includes(label));
-            const tile = labelNode!.closest('div[class*="rounded-card"]');
-            const srLabel = [...tile!.querySelectorAll('.sr-only')].find((n) => (n.textContent ?? '').startsWith('Objectif'));
-            // Le montant est le texte du PARENT, moins le préfixe sr-only « Objectif : ».
-            const raw = (srLabel!.parentElement!.textContent ?? '').replace(/^\s*Objectif\s*:\s*/, '');
+            const raw = tuileKpi(container, label).querySelector('[data-kpi-objectif]')!.textContent ?? '';
             return Number(raw.replace(/[^\d.,-]/g, '').replace(',', '.'));
         };
         const revenus = parseObjectif('Revenus');
@@ -133,29 +151,23 @@ describe('Budget — refonte UI (Phase C3)', () => {
             } as BudgetConfig,
         };
         const { container } = render(<Budget {...netOnly} />);
-        const objectifs = [...container.querySelectorAll('.sr-only')].filter((n) => (n.textContent ?? '').startsWith('Objectif'));
+        const objectifs = [...container.querySelectorAll('[data-kpi-objectif]')];
         // Dépenses + Fin de mois gardent leur objectif (cibles saisies) ; Revenus et Restant l'OMETTENT.
-        const labelDe = (name: string) => {
-            const l = [...container.querySelectorAll('.kpi-label')].find((x) => (x.textContent ?? '').includes(name));
-            return l!.closest('div[class*="rounded-card"]')!;
-        };
-        expect(labelDe('Revenus').querySelector('.sr-only')).toBeNull();
-        expect(labelDe('Restant').querySelector('.sr-only')).toBeNull();
+        expect(tuileKpi(container, 'Revenus').querySelector('[data-kpi-objectif]')).toBeNull();
+        expect(tuileKpi(container, 'Restant').querySelector('[data-kpi-objectif]')).toBeNull();
+        expect(tuileKpi(container, 'Revenus').textContent).not.toMatch(/Obj/);
         expect(objectifs.length).toBeGreaterThan(0); // les tuiles de dépenses en ont toujours un
-        expect(container.textContent).not.toMatch(/Objectif\s*:\s*0\s?\$/);
+        expect(container.textContent).not.toMatch(/Objectif\s*0\s?\$/);
     });
 
     it('[BUDGET-REEL-PREVISIONNEL-OBJECTIF] l\'Objectif est une cible SAISIE : le simulateur d\'inflation ne le bouge pas', () => {
         // `getDisplayTarget` indexe par `inflationSim` ; l'Objectif passe par `getBaseMonthlyTarget`,
         // qui ne l'indexe pas. Mesuré avant correctif : 2 200 $ → 2 370 $ à +10 %.
         const { container } = render(<Budget {...baseProps} />);
-        const readObjectif = () => {
-            const l = [...container.querySelectorAll('.kpi-label')].find((x) => (x.textContent ?? '').includes('Dépenses'));
-            const tile = l!.closest('div[class*="rounded-card"]')!;
-            const sr = [...tile.querySelectorAll('.sr-only')].find((n) => (n.textContent ?? '').startsWith('Objectif'));
-            return Number((sr!.parentElement!.textContent ?? '').replace(/^\s*Objectif\s*:\s*/, '').replace(/[^\d.,-]/g, '').replace(',', '.'));
-        };
+        const readObjectif = () => Number((tuileKpi(container, 'Dépenses').querySelector('[data-kpi-objectif]')!.textContent ?? '')
+            .replace(/[^\d.,-]/g, '').replace(',', '.'));
         const avant = readObjectif();
+        ouvrir(/Outils du budget/); // le simulateur d'inflation vit, replié, dans les outils
         const slider = container.querySelector('input[type="range"]');
         expect(slider).not.toBeNull();
         fireEvent.change(slider!, { target: { value: '10' } });
@@ -164,6 +176,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
 
     it('affiche le badge Excédentaire/Déficitaire', () => {
         const { container } = render(<Budget {...baseProps} />);
+        ouvrir(/Outils du budget/);
         const text = container.textContent || '';
         // Soit l'un soit l'autre — dépend des montants
         expect(text.match(/Excédentaire|Déficitaire/)).toBeTruthy();
@@ -171,7 +184,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
 
     it('[PH4E-OWNER-EDIT] mode COUPLE (user2 nommé) : section « Santé Financière du Couple » présente', () => {
         const { container } = render(<Budget {...baseProps} />);
-        expect(container.textContent || '').toContain('du Couple');
+        expect(container.textContent || '').toContain('du couple');
     });
 
     it('[PH4E-OWNER-EDIT] mode SOLO (user2 SANS nom) : section « du Couple » ABSENTE (isSolo basé sur le nom, pas length)', () => {
@@ -180,8 +193,8 @@ describe('Budget — refonte UI (Phase C3)', () => {
         const soloConfig: BudgetConfig = { ...defaultConfig, users: [defaultConfig.users[0], { ...defaultConfig.users[1], name: '' } as User] };
         const { container } = render(<Budget {...baseProps} config={soloConfig} />);
         const text = container.textContent || '';
-        expect(text).toContain('Santé Financière'); // la carte existe (titre solo)
-        expect(text).not.toContain('du Couple');     // mais pas la variante couple
+        expect(text).toContain('Santé financière'); // la carte existe (titre solo)
+        expect(text).not.toContain('du couple');     // mais pas la variante couple
     });
 
     it('[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES] le grand livre et le KPI Revenus disent le MÊME revenu ; les autres entrées sont nommées', () => {
@@ -194,6 +207,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
         const transactions = [tx('s1', 'Salaire', 6000), tx('m1', 'Magasinage', 200), tx('u1', 'Uncategorized', 500)];
 
         const { container } = render(<Budget {...baseProps} transactions={transactions} />);
+        ouvrir(/Réel par mois/);
         const norm = (s: string | null) => (s ?? '').replace(/\u00a0/g, ' ');
         const rowByHeader = (texte: string): HTMLElement => {
             const th = (Array.from(container.querySelectorAll('th')) as HTMLElement[])
@@ -202,9 +216,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
             return th!.closest('tr') as HTMLElement;
         };
         // Le KPI Revenus (tuile) et le « Total revenus » du grand livre : le même 6 000 $.
-        const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
-            .find((l) => (l.textContent ?? '').includes('Revenus'));
-        const kpiReel = (label!.closest('.rounded-card') as HTMLElement).querySelector('.text-kpi') as HTMLElement;
+        const kpiReel = tuileKpi(container, 'Revenus').querySelector('[data-kpi-reel]') as HTMLElement;
         expect(norm(kpiReel.textContent)).toContain(norm(formatCAD(6000)));
         expect(norm(rowByHeader('Total revenus').textContent)).toContain(norm(formatCAD(6000)));
         expect(norm(rowByHeader('Total revenus').textContent)).not.toContain(norm(formatCAD(6700)));
@@ -225,10 +237,8 @@ describe('Budget — refonte UI (Phase C3)', () => {
         const transactions = [tx('r1', 'Restaurants', -1000), tx('i1', 'Impôts', -700)];
 
         const { container } = render(<Budget {...baseProps} transactions={transactions} />);
-        const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
-            .find((l) => (l.textContent ?? '').includes('Dépenses'));
-        const tile = label!.closest('.rounded-card') as HTMLElement;
-        const reel = tile.querySelector('.text-kpi') as HTMLElement;
+        const tile = tuileKpi(container, 'Dépenses');
+        const reel = tile.querySelector('[data-kpi-reel]') as HTMLElement;
         expect((reel.textContent ?? '').replace(/[^\d]/g, '')).toBe('1000');
         const texte = (tile.textContent ?? '').replace(/\u00a0/g, ' ');
         expect(texte).toContain('hors impôts');
@@ -254,10 +264,8 @@ describe('Budget — refonte UI (Phase C3)', () => {
         // La RÉEL de la tuile « Dépenses » = premier montant (.text-kpi), la prévu = second (moy. passée).
         // On cible la tuile KPI via `.kpi-label` (« Dépenses » apparaît aussi ailleurs : en-tête du grand livre).
         const reelDigits = (): string => {
-            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
-                .find((l) => (l.textContent ?? '').includes('Dépenses'));
-            const tile = label!.closest('.rounded-card') as HTMLElement;
-            const reel = tile.querySelector('.text-kpi') as HTMLElement;
+            const tile = tuileKpi(container, 'Dépenses');
+            const reel = tile.querySelector('[data-kpi-reel]') as HTMLElement;
             return (reel.textContent ?? '').replace(/[^\d]/g, '');
         };
 
@@ -277,13 +285,13 @@ describe('Budget — refonte UI (Phase C3)', () => {
         const transactions = [
             { id: 'p1', date: prevDate, description: 'Resto', category: 'Restaurants', amount: -123 } as unknown as Transaction,
         ];
-        const { getByDisplayValue, getByText } = render(<Budget {...baseProps} transactions={transactions} />);
+        const { getByText } = render(<Budget {...baseProps} transactions={transactions} />);
 
         // 1 mois plein d'historique → moyenne mensuelle = 123 $, rendue dans la LIGNE du poste.
         // NB : getByText(string) compare l'attendu BRUT au texte DOM NORMALISÉ (les espaces
         // insécables de formatCAD deviennent des espaces simples) → normaliser l'attendu pareil.
         const cad = (n: number) => formatCAD(n).replace(/[  ]/g, ' ');
-        const row = () => getByDisplayValue('Restaurants').closest('tr') as HTMLElement;
+        const row = () => screen.getByRole('button', { name: 'Restaurants' }).closest('tr') as HTMLElement;
         expect(within(row()).getByText(cad(123))).toBeInTheDocument();
 
         // Vue Année : la moyenne suit la MÊME normalisation de période que la cible (×12).
@@ -308,10 +316,8 @@ describe('Budget — refonte UI (Phase C3)', () => {
         ];
         const { container } = render(<Budget {...baseProps} transactions={transactions} />);
 
-        const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
-            .find((l) => (l.textContent ?? '').includes('Revenus'));
-        const tile = label!.closest('.rounded-card') as HTMLElement;
-        const reel = (tile.querySelector('.text-kpi') as HTMLElement).textContent?.replace(/[^\d]/g, '');
+        const tile = tuileKpi(container, 'Revenus');
+        const reel = (tile.querySelector('[data-kpi-reel]') as HTMLElement).textContent?.replace(/[^\d]/g, '');
         expect(reel).toBe('2500'); // 2000 + 500, PAS 2600 (remboursement exclu)
         // Ventilation salaire / divers visible
         expect(tile.textContent).toMatch(/Salaire/);
@@ -324,14 +330,11 @@ describe('Budget — refonte UI (Phase C3)', () => {
     // fuseau est un PARAMÈTRE du test, pas un détail d'environnement (leçon
     // `UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`).
     describe('[BUDGET-INCOME-WINDOW-UTC-OFFBYONE] fenêtre revenus vs fuseau horaire', () => {
-        const originalTz = process.env.TZ;
         beforeEach(() => { process.env.TZ = 'America/Toronto'; });
         // [finding financial-integrity #751] `process.env.TZ = undefined` écrit la CHAÎNE
-        // "undefined", pas une absence — `delete` si le TZ n'était pas défini au départ, sinon les
-        // tests suivants tournent sous un fuseau nommé "undefined" plutôt que celui du conteneur.
-        afterEach(() => {
-            if (originalTz === undefined) delete process.env.TZ; else process.env.TZ = originalTz;
-        });
+        // "undefined", pas une absence. Et `delete` ne remet PAS le fuseau (mesuré, voir
+        // `FUSEAU_INITIAL`) : on réassigne le fuseau effectif lu au chargement du fichier.
+        afterEach(restaurerFuseau);
 
         it('un revenu daté du 1er du mois compte, même sous un fuseau à décalage négatif', () => {
             const now = new Date();
@@ -342,10 +345,8 @@ describe('Budget — refonte UI (Phase C3)', () => {
                 { id: 'i1', date: firstOfMonth, payee: 'X', amount: 500, category: 'Revenus divers' } as unknown as Transaction,
             ];
             const { container } = render(<Budget {...baseProps} transactions={transactions} />);
-            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
-                .find((l) => (l.textContent ?? '').includes('Revenus'));
-            const tile = label!.closest('.rounded-card') as HTMLElement;
-            const reel = (tile.querySelector('.text-kpi') as HTMLElement).textContent?.replace(/[^\d]/g, '');
+            const tile = tuileKpi(container, 'Revenus');
+            const reel = (tile.querySelector('[data-kpi-reel]') as HTMLElement).textContent?.replace(/[^\d]/g, '');
             expect(reel).toBe('500'); // pas '0' : le 1er du mois n'est plus perdu
         });
 
@@ -366,13 +367,11 @@ describe('Budget — refonte UI (Phase C3)', () => {
                 { id: 'i2', date: '2026-08-31', payee: 'X', amount: 200, category: 'Revenus divers' } as unknown as Transaction,
             ];
             const { container, getByText, getByLabelText } = render(<Budget {...baseProps} transactions={transactions} />);
-            fireEvent.click(getByText('Custom'));
+            fireEvent.click(getByText('Dates'));
             fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-01' } });
             fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-31' } });
-            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
-                .find((l) => (l.textContent ?? '').includes('Revenus'));
-            const tile = label!.closest('.rounded-card') as HTMLElement;
-            const reel = (tile.querySelector('.text-kpi') as HTMLElement).textContent?.replace(/[^\d]/g, '');
+            const tile = tuileKpi(container, 'Revenus');
+            const reel = (tile.querySelector('[data-kpi-reel]') as HTMLElement).textContent?.replace(/[^\d]/g, '');
             expect(reel).toBe('500'); // 300 + 200, pas '0' ou '300' (une borne perdue)
         });
 
@@ -394,13 +393,11 @@ describe('Budget — refonte UI (Phase C3)', () => {
                 { id: 's1', date: `${py}-${pm}-15`, payee: 'X', amount: 1000, category: 'Salaire' } as unknown as Transaction,
             ];
             const { getByText, getByLabelText, container } = render(<Budget {...baseProps} transactions={transactions} />);
-            fireEvent.click(getByText('Custom'));
+            fireEvent.click(getByText('Dates'));
             fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-11-01' } });
             fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-11-30' } });
-            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
-                .find((l) => (l.textContent ?? '').includes('Revenus'));
-            const tile = label!.closest('.rounded-card') as HTMLElement;
-            const prevuEl = tile.querySelector('.text-meta.tabular-nums') as HTMLElement;
+            const tile = tuileKpi(container, 'Revenus');
+            const prevuEl = tile.querySelector('[data-kpi-prevu]') as HTMLElement;
             const prevu = Number(prevuEl.textContent?.replace(/[^\d]/g, ''));
             // 1000 × 30/30.44 ≈ 986 $ (30 jours civils INCLUSIFS, DST-safe).
             expect(prevu).toBeGreaterThan(970);
@@ -422,13 +419,11 @@ describe('Budget — refonte UI (Phase C3)', () => {
                 { id: 's1', date: `${py}-${pm}-15`, payee: 'X', amount: 1000, category: 'Salaire' } as unknown as Transaction,
             ];
             const { getByText, getByLabelText, container } = render(<Budget {...baseProps} transactions={transactions} />);
-            fireEvent.click(getByText('Custom'));
+            fireEvent.click(getByText('Dates'));
             fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-01' } });
             fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-31' } });
-            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
-                .find((l) => (l.textContent ?? '').includes('Revenus'));
-            const tile = label!.closest('.rounded-card') as HTMLElement;
-            const prevuEl = tile.querySelector('.text-meta.tabular-nums') as HTMLElement;
+            const tile = tuileKpi(container, 'Revenus');
+            const prevuEl = tile.querySelector('[data-kpi-prevu]') as HTMLElement;
             const prevu = Number(prevuEl.textContent?.replace(/[^\d]/g, ''));
             // 1000 × 31/30.44 ≈ 1 018 $ (inclusif, correct) — pas 1000 × 30/30.44 ≈ 986 $ (exclusif, bug).
             expect(prevu).toBeGreaterThan(1000);
@@ -450,13 +445,11 @@ describe('Budget — refonte UI (Phase C3)', () => {
                 { id: 's1', date: `${py}-${pm}-15`, payee: 'X', amount: 1000, category: 'Salaire' } as unknown as Transaction,
             ];
             const { getByText, getByLabelText, container } = render(<Budget {...baseProps} transactions={transactions} />);
-            fireEvent.click(getByText('Custom'));
+            fireEvent.click(getByText('Dates'));
             fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-15' } });
             fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-15' } });
-            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
-                .find((l) => (l.textContent ?? '').includes('Revenus'));
-            const tile = label!.closest('.rounded-card') as HTMLElement;
-            const prevuEl = tile.querySelector('.text-meta.tabular-nums') as HTMLElement;
+            const tile = tuileKpi(container, 'Revenus');
+            const prevuEl = tile.querySelector('[data-kpi-prevu]') as HTMLElement;
             const prevu = Number(prevuEl.textContent?.replace(/[^\d]/g, ''));
             // 1000 × 1/30.44 ≈ 33 $ (correct, sans plancher) — pas 1000 × 0,1 = 100 $ (plancher).
             expect(prevu).toBeLessThan(50);
@@ -471,14 +464,12 @@ describe('Budget — refonte UI (Phase C3)', () => {
                 { id: 'i1', date: '2026-08-15', payee: 'X', amount: 500, category: 'Revenus divers' } as unknown as Transaction,
             ];
             const { getByText, getByLabelText, container } = render(<Budget {...baseProps} transactions={transactions} />);
-            fireEvent.click(getByText('Custom'));
+            fireEvent.click(getByText('Dates'));
             // Fin AVANT début, à l'envers.
             fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-31' } });
             fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-01' } });
-            const label = (Array.from(container.querySelectorAll('.kpi-label')) as HTMLElement[])
-                .find((l) => (l.textContent ?? '').includes('Revenus'));
-            const tile = label!.closest('.rounded-card') as HTMLElement;
-            const reel = (tile.querySelector('.text-kpi') as HTMLElement).textContent?.replace(/[^\d]/g, '');
+            const tile = tuileKpi(container, 'Revenus');
+            const reel = (tile.querySelector('[data-kpi-reel]') as HTMLElement).textContent?.replace(/[^\d]/g, '');
             expect(reel).toBe('500'); // pas '0' : la transaction du 15 août est bien dans la plage permutée.
         });
     });
@@ -487,10 +478,11 @@ describe('Budget — refonte UI (Phase C3)', () => {
     // même helper (`toLocalDateStr`) doit aussi tenir sous un fuseau POSITIF (Sydney), où le piège
     // s'inverse : minuit local peut reculer d'un jour en UTC au lieu d'avancer.
     describe('[BUDGET-INCOME-WINDOW-UTC-OFFBYONE] défauts Custom vs fuseau à décalage POSITIF', () => {
-        const originalTz = process.env.TZ;
         afterEach(() => {
             vi.useRealTimers();
-            if (originalTz === undefined) delete process.env.TZ; else process.env.TZ = originalTz;
+            // [BUDGET-TEST-FUSEAU-FUITE] Réassigner, jamais `delete` : ce test pose Sydney, et un
+            // `delete` le laissait en place pour tout le reste du fichier.
+            restaurerFuseau();
         });
 
         it('les valeurs par défaut de la plage Custom reflètent le jour LOCAL juste après minuit', () => {
@@ -501,7 +493,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
             vi.useFakeTimers();
             vi.setSystemTime(new Date(2026, 7, 1, 0, 30)); // 1er août 2026, 00 h 30 LOCAL
             const { getByText, getByLabelText } = render(<Budget {...baseProps} />);
-            fireEvent.click(getByText('Custom'));
+            fireEvent.click(getByText('Dates'));
             expect((getByLabelText('Date de fin') as HTMLInputElement).value).toBe('2026-08-01');
         });
     });
@@ -525,6 +517,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
             // seulement silencieux — sinon l'utilisateur voit juste son clavier « ne pas marcher ».
             const toastSpy = vi.fn();
             window.addEventListener('app-toast', toastSpy);
+            deplier('Restaurants');
             const input = getByDisplayValue('Restaurants') as HTMLInputElement;
             fireEvent.change(input, { target: { value: '' } });
             expect(setBudgetItemsMock).not.toHaveBeenCalled();
@@ -539,6 +532,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
             const { getByDisplayValue } = render(
                 <Budget {...baseProps} setBudgetItems={setBudgetItemsMock} />
             );
+            deplier('Restaurants');
             const input = getByDisplayValue('Restaurants') as HTMLInputElement;
             fireEvent.change(input, { target: { value: '   ' } });
             expect(setBudgetItemsMock).not.toHaveBeenCalled();
@@ -564,6 +558,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
             const toastSpy = vi.fn();
             window.addEventListener('app-toast', toastSpy);
             const { getByDisplayValue } = render(<Budget {...baseProps} transactions={transactions} />);
+            deplier('Restaurants');
             const input = getByDisplayValue('Restaurants') as HTMLInputElement;
 
             // 3 « frappes » successives, comme un input contrôlé les enverrait une par une.
@@ -603,10 +598,10 @@ describe('Budget — refonte UI (Phase C3)', () => {
                 return <Budget {...baseProps} budgetItems={items} setBudgetItems={setItems} transactions={transactions} />;
             };
             const { getByDisplayValue, getByText } = render(<Wrapper />);
+            deplier('Restaurants');
             const input = getByDisplayValue('Restaurants') as HTMLInputElement;
             fireEvent.change(input, { target: { value: 'Restaurant' } }); // frappe partielle, PAS flushée
-            const row = input.closest('tr') as HTMLElement;
-            fireEvent.click(within(row).getByLabelText('Supprimer la catégorie'));
+            fireEvent.click(screen.getByRole('button', { name: 'Supprimer le poste' }));
             fireEvent.click(getByText('Supprimer')); // confirme dans la modale
             // Réassignée au nom RÉELLEMENT présent dans `transactions` ('Restaurants'), pas à la
             // frappe abandonnée ('Restaurant', qui n'existe dans AUCUNE transaction).
@@ -624,6 +619,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
             ];
             useFinanceStore.setState({ transactions });
             const { getByDisplayValue, unmount } = render(<Budget {...baseProps} transactions={transactions} />);
+            deplier('Restaurants');
             const input = getByDisplayValue('Restaurants') as HTMLInputElement;
             fireEvent.change(input, { target: { value: 'Restaurant' } });
             unmount(); // AVANT que le timer de 500 ms n'ait eu la chance de se déclencher
@@ -640,6 +636,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
             ];
             useFinanceStore.setState({ transactions });
             const { getByDisplayValue, rerender } = render(<Budget {...baseProps} transactions={transactions} />);
+            deplier('Restaurants');
             const input = getByDisplayValue('Restaurants') as HTMLInputElement;
             fireEvent.change(input, { target: { value: 'Restaurant' } });
 
@@ -668,7 +665,7 @@ describe('Budget — refonte UI (Phase C3)', () => {
     it('[BUDGET-CUSTOM-PLAGE-INVERSEE] le contexte publié au chat décrit la plage PERMUTÉE, pas les dates brutes inversées', () => {
         _resetViewContextForTests();
         const { getByText, getByLabelText } = render(<Budget {...baseProps} />);
-        fireEvent.click(getByText('Custom'));
+        fireEvent.click(getByText('Dates'));
         // Fin AVANT début, à l'envers — comme le test de permutation plus haut.
         fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-31' } });
         fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-01' } });

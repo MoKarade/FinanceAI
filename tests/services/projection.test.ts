@@ -1015,6 +1015,22 @@ const ALL_TYPES = ['BASE', 'LIBERTE_55', 'HYPER_INFLATION', 'WINDFALL', 'ECONOMI
             expect(totalReeeContrib).toBeLessThanOrEqual(50000 * 1.05);
         });
 
+        it('[S5-REFONTE-ENFANTS] un enfant planifié compte TOUJOURS (l\'ancien isActive: false est ignoré)', () => {
+            // Décision de Marc (25/09) : plus d'interrupteur « compter dans le Futur ». Un enfant
+            // enregistré inactif avant ce changement doit peser sur la projection comme un actif.
+            const child = {
+                id: 'kid1', name: 'TestKid', birthDate: '2026-01', initialCost: 3000, monthlyDiapers: 80,
+                monthlyFood: 100, monthlyClothing: 60, monthlyDaycare: 0, governmentBenefits: 0, parentalLeaveIncomeDrop: 0,
+            };
+            const fin = (isActive: boolean) => {
+                const r = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 5 }), childGoals: [{ ...child, isActive }] }));
+                return r.finalNetWorth ?? NaN;
+            };
+            const sans = calculateFutureProjection(makeParams({ projection: makeProjection({ years: 5 }), childGoals: [] })).finalNetWorth ?? NaN;
+            expect(fin(false)).toBeCloseTo(fin(true), 6);
+            expect(fin(false)).toBeLessThan(sans); // discriminant : l'enfant coûte bien quelque chose
+        });
+
         it('§6.10 FHSA fermeture à 71 ans: aucune nouvelle cotisation après 71', () => {
             // User1 (Test1, birthYear 1991) atteint 71 ans en 2062. Si on lance une
             // simu jusqu'en 2062+, le moteur doit cesser d'ouvrir de la room FHSA.

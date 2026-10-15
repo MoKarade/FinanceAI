@@ -11,20 +11,17 @@ import { saveApiKeys } from './services/secureKeyStore';
 import { useShallow } from 'zustand/shallow';
 import { useDerivedFinancials } from './utils/useDerivedFinancials';
 import { TabRouter } from './components/TabRouter';
-import { CommandPalette, useCommandPalette, makeNavigationActions } from './components/ui/CommandPalette';
+import { useCommandPalette, makeNavigationActions } from './components/ui/commandPaletteActions';
 // [GODFILE-APP] Les effets de boot / navigation / hydratation marché et les deux gros handlers
 // (PDF, import de relevé) vivent dans leurs modules — App reste l'assemblage.
 import { useAppBootEffects } from './hooks/useAppBootEffects';
 import { useTabNavigation } from './hooks/useTabNavigation';
 import { useAssetDataHydration } from './hooks/useAssetDataHydration';
-import { genererRapportPdfEcran } from './components/app/exportPdfEcran';
-import { importerReleveManuel } from './components/app/importReleveManuel';
 import { lazyWithRetry } from './utils/lazyWithRetry';
+import { apresPremierAffichage } from './utils/apresPremierAffichage';
 import { pushNow, subscribeSyncStatus, getSyncStatus, hasConnectedBefore, type SyncStatus } from './services/sync/syncOrchestrator';
-import { GuidedTour } from './components/tour/GuidedTour';
 import { startGuidedTour } from './components/tour/tourControl';
 import { PassphraseGate } from './components/auth/PassphraseGate';
-import { SyncConflictModal } from './components/sync/SyncConflictModal';
 import { SyncStatusBanner } from './components/sync/SyncStatusBanner';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 // [AITOOLS-E] Provider = 1 instance de chat pour toute l'app (boot-safe : le SDK Anthropic est en
@@ -38,6 +35,12 @@ const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m 
 // moteur ~projection n'est plus tiré dans le chunk initial, comme avant via l'onglet Futur). Il monte
 // juste après le 1er paint, calcule, puis publie store.lastProjection (bref ProjectionRequired possible
 // au tout 1er boot, le temps que le chunk charge + le 1er calcul aboutisse).
+// [S5-REFONTE-PERF] Hors du chemin critique : chargés à la première utilisation (palette ouverte,
+// conflit de synchro affiché) ou après le premier affichage (visite guidée, qui n'écoute qu'un
+// évènement déclenché bien plus tard).
+const CommandPalette = lazyWithRetry(() => import('./components/ui/CommandPalette').then(m => ({ default: m.CommandPalette })), 'CommandPalette');
+const SyncConflictModal = lazyWithRetry(() => import('./components/sync/SyncConflictModal').then(m => ({ default: m.SyncConflictModal })), 'SyncConflictModal');
+const GuidedTour = lazyWithRetry(() => import('./components/tour/GuidedTour').then(m => ({ default: m.GuidedTour })), 'GuidedTour');
 const ProjectionEngine = lazyWithRetry(() => import('./components/ProjectionEngine').then(m => ({ default: m.ProjectionEngine })), 'ProjectionEngine');
 
 export const App: React.FC = () => {
@@ -89,6 +92,10 @@ export const App: React.FC = () => {
 
     // §7.B.3 — Command palette Cmd+K global
     const cmdK = useCommandPalette();
+    // [S5-REFONTE-PERF] Visite guidée montée après le premier affichage (elle n'écoute qu'un
+    // évènement, émis au plus tôt 700 ms après la fin de l'accueil).
+    const [tourPret, setTourPret] = useState(false);
+    useEffect(() => apresPremierAffichage(() => setTourPret(true)), []);
     const cmdActions = useMemo(() => [
         ...makeNavigationActions(handleSetTab),
         {
@@ -211,12 +218,17 @@ export const App: React.FC = () => {
 
     // [GODFILE-APP] Corps extrait dans components/app/importReleveManuel.ts (comportement
     // inchangé — dédup + virements + audit + classification IA paresseuse).
-    const handleManualImport = (rawData: string): Promise<void> => importerReleveManuel(rawData, {
-        transactions: state.transactions,
-        budgetItems: state.budgetItems,
-        apiKeyAnthropic: state.apiKeys.anthropic,
-        setAppState,
-    });
+    // [S5-REFONTE-PERF] Import à la demande : l'analyse de relevé (CSV, règles de catégories) n'entre
+    // dans le navigateur qu'au premier import.
+    const handleManualImport = async (rawData: string): Promise<void> => {
+        const { importerReleveManuel } = await import('./components/app/importReleveManuel');
+        return importerReleveManuel(rawData, {
+            transactions: state.transactions,
+            budgetItems: state.budgetItems,
+            apiKeyAnthropic: state.apiKeys.anthropic,
+            setAppState,
+        });
+    };
 
     // Phase 3B — memos extraits dans utils/useDerivedFinancials.ts
     const { globalNetWorth, avoirsHorsImmo, dettesHorsImmo, calculatedMonthlySavings, assetBreakdown, currentLiquidity } = useDerivedFinancials(state);
@@ -243,9 +255,15 @@ export const App: React.FC = () => {
                 publie store.lastProjection pour TOUS les onglets, indépendamment de l'onglet actif.
                 Garde no-fake-data interne (prérequis Futur salaire+placements+profil retraite).
                 Lazy + Suspense → hors du bundle de boot. */}
-            <Suspense fallback={null}>
-                <ProjectionEngine calculatedMonthlySavings={calculatedMonthlySavings} />
-            </Suspense>
+            {/* [S5-REFONTE-PERF] Ni moteur ni pages pendant l'accueil : l'écran d'accueil couvre tout
+                (plein écran opaque), il n'y a encore aucune donnée à projeter ni à consulter. Les
+                monter derrière chargeait la page Futur, sa porte de configuration (et le client
+                IA de la carte « fiche de paie ») et le moteur, avant même le premier affichage. */}
+            {!isFirstLaunch && (
+                <Suspense fallback={null}>
+                    <ProjectionEngine calculatedMonthlySavings={calculatedMonthlySavings} />
+                </Suspense>
+            )}
             {isFirstLaunch && (
                 <Onboarding onComplete={(data) => {
                     setAppState({ ...data, lastUpdate: Date.now() });
@@ -255,6 +273,7 @@ export const App: React.FC = () => {
                     setTimeout(() => startGuidedTour(), 700);
                 }} />
             )}
+            {!isFirstLaunch && (
             <Layout
                 activeTab={activeTab}
                 setActiveTab={handleSetTab}
@@ -264,10 +283,10 @@ export const App: React.FC = () => {
                 togglePrivacyMode={togglePrivacyMode}
                 netWorth={globalNetWorth}
                 onOpenGuide={() => setShowGuide(true)}
-                onGeneratePDF={() => genererRapportPdfEcran({
+                onGeneratePDF={() => void import('./components/app/exportPdfEcran').then(({ genererRapportPdfEcran }) => genererRapportPdfEcran({
                     // [GODFILE-APP] Corps extrait dans components/app/exportPdfEcran.ts.
                     state, globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity,
-                })}
+                }))}
                 monthlySavings={calculatedMonthlySavings}
                 financialGoals={state.financialGoals}
                 currentValues={{ celi: assetBreakdown.celi, reer: assetBreakdown.reer, liquidity: currentLiquidity }}
@@ -294,15 +313,28 @@ export const App: React.FC = () => {
                     {showGuide && <GuideModal activeTab={activeTab} onClose={() => setShowGuide(false)} />}
                 </Suspense>
             </Layout>
+            )}
             <ToastContainer />
             {/* Résolution de conflit de sync — overlay bloquant GLOBAL (anti-clobber Marc 2026-07-14) :
                 jamais d'écrasement auto, l'utilisateur choisit « cet appareil » vs « Drive » en voyant
                 le résumé de chaque côté. Monté ici → surgit au premier plan quel que soit l'onglet. */}
-            <SyncConflictModal />
+            {syncStatus.conflict && (
+                <Suspense fallback={null}>
+                    <SyncConflictModal />
+                </Suspense>
+            )}
             <PwaInstallBanner />
-            <CommandPalette open={cmdK.isOpen} onClose={cmdK.close} actions={cmdActions} />
+            {cmdK.isOpen && (
+                <Suspense fallback={null}>
+                    <CommandPalette open onClose={cmdK.close} actions={cmdActions} />
+                </Suspense>
+            )}
             {/* G22-F4 — tutoriel guidé (overlay global, démarré par event). */}
-            <GuidedTour />
+            {tourPret && (
+                <Suspense fallback={null}>
+                    <GuidedTour />
+                </Suspense>
+            )}
             {/* [AITOOLS-E] Panneau latéral GLOBAL du chat (FAB partout) — lazy, hors bundle de boot.
                 Masqué pendant l'accueil (pas de données à consulter, l'onboarding occupe l'écran).
                 ErrorBoundary dédié : un crash du RENDU du panneau ne fait tomber que le panneau

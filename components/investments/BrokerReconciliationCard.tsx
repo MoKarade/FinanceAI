@@ -111,7 +111,7 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
         // la place — le montant réel s'affichera dès que le régime sera déclaré dans Réglages.
         if (reco.regimes.length === 0) {
             return (
-                <Card className="bg-white/[0.03] border-white/10">
+                <Card className="bg-white/3 border-white/10">
                     {/* ⚠️ [revue panel] Ce message nommait DEUX causes (« régime non déclaré ou solde
                         illisible ») et prescrivait le remède de la première. Depuis qu'`excludedCount`
                         compte AUSSI les comptes sans taux de change, il pouvait envoyer déclarer un
@@ -136,7 +136,7 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
             );
         }
         return (
-            <Card className="bg-white/[0.03] border-white/10">
+            <Card className="bg-white/3 border-white/10">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div>
                         <div className="kpi-label flex items-center gap-1.5">
@@ -217,7 +217,7 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
 
                 <ul className="space-y-2">
                     {reco.regimes.map((r) => (
-                        <li key={r.regime} className="p-3 bg-white/[0.02] border border-white/5 rounded-card">
+                        <li key={r.regime} className="p-3 bg-white/2 border border-white/5 rounded-card">
                             <div className="flex items-center justify-between gap-3 flex-wrap">
                                 <div className="min-w-0">
                                     <div className="text-meta font-bold text-ink-200">{REGIME_LABELS[r.regime]}</div>

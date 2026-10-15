@@ -192,7 +192,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
                         // ⚠️ Présentation DIFFÉRENTE, volontairement : ni puce ni carte de
                         // recommandation. Le texte est conservé (le jeter serait pire) mais il
                         // n'emprunte pas l'apparence de ce qui a été validé.
-                        <div className="bg-white/[0.03] border border-dashed border-white/15 rounded-lg p-4 space-y-2">
+                        <div className="bg-white/3 border border-dashed border-white/15 rounded-lg p-4 space-y-2">
                             <p className="text-tiny text-ink-400 italic">
                                 L'IA n'a pas répondu dans le format attendu. Voici sa réponse telle
                                 quelle — elle n'a été ni découpée ni vérifiée par l'app.

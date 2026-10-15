@@ -113,7 +113,7 @@ export const PanneauJour: React.FC<PanneauJourProps> = (props) => {
                         onClick={() => onPasChange(p.id)}
                         aria-pressed={pas === p.id}
                         title={p.aide}
-                        className={`touch-target inline-flex items-center justify-center px-2.5 py-1.5 text-tiny font-bold rounded transition-colors focus-ring ${pas === p.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
+                        className={`touch-target inline-flex items-center justify-center px-2.5 py-1.5 text-tiny font-bold rounded-sm transition-colors focus-ring ${pas === p.id ? 'bg-primary text-dark' : 'text-ink-300 hover:text-ink-50 hover:bg-white/10'}`}
                     >
                         {p.label}
                     </button>

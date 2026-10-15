@@ -115,7 +115,7 @@ export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe, m
                 Type de dette
                 <select
                     id={idKind}
-                    className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
+                    className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white"
                     value={kind ?? ''}
                     onChange={e => onChange({ kind: (e.target.value || undefined) as DebtKind | undefined })}
                 >
@@ -131,7 +131,7 @@ export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe, m
                         type="number"
                         inputMode="decimal"
                         placeholder="Ex. 30000"
-                        className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
+                        className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white"
                         value={valeur.originalBalance ?? ''}
                         onChange={e => onChange({ originalBalance: nombreSaisiOuAbsent(e.target.value) })}
                     />
@@ -172,7 +172,7 @@ export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe, m
                     Cadence des prélèvements
                     <select
                         id={idCadence}
-                        className="bg-dark border border-white/10 rounded px-2 py-1 text-meta text-white"
+                        className="bg-dark border border-white/10 rounded-sm px-2 py-1 text-meta text-white"
                         value={valeur.paymentFrequency ?? 'monthly'}
                         onChange={e => onChange({ paymentFrequency: e.target.value as PaymentFrequency })}
                     >

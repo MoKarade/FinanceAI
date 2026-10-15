@@ -58,7 +58,7 @@ const monterEtOuvrirLEditeur = () => {
             apiKey="" transactions={[]} budgetItems={[]}
             config={config} projection={proj} setProjection={vi.fn()} />,
     );
-    fireEvent.click(screen.getByRole('radio', { name: /Allocation/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /Allocation/i }));
     fireEvent.click(screen.getByText('Modifier Cibles'));
     // Le nom accessible porte le SECTEUR depuis `[A11Y-REBALANCE-CIBLES]` — d'où la regex.
     return screen.getAllByLabelText(/^Allocation cible pour /) as HTMLInputElement[];

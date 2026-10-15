@@ -17,6 +17,7 @@ import { FileStateSource, buildDefaultAppState, loadAppStateFromSource } from '.
 import { makeStateStore, type StateStore } from '../../mcp/state/stateStore';
 import { registerSetBudgetItem } from '../../mcp/tools/setBudgetItem.tool';
 import type { AppState, BudgetCategory } from '../../types';
+import { confirmer } from './_ecritureMcp';
 
 const baseState = (): AppState => buildDefaultAppState();
 
@@ -172,7 +173,7 @@ describe('applyBudgetItem — garde ménage solo (Perso 2)', () => {
 type Handler = (a: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }>;
 function capture(register: (s: McpServer, st: StateStore) => void, store: StateStore): Handler {
     let cap: Handler | null = null;
-    const fake = { tool: (_n: string, _d: string, _s: unknown, cb: Handler) => { cap = cb; } } as unknown as McpServer;
+    const fake = { tool: (..._a: unknown[]) => { cap = _a[_a.length - 1] as Handler; } } as unknown as McpServer;
     register(fake, store);
     if (!cap) throw new Error('aucun handler capturé');
     return cap;
@@ -197,7 +198,7 @@ describe('set_budget_item — confirmation à 2 temps (bout en bout)', () => {
         expect(preview.applied).toBe(false);
         expect(preview.preview).toBe(true);
         expect((await loadAppStateFromSource(new FileStateSource(file))).budgetItems ?? []).toHaveLength(0);
-        const out = JSON.parse((await h({ name: 'Resto', targetCad: 250, confirm: true })).content[0].text);
+        const out = JSON.parse((await confirmer(h, { name: 'Resto', targetCad: 250 })).content[0].text);
         expect(out.applied).toBe(true);
         expect(out.backupPath).toBeTruthy();
         const reloaded = await loadAppStateFromSource(new FileStateSource(file));
@@ -206,6 +207,6 @@ describe('set_budget_item — confirmation à 2 temps (bout en bout)', () => {
 
     it('source non inscriptible → erreur claire, pas de crash', async () => {
         const h = capture(registerSetBudgetItem, makeStateStore(null));
-        expect((await h({ name: 'Resto', targetCad: 250, confirm: true })).isError).toBe(true);
+        expect((await confirmer(h, { name: 'Resto', targetCad: 250 })).isError).toBe(true);
     });
 });

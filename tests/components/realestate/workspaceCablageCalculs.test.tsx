@@ -14,8 +14,8 @@ vi.mock('recharts', async () => {
     const React = await import('react');
     const P = ({ children }: { children?: React.ReactNode }) => React.createElement('div', null, children);
     return {
-        ResponsiveContainer: P, AreaChart: P,
-        Area: () => null, Legend: () => null,
+        ResponsiveContainer: P, AreaChart: P, LineChart: P,
+        Area: () => null, Line: () => null, Legend: () => null, CartesianGrid: () => null,
         XAxis: () => null, YAxis: () => null, Tooltip: () => null,
     };
 });

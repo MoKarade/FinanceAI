@@ -20,7 +20,7 @@ import { useFinanceStore } from '../store/useFinanceStore';
 import { Tab } from '../types';
 import { usePendingFocus } from '../utils/usePendingFocus';
 import { PageHeader } from './ui/PageHeader';
-import { Icon, type IconName } from './ui/Icon';
+import type { IconName } from './ui/Icon';
 import { SubTabs, TabPanel } from './ui/SubTabs';
 import { UsersCard } from './settings/sections/UsersCard';
 import { SavedProfilesCard } from './profile/SavedProfilesCard';
@@ -33,7 +33,7 @@ type ProfileSubTab = 'identite' | 'revenus' | 'retraite' | 'profils';
 const PROFILE_SUB_TABS: ReadonlyArray<{ id: ProfileSubTab; label: string; icon: IconName }> = [
     { id: 'identite', label: 'Identité', icon: 'users' },
     { id: 'revenus', label: 'Revenus', icon: 'cash' },
-    { id: 'retraite', label: 'Retraite & enfants', icon: 'retirement' },
+    { id: 'retraite', label: 'Retraite et enfants', icon: 'retirement' },
     { id: 'profils', label: 'Profils enregistrés', icon: 'settings' },
 ];
 
@@ -71,19 +71,22 @@ export const Profile: React.FC = () => {
 
     return (
         <div className="space-y-6 stagger-in pb-20">
+            {/* [S5-REFONTE-PROFIL] Maquettes : sous-onglets dans l'en-tête, phrase d'intro sous le filet. */}
             <PageHeader
-                icon={<Icon name="settings" size={28} />}
                 title="Profil"
-                subtitle="Toutes tes infos personnelles en un seul endroit — elles alimentent Impôts, Retraite, Futur et le reste."
+                nav={
+                    <SubTabs<ProfileSubTab>
+                        idPrefix="profil"
+                        label="Sections Profil"
+                        tabs={PROFILE_SUB_TABS}
+                        active={subTab}
+                        onSelect={setSubTab}
+                    />
+                }
             />
-
-            <SubTabs<ProfileSubTab>
-                idPrefix="profil"
-                label="Sections Profil"
-                tabs={PROFILE_SUB_TABS}
-                active={subTab}
-                onSelect={setSubTab}
-            />
+            <p className="text-body text-ink-200">
+                Toutes tes infos personnelles en un seul endroit : elles alimentent Impôts, Retraite, Futur et le reste.
+            </p>
 
             {/* [IA-DEDUP-COMPLETUDE] La complétude (SetupHub) vit UNIQUEMENT dans Configuration
                 (audit UX 2026-06-17 : doublon Profil+Config). Ici = uniquement les champs à remplir. */}

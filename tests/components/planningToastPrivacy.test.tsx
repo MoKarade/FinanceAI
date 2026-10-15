@@ -48,6 +48,20 @@ afterEach(() => {
     vi.clearAllMocks();
 });
 
+// [PRIVACY-SCAN-FORMATNUMBER-DIRECT] Le calendrier des factures affichait le TOTAL du jour
+// (`formatCAD(dailyTotal)`) en clair en mode discret. La garde `amountPrivacyScan` ne le voyait pas :
+// le `isPrivacyMode` du `maskPayee` de la même ligne lui servait d'alibi.
+describe('[PRIVACY-SCAN-FORMATNUMBER-DIRECT] calendrier des factures en mode discret', () => {
+    it('aucun montant « 18 $ » ne reste lisible une fois le mode discret activé', () => {
+        const { container } = render(<Planning transactions={TX} />);
+        // Témoin : hors mode discret, le montant de l'abonnement est affiché (`formatCAD` sans
+        // décimales, collé au texte voisin : « …2318$ » dans la case du jour).
+        expect(container.textContent ?? '').toMatch(/18\s*\$/);
+        act(() => { useFinanceStore.getState().setPrivacyMode(true); });
+        expect(container.textContent ?? '').not.toMatch(/18\s*\$/);
+    });
+});
+
 const boutonPar = (motif: RegExp): HTMLElement => {
     const el = screen.getAllByRole('button').find((b) => motif.test(b.getAttribute('aria-label') ?? ''));
     if (!el) throw new Error(`aucun bouton dont l’aria-label matche ${motif}`);

@@ -31,7 +31,7 @@ async function chartBox(page: Page) {
   const voirDirect = page.getByRole('button', { name: /projection actuelle.*sans optimiser/i });
   await voirDirect.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
   if (await voirDirect.isVisible().catch(() => false)) await voirDirect.click();
-  const chart = page.getByRole('img', { name: /Courbe de vie/ });
+  const chart = page.getByRole('group', { name: /Courbe de vie/ });
   await expect(chart).toBeVisible({ timeout: 15_000 });
   await chart.scrollIntoViewIfNeeded();
   await page.locator('.recharts-cartesian-grid').first().waitFor({ state: 'visible', timeout: 15_000 });
@@ -51,7 +51,8 @@ async function chartBox(page: Page) {
 async function toutIsActive(page: Page): Promise<boolean> {
   const bouton = page.getByRole('button', { name: 'Tout', exact: true });
   if (await bouton.count() > 0) {
-    return bouton.evaluate((el) => el.className.includes('bg-primary'));
+    // [S5-REFONTE-FUTUR] État lu sur `aria-pressed` (annoncé), plus sur une classe de couleur.
+    return (await bouton.getAttribute('aria-pressed')) === 'true';
   }
   const select = page.getByRole('combobox', { name: 'Période affichée' });
   return select.evaluate((el) => (el as HTMLSelectElement).value === 'all');

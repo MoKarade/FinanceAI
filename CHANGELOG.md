@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-15 — Retraite : la bulle du graphique est en français
+
+- Passer la souris sur le graphique de Retraite affichait « Cashflow », « Depenses (Infl.) »,
+  « Epargne Mensuelle » et « Liquidites ». Elle dit maintenant « Flux net », « Dépenses (avec
+  inflation) », « Épargne mensuelle » et « Liquidités ». Aucun chiffre ne change.
+
 ## 2026-09-29 — Futur : le commutateur « Bac à sable » et ses curseurs théoriques sont retirés ; l'IA sait quand les chiffres sont fictifs
 
 - L'onglet Futur n'affiche plus le commutateur « Données réelles / Bac à sable » ni les curseurs

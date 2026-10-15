@@ -69,15 +69,15 @@ describe('[BUDGET-SENSIBILITE-MOTEUR] le moteur publie la sensibilité à +100 $
     });
 
     /**
-     * Le piège : en mode « dépenses théoriques », le moteur lit `theoreticalExpenses`, pas
-     * `baseMonthlyExpenses`. Un second run qui ne réduirait que ce dernier rendrait un delta
-     * NUL — crédible, faux. Mesuré avant d'écrire : la perturbation (ne réduire que
-     * `baseMonthlyExpenses`) rend exactement 0 ici.
+     * [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] L'ancien piège (« en mode dépenses théoriques, c'est
+     * `theoreticalExpenses` qu'il faut réduire ») a disparu avec le mode : un dossier persisté à
+     * `useTheoretical: true` a désormais EXACTEMENT la sensibilité du mode réel, non nulle.
      */
-    it('en mode « dépenses théoriques », la sensibilité reste non nulle (c\'est theoreticalExpenses qui est réduit)', () => {
-        const r = calculateFutureProjection(params({ useTheoretical: true, theoreticalExpenses: 3_600 }));
+    it('dossier persisté en « dépenses théoriques » : la sensibilité est celle du mode réel, non nulle', () => {
+        const r = calculateFutureProjection(params({ useTheoretical: true, theoreticalExpenses: 1_200 }));
         expect(r.savingsSensitivity).not.toBeNull();
         expect(r.savingsSensitivity!.deltaEstateNetWorth).toBeGreaterThan(30_000);
+        expect(r.savingsSensitivity).toEqual(calculateFutureProjection(params()).savingsSensitivity);
     });
 
     it('un appel CIBLÉ (`onlyStratTypes`, goal seek / stress-test) rend `null`, jamais un 0', () => {

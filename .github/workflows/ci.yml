@@ -206,6 +206,9 @@ jobs:
           name: qualite-tranche-${{ matrix.tranche }}
           path: .vitest-reports/
           if-no-files-found: error
+          # `.vitest-reports/` est un dossier caché : sans ce drapeau, upload-artifact@v7 l'ignore et ne
+          # trouve « aucun fichier » (vu sur le 1er run de FinanceAI#1182, tests pourtant verts).
+          include-hidden-files: true
           retention-days: 1
 
   qualite:

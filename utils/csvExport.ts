@@ -3,12 +3,13 @@
 // Fonctions :
 //   - toCSV(rows, columns) : helper générique
 //   - downloadCSV(filename, content) : trigger téléchargement browser
-//   - exportTransactionsCSV / exportHoldingsCSV / exportBudgetCSV : presets
+//   - exportTransactionsCSV : preset (les presets holdings/budget, sans appelant, ont été retirés
+//     au lot [CSV-EXPORTS-MORTS-SANS-GARDE] — ils n'avaient pas la garde du mode discret)
 //
 // Format : virgule (comma) comme delimiter, double-quotes pour escape,
 // CRLF line ending — conforme RFC 4180 pour compat Excel/Google Sheets.
 
-import type { Transaction, Asset, BudgetCategory } from '../types';
+import type { Transaction } from '../types';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { modeDonneesFictives } from '../store/modeTestActif';
 
@@ -68,8 +69,8 @@ export class CsvRefusedTestModeError extends Error {
  * de passage obligé. Le mode discret refuse de CONSTRUIRE (inutile de fabriquer des lignes qu'on
  * ne rendra pas), donc il vit au plus près de la construction. Les données fictives refusent de
  * FAIRE SORTIR — et `downloadCSV` est le seul endroit par lequel un fichier sort, quel que soit le
- * preset, y compris ceux qu'un lot futur ajoutera sans penser à cette règle. Mesuré : il y a trois
- * presets d'export, et poser la garde sur chacun aurait laissé le quatrième découvert.
+ * preset, y compris ceux qu'un lot futur ajoutera sans penser à cette règle. Mesuré à l'écriture : il y
+ * avait trois presets d'export, et poser la garde sur chacun aurait laissé le quatrième découvert.
  */
 export function downloadCSV(filename: string, content: string): void {
     // Lu à l'APPEL : le mode a pu basculer entre le rendu du bouton et le clic.
@@ -132,37 +133,6 @@ export function exportTransactionsCSV(transactions: Transaction[]): string {
         // commun plutôt que de laisser tomber une capacité en silence. Vide (pas 0) si absente :
         // une confiance inconnue n'est pas une confiance nulle.
         { header: 'Confiance IA', accessor: t => (typeof t.confidence === 'number' ? t.confidence : '') },
-    ]);
-}
-
-/** Export holdings (Asset[]) au format CSV (preset). */
-export function exportHoldingsCSV(assets: Asset[]): string {
-    return toCSV<Asset>(assets, [
-        { header: 'Symbol', accessor: a => a.symbol },
-        { header: 'Name', accessor: a => a.name || '' },
-        { header: 'Quantity', accessor: a => a.quantity },
-        { header: 'Currency', accessor: a => a.currency },
-        { header: 'Current Price', accessor: a => a.currentPrice },
-        { header: 'Buy Price', accessor: a => a.buyPrice ?? '' },
-        { header: 'Date Bought', accessor: a => a.dateBought || '' },
-        { header: 'Account Type', accessor: a => a.accountType || '' },
-        { header: 'Performance %', accessor: a => a.performance },
-        // [ASSET-FX-DISPLAY] `Value` est volontairement en devise NATIVE de la ligne (la colonne
-        // `Currency` à côté la qualifie) — c'est le seul agrégat par-ligne où le natif est correct.
-        // Ne PAS sommer cette colonne entre devises ; pour un total CAD, utiliser l'app.
-        { header: 'Value', accessor: a => (a.quantity || 0) * (a.currentPrice || 0) },
-    ]);
-}
-
-/** Export budget items au format CSV (preset). */
-export function exportBudgetCSV(items: BudgetCategory[]): string {
-    return toCSV<BudgetCategory>(items, [
-        { header: 'Name', accessor: b => b.name },
-        { header: 'Nature', accessor: b => b.nature || '' },
-        { header: 'Type', accessor: b => b.type || '' },
-        { header: 'Target', accessor: b => b.target },
-        { header: 'Frequency', accessor: b => b.frequency || '' },
-        { header: 'User ID', accessor: b => (b as { userId?: number }).userId ?? '' },
     ]);
 }
 

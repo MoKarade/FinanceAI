@@ -8,6 +8,44 @@
 - Quand tu ouvres « Modifier » sur une dette, le focus va directement sur le panneau d'édition : au
   clavier ou avec un lecteur d'écran, tu n'as plus à chercher l'alerte sur le solde de la dette.
 
+## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
+
+- Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.
+
+## 2026-09-29 — Futur : le commutateur « Bac à sable » et ses curseurs théoriques sont retirés ; l'IA sait quand les chiffres sont fictifs
+
+- L'onglet Futur n'affiche plus le commutateur « Données réelles / Bac à sable » ni les curseurs
+  « Revenus (Net) » / « Dépenses » de la section Hypothèses. Ils remplaçaient tes vrais revenus et
+  dépenses par des valeurs inventées (et répartissaient le revenu 55/45 entre deux personnes, même
+  seul). La projection se fait désormais TOUJOURS sur tes vraies données. Un dossier resté en
+  « Bac à sable » revient automatiquement au réel, sans rien à faire. Le vrai bac à sable (une copie
+  complète de ton dossier) reviendra dans un lot suivant.
+- Quand l'app tourne sur des données fictives (mode test), l'assistant IA est prévenu que les
+  chiffres sont un scénario hypothétique : il répond normalement, mais ne les présente plus comme
+  tes finances réelles. Rien n'est refusé.
+
+## 2026-09-29 — Mode discret : le récapitulatif d'ajout d'un placement ne montre plus tes montants
+
+- Dans la fenêtre « Ajouter un placement », le récapitulatif (« 5 × … = … investi le… ») affichait en
+  clair le prix d'achat et le montant investi même en mode discret. Ils sont maintenant masqués,
+  comme le champ de saisie du prix juste au-dessus. La quantité et le gain en % le sont aussi : avec
+  le cours du titre affiché plus haut, ils permettaient de retrouver ton prix d'achat.
+- Le calendrier des factures (Planification) affichait le total du jour en clair en mode discret :
+  il est masqué.
+
+## 2026-09-29 — Tests automatiques du navigateur : plus rapides et un faux rouge en moins
+
+- Rien ne change dans l'app. Les tests qui cliquent dans l'app (E2E) tournent maintenant sur deux
+  navigateurs en parallèle dans GitHub : 4,6 min au lieu de ~6,4 min (premier run mesuré).
+- Le test « clic partout sur la courbe du Futur » ne rougit plus au hasard : la notification
+  « Persona chargé » recouvrait le bas du graphe pendant 4 s. Les tests la ferment avant de cliquer.
+
+## 2026-09-29 — Téléphone : les boutons et champs sont plus faciles à toucher
+
+- Le lien « ‹ Plus », les champs de la page verrouillée (salaire, âge de retraite…), les boutons « Revoir le
+  tutoriel » et « Choisir un persona », « Retirer le conjoint » et la ligne des interrupteurs du Profil font
+  maintenant au moins 44 px de haut (norme d'accessibilité). L'apparence ne change presque pas.
+
 ## 2026-09-29 — Réglages : tu peux maintenant créer une phrase secrète pour chiffrer ta sauvegarde
 
 - Nouveau bouton « Créer une phrase secrète » dans Réglages (section synchro Google Drive). Une fois

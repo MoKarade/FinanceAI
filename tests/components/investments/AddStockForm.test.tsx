@@ -3,8 +3,9 @@
 // « Rentrer toutes les données à la main, pareil pour les actions » : on prouve qu'on peut ajouter
 // une action/un placement EN ENTIER à la main, sans clé Finnhub ni réseau (mode « À la main »).
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+import { useFinanceStore } from '../../../store/useFinanceStore';
 import { AddStockForm } from '../../../components/investments/AddStockForm';
 import { getQuoteDetaille, getHistoryDetaille, searchSymbolsDetaille, getActiveProviderName } from '../../../services/marketData';
 
@@ -363,5 +364,55 @@ describe('[ADDSTOCK-DEVISE-USD-PAR-DEFAUT] la devise suit la cotation', () => {
         // [ADDSTOCK-DEVISE-A-CHOISIR] Aucune devise supposée : elle reste à choisir.
         expect((screen.getByLabelText(/Devise/i) as HTMLSelectElement).value).toBe('');
         expect(screen.getByRole('button', { name: /Ajouter au portefeuille/i })).toBeDisabled();
+    });
+});
+
+// [PRIVACY-SCAN-FORMATNUMBER-DIRECT] Le récapitulatif (« 5 × 90,00 CAD = 450,00 CAD investi le… »)
+// affichait en clair, en mode discret, le prix d'achat et le montant investi — alors que le champ de
+// saisie du prix, juste au-dessus, est une `PrivateNumberInput`. Les valeurs sont saisies AVANT
+// d'activer le mode discret (en mode discret, la saisie elle-même est masquée), puis on bascule.
+describe('AddStockForm — récapitulatif en mode discret', () => {
+    afterEach(() => { act(() => { useFinanceStore.setState({ isPrivacyMode: false }); }); });
+
+    it('le prix d’achat et le montant investi du récapitulatif sont masqués', () => {
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'gic-rbc' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
+        fireEvent.change(screen.getByLabelText('Devise'), { target: { value: 'CAD' } });
+
+        const recap = () => screen.getByText('Récapitulatif').parentElement!.textContent ?? '';
+        // Témoin : hors mode discret, le récapitulatif montre bien les montants.
+        expect(recap()).toMatch(/90,00/);
+        expect(recap()).toMatch(/450,00/);
+
+        act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
+        expect(recap()).not.toMatch(/90,00/);
+        expect(recap()).not.toMatch(/450,00/);
+        // Le récapitulatif reste lisible (devise) : seuls les montants sont masqués.
+        expect(recap()).toMatch(/CAD/);
+    });
+
+    it('la quantité et le gain en % sont masqués aussi (décision de Marc, 2026-09-29)', async () => {
+        // Avec la cotation publique affichée, quantité et gain % redonnaient le prix d'achat et le montant investi.
+        // Le gain % n'existe que pour un titre VALIDÉ par cotation (prix actuel connu).
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'ok', quote: { symbol: 'XEQT.TO', price: 100, currency: 'CAD' } } as never);
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'xeqt.to' } });
+        fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
+        await screen.findByText(/Prix actuel/i);
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '7' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '80' } });
+
+        const recap = () => screen.getByText('Récapitulatif').parentElement!.textContent ?? '';
+        // Témoin : hors mode discret, quantité (7) et gain (+25,00 %) sont visibles.
+        expect(recap()).toMatch(/7\s*×/);
+        expect(recap()).toMatch(/25\.00%|25,00/);
+
+        act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
+        expect(recap()).not.toMatch(/7\s*×/);
+        expect(recap()).not.toMatch(/25\.00%|25,00/);
     });
 });

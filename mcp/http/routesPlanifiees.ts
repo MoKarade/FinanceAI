@@ -21,6 +21,17 @@ import { HUB_NO_STORE, hubTokensMatch, sendJson } from './plomberie';
 /** Le store d'état résolu (blob local ou Drive) — même objet que celui du serveur. */
 type StoreEtat = ResolvedState['store'];
 
+// [CODEQL-37] Codes d'erreur FIXES renvoyés à l'appelant. Le texte d'une exception (message
+// Drive, chemin, état du coffre…) ne sort JAMAIS dans une réponse HTTP : il reste dans le
+// journal du serveur (`console.error`). Défense en profondeur : ces routes sont déjà gardées
+// par un secret, mais un détail interne n'a rien à faire chez l'appelant. Les workflows publics
+// (refresh-prices.yml, fintable-sync.yml) ne lisent que `error != null` : `error` reste
+// non nul, seul son contenu devient un code stable.
+export const ERREUR_CONFLIT_ETAT = 'conflit-etat';
+export const ERREUR_PANNE_ETAT = 'panne-etat';
+
+const detailErreur = (err: unknown): string => (err instanceof Error ? err.message : String(err));
+
 // [HUB-REFRESH-CRON] POST /refresh — rafraîchit les prix de marché dans le blob Drive, sans
 // ouvrir l'app. Déclenché par un job planifié EXTERNE (GitHub Actions), authentifié par un
 // secret dédié (Authorization: Bearer). Réponses : 200 { ok:true, saved, refreshed[], skipped[] }
@@ -42,18 +53,17 @@ export const handleRefresh = (req: IncomingMessage, res: ServerResponse, store: 
     runPriceRefresh(store)
         .then((outcome) => sendJson(res, 200, { ok: true, ...outcome }, HUB_NO_STORE))
         .catch((err: unknown) => {
-            const reason = err instanceof Error ? err.message : String(err);
             // Conflit OCC (l'app a poussé entre-temps) = TRANSITOIRE, rien d'écrasé → 200 { ok:false,
             // conflict:true } : le prochain tick réessaie, le cron ne doit pas rougir. Toute AUTRE
             // erreur (source non inscriptible, jeton Drive révoqué, coffre chiffré, Drive KO) est une
             // panne RÉELLE → 5xx, pour que le job planifié rougisse et alerte au lieu de rester vert
             // à jamais sur des prix qui ne se rafraîchissent plus (silence = pire que l'erreur).
             if (isStateConflictError(err)) {
-                sendJson(res, 200, { ok: false, conflict: true, error: reason }, HUB_NO_STORE);
+                sendJson(res, 200, { ok: false, conflict: true, error: ERREUR_CONFLIT_ETAT }, HUB_NO_STORE);
                 return;
             }
-            console.error('[FinanceAI MCP http] /refresh : échec —', reason);
-            sendJson(res, 503, { ok: false, error: reason }, HUB_NO_STORE);
+            console.error('[FinanceAI MCP http] /refresh : échec —', detailErreur(err));
+            sendJson(res, 503, { ok: false, error: ERREUR_PANNE_ETAT }, HUB_NO_STORE);
         });
 };
 
@@ -88,14 +98,13 @@ export const handleFintableSync = (
     runFintableSync(store, { token: fintableToken, roles: fintableRoles ?? {}, client })
         .then((report) => sendJson(res, 200, { ok: true, report }, HUB_NO_STORE))
         .catch((err: unknown) => {
-            const reason = err instanceof Error ? err.message : String(err);
             // Conflit OCC = TRANSITOIRE (cf /refresh) : rien d'écrasé, le prochain tick réessaie.
             if (isStateConflictError(err)) {
-                sendJson(res, 200, { ok: false, conflict: true, error: reason }, HUB_NO_STORE);
+                sendJson(res, 200, { ok: false, conflict: true, error: ERREUR_CONFLIT_ETAT }, HUB_NO_STORE);
                 return;
             }
-            console.error('[FinanceAI MCP http] /fintable-sync : échec —', reason);
-            sendJson(res, 503, { ok: false, error: reason }, HUB_NO_STORE);
+            console.error('[FinanceAI MCP http] /fintable-sync : échec —', detailErreur(err));
+            sendJson(res, 503, { ok: false, error: ERREUR_PANNE_ETAT }, HUB_NO_STORE);
         });
 };
 
@@ -189,12 +198,11 @@ export const handleVehiculeBail = (
             sendJson(res, 200, { ok: true, statut: 'trouve', bail: resultat.bail }, HUB_NO_STORE);
         })
         .catch((err: unknown) => {
-            const reason = err instanceof Error ? err.message : String(err);
-            console.error('[FinanceAI MCP http] /vehicule/bail : état indisponible —', reason);
+            console.error('[FinanceAI MCP http] /vehicule/bail : état indisponible —', detailErreur(err));
             // 503 et NON 200 : contrairement au summary du hub (dont le contrat porte un
             // `status: "error"` que le widget sait afficher), il n'existe ici aucune forme
             // « panne » — un 200 obligerait CarAI à deviner, et un montant absent se lirait
             // comme un bail à zéro.
-            sendJson(res, 503, { ok: false, error: reason }, HUB_NO_STORE);
+            sendJson(res, 503, { ok: false, error: ERREUR_PANNE_ETAT }, HUB_NO_STORE);
         });
 };

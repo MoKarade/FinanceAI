@@ -24,7 +24,7 @@ const PRIMITIVE = 'components/ui/Modal.tsx';
 const EXEMPTIONS: ReadonlyArray<{ fichier: string; jeton: string; raison: string }> = [
     {
         fichier: 'Onboarding.tsx',
-        jeton: 'z-9999 bg-[#080b10]', // [S5-TAILWIND4] z-[9999] → z-9999
+        jeton: 'z-9999 bg-dark', // [S5-TAILWIND4] z-[9999] → z-9999 ; [S5-REFONTE-R3] fond uni bg-dark
         raison: 'ce n\'est pas un dialogue mais une PRISE DE CONTRÔLE de l\'écran : rien ne subsiste '
             + 'derrière, il n\'y a donc aucun contenu à rendre inerte. Un `aria-modal` y affirmerait '
             + 'qu\'on masque quelque chose — c\'est le contraire d\'une information utile.',

@@ -179,7 +179,6 @@ export const FutureDetailModal: React.FC<FutureDetailModalProps> = ({
     // (sans cette ligne, un patrimoine net NÉGATIF n'était expliqué par AUCUN élément — bug Marc 2026-06-16).
     // [DETTE-INVISIBLE-INFOBULLE] Dérivation PARTAGÉE avec l'infobulle (`detteReductrice`) : la
     // recopier ici et là donnerait deux dérivations d'une même vérité.
-    const shownAssetsSum = ACCOUNTS.reduce((s, a) => s + (Number(point[a.key]) || 0), 0);
     // ⚠️ [INFOBULLE-DETTE-NW-NON-FINI] `null` = patrimoine net NON FINI, donc écart incalculable.
     // Avant, un `NaN` était rabattu sur zéro et la soustraction rendait la somme TOTALE des actifs
     // sous le libellé « Dettes » — un montant faux et parfaitement crédible. Le bloc ci-dessous ne

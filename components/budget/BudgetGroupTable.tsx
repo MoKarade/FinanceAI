@@ -399,6 +399,8 @@ const EditeurPoste: React.FC<EditeurPosteProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-meta text-ink-300">
+                {/* NOMBRE-NON-MONETAIRE : un RATIO (part du poste dans le budget, en %), sans dollar ;
+                    les montants de la ligne suivante sont, eux, dans <PrivateAmount>. */}
                 <span>Part du budget <span className="font-mono text-ink-100">{formatNumber(percentageOfBudget, { decimals: 1 })} %</span></span>
                 <span className="font-mono">
                     {parts.map((p, i) => (

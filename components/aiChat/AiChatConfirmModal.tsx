@@ -32,6 +32,8 @@ const WRITE_TOOL_LABELS: Record<string, string> = {
 // Jamais de String(x) nu qui rendrait « [object Object] » ou « undefined » à l'écran.
 function renderValue(v: unknown): string {
     if (v === null || v === undefined || v === '') return '—';
+    // MONTANT-MASQUE-AILLEURS : la modale entière ne se rend PAS en mode discret
+    // (`if (isPrivacyMode) return null` dans AiChatConfirmModal, garde de rendu [revue #608]).
     if (typeof v === 'number') return formatNumber(v, { decimals: Number.isInteger(v) ? 0 : 2 });
     if (typeof v === 'string') return v;
     if (typeof v === 'boolean') return v ? 'oui' : 'non';

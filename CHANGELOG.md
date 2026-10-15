@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-15 — Retraite : la bulle du graphique est en français
+
+- Passer la souris sur le graphique de Retraite affichait « Cashflow », « Depenses (Infl.) »,
+  « Epargne Mensuelle » et « Liquidites ». Elle dit maintenant « Flux net », « Dépenses (avec
+  inflation) », « Épargne mensuelle » et « Liquidités ». Aucun chiffre ne change.
+
+## 2026-10-15 — Guide d'aide (bouton ?) réécrit : accents, tutoiement, plus de fonctions retirées
+
+- Le guide de chaque onglet est écrit en français correct, avec les accents et en tutoyant. Il ne parle plus des curseurs ni des « données théoriques » (retirés le 2026-09-29), du « Départ en 2026 » ni de « v4.0 ».
+
 ## 2026-09-29 — Dettes : champs plus faciles à toucher, et le formulaire d'édition te guide au clavier
 
 - Tous les champs et boutons du formulaire de dette (ajout et modification) font maintenant au moins

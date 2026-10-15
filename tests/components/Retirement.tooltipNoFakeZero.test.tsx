@@ -66,7 +66,7 @@ describe('[FORMATCAD-OR-ZERO] infobulle Retraite — un compte absent ou non fin
             calculatedMonthlySavings={1000} projection={proj} config={config} />);
         // `PrivateAmount` accompagne le « — » d'un texte pour lecteur d'écran (« Pas de donnée ») :
         // on asserte le FAIT (un tiret, aucun montant), pas la forme exacte du nœud.
-        for (const etiquette of ['CELI', 'Liquidites']) {
+        for (const etiquette of ['CELI', 'Liquidités']) {
             const rendu = montantSous(etiquette);
             expect(rendu, etiquette).toMatch(/^—/);
             expect(rendu, etiquette).not.toMatch(/\d/);

@@ -8,7 +8,7 @@ describe('GuideModal', () => {
     // [REFONTE-NAV Lot 1] Tab.DASHBOARD n'est plus routé → le guide se teste sur Futur.
     it('affiche le titre du Futur quand activeTab = FUTURE', () => {
         render(<GuideModal activeTab={Tab.FUTURE} onClose={() => {}} />);
-        expect(screen.getByRole('heading', { level: 2, name: /Machine a Voyager/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: /Machine à voyager/i })).toBeInTheDocument();
     });
 
     it('appelle onClose quand on clique sur le bouton fermer', async () => {
@@ -38,7 +38,7 @@ describe('GuideModal', () => {
         // Nommé PAR son titre : un dialogue anonyme s'annonce « dialogue », ce qui n'apprend rien.
         const titreId = dialogue.getAttribute('aria-labelledby');
         expect(titreId, 'dialogue sans nom accessible').toBeTruthy();
-        expect(document.getElementById(titreId as string)?.textContent).toMatch(/Machine a Voyager/i);
+        expect(document.getElementById(titreId as string)?.textContent).toMatch(/Machine à voyager/i);
 
         // Échap ferme — c'est ce que la version manuelle n'avait pas, et ce qu'on attend d'un dialogue.
         fireEvent.keyDown(document, { key: 'Escape' });

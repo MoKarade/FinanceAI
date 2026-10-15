@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-15 — Retraite : la bulle du graphique est en français
+
+- Passer la souris sur le graphique de Retraite affichait « Cashflow », « Depenses (Infl.) »,
+  « Epargne Mensuelle » et « Liquidites ». Elle dit maintenant « Flux net », « Dépenses (avec
+  inflation) », « Épargne mensuelle » et « Liquidités ». Aucun chiffre ne change.
+
 ## 2026-09-29 — Futur : boutons du panneau du jour plus lisibles
 
 - Les contours de « ← Veille », « Lendemain → », « Revenir à aujourd'hui » et « Détail complet → » sont

@@ -300,7 +300,7 @@ export const AdvancedProjectionParams: React.FC<AdvancedProjectionParamsProps> =
                                 <PrivateNumberInput type="number" id="app-manualNonReg" value={projection.manualNonReg ?? 0} onChange={e => updateProj('manualNonReg', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                             </div>
                             <div>
-                                <label htmlFor="app-manualCash" className="text-tiny text-ink-300">Cash $</label>
+                                <label htmlFor="app-manualCash" className="text-tiny text-ink-300">Liquidités $</label>
                                 <PrivateNumberInput type="number" id="app-manualCash" value={projection.manualCash ?? 0} onChange={e => updateProj('manualCash', Number(e.target.value))} className="w-full bg-dark border border-info-500/20 rounded-sm px-2 py-1 text-meta text-white" />
                             </div>
                             <div>

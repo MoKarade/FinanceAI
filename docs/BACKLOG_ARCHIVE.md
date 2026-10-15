@@ -10,6 +10,10 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — `[REGLAGES-MOTS-FRANCAIS]` : trois mots anglais des réglages passent en français
+
+« Holdings » → « Placements » (`AssetLocationCard.tsx`), « Side income $/an » → « Revenu d'appoint $/an » (`UserConfigFields.tsx`), « Cash $ » → « Liquidités $ » (`AdvancedProjectionParams.tsx`). Tests : `tests/components/settings/ReglagesMotsFrancais.test.tsx` et attendu mis à jour dans `AdvancedProjectionParams.privacy.test.tsx`. PR : à renseigner à l'ouverture.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

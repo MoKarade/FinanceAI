@@ -243,7 +243,7 @@ export const UserConfigFields: React.FC<{ section: Section; className?: string }
                                         <input aria-label="Années de vesting RSU restantes" type="number" min={0} placeholder="RSU ans" value={user.rsuYearsRemaining ?? ''}
                                             onChange={e => patch(idx, { rsuYearsRemaining: Number(e.target.value) || undefined })}
                                             className="bg-dark border border-border rounded-sm px-1 py-0.5 text-tiny text-white" />
-                                        <PrivateNumberInput aria-label="Revenus secondaires annuels" type="number" placeholder="Side income $/an" value={user.sideIncomeAnnual ?? ''}
+                                        <PrivateNumberInput aria-label="Revenus secondaires annuels" type="number" placeholder="Revenu d'appoint $/an" value={user.sideIncomeAnnual ?? ''}
                                             onChange={e => patch(idx, { sideIncomeAnnual: Number(e.target.value) || undefined })}
                                             className="bg-dark border border-border rounded-sm px-1 py-0.5 text-tiny text-white" />
                                     </div>

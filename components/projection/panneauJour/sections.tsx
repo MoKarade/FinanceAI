@@ -166,8 +166,24 @@ export const SectionValeurNette = ({ data }: { data: PointJour }) => {
 export const SectionFlux = ({ data, userName1, userName2 }: { data: PointJour; userName1?: string; userName2?: string }) => {
     const portfolioOutflow = (data.RetraitREER || 0) + (data.RetraitCELI || 0);
     const aDesImpots = Math.abs(data.FluxImpots || 0) > 0.5 || Math.abs(data.ImpotLatent || 0) > 0.5;
+    // [PANNEAU-FLUX-COLONNE-MUETTE] Même seuils que les lignes ci-dessous : si AUCUNE ne s'affiche,
+    // on le dit plutôt que de rendre une colonne vide, qui se lit comme une donnée manquante.
+    const aDesFlux = [data.IncomeMarc, data.IncomeAnna, data.IncomeRetirement, data.RentalIncome,
+        data.childBenefits, data.ReeePayout, data.Expenses].some((v) => (v || 0) > 0) || portfolioOutflow > 0;
+    // Un champ PRÉSENT mais non fini (NaN, ±Infinity) n'est pas « zéro flux » : on ne l'affirme pas.
+    // `undefined` reste légitime (un point mensuel sans ce champ = flux nul).
+    const fluxIllisible = [data.IncomeMarc, data.IncomeAnna, data.IncomeRetirement, data.RentalIncome,
+        data.childBenefits, data.ReeePayout, data.Expenses, data.RetraitREER, data.RetraitCELI,
+        data.FluxImpots, data.ImpotLatent].some((v) => v != null && !Number.isFinite(v));
     return (
         <div className="space-y-2.5">
+            {!aDesFlux && !aDesImpots && (
+                <div className="text-[10px] text-ink-400">
+                    {fluxIllisible
+                        ? 'Flux illisibles pour ce point'
+                        : data.isDailyPoint === true ? 'Aucune entrée ni sortie ce jour-là' : 'Aucune entrée ni sortie ce mois-là'}
+                </div>
+            )}
             {/* Revenus / dépenses — du MOIS sur un point mensuel, du JOUR sur un point quotidien.
                 [FUTUR-DAILY-FULL] `dailyLedger` ventile ces mêmes champs au jour : rien à changer ici
                 hormis les libellés, ce qui élimine tout risque de divergence entre les deux vues. */}

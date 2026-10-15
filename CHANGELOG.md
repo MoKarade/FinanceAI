@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-15 — Assurances : la ligne tient sur deux rangées sur téléphone
+
+- Sur téléphone, une police d'assurance (type, assureur, capital, prime, date, supprimer) passe sur deux rangées lisibles au lieu d'une seule rangée écrasée ; sur grand écran rien ne change.
+
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
 - Sur une journée ou un mois calme, la colonne des entrées/sorties n'est plus vide : elle affiche « Aucune entrée ni sortie ce jour-là » (ou « ce mois-là »), au lieu de ressembler à une donnée manquante.

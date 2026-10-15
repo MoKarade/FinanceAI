@@ -10,6 +10,11 @@
 > tâche depuis ce fichier — la seule source des tâches ouvertes est `BACKLOG.md`.
 > L'historique fin par item reste dans git et `docs/HISTORIQUE.md`.
 
+## 2026-10-15 — Assurances : ligne sur deux rangées sur téléphone
+
+- [x] **`[ASSURANCE-LIGNE-MOBILE]`** — `PatrimoineExtended.tsx` (`InsurancePanel`) : grille 6 colonnes sur téléphone
+  (type + assureur + supprimer / capital + prime + date), 12 colonnes dès `sm`. Test : `tests/components/PatrimoineExtended.assuranceMobile.test.tsx`.
+
 ## 2026-09-30 — `Budget.test.tsx` rouge sur main : fuite de fuseau entre tests
 
 - [x] 🔴 **`[BUDGET-TEST-FUSEAU-FUITE]`** (S) — ✅ 2026-09-30 : 2 cas du bandeau « Dépassements

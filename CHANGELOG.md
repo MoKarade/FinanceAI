@@ -7,6 +7,9 @@
   haut, surtout sur téléphone.
 - Quand tu ouvres « Modifier » sur une dette, le focus va directement sur le panneau d'édition : au
   clavier ou avec un lecteur d'écran, tu n'as plus à chercher l'alerte sur le solde de la dette.
+## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
+
+- Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
 
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 

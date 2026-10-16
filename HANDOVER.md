@@ -4,6 +4,15 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-09-29 (design) — **`[A11Y-DETTE]` : cibles tactiles 44 px + focus d'édition du formulaire de dette**
+> `touch-target` posé sur TOUS les champs/boutons du formulaire (`DebtManager`, `debt/DebtKindFields`,
+> `debt/ChampMarchandLie`). Le panneau d'édition est focalisable (`tabIndex=-1`, `role=group`) et reçoit
+> le focus à l'ouverture (`useEffect` sur `editingId`) ; le test lit `document.activeElement` (un `focus()`
+> sur un `<div>` non focalisable est un no-op silencieux). `phraseStatutSolde` reste hors région live et
+> le `role=status` du refus est inchangé : examinés, pas des défauts. Non corrigé (BACKLOG
+> `[A11Y-DETTE-FOCUS-RETOUR]`) : le focus ne revient pas sur « Modifier » à la fermeture.
+> ⚠️ Taille rendue non mesurée en navigateur (jsdom) : le test vérifie la classe et sa définition.
+>
 > ## 🟦 Session 2026-10-15 — **`[CI-QUALITE-EN-PARALLELE]` : le contrôle « Qualité » ne fait plus attendre la file** (FinanceAI#1181)
 > Avant : 10 à 13 min par passage (runs 38800255547 et 38802214924), dont l'essentiel en tests sous couverture
 > exécutés un fichier à la fois ; Mergify (`max_parallel_checks: 1`) faisait attendre chaque PR d'autant.

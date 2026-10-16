@@ -10,6 +10,14 @@
 
 - Le guide de chaque onglet est écrit en français correct, avec les accents et en tutoyant. Il ne parle plus des curseurs ni des « données théoriques » (retirés le 2026-09-29), du « Départ en 2026 » ni de « v4.0 ».
 
+## 2026-09-29 — Dettes : champs plus faciles à toucher, et le formulaire d'édition te guide au clavier
+
+- Tous les champs et boutons du formulaire de dette (ajout et modification) font maintenant au moins
+  44 px de haut, la taille tactile recommandée (avant : environ 26 px). Le formulaire est un peu plus
+  haut, surtout sur téléphone.
+- Quand tu ouvres « Modifier » sur une dette, le focus va directement sur le panneau d'édition : au
+  clavier ou avec un lecteur d'écran, tu n'as plus à chercher l'alerte sur le solde de la dette.
+
 ## 2026-10-15 — Contrat du hub en v1.4.0
 
 - Le contrat du hub passe de `v1.3.1` à `v1.4.0` : ajout d'un sous-chemin `/session`, rien ne change pour FinanceAI (même version de contrat, même résumé publié).

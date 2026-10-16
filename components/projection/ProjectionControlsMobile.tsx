@@ -71,6 +71,7 @@ export const ProjectionControlsMobile: React.FC<ProjectionControlsMobileProps> =
                     <h4 className="text-tiny uppercase text-ink-400 border-b border-white/10 pb-1">Facteurs Macro</h4>
                     {/* [HORIZON-ESPERANCE-DE-VIE] Plus de curseur : jusqu'à l'espérance de vie (Retraite). */}
                     <p className="text-meta text-ink-300">
+                        {/* NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (espérance de vie réglable) */}
                         Horizon : jusqu'à <span className="text-secondary font-bold">{esperanceDeVie} ans</span> (espérance de vie, réglable dans Retraite)
                     </p>
                     <ReturnRateField

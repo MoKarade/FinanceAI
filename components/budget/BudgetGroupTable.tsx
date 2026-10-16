@@ -35,6 +35,7 @@ export function tendanceSparkline(data: readonly number[], masquer = false): str
     const fin = finis[finis.length - 1];
     const ecart = fin - debut;
     // Seuil au cent près : deux mois qui ne diffèrent que d'arrondis sont « stables », pas « en hausse ».
+    // NOMBRE-NON-MONETAIRE : nombre de mois d'historique, le sens et le % restent masqués plus bas
     if (Math.abs(ecart) < 0.01) return `${finis.length} mois, stable`;
     const sens = ecart > 0 ? 'en hausse' : 'en baisse';
     // Un point de départ nul rend la variation relative infinie : on annonce le SENS seul plutôt

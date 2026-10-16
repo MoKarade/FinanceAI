@@ -50,6 +50,7 @@ export const ImpactProjet: React.FC<Props> = ({ projet, patrimoine, rendement, o
                 <div className="flex flex-col gap-2">
                     <h3 className="text-meta lg:text-[11px] font-semibold lg:tracking-[0.08em] lg:uppercase text-ink-300 lg:text-ink-400">Répartition estimée</h3>
                     <div className="flex h-2.5 rounded-full overflow-hidden" aria-hidden="true">
+                        {/* NOMBRE-NON-MONETAIRE : parts constantes du catalogue par type de projet (`repartitionEstimee`), indépendantes du dossier */}
                         {postes.map((p) => <div key={p.nom} style={{ width: `${p.part * 100}%`, background: p.couleur }} />)}
                     </div>
                     <ul className="flex flex-col lg:flex-row lg:flex-wrap lg:justify-between gap-x-4 gap-y-1.5 text-[13px] text-ink-200">

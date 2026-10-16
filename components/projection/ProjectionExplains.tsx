@@ -216,6 +216,7 @@ export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartDat
         />
         {q && (
           <p className="text-tiny text-ink-400 mt-2" aria-live="polite">
+            {/* NOMBRE-NON-MONETAIRE : durée d'historique ou fraîcheur, aucun montant ni ratio financier */}
             {matchInfo.matchedMonths.size} mois trouvé(s) sur {matchInfo.matchedYears.size} année(s).
           </p>
         )}
@@ -241,6 +242,7 @@ export const ProjectionExplains: React.FC<ProjectionExplainsProps> = ({ chartDat
               <div className="flex items-center gap-3">
                 <span aria-hidden="true" className={`text-ink-400 transition-transform ${isOpen ? 'rotate-90' : ''}`}>›</span>
                 <span className="text-h2 text-ink-50 font-bold">{group.year}</span>
+                {/* NOMBRE-NON-MONETAIRE : axe d'âge ou d'année de la projection, pas une valeur dérivée du dossier */}
                 {typeof group.age === 'number' && <span className="text-meta text-ink-400">{group.age} ans</span>}
               </div>
               <div className="text-right">

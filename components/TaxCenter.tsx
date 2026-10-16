@@ -465,6 +465,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({ config, assets = [], apiKe
 
             {isAnalyzing && (
                 <div className="w-full bg-surfaceHighlight rounded-full h-2.5 overflow-hidden">
+                    {/* NOMBRE-NON-MONETAIRE : progression d'une tâche (démarrage, import, visite guidée), pas une donnée du dossier */}
                     <div className="bg-info-500 h-2.5 rounded-full transition-all duration-300" style={{ width: `${(progress.current / progress.total) * 100}%` }}></div>
                     <div className="text-center text-tiny text-ink-300 mt-1">Traitement {progress.current} / {progress.total} fichiers</div>
                 </div>

@@ -61,6 +61,7 @@ export const FuturePeriodSelector: React.FC<FuturePeriodSelectorProps> = ({
                 >
                     {selected === 'custom' && <option value="custom" disabled>Vue personnalisée</option>}
                     {todayPresetRange && <option value="today">Aujourd'hui</option>}
+                    {/* NOMBRE-NON-MONETAIRE : axe d'âge ou d'année de la projection, pas une valeur dérivée du dossier (choix de période) */}
                     {years.map((y) => <option key={y} value={y}>{y} ans</option>)}
                     <option value="all">Tout l'horizon</option>
                 </select>
@@ -106,6 +107,7 @@ export const FuturePeriodSelector: React.FC<FuturePeriodSelectorProps> = ({
                         aria-pressed={active}
                         className={`${bouton} ${active ? actif : inactif}`}
                     >
+                        {/* NOMBRE-NON-MONETAIRE : axe d'âge ou d'année de la projection, pas une valeur dérivée du dossier (choix de période) */}
                         {y} ans
                     </button>
                 );

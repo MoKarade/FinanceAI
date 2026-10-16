@@ -78,6 +78,7 @@ export const ScenariosAchatLocation: React.FC<Props> = ({ donnees, annees, rende
 
     return (
         <section aria-labelledby="acheter-louer-titre" className="rounded-2xl bg-surface border border-white/6 p-4 sm:px-6 sm:py-5 flex flex-col gap-3.5 min-w-0">
+            {/* NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (horizon du comparatif) */}
             <h2 id="acheter-louer-titre" className="text-[17px] lg:text-[18px] font-semibold text-ink-50">Acheter ou louer ? {annees} ans de scénarios</h2>
             {!etroit && (
                 <ul className="flex flex-wrap gap-x-3.5 gap-y-1 text-meta text-ink-300" aria-hidden="true">
@@ -89,6 +90,7 @@ export const ScenariosAchatLocation: React.FC<Props> = ({ donnees, annees, rende
                     ))}
                 </ul>
             )}
+            {/* NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (horizon du comparatif) */}
             <div role="img" aria-label={`Sur ${annees} ans : ${SERIES.filter((s) => !s.pointilles).map((s) => s.libelle.toLowerCase()).join(', ')}, et la valeur de la maison — détail chiffré dans le tableau de données.`}>
                 <div style={{ width: '100%', height: etroit ? 220 : 300 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -104,6 +106,7 @@ export const ScenariosAchatLocation: React.FC<Props> = ({ donnees, annees, rende
                     </ResponsiveContainer>
                 </div>
             </div>
+            {/* NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (horizon du comparatif) */}
             <ChartDataTable caption={`Acheter ou louer : valeur de chaque scénario, année par année (${annees} ans)`} columns={colonnes} rows={donnees} />
             {etroit && fin && (
                 <ul className="flex flex-col gap-1.5 text-[13px]">

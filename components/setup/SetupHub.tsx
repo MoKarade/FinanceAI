@@ -172,6 +172,7 @@ export const SetupHub: React.FC<{ className?: string; compact?: boolean }> = ({ 
                 <div
                     className="relative w-16 h-16 shrink-0"
                     role="progressbar"
+                    /* NOMBRE-NON-MONETAIRE : progression d'une tâche (démarrage, import, visite guidée), pas une donnée du dossier */
                     aria-valuenow={pct}
                     aria-valuemin={0}
                     aria-valuemax={100}

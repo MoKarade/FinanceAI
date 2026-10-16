@@ -267,6 +267,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
         const dernier = index === visibleTicksCount - 1;
         return (
             <text x={x} y={y + 12} textAnchor={index === 0 ? 'start' : dernier ? 'end' : 'middle'} fill="#8896a8" fontSize={etroit ? 10 : 11} fontFamily="JetBrains Mono">
+                {/* NOMBRE-NON-MONETAIRE : axe d'âge ou d'année de la projection, pas une valeur dérivée du dossier (âge de l'enfant) */}
                 {age === 0 ? '0 an' : dernier ? `${age} ans` : age}
             </text>
         );

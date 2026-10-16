@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-16 — Mode discret : le score de diversification est masqué
+
+- Dans Placements, le badge « Diversification NN/100 » affichait encore le score en mode discret ; il est maintenant masqué comme les montants.
+- Un contrôle automatique vérifie désormais aussi les scores sur 100, les barres de progression et les durées en mois ou en ans :
+  un nouvel écran qui en afficherait un sans le masquer, ou sans dire que ce n'est pas une donnée personnelle, ferait échouer les tests.
+
 ## 2026-10-16 — Dettes : on te dit pourquoi le lien au marchand ne compte plus
 
 - Quand tu montes le taux d'une dette liée à un marchand (bail, par exemple), le champ « marchand lié » disparaissait sans

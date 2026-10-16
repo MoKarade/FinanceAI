@@ -284,6 +284,7 @@ export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => 
                         </span>
                         <span className="tabular-nums font-bold text-white">{pct}%</span>
                     </div>
+                    {/* NOMBRE-NON-MONETAIRE : avancement du calcul de l'optimiseur, pas une donnée du dossier */}
                     <div className="h-2 rounded-full bg-white/10 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
                         <div className="h-full bg-indigo-400 transition-[width] duration-300" style={{ width: `${pct}%` }} />
                     </div>

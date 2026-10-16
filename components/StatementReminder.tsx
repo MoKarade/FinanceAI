@@ -64,6 +64,7 @@ export const StatementReminder: React.FC = () => {
     };
 
     const behindLabel = status.monthsBehind >= 2
+        // NOMBRE-NON-MONETAIRE : retard de relevé en mois (fraîcheur d'une donnée), aucun montant
         ? `depuis ${monthLabel(status.lastTxMonth)} (${status.monthsBehind} mois)`
         : `pour ${monthLabel(status.currentMonth)}`;
 

@@ -80,6 +80,7 @@ export const FluxRetraite: React.FC<Props> = ({ donnees, zoom, colonnes, isPriva
             <ul className="flex flex-col lg:flex-row lg:justify-between gap-1 font-mono text-meta lg:text-[11px] text-ink-400">
                 {jalons.map((d, i) => (
                     <li key={d.age} className="flex justify-between gap-3 lg:block">
+                        {/* NOMBRE-NON-MONETAIRE : axe d'âge ou d'année de la projection, pas une valeur dérivée du dossier */}
                         <span className="font-sans lg:font-mono text-[13px] lg:text-[11px]">{d.age} ans</span>
                         <span className="text-ink-100 lg:text-ink-400">
                             <span className="hidden lg:inline"> · </span>

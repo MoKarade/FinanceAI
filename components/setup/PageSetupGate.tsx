@@ -338,12 +338,14 @@ const FullSetupScreen: React.FC<{
                     <div
                         className="flex items-center gap-3 min-w-[170px]"
                         role="progressbar"
+                        /* NOMBRE-NON-MONETAIRE : progression d'une tâche (démarrage, import, visite guidée), pas une donnée du dossier */
                         aria-valuenow={done}
                         aria-valuemin={0}
                         aria-valuemax={total}
                         aria-label={`Configuration : ${done} sur ${total} prérequis prêts`}
                     >
                         <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden max-w-40">
+                            {/* NOMBRE-NON-MONETAIRE : progression d'une tâche (démarrage, import, visite guidée), pas une donnée du dossier */}
                             <div className="h-full bg-primary rounded-full transition-[width] duration-300" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
                         </div>
                         {/* [A11Y-CHART-HINT-HIDDEN] Masqué À BON DROIT : le `role="progressbar"`

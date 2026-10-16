@@ -123,6 +123,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     <div
                         className="w-full h-1 bg-white/5 rounded-full overflow-hidden"
                         role="progressbar"
+                        /* NOMBRE-NON-MONETAIRE : progression d'une tâche (démarrage, import, visite guidée), pas une donnée du dossier */
                         aria-valuenow={Math.round(progress)}
                         aria-valuemin={0}
                         aria-valuemax={100}
@@ -130,6 +131,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     >
                         <div
                             className="h-full bg-primary transition-all duration-500"
+                            /* NOMBRE-NON-MONETAIRE : progression d'une tâche (démarrage, import, visite guidée), pas une donnée du dossier */
                             style={{ width: `${progress}%` }}
                         />
                     </div>

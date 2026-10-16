@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-16 — Futur : la courbe de l'Historique est plus large sur téléphone
+
+- Sur téléphone, le graphique du tiroir Historique n'affiche plus l'axe des montants à gauche (environ
+  55 px récupérés pour la courbe) : un badge au bout de la courbe donne la valeur du dernier point. Il
+  disparaît si un compte n'a pas de valeur à ce point, et se masque en mode discret. Ordinateur,
+  Investissements et la comparaison de titres gardent leur axe.
+
 ## 2026-10-16 — Futur : plus de fausse « Variation du jour » au raccord passé / futur
 
 - Le premier jour projeté affichait une « Variation du jour » de plusieurs milliers de dollars alors que

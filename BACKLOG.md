@@ -240,7 +240,9 @@
   `DebtManager.tsx`, `ChildPlanning.tsx`, `budget/BudgetGroupTable.tsx`,
   `investments/DividendPanel.tsx`, `projection/futureDetail/DrillDownCompte.tsx`,
   `realestate/MultiPropertyComparison.tsx`, `realestate/ScenariosComparatifsCard.tsx`, et
-  `ui/ZoomableTimeChart.tsx` (partagé par le tiroir Historique de Futur — signalé « trop cramped »
+  `ui/ZoomableTimeChart.tsx` (**FAIT 2026-10-16 pour le tiroir Historique sur téléphone**, FinanceAI#1144 :
+  option `axeYMinimal`, défaut `false`, activée par `FutureHistorySection` seulement ; reste à porter sur
+  les 8 autres écrans) (partagé par le tiroir Historique de Futur — signalé « trop cramped »
   par Marc, donc PRIORITAIRE dans ce sous-lot — **et** par `StockChart.tsx`/Investments, contextes
   pleine largeur où masquer l'axe n'a pas été demandé). ⚠️ `ZoomableTimeChart` a 3 appelants
   distincts (`FutureHistorySection` via `DashboardEvolutionChart`, `Investments.tsx`,

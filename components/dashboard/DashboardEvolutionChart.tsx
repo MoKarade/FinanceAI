@@ -13,6 +13,8 @@ interface Props {
     hiddenAccounts?: Set<string>;
     /** Phase D.3 — superpose une ligne "Total" (somme de TOUS les comptes du dataset). */
     showTotalLine?: boolean;
+    /** [FinanceAI#1144] Axe Y masqué + badge de valeur (téléphone). Défaut `false` : axe inchangé. */
+    axeYMinimal?: boolean;
 }
 
 const DashboardEvolutionChart: React.FC<Props> = ({
@@ -22,6 +24,7 @@ const DashboardEvolutionChart: React.FC<Props> = ({
     isPrivacyMode,
     hiddenAccounts = new Set(),
     showTotalLine = false,
+    axeYMinimal = false,
 }) => {
     const visibleKeys = accountKeys.filter(k => !hiddenAccounts.has(k));
     const series: ZoomableSeries[] = visibleKeys.map((key) => ({
@@ -47,6 +50,7 @@ const DashboardEvolutionChart: React.FC<Props> = ({
             series={series}
             privacyMode={isPrivacyMode}
             stacked
+            axeYMinimal={axeYMinimal}
         />
     );
 };

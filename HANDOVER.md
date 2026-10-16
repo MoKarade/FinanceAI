@@ -4,6 +4,13 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-16 — **`[FUTUR-AXE-Y-MINIMAL]` : Historique sur téléphone, axe Y masqué + badge** (FinanceAI#1144)
+> `ZoomableTimeChart` reçoit l'option `axeYMinimal` (défaut `false`) : axe masqué, `ReferenceDot` + `BadgeValeurFinale` sur le
+> dernier point (somme des aires empilées, `null` si une série manque ; `maskedTick` en mode discret). Seul `FutureHistorySection`
+> l'active, via `DashboardEvolutionChart`, et seulement sur téléphone (`isNarrowViewport`). Mesuré à 390 px sur données fictives : tracé
+> de x=71 à x=16 (gain 55 px). Non fait : les 8 autres écrans du rollout. Limite : l'Historique du mode test est vide sans cours
+> historiques (réseau) ; la capture vient d'un banc isolé, pas de l'écran réel.
+
 > ## 🟦 Session 2026-10-16 — **`[PANNEAU-VARIATION-RACCORD-PASSE-FUTUR]` : plus de « Variation du jour » au raccord** (FinanceAI#1142)
 > `recomputeDailyDiffs` (`services/projection/dailyCurve.ts`) retire les `diff*` d'un point projeté dont la veille
 > calendaire est un point RÉEL (`dayIsReal`). Le badge du panneau du jour disparaît ce jour-là (déjà masqué quand

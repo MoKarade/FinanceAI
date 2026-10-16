@@ -3,7 +3,7 @@
 ## 8. Documentation (où vit quoi)
 
 - `docs/CONVENTIONS.md` — **détail de tout ce qui est indexé plus bas** (leçons, pièges, rationnels)
-- `BACKLOG.md` — tâches que Claude peut faire · `docs/BACKLOG_ARCHIVE.md` — items finis
+- Les **issues** du dépôt — tâches que Claude peut faire (`BACKLOG.md` n'est qu'un renvoi) · `docs/BACKLOG_ARCHIVE.md` — items finis · `docs/BACKLOG_AVANT_ISSUES_2026-10-15.md` — l'ancienne liste, figée
 - `docs/A_FAIRE_MOI.md` — tâches HUMAINES (Claude y route ses blocages)
 - `HANDOVER.md` — état actuel + reprise rapide
 - `docs/VISION.md` — où va le projet · `docs/adr/` — décisions verrouillées (ADR)
@@ -15,7 +15,7 @@
 
 1. `git fetch origin main && git merge --ff-only origin/main` **AVANT de juger l'état**
    (le clone local ne se met pas à jour seul — vu 146 commits de retard).
-2. Point bref lu depuis `HANDOVER.md` + `BACKLOG.md` : **Fait** / **État** /
+2. Point bref lu depuis `HANDOVER.md` + les issues ouvertes du dépôt : **Fait** / **État** /
    **Suite proposée** (+ ID) / **Planifié**.
 
 La structure est commune aux huit dépôts — elle est fixée dans
@@ -26,7 +26,7 @@ du dépôt `claude-config`, et nulle part ailleurs.
 `docs/AUDIT_FINANCIER_2026-06-17.md`, `docs/ANALYSE_APP_2026-07-15.md`,
 `docs/PLAN_CHANTIERS_2026-06-19.md`… disent à quoi ils correspondaient **à leur date** et ne se
 mettent pas à jour — les rafraîchir effacerait ce qui était vrai ce jour-là. Ce qui doit rester
-vrai va dans un document **sans date** : `BACKLOG.md` pour le restant, `HANDOVER.md` pour l'état,
+vrai va dans un document **sans date** : les issues pour le restant, `HANDOVER.md` pour l'état,
 `docs/CONVENTIONS.md` pour les leçons, `docs/adr/` pour les décisions.
 
 Nuance du déménagement du 2026-08-20 : dans ces récits, les **chemins** ont été réparés (un lien

@@ -8,13 +8,13 @@ Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests 
 
 ## Index — le détail vit dans `docs/claude/` (ce fichier reste ≤ 60 lignes / ≤ 10 Ko)
 - Principes complets : `docs/claude/principes.md` · Conventions de code : `docs/claude/conventions-code.md`
-- Git, PR, cycle autonome, tenue du BACKLOG, docs à chaque push : `docs/claude/workflow-git.md`
+- Git, PR, cycle autonome, backlog dans les issues, docs à chaque push : `docs/claude/workflow-git.md`
 - Commandes : `docs/claude/commandes.md` · Gate avant commit : `docs/claude/verifications.md`
 - Après merge, déploiement Vercel : `docs/claude/deploiement.md` · Hub / CarAI : `docs/claude/hub.md`
 - Où vit quoi : `docs/claude/documentation.md` · Leçons (clés MAJUSCULES) : `docs/claude/lecons.md` (+ `docs/CONVENTIONS.md`)
 - CI : `docs/claude/ci.md` · Style, compte-rendu : `docs/claude/style.md` · Agents, hooks : `docs/claude/agents.md`
 - Chemins sensibles : `docs/claude/chemins-sensibles.md` · En-tête historique : `docs/claude/entete.md`
-- État : `HANDOVER.md` · Tâches : `BACKLOG.md` (humaines : `docs/A_FAIRE_MOI.md`) · Architecture : `docs/ARCHITECTURE.md`
+- État : `HANDOVER.md` · Tâches : les issues du dépôt (`BACKLOG.md` n'est qu'un renvoi ; humaines : `docs/A_FAIRE_MOI.md`) · Architecture : `docs/ARCHITECTURE.md`
 - Valeurs fiscales : `docs/FISCAL_REFERENCE.md` · Décisions : `docs/adr/`
 
 ## Commandes
@@ -31,7 +31,7 @@ Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests 
 7. **Formatage** : `formatCAD` / `formatPercent` uniquement ; devises natives → `assetValueCad`.
 8. **Git** : branche `claude/<slug>`, PR avec `--base main` explicite, commits `[ID] desc`. Jamais `--no-verify`. Destructif → confirmer avec Marc.
 9. **Store** : champ additif optionnel = pas de bump de version ; bump seulement pour restructurer.
-10. **Tenue docs** : même PR : `HANDOVER.md`, `BACKLOG.md`, `CHANGELOG.md`, README touchés ; leçon → `docs/CONVENTIONS.md`, sinon « push sans leçon ».
+10. **Tenue docs** : même PR : `HANDOVER.md`, `CHANGELOG.md`, README touchés ; la tâche se suit dans son issue, pas dans `BACKLOG.md` ; leçon → `docs/CONVENTIONS.md`, sinon « push sans leçon ».
 11. **Déploiement** : après un merge qui change ce qui est servi, vérifier un déploiement Vercel production `READY` sur le bon SHA (CSP de `vercel.json` enforcée).
 
 ## Conduite

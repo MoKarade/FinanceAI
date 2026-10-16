@@ -1,0 +1,27 @@
+name: Fumée de production
+
+# Après chaque déploiement de production réussi, sonde l'app EN LIGNE : une CI verte ne prouve pas que
+# le site répond. Le contrôle est le workflow commun de MoKarade/.github (plan de standardisation du
+# 15/10/2026, décision 5) ; ce fichier ne fait que l'appeler.
+#
+# Particularité de FinanceAI : l'app est une page statique (Vite) + des fonctions Vercel, SANS connexion
+# propre ni `/hub/summary` sur ce domaine (le summary du hub vit dans le serveur MCP de Cloud Run, et
+# l'accès est un mur Cloudflare Access à venir, tâche #1159). Contrôles donc réduits à ce que le domaine
+# sert vraiment : la santé (`/api/sante`, api/sante.ts) et la page d'accueil. `chemin-summary` vide : pas
+# de contrôle du summary ici ; il est vérifié par la route vivante du serveur MCP (tâche #1196).
+# Le journal ne contient ni corps de réponse ni jeton.
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  fumee:
+    name: Fumée de production
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production'
+    uses: MoKarade/.github/.github/workflows/fumee.yml@main
+    with:
+      url-base: https://finance.hubperso.com
+      chemin-summary: ''
+      chemin-connexion: /

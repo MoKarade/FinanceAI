@@ -69,7 +69,7 @@ relu ment en silence. Un compteur se lit dans la CI.)*
 
 | Fichier | Contenu |
 |---|---|
-| **[`BACKLOG.md`](BACKLOG.md)** | **Source de vérité du restant à faire** — items P0/P1/P2/P3 |
+| **[Issues du dépôt](https://github.com/MoKarade/FinanceAI/issues)** | **Source de vérité du restant à faire** ([`BACKLOG.md`](BACKLOG.md) n'est qu'un renvoi ; ancienne liste : [`docs/BACKLOG_AVANT_ISSUES_2026-10-15.md`](docs/BACKLOG_AVANT_ISSUES_2026-10-15.md)) |
 | [`HANDOVER.md`](HANDOVER.md) | Reprise rapide — état actuel + recommandations |
 | [`docs/HISTORIQUE.md`](docs/HISTORIQUE.md) | Archive consolidée : snapshots, audits, designs livrés, ADRs, 131 tests manuels par onglet |
 | [`docs/PROJECTION_OUTPUT_SCHEMA.md`](docs/PROJECTION_OUTPUT_SCHEMA.md) | Schéma exhaustif `chartData[i]` (~50 champs) |

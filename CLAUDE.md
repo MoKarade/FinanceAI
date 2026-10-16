@@ -25,7 +25,7 @@ Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests 
 1. **No-fake-data** : aucune donnée simulée en prod ; projection absente → `<ProjectionRequired>` ; valeur non finie/absente → « — » ou `null`, jamais `0` (y compris dans un prompt IA).
 2. **Secrets** : jamais en clair (code, repo, chat). Clés API en IDB chiffré, exclues de localStorage, backups et push Drive.
 3. **Dépôt PUBLIC** : jamais NIV, adresse, téléphone, n° de contrat ; jamais de montant dans un rapport de synchro ni un journal CI.
-4. **Chemins sensibles** (`scripts/hooks/**`, `.github/**`, `.claude/**`, settings*, commit-gate*, `api/**`, `mcp/**`, `vercel.json`, `vite.config.ts`, `index.html`) : validation de Marc, JAMAIS d'auto-fusion.
+4. **Chemins sensibles** (`scripts/hooks/**`, `.github/**`, `.claude/**`, settings*, commit-gate*, `api/**`, `mcp/**`, `vercel.json`, `vite.config.ts`, `index.html`) : fusionnés par Mergify seulement si le contrôle « Garde-fou » est vert (oui de Marc, 15/10/2026) ; rouge, ils attendent Marc.
 5. **Sources uniques** : futur = `lastProjection.chartData` (grep le moteur avant tout calcul UI) ; patrimoine net = `computeRawNetWorth`.
 6. **Fiscal** : toute constante vient de `docs/FISCAL_REFERENCE.md` (datée, sourcée) ; chiffre non sourcé = suspect. Salaires MENSUELS (×12).
 7. **Formatage** : `formatCAD` / `formatPercent` uniquement ; devises natives → `assetValueCad`.

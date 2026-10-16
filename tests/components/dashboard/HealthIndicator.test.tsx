@@ -127,11 +127,14 @@ describe('HealthIndicator', () => {
             transactions: [],
             initialBalances: { 'Compte chèque BMO': 24000 }, // 24000 / 2000 = 12 mois
         });
-        render(<HealthIndicator />);
+        const { container } = render(<HealthIndicator />);
+        // [PRIVACY-RATIOS-DUREES-UNIFORMES] Le nombre de mois est désormais un SEGMENT à part (masquable) :
+        // la phrase se lit sur le texte agrégé, plus sur un seul nœud.
+        const texte = container.textContent ?? '';
         // Le coussin affiche un nombre de mois > 0, surtout PAS « 0,00 mois ».
-        expect(screen.queryByText(/^0[.,]00\s+mois$/)).not.toBeInTheDocument();
+        expect(texte).not.toMatch(/(^|[^\d])0[.,]00\s+mois/);
         // Format coussin « X,XX mois » (espace), pas « $/mois » du poids des abos (PH4D-BUDGET-RATIOS).
-        expect(screen.getByText(/\d+[.,]\d+\s+mois/)).toBeInTheDocument();
+        expect(texte).toMatch(/\d+[.,]\d+\s+mois/);
     });
 
     it('[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE] le nom accessible porte la VRAIE cause, pas « donnée indisponible »', () => {

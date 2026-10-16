@@ -44,6 +44,10 @@ Libellés sans accent (« categorie », « deja classe », « mises a jour », �
   Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
   `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
 
+## 2026-10-15 — `[REGLAGES-MOTS-FRANCAIS]` : trois mots anglais des réglages passent en français
+
+« Holdings » → « Placements » (`AssetLocationCard.tsx`), « Side income $/an » → « Revenu d'appoint $/an » (`UserConfigFields.tsx`), « Cash $ » → « Liquidités $ » (`AdvancedProjectionParams.tsx`). Tests : `tests/components/settings/ReglagesMotsFrancais.test.tsx` et attendu mis à jour dans `AdvancedProjectionParams.privacy.test.tsx`. PR : à renseigner à l'ouverture.
+
 ## 2026-10-15 — `[EXPORT-CSV-LIBELLE]` Transactions : libellé « Exporter (CSV) » + message de confirmation
 
 - [x] Bouton renommé « Exporter (CSV) » (en-tête et liste d'outils étroite) ; après le téléchargement, `showToast('Fichier téléchargé : N transaction(s)')`. Test : `tests/components/Transactions.exportMessage.test.tsx`. PR : à renseigner à l'ouverture.

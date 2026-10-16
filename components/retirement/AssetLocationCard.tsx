@@ -152,7 +152,7 @@ export const AssetLocationCard: React.FC<AssetLocationCardProps> = ({ annualGros
                 {/* Holdings editor */}
                 <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                        <h4 className="text-tiny font-bold text-ink-300 uppercase tracking-wider">Holdings</h4>
+                        <h4 className="text-tiny font-bold text-ink-300 uppercase tracking-wider">Placements</h4>
                         <div className="flex gap-2">
                             <button
                                 type="button"

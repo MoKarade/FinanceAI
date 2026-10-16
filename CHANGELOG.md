@@ -29,6 +29,10 @@
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
 
+## 2026-10-15 — Réglages : trois mots anglais passent en français
+
+- « Holdings » devient « Placements » (carte de répartition des comptes), « Side income $/an » devient « Revenu d'appoint $/an » (profil) et « Cash $ » devient « Liquidités $ » (paramètres avancés).
+
 ## 2026-10-15 — Transactions : « Exporter (CSV) » et message « Fichier téléchargé : N transactions »
 
 - Le bouton d'export s'appelle « Exporter (CSV) » et, une fois le fichier téléchargé, un message dit combien de transactions il contient. Un export refusé (mode discret, données fictives) n'affiche jamais ce message.

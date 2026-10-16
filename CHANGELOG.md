@@ -14,6 +14,13 @@
 
 - Le contrat du hub passe de `v1.3.1` à `v1.4.0` : ajout d'un sous-chemin `/session`, rien ne change pour FinanceAI (même version de contrat, même résumé publié).
 
+## 2026-10-15 — Fintable : l'échec d'une synchro est dit en mots simples
+
+- Quand la synchro Fintable échoue, la carte dit « Fintable refuse la connexion : renouvelle ton jeton » ou « Fintable ne répond pas, réessaie dans un instant ». Le message technique est replié sous « Détail technique ».
+
+## 2026-10-15 — Google Drive : l'erreur de synchro est une phrase simple
+
+- Quand la synchronisation avec Google Drive échoue, l'app dit « Drive ne répond pas, réessaie dans un instant » au lieu d'afficher « Sync (pull) : » suivi d'un message technique.
 ## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
@@ -21,6 +28,25 @@
 ## 2026-10-15 — Simulations : un échec est dit en mots simples
 
 - Quand les stress-tests ou la recherche de stratégie échouent, l'écran dit « La simulation n'a pas pu finir, réessaie » au lieu d'un message technique (le détail reste dans le journal d'erreurs).
+
+## 2026-10-15 — Profils : un profil abîmé est dit en mots simples
+
+- Charger un profil sauvegardé illisible affiche « Le profil « X » est abîmé, impossible de le charger » au lieu d'un message technique (le détail reste dans le journal d'erreurs).
+
+## 2026-10-15 — Téléphone : le bandeau « Installer FinanceAI » ne passe plus sous la barre du bas
+
+- Sur téléphone, le bandeau d'installation était recouvert par la barre de navigation. Il se pose maintenant
+  juste au-dessus. Sur ordinateur, rien ne change.
+
+## 2026-10-15 — Téléphone : les notifications ne cachent plus la barre du bas
+
+- Sur téléphone, les petits messages (« Enregistré »…) s'affichaient par-dessus la barre de navigation.
+  Ils se posent maintenant juste au-dessus. Sur ordinateur, rien ne change.
+
+## 2026-10-15 — Entreprises : libellés en mots simples
+
+- Ligne « Entreprise » (Patrimoine) : « JVM $ » devient « Valeur marchande $ », « Div annuel $ » devient « Dividende annuel $ », et le bouton supprimer annonce « Supprimer cette entreprise » (il parlait d'un immeuble).
+
 
 ## 2026-10-14 — Futur : le panneau du jour dit quand il n'y a aucune entrée ni sortie
 
@@ -37,6 +63,18 @@
 - Quand l'app tourne sur des données fictives (mode test), l'assistant IA est prévenu que les
   chiffres sont un scénario hypothétique : il répond normalement, mais ne les présente plus comme
   tes finances réelles. Rien n'est refusé.
+
+## 2026-09-29 — Mode discret : les pourcentages, durées et scores tirés de tes données sont masqués aussi
+
+- En mode discret, l'app masquait tes montants mais laissait voir des chiffres qui permettaient de les
+  deviner. Sont maintenant masqués : les variations et poids de ton portefeuille, la répartition par
+  compte, par région et par secteur, l'écart réel/prévu du Budget et la part de chaque poste, le
+  prorata et l'effort de chaque conjoint, le taux de succès et l'année FIRE du Futur, l'âge
+  d'épuisement du capital, l'âge de retraite calculé, les scores de santé et de stratégie, ton taux
+  marginal, les taux d'intérêt de tes dettes, la durée avant d'être libéré des dettes, les ratios
+  immobiliers et la hausse de prix d'un abonnement. Les barres qui dessinaient ces ratios sont vides.
+- Restent visibles : les hypothèses que tu saisis (inflation, rendements), les barèmes d'impôt et les
+  variations de prix des titres en bourse.
 
 ## 2026-09-29 — Mode discret : le récapitulatif d'ajout d'un placement ne montre plus tes montants
 
@@ -163,6 +201,21 @@
 - L'IA locale (ton PC) n'est plus servie qu'à TA clé Anthropic (organisation ou empreinte que tu poses toi-même sur
   Vercel) ; sans ce réglage, tout part chez Anthropic. Attention : nettoyer les documents ne change pas l'historique
   public du dépôt, où d'anciennes valeurs restent lisibles.
+
+## 2026-09-25 — La sauvegarde JSON contient tout ton dossier
+
+- « Exporter JSON » (et l'export chiffré) sauvegarde maintenant tout ce que l'app garde : en plus de
+  tes transactions et placements, les soldes et l'historique Fintable, les rôles de tes comptes, les
+  abonnements écartés, les taux de change, tes conversations avec l'assistant et la liste de tes
+  documents. Avant, tout ça était perdu à la restauration.
+- Restaurer remplace tout : l'app redevient exactement la sauvegarde. Tes clés API ne sont jamais
+  dans le fichier, et elles sont désormais CONSERVÉES à la restauration (avant, il fallait les
+  re-saisir). Un backup automatique est fait juste avant, pour pouvoir annuler. Les anciennes
+  sauvegardes se restaurent toujours.
+- Si le navigateur refuse d'écrire la sauvegarde (stockage plein), ton dossier actuel est remis en
+  place au lieu de laisser une app vide. Un dossier local illisible est annoncé comme tel à l'export
+  (avant : « rien à sauvegarder »).
+- En mode test, l'export est refusé : il sauvegarderait des données fictives.
 
 ## 2026-09-25 — Ajout d'un titre à la main : la devise se choisit
 

@@ -26,6 +26,9 @@ import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import { HistoryCoverageNote } from './dashboard/HistoryCoverageNote';
 import { HistorySyncDoctor } from './investments/HistorySyncDoctor';
 import { historyKeyMatchesSymbol } from '../services/history/buildMarketData';
+import { variation24hSerieSiRecente, variation24hTitreAffichable, titresAuCoursPerime } from '../services/history/fraicheurCours';
+import { CoursPerimesNotice } from './investments/CoursPerimesNotice';
+import { todayIsoLocal } from '../services/projection/dailyRefine';
 import { seriesReturnPct, priceReturnPct, isBenchmarkCandidate, PERF_PERIODS, PERF_PERIOD_LABELS, type PerfPeriod } from '../services/history/periodReturn';
 import { PerformanceComparee, variationFenetre, type PeriodeGraphe } from './investments/PerformanceComparee';
 import { TitresDetenus, type LigneTitre } from './investments/TitresDetenus';
@@ -415,7 +418,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
             // → donuts « tout en Autre » (bug Marc).
             const { source: _metaSource, ...meta } = resolveAssetMeta(a);
             void _metaSource; // la provenance ne fait pas partie d'AllocationItem (affichage seul)
-            const trendPct = priceReturnPct(a.priceHistory, perfPeriod);
+            // [COURS-AU-TROMPEUR] Sur 24 h, un close vieux de plusieurs jours n'est pas « la variation
+            // du jour » : « — » plutôt qu'un % d'il y a deux semaines. Les autres périodes gardent
+            // leur règle (leur baseline est datée par construction).
+            const trendPct = perfPeriod === '24H' && !variation24hTitreAffichable(a.priceHistory, todayIsoLocal())
+                ? null
+                : priceReturnPct(a.priceHistory, perfPeriod);
             // PH4-INV-3 — dividendes : priorité au rendement/fréquence SAISIS sur l'Asset (réels du
             // titre) sur l'estimation de la table statique ASSET_META.
             const effYield = a.dividendYield != null && a.dividendYield > 0 ? a.dividendYield : meta.yield;
@@ -512,6 +520,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
         const stamps = assets.map(a => a.priceUpdatedAt || 0).filter(t => t > 0);
         return stamps.length > 0 ? Math.max(...stamps) : null;
     }, [assets]);
+    const coursPerimes = useMemo(() => titresAuCoursPerime(assets, todayIsoLocal()), [assets]);
     const handleRefreshPrices = async () => {
         // Garde MODE TEST (finding panel) : ne jamais écraser les prix de fixtures persona (CoinGecko
         // répond même sans clé → un clic corromprait l'état déterministe du persona).
@@ -682,7 +691,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
     // performance comparée, les titres détenus et « qui possède quoi ».
     const valeurPortefeuille = currentAllocation.reduce((t, a) => t + a.value, 0);
     // Même règle « pas de 0 % figé » que la carte Performance ([PERF-STALE-TAIL-ZERO]).
-    const variation24h = seriesReturnPct(marketData, 'TOTAL', '24H', isSyntheticValue);
+    // [COURS-AU-TROMPEUR] « Sur 24 h » n'existe que si les deux points de la série sont récents.
+    const variation24h = variation24hSerieSiRecente(marketData, 'TOTAL', todayIsoLocal(), isSyntheticValue);
     const variationDepuisDebut = variationFenetre(marketData, 'TOTAL', isSyntheticValue);
     const debutHistorique = marketData[0]?.date ? String(marketData[0].date) : null;
     const moisDebut = debutHistorique
@@ -756,6 +766,8 @@ export const Investments: React.FC<InvestmentsProps> = ({
 
             <div role="tabpanel" id={panelId('placements', subTab)} aria-labelledby={tabId('placements', subTab)} tabIndex={0} className="space-y-5 focus-ring rounded-card">
 
+            {/* [COURS-AU-TROMPEUR] Sur la Vue d'ensemble, « Sur 24 h » peut afficher « — » : dire pourquoi. */}
+            {subTab === 'overview' && <CoursPerimesNotice titres={coursPerimes} />}
             {subTab === 'overview' && (
                 etroit ? (
                     <section aria-label="Chiffres clés" className="rounded-2xl bg-surface border border-white/6 p-4 flex flex-col gap-3.5">
@@ -1311,10 +1323,12 @@ export const Investments: React.FC<InvestmentsProps> = ({
                 <div className="flex justify-end items-center gap-2 flex-wrap">
                     {lastPriceRefreshAt != null && (
                         <span className="text-tiny text-ink-400 mr-auto">
-                            {/* formatDate (fr-CA, NaN→—) + heure, même patron qu'AutoBackupPanel. */}
-                            Cours au {formatDate(lastPriceRefreshAt)} {new Date(lastPriceRefreshAt).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}
+                            {/* [COURS-AU-TROMPEUR] C'est l'heure du dernier rafraîchissement, pas la date des
+                                cours : l'âge de chaque cours est dit par CoursPerimesNotice. */}
+                            Actualisé le {formatDate(lastPriceRefreshAt)} {new Date(lastPriceRefreshAt).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                     )}
+                    <CoursPerimesNotice titres={coursPerimes} />
                     <button
                         type="button"
                         onClick={handleRefreshPrices}

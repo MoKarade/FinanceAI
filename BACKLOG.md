@@ -194,9 +194,6 @@
   `state.apiKeys` : un blob Drive fabriqué poserait des clés API étrangères en mémoire au `merge`.
   Même filtre que la restauration JSON (`enveloppeARestaurer`, `services/sauvegardeJson.ts`).
   Surface plus étroite (il faut le compte Google), d'où non corrigé dans #1065.
-- [ ] 🟡 **`[COURS-AU-TROMPEUR]`** (S) — « Cours au … » est l'heure du dernier rafraîchissement, pas
-  l'âge de chaque cours ; la variation « 24 h » compare les deux dernières clôtures quel que soit
-  leur âge ; `get_holdings` ne publie aucune date.
 - [ ] 🟡 **`[FUTUR-PANNEAU-REPOS-DEBUT-DE-MOIS]`** (S, [Probable], à confirmer à l'écran) — au
   repos, le panneau du jour désigne le 1er du mois (premier point `monthIndex ≥ 0`,
   `panneauPas.ts:53-57`), pas aujourd'hui.

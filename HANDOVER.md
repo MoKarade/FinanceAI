@@ -4,6 +4,9 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-16 — **`[COURS-AU-TROMPEUR]`** : l'âge réel des cours dans Placements (FinanceAI#1148)
+> `services/history/fraicheurCours.ts` (pur, date injectée, seuil `COURS_PERIME_APRES_JOURS = 4`) : la date d'un cours est celle de son dernier close (`priceHistory`), pas du rafraîchissement. `Investments.tsx` : « Actualisé le … » + `CoursPerimesNotice` (titre + date) ; « Sur 24 h » (portefeuille et par titre) à « — » si les deux closes ne sont pas récents ; `get_holdings` publie `priceDate` (null = inconnu, jamais signalé périmé). Limite : le score de diversification garde son momentum 24 h inchangé (hors périmètre).
+>
 > ## 🟦 Session 2026-10-16 — **`[HUB-TREND-VALEUR-NETTE-EST-LA-SEANCE]`** : plus de tendance trompeuse sur la valeur nette du hub (FinanceAI#1156)
 > `mcp/hubSummary.ts` : le metric « Valeur nette » ne publie plus de `trend` (c'était la séance des seuls placements) ; « Placements » la garde. Test : `tests/mcp/hubSummary.test.ts`. Effet côté hub : la carte n'affiche plus de flèche sur la valeur nette.
 >

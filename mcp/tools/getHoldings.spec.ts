@@ -10,6 +10,7 @@
 import type { AppState, Asset } from '../../types';
 import { assetValueCad } from '../../services/portfolio';
 import { logErrorThrottled } from '../../services/errorLogger';
+import { dateDernierCours } from '../../services/history/fraicheurCours';
 import { jsonContent, withState } from './_dataAware';
 import type { ReadToolSpec } from './_toolSpec';
 import { CLAUSE_DONNEES_TOOL } from '../instructions'; // [MCP-NO-INJECTION-FRAME] même texte pour le chat in-app ET le MCP
@@ -22,7 +23,8 @@ export const getHoldingsSpec = {
         "Liste les PLACEMENTS individuels RÉELS de l'utilisateur (chaque titre détenu), lus depuis son " +
         'état FinanceAI : symbole, nom, quantité, prix courant en devise NATIVE du titre (USD/EUR/CAD), ' +
         'devise, valeur convertie en CAD, type de compte (CELI/REER/CELIAPP/REEE/non-enregistré/crypto/' +
-        'marge/autre) et rendement (%). Trié par valeur CAD décroissante, avec le total et la ventilation ' +
+        'marge/autre), rendement (%) et DATE du dernier cours (priceDate, null si inconnue : un cours vieux ' +
+        'de plusieurs jours se dit avec sa date). Trié par valeur CAD décroissante, avec le total et la ventilation ' +
         'par compte. Lecture seule. Réponds à « qu\'est-ce que je détiens », « ma plus grosse position », ' +
         '« combien ai-je en CELI ». La valeur CAD est la SOURCE UNIQUE (mêmes chiffres que l\'app) : ne ' +
         'JAMAIS recalculer quantité × prix sans conversion de devise (le prix est en devise native).' + CLAUSE_DONNEES_TOOL,
@@ -59,6 +61,10 @@ export const getHoldingsSpec = {
                     valueCAD: Math.round(raw),
                     accountType: a.accountType ?? null,
                     performancePct,
+                    // [COURS-AU-TROMPEUR] date (YYYY-MM-DD) du DERNIER CLOSE connu du titre — pas l'heure
+                    // du dernier rafraîchissement. null = pas d'historique de prix (titre manuel, GIC) :
+                    // l'âge du cours est alors inconnu, à dire comme tel.
+                    priceDate: dateDernierCours(a.priceHistory),
                 },
             };
         });

@@ -206,6 +206,23 @@ describe('[MCP-GET-HOLDINGS] get_holdings', () => {
         expect((out.byAccount as Record<string, number>)['NON-ENREG']).toBe(1400);
     });
 
+    it('[COURS-AU-TROMPEUR] chaque ligne publie priceDate = date du DERNIER close, null sans historique', async () => {
+        const etat: AppState = {
+            ...buildDefaultAppState(),
+            fxRates: { USD: 1.4, EUR: 1.5, CAD: 1 },
+            assets: [
+                { symbol: 'VIEUX', name: 'Titre au cours périmé', quantity: 1, currentPrice: 10, currency: 'CAD', performance: 0, dateBought: '2025-01-01', accountType: 'CELI',
+                  priceHistory: [{ date: '2026-10-02', price: 10 }, { date: '2026-10-01', price: 9 }] },
+                { symbol: 'MANUEL', name: 'Titre manuel', quantity: 1, currentPrice: 5, currency: 'CAD', performance: 0, dateBought: '2025-01-01', accountType: 'CELI' },
+            ],
+        };
+        const h = captureTool(registerGetHoldings, providerFor(etat));
+        const out = await callJson(h);
+        const positions = out.positions as Array<Record<string, unknown>>;
+        expect(positions.find((p) => p.symbol === 'VIEUX')!.priceDate).toBe('2026-10-02');
+        expect(positions.find((p) => p.symbol === 'MANUEL')!.priceDate).toBeNull();
+    });
+
     it('portefeuille vide → count 0, total 0, positions vides (pas de crash)', async () => {
         const emptyState: AppState = { ...buildDefaultAppState(), assets: [] };
         const h = captureTool(registerGetHoldings, providerFor(emptyState));

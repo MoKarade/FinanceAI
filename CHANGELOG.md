@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-16 — Vercel : seule la branche principale se déploie
+
+- Avant, seules les branches `claude/*` étaient coupées : chaque branche `agence/*`, `feature/*` ou Dependabot
+  créait encore une préversion Vercel et usait le quota partagé entre les apps. Maintenant toute branche
+  autre que `main` est coupée ; la production se déploie comme avant après une fusion. Aucun changement dans l'app.
+
 ## 2026-10-16 — Futur : la courbe de l'Historique est plus large sur téléphone
 
 - Sur téléphone, le graphique du tiroir Historique n'affiche plus l'axe des montants à gauche (environ

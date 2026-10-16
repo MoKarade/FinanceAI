@@ -40,6 +40,12 @@ Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions 
   Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
   `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
 
+## 2026-10-15 — Simulations : échec en mots simples
+
+- [x] **`[SIMULATION-ERREUR-SIMPLE]`** — `StressTestPanel.tsx` et `StrategyOptimizerPanel.tsx` affichaient le message brut
+  de l'exception. Ils affichent « La simulation n'a pas pu finir, réessaie » ; l'optimiseur journalise maintenant
+  aussi l'erreur (`logError`). Constante : `services/simulationMessages.ts`. Test : `tests/services/simulationMessages.test.ts`.
+
 ## 2026-10-15 — Profil abîmé en mots simples
 
 - [x] **`[PROFIL-ABIME-SIMPLE]`** — `SavedProfilesCard.tsx` affichait « Erreur sur « X » : <message de lecture JSON> ».

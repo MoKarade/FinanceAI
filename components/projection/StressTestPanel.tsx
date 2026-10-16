@@ -12,6 +12,7 @@ import type { ProjectionResult } from '../../services/projection/types';
 import { runProjectionAsync } from '../../services/projection/runAsync';
 import { STRESS_STRAT_TYPES } from '../../services/projection/scenarios';
 import { logError } from '../../services/errorLogger';
+import { SIMULATION_ECHEC } from '../../services/simulationMessages';
 import { PrivateAmount } from '../ui/PrivateAmount';
 import { formatCompactCAD } from '../../utils/format';
 
@@ -48,7 +49,7 @@ export const StressTestPanel: React.FC<Props> = ({ params, baselineEstateNW }) =
         } catch (e: unknown) {
             logError({ source: 'projection', severity: 'warning', message: 'StressTestPanel : échec des stress-tests', error: e instanceof Error ? e : new Error(String(e)) });
             if (!aliveRef.current) return;
-            setError(e instanceof Error ? e.message : 'Échec des stress-tests');
+            setError(SIMULATION_ECHEC);
             setStatus('error');
         }
     }, [params]);

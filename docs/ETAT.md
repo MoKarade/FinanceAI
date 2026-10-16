@@ -73,8 +73,13 @@ modification silencieuse glissée dans une PR auto-fusionnée (`[DOCS-PROTECTION
 | Score de mutation (Stryker) | ≥ 75,1 % |
 
 Un seuil ne redescend jamais sans `--forcer` et une décision de Marc (`npm run portes:maj` le
-resserre quand un chiffre s'améliore). Invoqué par la CI (`node qualite/portes.mjs`) et
-disponible en local (`npm run portes`).
+resserre quand un chiffre s'améliore). Disponible en local (`npm run portes`, en série).
+
+**En CI** (depuis `FinanceAI#1181`), le même travail est réparti pour ne plus faire attendre la file de
+fusion : 4 tranches de tests sous couverture en parallèle (`--tranche i/4`), les contrôles statiques à
+côté (`--statique`), puis le job « Qualité (lint · couverture · code mort · architecture) » — le contrôle
+obligatoire, nom inchangé — fusionne les tranches (tests et couverture) et rend le verdict du cliquet sur
+les mêmes seuils (`--fusion 4`). Il échoue si une tranche manque : jamais de verdict sur des tests absents.
 
 ## Repères techniques rapides
 

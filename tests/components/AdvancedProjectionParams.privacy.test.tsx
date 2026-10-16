@@ -155,7 +155,7 @@ describe('[A11Y-PRIVACY-PARAMS-AVANCES] nom accessible des champs masqués', () 
             'app-manualCELI': 'CELI $',
             'app-manualREER': 'REER $',
             'app-manualNonReg': 'Non-Enreg $',
-            'app-manualCash': 'Cash $',
+            'app-manualCash': 'Liquidités $',
             'app-manualCrypto': 'Crypto $',
             'app-manualCELIRoom': 'CELI room restant $',
             'app-manualREERRoom': 'REER room restant $',

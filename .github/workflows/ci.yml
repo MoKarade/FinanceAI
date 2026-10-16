@@ -134,12 +134,23 @@ jobs:
   # ---------------------------------------------------------------------------------------
   # Portes qualité de l'Atelier (S6, 23/09/2026) — même dispositif que le pilote BatchChef.
   # Depuis la fusion automatique, une PR verte part en production sans relecture humaine :
-  # ces deux jobs sont ce qui garantit qu'elle ne fait RECULER ni la qualité ni la sécurité.
+  # ces jobs sont ce qui garantit qu'elle ne fait RECULER ni la qualité ni la sécurité.
   # Cliquet : qualite/seuils.json fige l'état au jour de la mise en place ; rien ne recule.
-  qualite:
-    # Calibré sur la mesure du 23/09/2026 (tests sous couverture ≈ 20 min sur 2 vCPU).
-    timeout-minutes: 45
-    name: Qualité (lint · couverture · code mort · architecture)
+  #
+  # [CI-QUALITE-EN-PARALLELE] (FinanceAI#1181) Le contrôle « Qualité » durait 10 à 13 min, dont ~9 min de tests
+  # sous couverture exécutés UN fichier à la fois (vitest.config.ts : fileParallelism: false, voulu — des tests
+  # sensibles au timing). Mergify fait passer les PR une à une : chaque PR en file attendait ce temps-là.
+  # Le travail est donc réparti SANS rien retirer :
+  #   - « qualite-tests » : les tests sous couverture en TRANCHES (une machine chacune, toujours en série
+  #     DANS la tranche, donc sans la contention qui rendait les tests instables) ;
+  #   - « qualite-statique » : typage, lint, code mort, architecture, en même temps que les tests ;
+  #   - « qualite » (le contrôle OBLIGATOIRE, nom inchangé) : fusionne les tranches (tests ET couverture) et rend
+  #     le verdict du cliquet sur les mêmes mesures et les mêmes seuils qu'avant. Il échoue si une tranche manque.
+  # Le nombre de tranches (4) figure dans la matrice, dans `--tranche` et dans `--fusion` : en changer un seul
+  # fait échouer la fusion (tranche attendue absente), jamais passer sur des tests en moins.
+  qualite-statique:
+    timeout-minutes: 15
+    name: Qualité — contrôles statiques (typage · lint · code mort · architecture)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -153,8 +164,86 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund --ignore-scripts
+      - name: Mesures statiques
+        run: node qualite/portes.mjs --statique
+      - name: Mesures (pour la fusion)
+        uses: actions/upload-artifact@v7
+        with:
+          name: qualite-statique
+          path: qualite/mesures-statiques.json
+          if-no-files-found: error
+          retention-days: 1
+
+  qualite-tests:
+    # Plafond large pour la variance ; la durée réelle d'une tranche est mesurée dans la PR FinanceAI#1181.
+    timeout-minutes: 30
+    name: Qualité — tests sous couverture (tranche ${{ matrix.tranche }}/4)
+    runs-on: ubuntu-latest
+    strategy:
+      # Toutes les tranches vont au bout même si l'une est rouge : le rapport de test est complet.
+      fail-fast: false
+      matrix:
+        tranche: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+      - name: Tests de la tranche (sous couverture)
+        run: node qualite/portes.mjs --tranche ${{ matrix.tranche }}/4
+      # `always()` : une tranche rouge dépose quand même son rapport, la fusion le compte comme échec.
+      - name: Rapport de la tranche
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: qualite-tranche-${{ matrix.tranche }}
+          path: .vitest-reports/
+          if-no-files-found: error
+          # `.vitest-reports/` est un dossier caché : sans ce drapeau, upload-artifact@v7 l'ignore et ne
+          # trouve « aucun fichier » (vu sur le 1er run de FinanceAI#1182, tests pourtant verts).
+          include-hidden-files: true
+          retention-days: 1
+
+  qualite:
+    timeout-minutes: 15
+    name: Qualité (lint · couverture · code mort · architecture)
+    needs: [qualite-statique, qualite-tests]
+    # Le contrôle obligatoire doit RENDRE un verdict même si un job amont est rouge (il échoue alors lui-même) ;
+    # `!cancelled()` et non `always()` : un run annulé par un nouveau push n'a rien à juger.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node 24
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+      - name: Rapports des tranches de tests
+        uses: actions/download-artifact@v7
+        with:
+          pattern: qualite-tranche-*
+          merge-multiple: true
+          path: .vitest-reports
+      - name: Mesures statiques
+        uses: actions/download-artifact@v7
+        with:
+          name: qualite-statique
+          path: qualite-statique
       - name: Portes qualité (cliquet)
-        run: node qualite/portes.mjs
+        run: node qualite/portes.mjs --fusion 4 .vitest-reports qualite-statique/mesures-statiques.json
       - name: Rapport
         if: always()
         uses: actions/upload-artifact@v7

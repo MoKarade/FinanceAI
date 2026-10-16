@@ -22,12 +22,58 @@
 
 - Le contrat du hub passe de `v1.3.1` à `v1.4.0` : ajout d'un sous-chemin `/session`, rien ne change pour FinanceAI (même version de contrat, même résumé publié).
 
+## 2026-10-15 — Transactions : accents et tutoiement
+
+- Les messages et libellés de l'onglet Transactions sont écrits en français correct : « Filtre par catégorie », « Catégorie à appliquer », « Choisir une catégorie… », « transaction(s) mises à jour », « classée(s) par règles — rien à envoyer à l'IA », « Tout semble déjà classé ! Utilise le mode manuel si besoin. ».
+
+## 2026-10-15 — Fintable : l'échec d'une synchro est dit en mots simples
+
+- Quand la synchro Fintable échoue, la carte dit « Fintable refuse la connexion : renouvelle ton jeton » ou « Fintable ne répond pas, réessaie dans un instant ». Le message technique est replié sous « Détail technique ».
+
 ## 2026-10-15 — Google Drive : l'erreur de synchro est une phrase simple
 
 - Quand la synchronisation avec Google Drive échoue, l'app dit « Drive ne répond pas, réessaie dans un instant » au lieu d'afficher « Sync (pull) : » suivi d'un message technique.
 ## 2026-10-15 — Restauration : un fichier refusé est dit en mots simples
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
+
+## 2026-10-15 — Réglages : trois mots anglais passent en français
+
+- « Holdings » devient « Placements » (carte de répartition des comptes), « Side income $/an » devient « Revenu d'appoint $/an » (profil) et « Cash $ » devient « Liquidités $ » (paramètres avancés).
+
+## 2026-10-15 — Transactions : « Exporter (CSV) » et message « Fichier téléchargé : N transactions »
+
+- Le bouton d'export s'appelle « Exporter (CSV) » et, une fois le fichier téléchargé, un message dit combien de transactions il contient. Un export refusé (mode discret, données fictives) n'affiche jamais ce message.
+
+## 2026-10-15 — Transactions : supprimer une règle de classement demande d'abord confirmation
+
+- Un clic sur la croix d'une règle ouvre « Supprimer cette règle ? » (Annuler / Supprimer) ; une fois supprimée, « Règle supprimée » s'affiche. Avant : la règle disparaissait d'un clic, sans avertissement.
+
+## 2026-10-15 — Budget : les dates de la période personnalisée sont assez larges
+
+- Dans le Budget, en choisissant « Dates », les deux champs de date (début et fin) affichent maintenant la date en entier, sans la couper.
+
+## 2026-10-15 — Assurances : la ligne tient sur deux rangées sur téléphone
+
+- Sur téléphone, une police d'assurance (type, assureur, capital, prime, date, supprimer) passe sur deux rangées lisibles au lieu d'une seule rangée écrasée ; sur grand écran rien ne change.
+
+## 2026-10-15 — Simulations : un échec est dit en mots simples
+
+- Quand les stress-tests ou la recherche de stratégie échouent, l'écran dit « La simulation n'a pas pu finir, réessaie » au lieu d'un message technique (le détail reste dans le journal d'erreurs).
+
+## 2026-10-15 — Profils : un profil abîmé est dit en mots simples
+
+- Charger un profil sauvegardé illisible affiche « Le profil « X » est abîmé, impossible de le charger » au lieu d'un message technique (le détail reste dans le journal d'erreurs).
+
+## 2026-10-15 — Téléphone : le bandeau « Installer FinanceAI » ne passe plus sous la barre du bas
+
+- Sur téléphone, le bandeau d'installation était recouvert par la barre de navigation. Il se pose maintenant
+  juste au-dessus. Sur ordinateur, rien ne change.
+
+## 2026-10-15 — Téléphone : les notifications ne cachent plus la barre du bas
+
+- Sur téléphone, les petits messages (« Enregistré »…) s'affichaient par-dessus la barre de navigation.
+  Ils se posent maintenant juste au-dessus. Sur ordinateur, rien ne change.
 
 ## 2026-10-15 — Entreprises : libellés en mots simples
 
@@ -48,6 +94,18 @@
 - Quand l'app tourne sur des données fictives (mode test), l'assistant IA est prévenu que les
   chiffres sont un scénario hypothétique : il répond normalement, mais ne les présente plus comme
   tes finances réelles. Rien n'est refusé.
+
+## 2026-09-29 — Mode discret : les pourcentages, durées et scores tirés de tes données sont masqués aussi
+
+- En mode discret, l'app masquait tes montants mais laissait voir des chiffres qui permettaient de les
+  deviner. Sont maintenant masqués : les variations et poids de ton portefeuille, la répartition par
+  compte, par région et par secteur, l'écart réel/prévu du Budget et la part de chaque poste, le
+  prorata et l'effort de chaque conjoint, le taux de succès et l'année FIRE du Futur, l'âge
+  d'épuisement du capital, l'âge de retraite calculé, les scores de santé et de stratégie, ton taux
+  marginal, les taux d'intérêt de tes dettes, la durée avant d'être libéré des dettes, les ratios
+  immobiliers et la hausse de prix d'un abonnement. Les barres qui dessinaient ces ratios sont vides.
+- Restent visibles : les hypothèses que tu saisis (inflation, rendements), les barèmes d'impôt et les
+  variations de prix des titres en bourse.
 
 ## 2026-09-29 — Mode discret : le récapitulatif d'ajout d'un placement ne montre plus tes montants
 

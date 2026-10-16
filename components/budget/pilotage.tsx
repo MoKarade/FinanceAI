@@ -76,9 +76,9 @@ export const NavigateurPeriode: React.FC<{ p: BudgetPilotage }> = ({ p }) => {
     if (p.timeView === 'CUSTOM') {
         return (
             <div className="flex items-center gap-1 h-10 px-2 rounded-lg border border-white/12 focus-within:border-white/30 transition-colors">
-                <input type="date" value={p.customStart} onChange={(e) => p.setCustomStart(e.target.value)} className="champ-nu bg-transparent text-ink-100 text-meta border-none outline-hidden w-28" aria-label="Date de début" />
+                <input type="date" value={p.customStart} onChange={(e) => p.setCustomStart(e.target.value)} className="champ-nu bg-transparent text-ink-100 text-meta border-none outline-hidden w-36" aria-label="Date de début" />
                 <span className="text-ink-400" aria-hidden="true">–</span>
-                <input type="date" value={p.customEnd} onChange={(e) => p.setCustomEnd(e.target.value)} className="champ-nu bg-transparent text-ink-100 text-meta border-none outline-hidden w-28" aria-label="Date de fin" />
+                <input type="date" value={p.customEnd} onChange={(e) => p.setCustomEnd(e.target.value)} className="champ-nu bg-transparent text-ink-100 text-meta border-none outline-hidden w-36" aria-label="Date de fin" />
             </div>
         );
     }

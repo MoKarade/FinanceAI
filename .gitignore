@@ -84,3 +84,7 @@ qualite/rapport.json
 prive/
 **/ancres_verification*.json
 **/*Releve_*.pdf
+
+# Tranches de tests de la CI et mesures statiques (qualite/portes.mjs --tranche / --statique)
+.vitest-reports/
+qualite/mesures-statiques.json

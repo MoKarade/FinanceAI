@@ -49,12 +49,12 @@ export const InsurancePanel: React.FC<{
                     <p className="text-meta text-ink-400 italic">Aucune assurance enregistrée. Ajoute tes polices pour modéliser leur impact (primes mensuelles, capital décès, capital invalidité, etc.).</p>
                 )}
                 {policies.map((p, i) => (
-                    <div key={p.id} className="grid grid-cols-12 gap-1 items-center p-2 bg-black/30 rounded-sm border border-white/5">
+                    <div key={p.id} className="grid grid-cols-6 sm:grid-cols-12 gap-1 items-center p-2 bg-black/30 rounded-sm border border-white/5">
                         <select
                             aria-label="Type d'assurance"
                             value={p.kind}
                             onChange={e => update(i, { kind: e.target.value as InsuranceKind })}
-                            className="col-span-3 bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
+                            className="col-span-2 sm:col-span-3 order-1 sm:order-none bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
                         >
                             <option value="life-term">Vie temp</option>
                             <option value="life-whole">Vie entière</option>
@@ -72,27 +72,27 @@ export const InsurancePanel: React.FC<{
                             aria-label="Assureur"
                             placeholder="Assureur" value={p.insurer ?? ''}
                             onChange={e => update(i, { insurer: e.target.value })}
-                            className="col-span-3 bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
+                            className="col-span-3 order-2 sm:order-none bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
                         />
                         <PrivateNumberInput
                             aria-label="Capital assuré (dollars)"
                             type="number" placeholder="Capital $" value={p.faceAmount ?? ''}
                             onChange={e => update(i, { faceAmount: Number(e.target.value) || undefined })}
-                            className="col-span-2 bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
+                            className="col-span-2 order-4 sm:order-none bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
                         />
                         <PrivateNumberInput
                             aria-label="Prime mensuelle (dollars)"
                             type="number" placeholder="Prime $/mois" value={p.monthlyPremium}
                             onChange={e => update(i, { monthlyPremium: Number(e.target.value) || 0 })}
-                            className="col-span-2 bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
+                            className="col-span-2 order-4 sm:order-none bg-dark border border-border rounded-sm px-1 py-1 text-meta text-white"
                         />
                         <input
                             aria-label="Date d'expiration de la police"
                             type="date" placeholder="Expire" value={p.expiryDate ?? ''}
                             onChange={e => update(i, { expiryDate: e.target.value })}
-                            className="col-span-1 bg-dark border border-border rounded-sm px-0.5 py-1 text-tiny text-white"
+                            className="col-span-2 sm:col-span-1 order-4 sm:order-none bg-dark border border-border rounded-sm px-0.5 py-1 text-tiny text-white"
                         />
-                        <button onClick={() => remove(i)} className="col-span-1 text-danger-400 text-body hover:text-red-300 p-2 -m-2" title="Supprimer" aria-label="Supprimer cette police">×</button>
+                        <button onClick={() => remove(i)} className="col-span-1 order-3 sm:order-none text-danger-400 text-body hover:text-red-300 p-2 -m-2" title="Supprimer" aria-label="Supprimer cette police">×</button>
                     </div>
                 ))}
                 <button onClick={add} className="text-meta bg-info-500/20 border border-info-500/40 rounded-sm px-2 py-1 text-blue-300 hover:bg-info-500/30">
@@ -155,7 +155,7 @@ export const RentalPropertyPanel: React.FC<{
                                 Le NOM de l'immeuble et le CAP RATE restent visibles — le nom identifie
                                 le bloc qu'on déplie, et un taux n'est pas une somme. */}
                             <summary className="text-meta font-bold text-white cursor-pointer py-1.5">
-                                {rp.name} — NOI: <PrivateAmount>{formatCAD(noi)}</PrivateAmount> · Cap: {capRate}%
+                                {rp.name} — NOI: <PrivateAmount>{formatCAD(noi)}</PrivateAmount> · Cap: <PrivateAmount>{capRate}%</PrivateAmount>
                             </summary>
                             <div className="mt-2 grid grid-cols-3 gap-1">
                                 <input aria-label="Nom de l'immeuble locatif" placeholder="Nom" value={rp.name} onChange={e => update(i, { name: e.target.value })} className="bg-dark border border-border rounded-sm px-1 py-0.5 text-meta text-white" />
@@ -191,6 +191,7 @@ export const RentalPropertyPanel: React.FC<{
                 <p className="text-tiny text-ink-400 italic">
                     L'impôt sur le revenu locatif (net des intérêts hypothécaires, qui sont déduits) est
                     estimé à un taux marginal forfaitaire de{' '}
+                    {/* MONTANT-PUBLIC : taux forfaitaire du modèle (FISCAL_REFERENCE), pas un ratio de l'utilisateur. */}
                     {formatPercent(RENTAL_NOI_TAX_PROXY * 100, 0)}, pas calculé au barème. C'est prudent
                     en dessous d'environ 125 000 $ de revenu total (jusqu'à ~140 000 $ pour un gros
                     revenu locatif), et optimiste au-dessus.
@@ -231,6 +232,7 @@ export const BusinessPanel: React.FC<{
                     modèle ne distingue pas dividende déterminé et ordinaire. */}
                 <p className="text-tiny text-ink-400 italic">
                     L'impôt sur le dividende est estimé à un taux forfaitaire de{' '}
+                    {/* MONTANT-PUBLIC : taux forfaitaire du modèle (FISCAL_REFERENCE), pas un ratio de l'utilisateur. */}
                     {formatPercent(CCPC_DIVIDEND_TAX_PROXY * 100, 0)}, sans distinguer dividende déterminé
                     et ordinaire. Un dividende déterminé est moins imposé qu'un dividende ordinaire.
                 </p>

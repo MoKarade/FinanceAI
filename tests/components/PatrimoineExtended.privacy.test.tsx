@@ -147,12 +147,14 @@ describe('[A11Y-PRIVACY-PATRIMOINE-ETENDU] NOI du résumé d’immeuble', () => 
         expect(resume, 'un « $ » collé au nombre trahit un toLocaleString nu').not.toMatch(/\d\$/);
     });
 
-    it('mode discret ACTIF : le NOI est masqué, le nom et le cap rate restent', () => {
+    it('mode discret ACTIF : le NOI ET le cap rate sont masqués, le nom reste', () => {
+        // [PRIVACY-RATIOS-DUREES-UNIFORMES] Décision de Marc (2026-09-29) : le cap rate (NOI ÷ valeur
+        // du bien) est un ratio dérivé du dossier, il se masque comme un montant.
         setPrivacy(true);
         const { container } = renderTous();
         const resume = container.querySelector('summary')!.textContent ?? '';
         expect(resume).toContain('Duplex Rosemont');
-        expect(resume).toMatch(/Cap:\s*[\d.]+%/);
+        expect(resume).not.toMatch(/Cap:\s*[\d.]+%/);
         expect(resume, 'le NOI doit être remplacé par « ••• »').toContain('•••');
     });
 });

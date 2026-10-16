@@ -243,7 +243,7 @@ export const Planning: React.FC<PlanningProps> = ({ transactions, apiKey }) => {
                                         <PrivateText className="font-bold text-ink-100 truncate">{a.label}</PrivateText>
                                         {a.kind === 'price_rise' ? (
                                             <div className="text-ink-300">
-                                                Le prix a monté de {formatPercent((a.risePct ?? 0) * 100, 0)} —{' '}
+                                                Le prix a monté de <PrivateAmount>{formatPercent((a.risePct ?? 0) * 100, 0)}</PrivateAmount> —{' '}
                                                 <PrivateAmount>{formatCAD(a.baselineAmount)}</PrivateAmount> puis{' '}
                                                 <PrivateAmount>{formatCAD(a.latestAmount)}</PrivateAmount>.{' '}
                                                 <span className="text-ink-400">

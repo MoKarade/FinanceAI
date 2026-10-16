@@ -470,7 +470,18 @@ désinfecte le snapshot avant de le restaurer.
   `maskPayee(b.payee, isPrivacyMode)`). Piste : exiger que le formateur soit DANS l'élément masquant
   quand la ligne en porte plusieurs.
 
-- [ ] 🔧 **`[PRIVACY-RATIOS-DUREES-UNIFORMES]`** (M/L, **décision de Marc 2026-09-29**, relu par
+- [ ] 🔧 **`[PRIVACY-GEOMETRIE-GRAPHES]`** (**question de politique pour Marc**, pas de correctif avant sa
+  décision) — après `[PRIVACY-RATIOS-DUREES-UNIFORMES]`, la FORME de certains graphes dit encore des
+  ratios en mode discret : camemberts d'allocation (`Investments.tsx`), position du repère FIRE sur la
+  courbe du Futur, sparklines du Budget. Les chiffres sont masqués, pas la géométrie. À trancher :
+  masquer ces graphes en mode discret (comme les barres), ou les laisser (la forme sans échelle ni
+  valeur est jugée acceptable).
+
+- [ ] 🔧 **`[PRIVACY-RATIOS-DUREES-UNIFORMES]`** — ✅ **livré 2026-09-29 en local** (branche
+  `agence/financeai-code/lot5-ratios-durees`, empilée sur le lot 4 ; à cocher au merge). La garde
+  `amountPrivacyScan` relève `formatPercent(`, `formatVariationPct(` et `.toFixed(n)…%` ; les durées,
+  scores et barres sont couverts par des tests de rendu, pas par la garde (limite connue). (M/L,
+  **décision de Marc 2026-09-29**, relu par
   pole-securite) — masquer en mode discret, dans toute l'app, les ratios et durées dérivés de données
   perso. Inventaire du 2026-09-29 : ~50 sites dans ~20 fichiers (Investments, Budget, DualKPIStat,
   FutureProjection, StrategyOptimizerPanel, HealthIndicator, AssetLocationCard, TaxCenter, immobilier…).

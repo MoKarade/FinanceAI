@@ -49,8 +49,12 @@ describe('vercel.json', () => {
         expect(motif.test('finance-ai.vercel.app.example.com')).toBe(false);
     });
 
-    it('les prévisualisations claude/* restent DÉSACTIVÉES', () => {
-        expect(vercel.git.deploymentEnabled['claude/*']).toBe(false);
+    it('seule la branche main se déploie : toute autre branche (claude/*, agence/*, feature/*, dependabot/*) est coupée', () => {
+        const d = vercel.git.deploymentEnabled as Record<string, boolean>;
+        expect(d.main).toBe(true);
+        for (const motif of ['**', '*', 'claude/*']) expect(d[motif]).toBe(false);
+        // Aucune autre exception : une branche réactivée userait le quota Vercel partagé entre les apps.
+        expect(Object.keys(d).filter((k) => d[k] && k !== 'main')).toEqual([]);
     });
 });
 

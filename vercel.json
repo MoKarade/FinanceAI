@@ -8,7 +8,10 @@
   },
   "git": {
     "deploymentEnabled": {
-      "claude/*": false
+      "**": false,
+      "*": false,
+      "claude/*": false,
+      "main": true
     }
   },
   "redirects": [

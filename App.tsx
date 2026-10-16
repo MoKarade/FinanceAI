@@ -231,7 +231,7 @@ export const App: React.FC = () => {
     };
 
     // Phase 3B — memos extraits dans utils/useDerivedFinancials.ts
-    const { globalNetWorth, avoirsHorsImmo, dettesHorsImmo, calculatedMonthlySavings, assetBreakdown, currentLiquidity } = useDerivedFinancials(state);
+    const { globalNetWorth, avoirsHorsImmo, dettesHorsImmo, ecartCourtier, calculatedMonthlySavings, assetBreakdown, currentLiquidity } = useDerivedFinancials(state);
 
     // Coffre Drive verrouillé (blob chiffré) → on déverrouille AVANT tout le reste : le prompt de
     // passphrase est LE premier message (jamais l'écran d'accueil par-dessus). Tous les hooks sont
@@ -285,7 +285,7 @@ export const App: React.FC = () => {
                 onOpenGuide={() => setShowGuide(true)}
                 onGeneratePDF={() => void import('./components/app/exportPdfEcran').then(({ genererRapportPdfEcran }) => genererRapportPdfEcran({
                     // [GODFILE-APP] Corps extrait dans components/app/exportPdfEcran.ts.
-                    state, globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity,
+                    state, globalNetWorth, dettesHorsImmo, ecartCourtier, calculatedMonthlySavings, assetBreakdown, currentLiquidity,
                 }))}
                 monthlySavings={calculatedMonthlySavings}
                 financialGoals={state.financialGoals}

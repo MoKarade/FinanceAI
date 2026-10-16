@@ -194,9 +194,6 @@
   `state.apiKeys` : un blob Drive fabriqué poserait des clés API étrangères en mémoire au `merge`.
   Même filtre que la restauration JSON (`enveloppeARestaurer`, `services/sauvegardeJson.ts`).
   Surface plus étroite (il faut le compte Google), d'où non corrigé dans #1065.
-- [ ] 🟡 **`[PDF-PLACEMENTS-SANS-ECART-COURTIER]`** (S, jumeau de `[PDF-DETTES-SOLDE-BRUT]`) — la
-  ligne « Non-Enregistré » du PDF est la somme des titres, l'actif net inclut l'écart courtier : la
-  page ne s'additionne pas.
 - [ ] 🟡 **`[COURS-AU-TROMPEUR]`** (S) — « Cours au … » est l'heure du dernier rafraîchissement, pas
   l'âge de chaque cours ; la variation « 24 h » compare les deux dernières clôtures quel que soit
   leur âge ; `get_holdings` ne publie aucune date.
@@ -639,17 +636,6 @@ désinfecte le snapshot avant de le restaurer.
   décision, pas un correctif. À poser à Marc avec les deux formulations et leur mesure.
 
 ## 💸 Reste du panel `[DETTE-VIREMENTS-REELS]` (18/09/2026) — mesuré, NON corrigé (hors périmètre)
-
-- [ ] 🔧 **`[PDF-DETTES-SOLDE-BRUT]`** (S) — **le rapport PDF ne se recompose pas avec lui-même.**
-  `components/app/exportPdfEcran.ts` somme `state.debts.reduce((s, d) => s + d.balance, 0)` et
-  `services/pdfReport.ts` remplit chaque ligne (`balance`, `monthsToZero`) depuis `d.balance` —
-  aucun des deux ne passe par `soldeDetteAujourdhui`. Le même document affiche pourtant un
-  patrimoine net CORRECT (il vient de `computePresentNetWorth`, corrigé). **Mesuré sur le bail de
-  Marc : le PDF dépasse l'écran d'environ 3,6 %, et l'écart grandit d'un versement hebdomadaire chaque semaine.**
-  Un document exporté et partagé où `actifs − dettes ≠ valeur nette`, sans avertissement.
-  ⚠️ Pré-existant (`[DETTE-SOLDE-INSTANTANE-FIGE]`, 17/09) ; `[DETTE-VIREMENTS-REELS]` en élargit
-  la magnitude, il ne le crée pas. Routé plutôt que corrigé : deux fichiers qu'aucun des deux lots
-  ne touche.
 
 - [ ] 🔧 **`[PASSE-MOIS-DEUX-INSTANTS]`** (M) — **la série MENSUELLE du passé mêle la fin d'un mois
   et le début d'un autre.** `services/history/buildPastPrefix.ts` : `cashByMi` porte le cash à la

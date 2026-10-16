@@ -4,6 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-16 — **`[PDF-DETTES-SOLDE-BRUT]`** : le PDF s'additionne avec lui-même (FinanceAI#1154)
+> `useDerivedFinancials` expose `ecartCourtier` ; `exportPdfEcran` imprime `totalDebts = dettesHorsImmo` et `investmentsTotal = nonReg + ecartCourtier` ;
+> `buildDebtsRows(state, aujourdhuiIso)` passe par `soldeDetteAujourdhui` (jour REQUIS). Garde : `tests/services/pdfAdditionneAvecLuiMeme.test.ts`
+> (clic réel + vrai hook, discriminant : 3 tests sur 4 rouges avec l'ancien code). Limite [Probable] : l'écart courtier est classé dans « Non-Enregistré »
+> même s'il vient d'un panier CELI/REER (`placementsFaisantAutorite` ne le ventile pas par régime) ; la somme reste juste.
+>
 > ## 🟦 Session 2026-10-16 — **`[VERCEL-PREVERSIONS-COUPEES]`** (FinanceAI#1170)
 > `vercel.json` `git.deploymentEnabled` : `**` et `*` à `false`, `main` à `true` (même forme qu'app-template), `claude/*` gardé. Constat
 > avant : 10 préversions `agence/*` READY listées par Vercel le 16/10/2026 (dernière 09 h 57 UTC), car seul `claude/*` était coupé.

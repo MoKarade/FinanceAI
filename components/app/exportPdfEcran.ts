@@ -11,21 +11,26 @@ import { logError } from '../../services/errorLogger';
 import { isFxRatesEstimated, hasForeignCurrencyAssets } from '../../services/portfolio';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { fxSourceEffective, fxFaitAutorite } from '../../services/fx/provenance';
+import { todayIsoLocal } from '../../services/projection/dailyRefine';
 
 /** Champs d'état réellement lus par l'export (le sélecteur d'App les porte tous). */
 type EtatPourPdf = Pick<AppState,
     'config' | 'debts' | 'budgetItems' | 'realEstateGoals' | 'retirementGoal'
-    | 'assets' | 'fxRates' | 'fxRatesEstimated' | 'financialGoals'>;
+    | 'assets' | 'fxRates' | 'fxRatesEstimated' | 'financialGoals' | 'transactions'>;
 
 interface ArgsExportPdf {
     state: EtatPourPdf;
     globalNetWorth: number;
+    /** Dettes au solde d'AUJOURD'HUI (`useDerivedFinancials`) : le terme que la valeur nette soustrait. */
+    dettesHorsImmo: number;
+    /** Correction du courtier incluse dans la valeur nette (`useDerivedFinancials`). */
+    ecartCourtier: number;
     calculatedMonthlySavings: number;
     assetBreakdown: { celi: number; reer: number; nonReg: number };
     currentLiquidity: number;
 }
 
-export async function genererRapportPdfEcran({ state, globalNetWorth, calculatedMonthlySavings, assetBreakdown, currentLiquidity }: ArgsExportPdf): Promise<void> {
+export async function genererRapportPdfEcran({ state, globalNetWorth, dettesHorsImmo, ecartCourtier, calculatedMonthlySavings, assetBreakdown, currentLiquidity }: ArgsExportPdf): Promise<void> {
     try {
         // P1.5 — PDF complet : patrimoine + fiscal + holdings + dettes + goals + retraite + budget.
         // Lazy-load jspdf vendor chunk seulement à l'usage.
@@ -49,10 +54,12 @@ export async function genererRapportPdfEcran({ state, globalNetWorth, calculated
             netWorth: globalNetWorth,
             monthlySavings: calculatedMonthlySavings,
             monthlyIncome: state.config.users.reduce((s, u) => s + (u.netSalary || u.salary || 0), 0),
-            totalDebts: state.debts.reduce((s, d) => s + d.balance, 0),
+            // [PDF-DETTES-SOLDE-BRUT] Les deux termes que `globalNetWorth` soustrait/additionne, pas une
+            // seconde somme : actifs (CELI + REER + non enregistré + liquidités) − dettes = valeur nette.
+            totalDebts: dettesHorsImmo,
             celiBalance: assetBreakdown.celi,
             reerBalance: assetBreakdown.reer,
-            investmentsTotal: assetBreakdown.nonReg,
+            investmentsTotal: assetBreakdown.nonReg + (Number.isFinite(ecartCourtier) ? ecartCourtier : 0),
             liquidityBalance: currentLiquidity,
             budgetItems: state.budgetItems.map(b => ({ name: b.name, nature: b.nature || 'Autre', target: b.target, frequency: b.frequency || 'Monthly' })),
             realEstateGoals: state.realEstateGoals.filter(g => g.isActive).map(g => ({
@@ -76,7 +83,7 @@ export async function genererRapportPdfEcran({ state, globalNetWorth, calculated
             // migrée, et donc la seule qui faisait mentir la promesse de l'écran.
             fxRatesEstimated: !fxFaitAutorite(fxSourceEffective(state)) && hasForeignCurrencyAssets(state.assets),
             fxSource: fxSourceEffective(state),
-            debtsDetail: buildDebtsRows(state),
+            debtsDetail: buildDebtsRows(state, todayIsoLocal()),
             goalsDetail: buildGoalsRows(state),
             // PDF Futur — comparaison scénarios (allResults depuis lastProjection)
             scenarios: lastProjection?.allResults

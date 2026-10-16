@@ -13,6 +13,7 @@
 import React from 'react';
 import { Card } from '../ui/Card';
 import { showToast } from '../ui/Toast';
+import { phraseProfilAbime } from '../../services/profilMessages';
 import { Icon } from '../ui/Icon';
 import type { AppState } from '../../types';
 import { logAudit } from '../../services/auditLog';
@@ -85,8 +86,7 @@ export const SavedProfilesCard: React.FC<SavedProfilesCardProps> = ({ config, se
         } catch (err: unknown) {
             // Revue #245 (B3) — journal app en plus du toast (console.error ne laissait pas de trace).
             logError({ source: 'storage', severity: 'warning', message: `SavedProfilesCard: échec de chargement du profil « ${name} ».`, error: err instanceof Error ? err : new Error(String(err)) });
-            const msg = err instanceof Error ? err.message : 'inconnu';
-            showToast(`Erreur sur « ${name} » : ${msg}`, 'error');
+            showToast(phraseProfilAbime(name), 'error');
         }
     };
 

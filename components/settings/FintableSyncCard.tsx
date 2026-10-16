@@ -28,7 +28,8 @@ import { acquireFintableSyncLock, releaseFintableSyncLock, withCrossTabLock } fr
 import { lastProductiveAtSuivant } from '../../services/fintable/syncHealth';
 // [FINTABLE-DEBTNAME-AUTO] Pur, sans dépendance lourde (types seulement) — même statut que
 // `lastProductiveAtSuivant` ci-dessus : aucun risque de tirer le mapper dans le bundle de boot.
-import { suggestDebtName, debtNameExiste } from '../../services/fintable/suggestDebtName';
+import { phraseErreurFintable } from '../../services/fintable/phraseErreurFintable';
+import { suggestDebtName,debtNameExiste } from '../../services/fintable/suggestDebtName';
 import { saveApiKeys } from '../../services/secureKeyStore';
 import { logError } from '../../services/errorLogger';
 import type { AppState, Debt, FintableAccountRoleConfig } from '../../types';
@@ -674,7 +675,15 @@ export const FintableSyncCard: React.FC = () => {
                         Dernière passe : {new Date(report.at).toLocaleString('fr-CA')} ·{' '}
                         {report.error === null
                             ? `${report.transactionsAdded} transaction(s) ajoutée(s), ${report.accountsSeen} compte(s) vu(s)`
-                            : <span className="text-danger-400">échec — {report.error}</span>}
+                            : (
+                                <div className="text-danger-400">
+                                    {phraseErreurFintable(report.error)}
+                                    <details className="mt-1 text-ink-400">
+                                        <summary className="cursor-pointer">Détail technique</summary>
+                                        <span className="block break-words">{report.error}</span>
+                                    </details>
+                                </div>
+                            )}
                         {(report.skippedBeforeCutover ?? 0) > 0
                             && ` · ${report.skippedBeforeCutover} plus ancienne(s) ignorée(s)`}
                         {report.warnings.length > 0 && ` · ${report.warnings.length} avertissement(s)`}

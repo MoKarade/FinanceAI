@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatCAD, formatVariationPct } from '../../utils/format';
 import { PrivateAmount } from '../ui/PrivateAmount';
+import { useFinanceStore } from '../../store/useFinanceStore';
 
 /**
  * Phase D'.5 — tuile fusionnée "Prévu / Réel" pour le Budget.
@@ -38,6 +39,7 @@ interface DualKPIStatProps {
 export const DualKPIStat: React.FC<DualKPIStatProps> = ({
     label, prevu, reel, objectif, titrePrevu, note, invertGoodBad = false, barre = 'ecart',
 }) => {
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
     const ecart = reel - prevu;
     // Prévu nul : un écart en % n'a pas de sens → « — » (jamais un « +0,0 % » mesuré en apparence).
     const ecartPct = prevu !== 0 ? (ecart / Math.abs(prevu)) * 100 : null;
@@ -52,7 +54,8 @@ export const DualKPIStat: React.FC<DualKPIStatProps> = ({
     const fond = barre === 'succes' ? 'bg-success-400' : barre === 'neutre' ? 'bg-ink-100'
         : { neutre: 'bg-ink-300', succes: 'bg-success-400', alerte: 'bg-warning-400', danger: 'bg-danger-400' }[ton];
     const remplissage = prevu > 0 ? Math.min(1, Math.max(0, reel / prevu)) : 0;
-    const pct = <span className={`font-mono tabular-nums ${texte}`}>{formatVariationPct(ecartPct)}</span>;
+    // [PRIVACY-RATIOS-DUREES-UNIFORMES] L'écart % et la largeur de la barre sont des ratios réel/prévu : masqués en mode discret.
+    const pct = <span className={`font-mono tabular-nums ${texte}`}><PrivateAmount>{formatVariationPct(ecartPct)}</PrivateAmount></span>;
 
     return (
         <div data-kpi={label} className="rounded-2xl bg-surface border border-white/6 px-3.5 py-3 lg:px-[18px] lg:py-4 flex flex-col gap-2 min-w-0">
@@ -68,7 +71,7 @@ export const DualKPIStat: React.FC<DualKPIStatProps> = ({
                 <span className="lg:hidden text-tiny">{pct}</span>
             </div>
             <span className="block h-1 rounded-full bg-white/8 overflow-hidden" aria-hidden="true">
-                <span className={`block h-full rounded-full ${fond}`} style={{ width: `${remplissage * 100}%` }} />
+                <span className={`block h-full rounded-full ${fond}`} style={{ width: `${isPrivacyMode ? 0 : remplissage * 100}%` }} />
             </span>
             <div className="flex flex-wrap lg:flex-nowrap items-center lg:justify-between gap-x-1 lg:gap-x-2 text-[10px] lg:text-meta text-ink-400">
                 <span title={titrePrevu} data-kpi-prevu="">Prévu <PrivateAmount className="tabular-nums">{formatCAD(prevu)}</PrivateAmount></span>

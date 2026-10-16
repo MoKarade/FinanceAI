@@ -439,7 +439,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                         <div>
                             <div className="text-meta text-ink-400">Couverture</div>
                             <div className={`text-[18px] lg:text-[20px] font-bold ${respCovers != null && respCovers >= 100 ? 'text-success-400' : 'text-warning-400'}`}>
-                                {respCovers != null ? formatPercent(respCovers, 0) : '—'}
+                                {respCovers != null ? <PrivateAmount>{formatPercent(respCovers, 0)}</PrivateAmount> : '—'}
                             </div>
                         </div>
                     </section>

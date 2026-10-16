@@ -139,8 +139,10 @@ export const CategoryReviewPanel: React.FC<Props> = ({ transactions, review, onC
                                     ? 'Aucune transaction jugée pour l\'instant.'
                                     : estimate.conclusive
                                         ? estimate.verdict === 'sous-seuil'
+                                            /* NOMBRE-NON-MONETAIRE : taux d'erreur de la catégorisation automatique (qualité de l'outil), pas une donnée financière. */
                                             ? `Objectif atteint : moins de 1 % d'erreurs (${estimate.errors} sur ${estimate.reviewed} jugées, au plus ${formatPercent(estimate.highPct, 2)}).`
                                             : `Au-dessus de l'objectif : au moins ${formatPercent(estimate.lowPct, 2)} d'erreurs (${estimate.errors} sur ${estimate.reviewed}).`
+                                        /* NOMBRE-NON-MONETAIRE : idem, taux d'erreur de l'outil. */
                                         : `Pas encore concluant : ${estimate.errors} erreur${estimate.errors > 1 ? 's' : ''} sur ${estimate.reviewed} jugées — le vrai taux est entre ${formatPercent(estimate.lowPct, 2)} et ${formatPercent(estimate.highPct, 2)}. Encore ${remaining} à juger.`}
                             </p>
 

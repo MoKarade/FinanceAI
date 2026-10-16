@@ -484,7 +484,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                 <div className={`${tuile} col-span-2 xl:col-span-1`}>
                     <span className={etiquette}>Prix d'achat</span>
                     <PrivateAmount as="div" className={montant}>{formatCurrency(price)}</PrivateAmount>
-                    <span className="text-[10px] sm:text-[11px] leading-[15px] text-ink-400">mise de fonds <PrivateAmount>{formatCurrency(downPayment)}</PrivateAmount> · {Math.round((downPayment / price) * 100)} %</span>
+                    <span className="text-[10px] sm:text-[11px] leading-[15px] text-ink-400">mise de fonds <PrivateAmount>{formatCurrency(downPayment)}</PrivateAmount> · <PrivateAmount>{Math.round((downPayment / price) * 100)} %</PrivateAmount></span>
                 </div>
                 {isActuel ? (
                     /* [REFONTE-NAV-L3] Bien détenu : l'équité PRÉSENTE (source unique presentEquityOfGoal) ;
@@ -508,7 +508,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                 <div className={tuile}>
                     <span className={etiquette}>Prêt initial</span>
                     <PrivateAmount as="div" className={montant}>{formatCurrency(totalMortgage)}</PrivateAmount>
-                    <span className="text-[10px] sm:text-[11px] leading-[15px] text-ink-400">prêt / valeur {Math.round((totalMortgage / price) * 100)} %</span>
+                    <span className="text-[10px] sm:text-[11px] leading-[15px] text-ink-400">prêt / valeur <PrivateAmount>{Math.round((totalMortgage / price) * 100)} %</PrivateAmount></span>
                 </div>
                 <div className={tuile}>
                     <span className={etiquette}>Mensualité nette</span>

@@ -100,9 +100,12 @@ function testsEtCouverture() {
 // CI : une tranche des tests, sous couverture, dans un « blob » que --fusion rassemblera. Ne juge rien : un test
 // rouge ici met la tranche en rouge (code de sortie), mais le verdict du cliquet se rend après la fusion.
 function tranche(indexSurTotal) {
+  // --outputFile.blob : depuis vitest 5 le blob par défaut est `.vitest/blob/blob-i-n.json`, plus
+  // `.vitest-reports/` que le workflow téléverse et que --fusion lit. On le force au bon endroit.
   const r = lancer(
     `npx --no-install vitest run --shard=${indexSurTotal} ${OPTIONS_COUVERTURE} ` +
-      `--reporter=blob --reporter=dot ${config.vitest_args || ""}`,
+      `--reporter=blob --reporter=dot --outputFile.blob=.vitest-reports/blob-${indexSurTotal.replace("/", "-")}.json ` +
+      `${config.vitest_args || ""}`,
   );
   console.log(r.sortie.split("\n").slice(-60).join("\n"));
   console.log(`Tranche ${indexSurTotal} : ${Math.round(r.secondes)} s (code ${r.code}).`);

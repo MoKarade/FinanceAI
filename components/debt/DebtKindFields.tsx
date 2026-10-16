@@ -48,6 +48,25 @@ export const refusOrigineIncoherente = (
         + 'courbe de remboursement. Vérifie les deux chiffres sur ton contrat.';
 };
 
+/**
+ * [DETTE-LIEN-IGNORE-SANS-MESSAGE] Le lien vers un marchand est mémorisé (`paymentPayee`) mais le
+ * moteur l'IGNORE tant que le taux n'est pas nul : le champ disparaît du formulaire sans qu'on dise
+ * pourquoi, et l'avertissement ne vivait que dans Système & diagnostics. Cette phrase le dit là où
+ * le changement vient d'être fait. La condition est l'inverse EXACT de `peutSuivreDesVirements`
+ * (versements fixes ET taux nul) restreinte au cas « un lien existe » : jamais de message pour une
+ * dette sans lien, ni pour un type que le moteur ne suit pas de toute façon. Un taux vidé en cours de
+ * frappe (NaN) ne déclenche rien : le formulaire refuse déjà de l'enregistrer, et un avertissement qui
+ * clignote à chaque effacement n'apprend rien.
+ */
+export const phraseLienIgnore = (
+    versementsFixes: boolean,
+    lie: string,
+    interestRate: number | undefined,
+): string | null =>
+    versementsFixes && lie !== '' && interestRate !== undefined && Number.isFinite(interestRate) && interestRate !== 0
+        ? `Le lien à ${lie} est ignoré tant que le taux n'est pas à 0 % : le solde n'est pas suivi.`
+        : null;
+
 /** [DEBT-BALANCE-NAN-SILENCIEUX] (audit 2026-09-07) Les trois champs numériques d'une dette. */
 export const CHAMPS_NUMERIQUES_DETTE = ['balance', 'interestRate', 'minimumPayment'] as const;
 const LIBELLE_CHAMP: Record<(typeof CHAMPS_NUMERIQUES_DETTE)[number], string> = {
@@ -191,6 +210,8 @@ export const DebtKindFields: React.FC<Props> = ({ valeur, onChange, idSuffixe, m
             {/* Le refus est ANNONCÉ (région live montée en permanence, texte vidé quand tout va bien) :
                 un message inséré au moment où il doit parler rate la première transition. */}
             <p role="status" className="text-tiny text-danger-400 empty:hidden">{refus ?? ''}</p>
+            {/* [DETTE-LIEN-IGNORE-SANS-MESSAGE] Même région live permanente que le refus ci-dessus. */}
+            <p role="status" className="text-tiny text-warning-400 empty:hidden">{phraseLienIgnore(versementsFixes, lie, valeur.interestRate) ?? ''}</p>
         </div>
     );
 };

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-16 — Dettes : on te dit pourquoi le lien au marchand ne compte plus
+
+- Quand tu montes le taux d'une dette liée à un marchand (bail, par exemple), le champ « marchand lié » disparaissait sans
+  explication. Un message dit maintenant : « Le lien à … est ignoré tant que le taux n'est pas à 0 % : le solde n'est pas suivi. »
+  Le lien reste mémorisé ; remets le taux à 0 % et il redevient actif.
+
 ## 2026-10-16 — Placements : l'âge réel des cours
 
 - Dans Placements, un titre dont le dernier cours date de plusieurs jours est maintenant signalé avec la date de ce cours,

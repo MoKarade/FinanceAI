@@ -29,6 +29,10 @@
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
 
+## 2026-10-15 — Transactions : « Exporter (CSV) » et message « Fichier téléchargé : N transactions »
+
+- Le bouton d'export s'appelle « Exporter (CSV) » et, une fois le fichier téléchargé, un message dit combien de transactions il contient. Un export refusé (mode discret, données fictives) n'affiche jamais ce message.
+
 ## 2026-10-15 — Transactions : supprimer une règle de classement demande d'abord confirmation
 
 - Un clic sur la croix d'une règle ouvre « Supprimer cette règle ? » (Annuler / Supprimer) ; une fois supprimée, « Règle supprimée » s'affiche. Avant : la règle disparaissait d'un clic, sans avertissement.

@@ -21,6 +21,7 @@ import { contextualCategorize } from '../services/transactions/contextualCategor
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
+import { ConfirmModal } from './ui/ConfirmModal';
 import { ImportBankStatement } from './import/ImportBankStatement';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -196,9 +197,12 @@ export const Transactions: React.FC<TransactionsProps> = ({
         showToast(`Règle ajoutée : « ${maskPayee(rule.pattern, isPrivacyMode)} » → ${maskCategory(rule.category, isPrivacyMode)}`, 'success');
     };
 
+    // [REGLE-SUPPRESSION-CONFIRMATION] Le bouton ouvre une confirmation ; la suppression a lieu à la confirmation.
+    const [confirmDeleteRuleId, setConfirmDeleteRuleId] = useState<string | null>(null);
     const handleDeleteRule = (id: string) => {
         const updated = categorizationRules.filter(r => r.id !== id);
         setCategorizationRules?.(updated);
+        showToast('Règle supprimée', 'success');
     };
 
     const handleApplyRuleNow = (rule: CategorizationRule) => {
@@ -210,7 +214,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
             }
             return t;
         }));
-        showToast(`${count} transaction(s) mises a jour`, 'success');
+        showToast(`${count} transaction(s) mises à jour`, 'success');
     };
 
     const availableCategories = useMemo(() => {
@@ -325,7 +329,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         if (targetTxs.length === 0) {
             targetTxs = transactions.filter(t => !t.isDuplicate && !isLocked(t) && t.category === 'Autre');
             if (targetTxs.length === 0) {
-                showToast("Tout semble deja classe ! Utilisez le mode manuel si besoin.", "info");
+                showToast("Tout semble déjà classé ! Utilise le mode manuel si besoin.", "info");
                 setProcessing(false);
                 return;
             }
@@ -356,11 +360,11 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     ? { ...t, category: cat, status: 'processed' as const, isTransfer: cat === 'Transfert' ? true : t.isTransfer, isAiProcessed: false, confidence: 100 }
                     : t;
             }));
-            setLiveLogs(prev => [...prev, `${ruled.size} classee(s) par regles (sans IA)${promoted > 0 ? `, dont ${promoted} abonnement(s) reconnu(s) a la recurrence` : ''}.`]);
+            setLiveLogs(prev => [...prev, `${ruled.size} classée(s) par règles (sans IA)${promoted > 0 ? `, dont ${promoted} abonnement(s) reconnu(s) à la récurrence` : ''}.`]);
             targetTxs = targetTxs.filter(t => !ruled.has(t.id));
         }
         if (targetTxs.length === 0) {
-            showToast(`${ruled.size} transaction(s) classee(s) par regles — rien a envoyer a l'IA.`, 'success');
+            showToast(`${ruled.size} transaction(s) classée(s) par règles — rien à envoyer à l'IA.`, 'success');
             setSelectedIds(new Set()); // même nettoyage que le chemin IA (finding panel : sélection qui restait cochée)
             setProcessing(false);
             return;
@@ -695,7 +699,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                 }}
                                                 value=""
                                             >
-                                                <option value="" disabled>Choisir categorie...</option>
+                                                <option value="" disabled>Choisir une catégorie…</option>
                                                 {availableCategories.map(c => (
                                                     <option key={c} value={c}>{c}</option>
                                                 ))}
@@ -755,10 +759,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     <select
                                         value={newRuleCategory}
                                         onChange={e => setNewRuleCategory(e.target.value)}
-                                        aria-label="Categorie a appliquer"
+                                        aria-label="Catégorie à appliquer"
                                         className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-meta text-white focus:border-indigo-400 outline-hidden"
                                     >
-                                        <option value="">-- Categorie --</option>
+                                        <option value="">-- Catégorie --</option>
                                         {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                     <button
@@ -778,8 +782,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                 <span className="text-ink-200 font-bold flex-1 truncate">"{rule.pattern}"</span>
                                                 <Icon name="chevron-right" size={12} className="text-ink-500 hidden sm:inline shrink-0" />
                                                 <PrivateText quoi="categorie" className="text-ink-100 bg-white/10 px-2 py-0.5 rounded-sm font-bold truncate max-w-[120px]">{rule.category}</PrivateText>
-                                                <button onClick={() => handleApplyRuleNow(rule)} aria-label={`Appliquer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-ink-300 hover:text-primary transition-all text-tiny font-bold ml-1">Appliquer</button>
-                                                <button onClick={() => handleDeleteRule(rule.id)} aria-label={`Supprimer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-500 transition-all ml-1 p-2 -m-1"><Icon name="close" size={13} /></button>
+                                                <button onClick={() => handleApplyRuleNow(rule)} aria-label={`Appliquer la règle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-ink-300 hover:text-primary transition-all text-tiny font-bold ml-1">Appliquer</button>
+                                                <button onClick={() => setConfirmDeleteRuleId(rule.id)} aria-label={`Supprimer la règle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-500 transition-all ml-1 p-2 -m-1"><Icon name="close" size={13} /></button>
                                             </div>
                                         ))}
                                     </div>
@@ -791,6 +795,18 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             )}
                         </section>
                     )}
+
+                    <ConfirmModal
+                        isOpen={confirmDeleteRuleId !== null}
+                        title="Supprimer cette règle ?"
+                        message="Les prochaines transactions ne seront plus classées automatiquement par cette règle."
+                        confirmLabel="Supprimer"
+                        onConfirm={() => {
+                            if (confirmDeleteRuleId) handleDeleteRule(confirmDeleteRuleId);
+                            setConfirmDeleteRuleId(null);
+                        }}
+                        onCancel={() => setConfirmDeleteRuleId(null)}
+                    />
 
                     {processing && (
                         <div role="status" aria-live="polite" className="bg-black/80 border border-green-500/30 rounded-lg p-3 font-mono text-tiny text-green-400 h-32 overflow-y-auto custom-scrollbar flex flex-col-reverse shadow-inner">
@@ -825,7 +841,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             <div className={`flex items-center gap-2 ${etroit ? 'overflow-x-auto -mx-6 px-6 scrollbar-hide' : 'shrink-0'}`}>
                                 <span className="relative shrink-0">
                                     <select
-                                        aria-label="Filtre par categorie"
+                                        aria-label="Filtre par catégorie"
                                         className={`champ-nu appearance-none h-10 pl-3.5 pr-7 rounded-full border text-[13px] max-w-[180px] truncate cursor-pointer focus-ring ${selectedCategory !== 'All' ? 'bg-primary/15 border-primary/60 text-ink-50' : 'bg-surfaceHighlight border-white/10 text-ink-100'}`}
                                         value={selectedCategory}
                                         onChange={(e) => vueFiltree(() => setSelectedCategory(e.target.value))}

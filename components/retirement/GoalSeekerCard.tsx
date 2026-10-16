@@ -117,7 +117,7 @@ export const GoalSeekerCard: React.FC<GoalSeekerCardProps> = ({ paramsBuilder, t
                         )}
                         {goalSeekResult.age !== undefined && (
                             <p className="text-body text-ink-200">
-                                Tu peux prendre ta retraite dès <strong className="text-primary">{goalSeekResult.age} ans</strong> sans tomber en faillite.
+                                Tu peux prendre ta retraite dès <strong className="text-primary"><PrivateAmount>{goalSeekResult.age}</PrivateAmount> ans</strong> sans tomber en faillite.
                             </p>
                         )}
                     </div>

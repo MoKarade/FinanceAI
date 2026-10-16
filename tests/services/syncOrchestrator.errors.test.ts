@@ -85,6 +85,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import * as gisAuth from '../../services/googleDrive/gisAuth';
 import * as driveApi from '../../services/googleDrive/driveAppData';
 import type { SyncMeta } from '../../services/sync/syncTypes';
+import { DRIVE_ERREUR_SIMPLE } from '../../services/sync/syncErrors';
 
 const getValidAccessTokenMock = gisAuth.getValidAccessToken as ReturnType<typeof vi.fn>;
 const renewTokenSilentlyMock = gisAuth.renewTokenSilently as ReturnType<typeof vi.fn>;
@@ -188,7 +189,8 @@ describe('pushNow — échec du jeton Google (getValidAccessToken rejette)', () 
 
         const status = getSyncStatus();
         expect(status.busy).toBe(false);
-        expect(status.error).toContain('push');
+        expect(status.error).toBe(DRIVE_ERREUR_SIMPLE);
+        expect(status.errorPhase).toBe('push');
         expect(logErrorMock).toHaveBeenCalledTimes(1);
     });
 });
@@ -207,7 +209,8 @@ describe('connectAndSync — échec du consentement (requestAccessToken rejette)
 
         expect(getSyncStatus().connected).toBe(false);
         expect(getSyncStatus().email).toBeNull();
-        expect(getSyncStatus().error).toContain('connect');
+        expect(getSyncStatus().error).toBe(DRIVE_ERREUR_SIMPLE);
+        expect(getSyncStatus().errorPhase).toBe('connect');
     });
 
     it('ne touche pas à Drive quand le consentement échoue', async () => {
@@ -279,7 +282,8 @@ describe('pullNow — échec de lecture Drive (les données locales sont protég
 
         const status = getSyncStatus();
         expect(status.busy).toBe(false);
-        expect(status.error).toContain('pull');
+        expect(status.error).toBe(DRIVE_ERREUR_SIMPLE);
+        expect(status.errorPhase).toBe('pull');
     });
 
     it('findSyncFile rejette → les données LOCALES ne sont PAS effacées', async () => {
@@ -304,7 +308,8 @@ describe('pullNow — échec de lecture Drive (les données locales sont protég
         expect(JSON.parse(localStorage.getItem(STORE_KEY) as string)).toEqual(NONEMPTY_LOCAL);
         // Le store n'a pas été réhydraté avec des données fantômes.
         expect(useFinanceStore.getState().transactions).toEqual([]);
-        expect(getSyncStatus().error).toContain('pull');
+        expect(getSyncStatus().error).toBe(DRIVE_ERREUR_SIMPLE);
+        expect(getSyncStatus().errorPhase).toBe('pull');
     });
 });
 
@@ -330,7 +335,8 @@ describe('runBootSync — [AUTH-DRIVE-BANNER-FLICKER] les échecs transitoires n
         const status = getSyncStatus();
         expect(status.connected).toBe(true); // ÉCHOUE sur l'ancien code (connected:false)
         expect(status.busy).toBe(false);
-        expect(status.error).toContain('boot'); // l'erreur reste visible (Diagnostics), pas avalée
+        expect(status.error).toBe(DRIVE_ERREUR_SIMPLE);
+        expect(status.errorPhase).toBe('boot'); // l'erreur reste visible (Diagnostics), pas avalée
         expect(logErrorMock).toHaveBeenCalled();
     });
 

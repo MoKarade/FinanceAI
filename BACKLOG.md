@@ -542,16 +542,6 @@ désinfecte le snapshot avant de le restaurer.
   ⚠️ `[SMITH-MARGE-SANS-DETTE]` a RÉDUIT l'exposition sans la fermer : avant, la vente muette
   frappait TOUT propriétaire ; depuis, seuls les dossiers `useSmithManoeuvre`.
 
-- [ ] 🟠 **`[DETTE-LIEN-IGNORE-SANS-MESSAGE]`** (S, **préexistant**) — une dette liée à un marchand
-  (taux 0 %) dont on remonte ensuite le taux perd son champ « marchand lié » : `peutSuivreDesVirements`
-  devient faux, le champ ET son explication DISPARAISSENT du formulaire. `paymentPayee` reste stocké,
-  le moteur refuse la courbe (`tracerDetteSuspecte` → `logError` warning), mais ce warning ne vit que
-  dans Système & diagnostics — jamais dans le formulaire où l'utilisateur vient de faire le
-  changement qui casse le lien. Il voit un champ s'évaporer sans cause donnée.
-  Correctif proposé : quand `versementsFixes && lie !== '' && interestRate !== 0`, un message inline
-  (`role="status"`, comme le refus d'origine incohérente deux lignes plus bas) : « Le lien à {lie} est
-  ignoré tant que le taux n'est pas à 0 % — le solde n'est pas suivi. »
-
 - [ ] 🟠 **`[NW-IMMO-ABSENT-DU-HUB]`** (S, **découvert en livrant `[KPI-AVOIRS-DETTES]`**) — le
   patrimoine net du BANDEAU de l'app AJOUTE l'équité immobilière (`FutureKpiStrip` : `netWorth +
   realEstateEquity`), celui du **snapshot MCP / hubperso** ne l'ajoute PAS

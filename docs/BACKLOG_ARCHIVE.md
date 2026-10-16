@@ -13325,3 +13325,7 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
 ## Livré le 2026-10-16 — `[COURS-AU-TROMPEUR]` (FinanceAI#1148)
 
 - [x] 🟡 **`[COURS-AU-TROMPEUR]`** (S) — **LIVRÉ 2026-10-16 (FinanceAI#1148)** : « Cours au … » était l'heure du dernier rafraîchissement ; la variation « 24 h » comparait les deux dernières clôtures quel que soit leur âge ; `get_holdings` ne publiait aucune date. Maintenant : `services/history/fraicheurCours.ts` (seuil 4 jours), notice « Cours périmé(s) : X (cours du …) » sur Placements (Vue d'ensemble et Détail), « Actualisé le … » pour l'heure du rafraîchissement, variation 24 h à « — » si les deux clôtures ne sont pas récentes, `priceDate` par ligne dans `get_holdings`. Tests : `tests/services/fraicheurCours.test.ts`, `tests/components/Investments.coursPerimes.test.tsx`, `tests/mcp/dataAwareTools.test.ts`.
+
+## Livré le 2026-10-16 — `[DETTE-LIEN-IGNORE-SANS-MESSAGE]` (FinanceAI#1147)
+
+- [x] 🟠 **`[DETTE-LIEN-IGNORE-SANS-MESSAGE]`** (S) — **LIVRÉ 2026-10-16 (FinanceAI#1147)** : une dette liée à un marchand (taux 0 %) dont on remontait le taux perdait son champ « marchand lié » sans explication ; l'avertissement ne vivait que dans Système & diagnostics. `components/debt/DebtKindFields.tsx` : `phraseLienIgnore` + région `role="status"` permanente, « Le lien à {marchand} est ignoré tant que le taux n'est pas à 0 % : le solde n'est pas suivi. » (versements fixes, lien non vide, taux fini et non nul). Tests : `tests/components/DebtManagerKindFields.test.tsx`.

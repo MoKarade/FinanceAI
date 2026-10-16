@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { DebtManager } from '../../components/DebtManager';
-import { nombreSaisiOuAbsent, refusOrigineIncoherente } from '../../components/debt/DebtKindFields';
+import { nombreSaisiOuAbsent, refusOrigineIncoherente, phraseLienIgnore } from '../../components/debt/DebtKindFields';
 import { DEBT_KIND_LABELS } from '../../components/debt/debtKindLabels';
 import { KIND_AMORTISSANT } from '../../services/projection/debtAmortization';
 import { DEBT_KINDS, type Debt } from '../../types';
@@ -192,5 +192,44 @@ describe('[DEBT-UI-PAR-TYPE] un champ vidé n\'est pas un zéro', () => {
         const v = lu()[0].originalBalance;
         expect(v === undefined || Number.isFinite(v)).toBe(true);
         expect(Number.isNaN(v as number)).toBe(false);
+    });
+});
+
+describe('[DETTE-LIEN-IGNORE-SANS-MESSAGE] dire pourquoi le lien marchand ne compte plus', () => {
+    const bail = (over: Partial<Debt> = {}): Debt => ({
+        id: 'b1', name: 'Bail bZ', balance: 42000, interestRate: 0, minimumPayment: 700,
+        category: 'Car', kind: 'auto-lease', paymentPayee: 'Toyota Finance', ...over,
+    });
+
+    it('la phrase : versements fixes + lien + taux non nul — et rien dans les autres cas', () => {
+        expect(phraseLienIgnore(true, 'Toyota Finance', 3)).toBe(
+            "Le lien à Toyota Finance est ignoré tant que le taux n'est pas à 0 % : le solde n'est pas suivi.",
+        );
+        expect(phraseLienIgnore(true, 'Toyota Finance', 0)).toBeNull();      // le lien sert : rien à dire
+        expect(phraseLienIgnore(true, '', 3)).toBeNull();                    // pas de lien
+        expect(phraseLienIgnore(false, 'Toyota Finance', 3)).toBeNull();     // type que le moteur ne suit pas
+        expect(phraseLienIgnore(true, 'Toyota Finance', Number.NaN)).toBeNull(); // taux en cours de frappe
+        expect(phraseLienIgnore(true, 'Toyota Finance', undefined)).toBeNull();
+    });
+
+    it('en ÉDITION : remonter le taux affiche le message, le remettre à 0 le retire', () => {
+        monter([bail()]);
+        fireEvent.click(screen.getByRole('button', { name: /Modifier/i }));
+        const taux = screen.getByLabelText(/Taux d'intérêt/i);
+        expect(screen.queryByText(/est ignoré tant que le taux/i)).toBeNull();
+
+        fireEvent.change(taux, { target: { value: '4' } });
+        const message = screen.getByText(/Le lien à Toyota Finance est ignoré tant que le taux n'est pas à 0 %/i);
+        expect(message.getAttribute('role')).toBe('status');
+
+        fireEvent.change(taux, { target: { value: '0' } });
+        expect(screen.queryByText(/est ignoré tant que le taux/i)).toBeNull();
+    });
+
+    it('une dette SANS lien ne reçoit jamais le message, même à taux non nul', () => {
+        monter([bail({ paymentPayee: undefined })]);
+        fireEvent.click(screen.getByRole('button', { name: /Modifier/i }));
+        fireEvent.change(screen.getByLabelText(/Taux d'intérêt/i), { target: { value: '4' } });
+        expect(screen.queryByText(/est ignoré tant que le taux/i)).toBeNull();
     });
 });

@@ -4,6 +4,9 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-16 — **`[DETTE-LIEN-IGNORE-SANS-MESSAGE]`** : le formulaire de dette dit pourquoi le lien marchand ne compte plus (FinanceAI#1147)
+> `components/debt/DebtKindFields.tsx` : `phraseLienIgnore(versementsFixes, lie, taux)` + région live permanente (même patron que le refus d'origine incohérente). Condition = inverse exact de `peutSuivreDesVirements` limité aux dettes AVEC lien ; un taux vidé en frappe (NaN) ne déclenche rien. Aucun changement de moteur : `paymentPayee` reste stocké.
+>
 > ## 🟦 Session 2026-10-16 — **`[COURS-AU-TROMPEUR]`** : l'âge réel des cours dans Placements (FinanceAI#1148)
 > `services/history/fraicheurCours.ts` (pur, date injectée, seuil `COURS_PERIME_APRES_JOURS = 4`) : la date d'un cours est celle de son dernier close (`priceHistory`), pas du rafraîchissement. `Investments.tsx` : « Actualisé le … » + `CoursPerimesNotice` (titre + date) ; « Sur 24 h » (portefeuille et par titre) à « — » si les deux closes ne sont pas récents ; `get_holdings` publie `priceDate` (null = inconnu, jamais signalé périmé). Limite : le score de diversification garde son momentum 24 h inchangé (hors périmètre).
 >

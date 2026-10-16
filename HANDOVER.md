@@ -4,6 +4,9 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-16 — **`[VITEST-5]`** : vitest 4.1 → 5.0.5 (FinanceAI#1197)
+> `vitest` et `@vitest/coverage-v8` en `^5.0.5` (lockfile : seuls les paquets vitest bougent ; les champs `libc` que npm 10 retire sont remis, même geste que pour le contrat). `vitest.config.ts` et `stryker.config.mjs` inchangés : aucune option retirée n'y servait. Le commentaire en tête de `vitest.config.ts` cite encore `vitest ^4` à propos d'`environmentMatchGlobs` : exact, l'option reste retirée. `console.log` reste intercepté en v5 (revérifié, `docs/CONVENTIONS.md`). `stryker-mutator/vitest-runner@10` accepte `vitest >=2` : pas relancé ici (`npm run mutation` est long et hors du gate).
+>
 > ## 🟦 Session 2026-10-16 — **`[HUB-CONTRAT-1-5-0]`** : re-pin du contrat du hub sur `v1.5.0` (FinanceAI#1196)
 > `package.json` et `package-lock.json` pointent sur `hub-contract#v1.5.0` (commit `440a301`, zod `^4.6.7`) : `npm ls zod` ne montre plus qu'un zod 4.6.7 (la copie zod 3.25.76 imbriquée a disparu). Lockfile édité à la main sur les seuls blocs du contrat : `npm install` sous Node 22/npm 10 retirait aussi les champs `libc` de ~15 paquets natifs (bruit propre à la version d'npm, le dépôt vise Node 24). `docs/claude/hub.md` et `CHANGELOG.md` à jour. Preuve en production : déploiement `READY` sur le SHA fusionné puis `GET /hub/summary` du serveur MCP sans jeton → 401 (non mesurable depuis le conteneur, `finance.hubperso.com` est refusé par le proxy : à lire dans la réponse Vercel ou à demander à Marc).
 >

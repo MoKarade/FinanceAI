@@ -25,6 +25,10 @@
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
 
+## 2026-10-15 — Profils : un profil abîmé est dit en mots simples
+
+- Charger un profil sauvegardé illisible affiche « Le profil « X » est abîmé, impossible de le charger » au lieu d'un message technique (le détail reste dans le journal d'erreurs).
+
 ## 2026-10-15 — Téléphone : le bandeau « Installer FinanceAI » ne passe plus sous la barre du bas
 
 - Sur téléphone, le bandeau d'installation était recouvert par la barre de navigation. Il se pose maintenant

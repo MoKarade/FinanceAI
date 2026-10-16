@@ -40,6 +40,12 @@ Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions 
   Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
   `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
 
+## 2026-10-15 — Profil abîmé en mots simples
+
+- [x] **`[PROFIL-ABIME-SIMPLE]`** — `SavedProfilesCard.tsx` affichait « Erreur sur « X » : <message de lecture JSON> ».
+  Il affiche « Le profil « X » est abîmé, impossible de le charger ». Helper : `services/profilMessages.ts`.
+  Test : `tests/services/profilMessages.test.ts`.
+
 ## 2026-10-15 — Téléphone : le bandeau d'installation ne passe plus sous la barre du bas
 
 - [x] **`[BANDEAU-INSTALL-BARRE-NAV]`** — `components/PwaInstallBanner.tsx` se posait à `bottom-4`, sous la barre de

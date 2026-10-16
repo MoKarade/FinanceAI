@@ -40,25 +40,21 @@ déclenche le déploiement Vercel : Claude en est responsable (choix Marc).
   `git checkout -B <branche> origin/main` (après avoir confirmé `git status --porcelain` vide).
   Ne JAMAIS pousser un commit de merge vide.
 
-### Tenue du BACKLOG (règles renforcées Marc 2026-07-31)
+### Backlog : les issues du dépôt (depuis le 2026-10-15)
 
-Au MERGE d'une PR, Claude coche lui-même les `[ID]` livrés, ajoute les découvertes, et route
-les blocages humains vers `docs/A_FAIRE_MOI.md`.
+Le backlog vit dans les **issues** du dépôt (`niveau:tâche`, avec Avant / Après / Fini quand) ; `BACKLOG.md` n'est
+qu'un renvoi de 20 lignes au plus (plan de standardisation, grille de conformité ligne 11 ; garde :
+`tests/backlogArchivageDesCoches.test.ts`). Une PR porte `Tâche : #n`, jamais `Closes` : la tâche se ferme par la
+preuve « Acceptée » sur l'issue. Les blocages humains vont dans `docs/A_FAIRE_MOI.md`.
 
-- ⚠️ **CHAQUE tâche a une case `- [ ]`** — aucune puce de tâche sans case. Une note sans travail
-  à faire n'est pas une tâche : elle va dans l'archive ou dans `docs/adr/`.
-- ⚠️ **Item fini ET validé (mergé, gate vert) → DÉMÉNAGE vers `docs/BACKLOG_ARCHIVE.md`**
-  (avec date + PR), au plus tard à la PR suivante. Le BACKLOG ne garde que le vivant.
-- ⚠️ Leçon de la refonte 2026-07-31 : ~65 items étaient FAITS sans case cochée et ~128 puces
-  n'avaient pas de case. Un backlog qui mélange fait et à-faire trompe le PM et la reprise de
-  session (classe `PM-STALE-BACKLOG`). C'est la tenue **à chaque push** qui empêche la dérive,
-  pas les grandes passes de nettoyage.
+L'ancienne liste (règles « case `- [ ]` », archivage vers `docs/BACKLOG_ARCHIVE.md`, leçon `PM-STALE-BACKLOG`) est
+figée dans `docs/BACKLOG_AVANT_ISSUES_2026-10-15.md` : les lignes « Source : BACKLOG.md:Lnn » des issues y renvoient.
 
 ### Docs à jour à CHAQUE push
 
 Avant le commit final, se demander « quels docs décrivent ce que je viens de changer ? » et
 les mettre à jour **dans la MÊME PR** : `HANDOVER.md` (état — responsabilité keystone,
-dans le « Toujours » de `/review-all`), `BACKLOG.md`, `CHANGELOG.md`, `README`, et les docs
+dans le « Toujours » de `/review-all`), `CHANGELOG.md`, `README`, et les docs
 techniques touchés (`PROJECTION*.md`, `FISCAL_REFERENCE.md`, `ARCHITECTURE.md`…). Un champ,
 calcul ou valeur fiscale ajouté SANS sa doc = doc périmée qui trompe la prochaine session.
 

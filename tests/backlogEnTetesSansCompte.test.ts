@@ -23,8 +23,14 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+// Depuis le 2026-10-16 (tâche FinanceAI#1168), le backlog vit dans les issues : `BACKLOG.md` n'est qu'un renvoi
+// et l'ancienne liste est figée dans `docs/BACKLOG_AVANT_ISSUES_2026-10-15.md`. La garde lit les DEUX : l'archive
+// (là où les en-têtes ont dérivé, donc le seul fichier qui prouve que le détecteur lit autre chose que du vide)
+// et le renvoi (là où un compte recopié ne doit jamais revenir).
+const FICHIERS = ['BACKLOG.md', 'docs/BACKLOG_AVANT_ISSUES_2026-10-15.md'] as const;
+
 const lignes = (): string[] =>
-    readFileSync(resolve(__dirname, '../BACKLOG.md'), 'utf8').split('\n');
+    FICHIERS.flatMap(f => readFileSync(resolve(__dirname, '..', f), 'utf8').split('\n'));
 
 const EN_TETE = /^#{2,3} /;
 /** « 8 HIGH », « 3 MED/LOW », « 1 HIGH restant », « 7 LOW/FAIBLE »… */

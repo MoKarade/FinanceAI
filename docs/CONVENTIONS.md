@@ -17356,3 +17356,14 @@ fermante s'intercalait avant `/100`. Le test d'anti-vacuité par témoin nommé 
   corrigée que la regex ne reconnaît plus rend la garde aveugle à sa version non masquée (`<b>{x}</b>/100`).
 - Une exception de la garde pour les « définitions d'alias » (`const f = (v) => …`) doit se limiter aux
   formateurs ; une flèche qui construit `${v} ans` est un rendu.
+
+## `UN-RECENSEUR-QUI-PERD-DES-BALISES-FAIT-UN-CLIQUET-FAUX` (2026-10-16, `[A11Y-CIBLES-44-CLIQUET]`)
+
+Le premier compte des contrôles sans hauteur de 44 px donnait 273 ; le bon est 349. Cause : l'automate qui
+cherche la fin d'une balise ouvrante ne refermait jamais un gabarit (`` className={`h-11 ${x}`} `` laissait
+`accolades > 0`), donc tout contrôle à `className` en gabarit était silencieusement écarté. Un cliquet posé
+sur ce chiffre aurait laissé passer 76 contrôles « déjà là ».
+- Un recenseur se vérifie sur un cas par forme d'écriture du dépôt (littéral, gabarit, constante, flèche dans
+  un attribut) AVANT de figer un plafond ; le test unitaire du recenseur a rougi sur le gabarit.
+- Comparer le total reconnu au `grep` brut des balises (566 balises, 51 exclues par type, 0 perdue) : un écart
+  inexpliqué est un recenseur qui perd.

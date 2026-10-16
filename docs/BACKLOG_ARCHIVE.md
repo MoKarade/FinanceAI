@@ -13321,3 +13321,7 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
 ## Livré le 2026-10-16 — `[HUB-TREND-VALEUR-NETTE-EST-LA-SEANCE]` (FinanceAI#1156)
 
 - [x] 🟡 **`[HUB-TREND-VALEUR-NETTE-EST-LA-SEANCE]`** (S) — **LIVRÉ 2026-10-16 (FinanceAI#1156)** : la tendance collée à « Valeur nette » était la variation de séance des seuls placements (`mcp/hubSummary.ts`). Le metric « Valeur nette » ne porte plus de `trend` ; la séance reste sur la ligne « Placements ». Test : `tests/mcp/hubSummary.test.ts`.
+
+## Livré le 2026-10-16 — `[COURS-AU-TROMPEUR]` (FinanceAI#1148)
+
+- [x] 🟡 **`[COURS-AU-TROMPEUR]`** (S) — **LIVRÉ 2026-10-16 (FinanceAI#1148)** : « Cours au … » était l'heure du dernier rafraîchissement ; la variation « 24 h » comparait les deux dernières clôtures quel que soit leur âge ; `get_holdings` ne publiait aucune date. Maintenant : `services/history/fraicheurCours.ts` (seuil 4 jours), notice « Cours périmé(s) : X (cours du …) » sur Placements (Vue d'ensemble et Détail), « Actualisé le … » pour l'heure du rafraîchissement, variation 24 h à « — » si les deux clôtures ne sont pas récentes, `priceDate` par ligne dans `get_holdings`. Tests : `tests/services/fraicheurCours.test.ts`, `tests/components/Investments.coursPerimes.test.tsx`, `tests/mcp/dataAwareTools.test.ts`.

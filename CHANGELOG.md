@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-16 — Placements : l'âge réel des cours
+
+- Dans Placements, un titre dont le dernier cours date de plusieurs jours est maintenant signalé avec la date de ce cours,
+  et la variation « sur 24 h » n'est plus affichée quand elle compare des cours trop anciens (un tiret à la place).
+  L'ancienne mention « Cours au … » devient « Actualisé le … » : c'est l'heure du dernier rafraîchissement, pas celle des cours.
+  Les titres sans historique de prix (titres manuels, GIC) ne sont pas signalés.
+
 ## 2026-10-16 — Hub : la valeur nette n'affiche plus la tendance des placements
 
 - Sur la carte FinanceAI du hub, la flèche à côté de « Valeur nette » était la variation du jour des seuls

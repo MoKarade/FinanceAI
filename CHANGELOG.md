@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-16 — Contrat du hub en v1.5.0
+
+- Le contrat du hub passe de `v1.4.0` à `v1.5.0` : il utilise maintenant zod 4, comme l'application, donc une seule copie de zod dans le projet. Rien ne change pour l'utilisateur ni pour le résumé publié au hub.
+
 ## 2026-10-16 — Dettes : boutons plus faciles à toucher
 
 - Sur l'écran Dettes, les boutons « Ajouter », « Modifier » et « Supprimer » ont maintenant une surface de 44 px, comme les champs du formulaire.

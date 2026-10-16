@@ -498,7 +498,7 @@ désinfecte le snapshot avant de le restaurer.
 
 ---
 
-- [ ] 🔧 **`[PANNEAU-VARIATION-RACCORD-PASSE-FUTUR]`** (S) — **signalé par Marc le 18/09/2026**
+- [x] 🔧 **`[PANNEAU-VARIATION-RACCORD-PASSE-FUTUR]`** (S) — **FAIT 2026-10-16 (FinanceAI#1142) : `recomputeDailyDiffs` ne pose plus de `diff*` entre un point réel et un point projeté (variation absente, aucun chiffre lissé) ; test sur deux points contigus.** Décomposition de l'écart (« à mesurer ») non faite : le libellé était seul en cause. **signalé par Marc le 18/09/2026**
   (« explique-moi le rendement pour cette journée »), sur une capture du panneau du jour.
   **L'arithmétique de l'écran ne se recompose pas** : « Variation du jour » de plusieurs milliers de dollars contre
   « Dépôts » + « Rendement », qui ne somment qu'à quelques dollars. Écart de plusieurs milliers de dollars, sur la donnée la

@@ -224,6 +224,12 @@ export function buildEnrichedMonth(
  * réel : les `diff*` posés par `buildDailyLedger` comparaient des valeurs projetées.
  * Le 1er point n'a pas de veille connue : ses `diff*` sont RETIRÉS (jamais « +0 $ » en vert —
  * un faux zéro crédible sur la donnée la plus regardée de l'infobulle).
+ *
+ * [RACCORD-PASSE-FUTUR, FinanceAI#1142] Même règle pour le RACCORD : entre le dernier jour RÉEL et
+ * le premier jour PROJETÉ, l'écart n'est pas une « variation du jour » — c'est la marche entre
+ * deux sources (mesure bancaire contre moteur), mesurée à plusieurs milliers de dollars pour des
+ * dépôts + rendement de quelques dollars. Les deux valeurs restent exactes chacune ; seul le
+ * libellé mentirait. Le diff est donc ABSENT (« — »), et AUCUN chiffre n'est lissé.
  */
 export function recomputeDailyDiffs(merged: ProjectionChartPoint[]): void {
     const DIFFS = [['diffNW', 'NetWorth'], ['diffCELI', 'CELI'], ['diffREER', 'REER'], ['diffLiquid', 'Liquidites']] as const;
@@ -235,6 +241,11 @@ export function recomputeDailyDiffs(merged: ProjectionChartPoint[]): void {
         // produisaient une « Variation » de 15 jours présentée comme celle d'UN jour (mesuré :
         // 9 995 $). Sans veille calendaire connue, le diff est ABSENT — « — », pas un faux chiffre.
         if (!isCalendarYesterday(prevP.dayIso, curP.dayIso)) {
+            for (const [diffKey] of DIFFS) delete curP[diffKey];
+            continue;
+        }
+        // Raccord réel → projeté : la NATURE des deux points diffère, l'écart n'est pas un jour.
+        if (prevP.dayIsReal === true && curP.dayIsReal !== true) {
             for (const [diffKey] of DIFFS) delete curP[diffKey];
             continue;
         }

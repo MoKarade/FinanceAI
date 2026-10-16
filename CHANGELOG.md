@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-16 — Futur : plus de fausse « Variation du jour » au raccord passé / futur
+
+- Le premier jour projeté affichait une « Variation du jour » de plusieurs milliers de dollars alors que
+  les dépôts et le rendement ne faisaient que quelques dollars : c'était la marche entre ton dernier jour
+  réel et la projection. Ce badge est maintenant absent sur ce jour-là. Aucun chiffre ne change ni n'est lissé.
+
 ## 2026-10-15 — Retraite : la bulle du graphique est en français
 
 - Passer la souris sur le graphique de Retraite affichait « Cashflow », « Depenses (Infl.) »,

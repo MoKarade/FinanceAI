@@ -313,7 +313,7 @@ arbitrage, pas une liste :
 
 | # | libellé | source |
 |---|---|---|
-| 1 | `Valeur nette` (+ `trend` = % de la séance, si publiable) | `buildFinancialOverview` |
+| 1 | `Valeur nette` (sans `trend` : la séance vit sur « Placements ») | `buildFinancialOverview` |
 | 2 | `Cashflow mensuel` | idem |
 | 3 | `Liquidités` | idem |
 | 4 | `Placements (séance du <date>)` | `computePortfolioSessionMetrics` |

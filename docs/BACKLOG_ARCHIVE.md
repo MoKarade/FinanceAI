@@ -13317,3 +13317,7 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
 - [x] 🟡 **`[PDF-PLACEMENTS-SANS-ECART-COURTIER]`** (S, **LIVRÉ 2026-10-16 avec `[PDF-DETTES-SOLDE-BRUT]`**, FinanceAI#1154) — la
   ligne « Non-Enregistré » du PDF est la somme des titres, l'actif net inclut l'écart courtier : la
   page ne s'additionne pas.
+
+## Livré le 2026-10-16 — `[HUB-TREND-VALEUR-NETTE-EST-LA-SEANCE]` (FinanceAI#1156)
+
+- [x] 🟡 **`[HUB-TREND-VALEUR-NETTE-EST-LA-SEANCE]`** (S) — **LIVRÉ 2026-10-16 (FinanceAI#1156)** : la tendance collée à « Valeur nette » était la variation de séance des seuls placements (`mcp/hubSummary.ts`). Le metric « Valeur nette » ne porte plus de `trend` ; la séance reste sur la ligne « Placements ». Test : `tests/mcp/hubSummary.test.ts`.

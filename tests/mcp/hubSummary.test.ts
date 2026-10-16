@@ -256,7 +256,8 @@ describe('[HUB-PLACEMENTS-SEANCE] variation des placements sur la carte', () => 
         // Montants et tendances : 113 au dernier close, +1 $ sur la séance.
         const parLabel = Object.fromEntries(s.metrics.map((m) => [m.label, m]));
         expect(parLabel['Placements'].value).toBe(113);
-        expect(parLabel['Valeur nette'].trend).toBeCloseTo((1 / 112) * 100, 2);
+        // [VALEUR-NETTE-SANS-TENDANCE-PLACEMENTS] la séance des placements ne se colle PAS à la valeur nette.
+        expect(parLabel['Valeur nette'].trend).toBeUndefined();
         expect(parLabel['Placements'].trend).toBeCloseTo((1 / 112) * 100, 2);
 
         // Tout doit rester conforme au contrat — c'est le hub qui valide, on ne triche pas.

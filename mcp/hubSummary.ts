@@ -170,11 +170,10 @@ export function buildHubSummary(state: AppState, now: number = Date.now()): HubS
             // cette liste, alors que le commentaire ci-dessous dit justement que l'ordre est un
             // arbitrage qui a DÉJÀ changé une fois.
             primary: true,
-            // `trend` = variation RELATIVE signée en %, colorée par le hub. Celle des placements est
-            // la seule variation QUOTIDIENNE honnête dont on dispose : les dettes sont figées et
-            // l'immobilier bouge par palier ANNUEL dans la reconstruction du passé. On ne l'appose
-            // donc à la valeur nette que si elle existe — jamais un 0 qui dirait « stable ».
-            ...(placements?.seance ? { trend: placements.seance.pct } : {}),
+            // ⚠️ AUCUN `trend` ici : la seule variation quotidienne dont on dispose est celle des
+            // PLACEMENTS, et la coller à la valeur nette faisait lire « ma valeur nette a bougé de
+            // x % » alors que dettes et immobilier ne bougent pas au jour le jour. La séance vit sur
+            // la ligne « Placements » ci-dessous (`[VALEUR-NETTE-SANS-TENDANCE-PLACEMENTS]`).
         },
         {
             label: 'Cashflow mensuel',

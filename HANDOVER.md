@@ -4,6 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-16 — **`[PDF-DETTES-SOLDE-BRUT]`** : le PDF s'additionne avec lui-même (FinanceAI#1154)
+> `useDerivedFinancials` expose `ecartCourtier` ; `exportPdfEcran` imprime `totalDebts = dettesHorsImmo` et `investmentsTotal = nonReg + ecartCourtier` ;
+> `buildDebtsRows(state, aujourdhuiIso)` passe par `soldeDetteAujourdhui` (jour REQUIS). Garde : `tests/services/pdfAdditionneAvecLuiMeme.test.ts`
+> (clic réel + vrai hook, discriminant : 3 tests sur 4 rouges avec l'ancien code). Limite [Probable] : l'écart courtier est classé dans « Non-Enregistré »
+> même s'il vient d'un panier CELI/REER (`placementsFaisantAutorite` ne le ventile pas par régime) ; la somme reste juste.
+>
 > ## 🟦 Session 2026-10-16 — **`[FUTUR-AXE-Y-MINIMAL]` : Historique sur téléphone, axe Y masqué + badge** (FinanceAI#1144)
 > `ZoomableTimeChart` reçoit l'option `axeYMinimal` (défaut `false`) : axe masqué, `ReferenceDot` + `BadgeValeurFinale` sur le
 > dernier point (somme des aires empilées, `null` si une série manque ; `maskedTick` en mode discret). Seul `FutureHistorySection`

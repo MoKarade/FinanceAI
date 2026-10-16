@@ -93,7 +93,7 @@ describe('buildHoldingsRows', () => {
 describe('buildDebtsRows', () => {
     it('convertit debts en lignes et estime mois restants', () => {
         const state = { debts: [makeDebt({ balance: 5000, minimumPayment: 200, interestRate: 19.99 })] };
-        const rows = buildDebtsRows(state);
+        const rows = buildDebtsRows(state, null);
         expect(rows).toHaveLength(1);
         expect(rows[0].name).toBe('Carte Visa');
         expect(rows[0].balance).toBe(5000);
@@ -105,13 +105,13 @@ describe('buildDebtsRows', () => {
     it('mois restants undefined si paiement insuffisant pour couvrir l intérêt', () => {
         // 10k @ 30% → intérêt mensuel ≈ 250$. Si paiement < 250 → impossible.
         const state = { debts: [makeDebt({ balance: 10000, interestRate: 30, minimumPayment: 100 })] };
-        const rows = buildDebtsRows(state);
+        const rows = buildDebtsRows(state, null);
         expect(rows[0].monthsToZero).toBeUndefined();
     });
 
     it('mois restants linéaire si taux = 0', () => {
         const state = { debts: [makeDebt({ balance: 5000, interestRate: 0, minimumPayment: 500 })] };
-        const rows = buildDebtsRows(state);
+        const rows = buildDebtsRows(state, null);
         expect(rows[0].monthsToZero).toBe(10);
     });
 
@@ -123,12 +123,12 @@ describe('buildDebtsRows', () => {
                 makeDebt({ id: 'c', name: 'C', balance: 5000 }),
             ],
         };
-        const rows = buildDebtsRows(state);
+        const rows = buildDebtsRows(state, null);
         expect(rows.map(r => r.name)).toEqual(['B', 'C', 'A']);
     });
 
     it('retourne [] sur debts vides', () => {
-        expect(buildDebtsRows({ debts: [] })).toEqual([]);
+        expect(buildDebtsRows({ debts: [] }, null)).toEqual([]);
     });
 });
 

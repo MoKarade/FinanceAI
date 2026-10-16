@@ -16,6 +16,12 @@ interface DerivedFinancials {
      */
     avoirsHorsImmo: number;
     dettesHorsImmo: number;
+    /**
+     * [PDF-ADDITIONNE] La correction du courtier incluse dans `avoirsHorsImmo` (0 sans synchro Fintable).
+     * `assetBreakdown.nonReg` est la somme des titres : sans cet écart, un consommateur qui affiche
+     * `nonReg` à côté de `globalNetWorth` ne se recompose pas. Lue ici, jamais recalculée ailleurs.
+     */
+    ecartCourtier: number;
     baseGrossAnnual: number;
     calculatedMonthlySavings: number;
     assetBreakdown: { reer: number; celi: number; reee: number; nonReg: number };
@@ -99,5 +105,5 @@ export function useDerivedFinancials(state: AppState): DerivedFinancials {
         return cash;
     }, [state.initialBalances, state.transactions]);
 
-    return { globalNetWorth, avoirsHorsImmo: termes.avoirs, dettesHorsImmo: termes.dettes, baseGrossAnnual, calculatedMonthlySavings, assetBreakdown, currentLiquidity };
+    return { globalNetWorth, avoirsHorsImmo: termes.avoirs, dettesHorsImmo: termes.dettes, ecartCourtier: autoritePlacements.ecart, baseGrossAnnual, calculatedMonthlySavings, assetBreakdown, currentLiquidity };
 }

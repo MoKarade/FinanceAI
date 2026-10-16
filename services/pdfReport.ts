@@ -15,6 +15,7 @@ import type { ProjectionResult } from './projection/types';
 import { calculateFiscalReport } from '../utils/tax';
 import { formatCAD } from '../utils/format';
 import { assetValueCad } from './portfolio';
+import { soldeDetteAujourdhui } from './projection/debtAmortization';
 import { logError } from './errorLogger';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { modeDonneesFictives } from '../store/modeTestActif';
@@ -155,16 +156,34 @@ function estimateMonthsToZero(balance: number, payment: number, annualRatePct: n
     return Math.ceil(n);
 }
 
-export function buildDebtsRows(state: Pick<AppState, 'debts'>): DebtRow[] {
+/**
+ * Lignes de dettes du PDF, au solde d'AUJOURD'HUI.
+ *
+ * ⚠️ [PDF-DETTES-SOLDE-BRUT] `d.balance` est un instantané (`balanceAsOf`) : le PDF affichait ce solde
+ * figé pendant que la valeur nette de la même page déduisait les prélèvements survenus depuis, donc
+ * « actifs − dettes ≠ valeur nette » (≈ 3,6 % mesuré sur le bail). Le solde passe par
+ * `soldeDetteAujourdhui`, la source unique de l'écran, et le nombre de mois restants part de CE solde.
+ * `aujourdhuiIso` est REQUIS (`null` = jour inconnu, aucune correction) : optionnel, un appelant
+ * oublié retomberait en silence sur le solde figé. Un solde non fini compte 0, comme `computeTotalDebt`.
+ */
+export function buildDebtsRows(
+    state: Pick<AppState, 'debts'> & { transactions?: AppState['transactions'] },
+    aujourdhuiIso: string | null,
+): DebtRow[] {
     return state.debts
-        .map((d: Debt): DebtRow => ({
-            name: d.name,
-            balance: d.balance,
-            interestRatePct: d.interestRate,
-            minimumPayment: d.minimumPayment,
-            category: d.category,
-            monthsToZero: estimateMonthsToZero(d.balance, d.minimumPayment, d.interestRate),
-        }))
+        .map((d: Debt): DebtRow => {
+            const solde = Number.isFinite(d.balance)
+                ? soldeDetteAujourdhui(d, aujourdhuiIso, state.transactions ?? [])
+                : 0;
+            return {
+                name: d.name,
+                balance: solde,
+                interestRatePct: d.interestRate,
+                minimumPayment: d.minimumPayment,
+                category: d.category,
+                monthsToZero: estimateMonthsToZero(solde, d.minimumPayment, d.interestRate),
+            };
+        })
         .sort((x, y) => y.balance - x.balance);
 }
 

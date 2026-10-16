@@ -194,7 +194,7 @@
   `state.apiKeys` : un blob Drive fabriqué poserait des clés API étrangères en mémoire au `merge`.
   Même filtre que la restauration JSON (`enveloppeARestaurer`, `services/sauvegardeJson.ts`).
   Surface plus étroite (il faut le compte Google), d'où non corrigé dans #1065.
-- [ ] 🟡 **`[PDF-PLACEMENTS-SANS-ECART-COURTIER]`** (S, jumeau de `[PDF-DETTES-SOLDE-BRUT]`) — la
+- [x] 🟡 **`[PDF-PLACEMENTS-SANS-ECART-COURTIER]`** (S, **LIVRÉ 2026-10-16 avec `[PDF-DETTES-SOLDE-BRUT]`**, FinanceAI#1154) — la
   ligne « Non-Enregistré » du PDF est la somme des titres, l'actif net inclut l'écart courtier : la
   page ne s'additionne pas.
 - [ ] 🟡 **`[COURS-AU-TROMPEUR]`** (S) — « Cours au … » est l'heure du dernier rafraîchissement, pas
@@ -640,7 +640,7 @@ désinfecte le snapshot avant de le restaurer.
 
 ## 💸 Reste du panel `[DETTE-VIREMENTS-REELS]` (18/09/2026) — mesuré, NON corrigé (hors périmètre)
 
-- [ ] 🔧 **`[PDF-DETTES-SOLDE-BRUT]`** (S) — **le rapport PDF ne se recompose pas avec lui-même.**
+- [x] 🔧 **`[PDF-DETTES-SOLDE-BRUT]`** (S) — **LIVRÉ 2026-10-16 (FinanceAI#1154) : dettes au solde du jour via `useDerivedFinancials`, test `tests/services/pdfAdditionneAvecLuiMeme.test.ts`.** Le rapport PDF ne se recomposait pas avec lui-même.
   `components/app/exportPdfEcran.ts` somme `state.debts.reduce((s, d) => s + d.balance, 0)` et
   `services/pdfReport.ts` remplit chaque ligne (`balance`, `monthsToZero`) depuis `d.balance` —
   aucun des deux ne passe par `soldeDetteAujourdhui`. Le même document affiche pourtant un

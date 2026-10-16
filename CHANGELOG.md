@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-16 — Rapport PDF : la page Patrimoine s'additionne
+
+- Dans le PDF, les dettes sont maintenant au solde d'aujourd'hui (les prélèvements depuis ta dernière saisie sont déduits,
+  comme à l'écran) et la ligne « Non-Enregistré » inclut la correction du courtier quand elle s'applique. Avant,
+  actifs − dettes ne tombait pas sur la valeur nette imprimée dans le même PDF (environ 3,6 % d'écart mesuré sur le bail).
+  La valeur nette elle-même ne change pas.
+
 ## 2026-10-16 — Futur : la courbe de l'Historique est plus large sur téléphone
 
 - Sur téléphone, le graphique du tiroir Historique n'affiche plus l'axe des montants à gauche (environ

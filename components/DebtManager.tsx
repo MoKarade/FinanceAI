@@ -321,7 +321,7 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                         onClick={() => { setIsAdding(!isAdding); setRefusSaisie(null); }}
                         aria-expanded={isAdding}
                         aria-label={isAdding ? 'Fermer' : 'Ajouter une dette'}
-                        className="h-10 px-3.5 lg:px-4 rounded-lg border border-white/40 lg:border-transparent text-ink-100 lg:bg-primary lg:text-dark text-body lg:font-bold focus-ring"
+                        className="h-11 px-3.5 lg:px-4 rounded-lg border border-white/40 lg:border-transparent text-ink-100 lg:bg-primary lg:text-dark text-body lg:font-bold focus-ring"
                     >
                         {isAdding ? 'Fermer' : <><span className="lg:hidden">Ajouter</span><span className="hidden lg:inline">Ajouter une dette</span></>}
                     </button>
@@ -423,8 +423,8 @@ export const DebtManager: React.FC<DebtManagerProps> = ({ debts, setDebts }) => 
                                             )}
                                             {/* Toujours visibles (maquettes) : plus de liens révélés au survol, inutilisables au doigt. */}
                                             <div className="flex gap-3.5 text-meta">
-                                                <button type="button" onClick={() => startEdit(d)} className="text-primary underline underline-offset-2 focus-ring rounded-sm">Modifier</button>
-                                                <button type="button" onClick={() => handleDelete(d.id)} className="text-ink-300 underline underline-offset-2 hover:text-danger-400 focus-ring rounded-sm">Supprimer</button>
+                                                <button type="button" onClick={() => startEdit(d)} className="touch-target inline-flex items-center justify-center text-primary underline underline-offset-2 focus-ring rounded-sm">Modifier</button>
+                                                <button type="button" onClick={() => handleDelete(d.id)} className="touch-target inline-flex items-center justify-center text-ink-300 underline underline-offset-2 hover:text-danger-400 focus-ring rounded-sm">Supprimer</button>
                                             </div>
                                         </div>
                                     )}

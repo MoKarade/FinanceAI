@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-16 — Dettes : boutons plus faciles à toucher
+
+- Sur l'écran Dettes, les boutons « Ajouter », « Modifier » et « Supprimer » ont maintenant une surface de 44 px, comme les champs du formulaire.
+- Un contrôle automatique empêche désormais d'ajouter dans l'application un bouton ou un champ sans taille tactile déclarée : le nombre de ceux qui restent est mesuré (349 au 16/10/2026) et ne peut plus que baisser.
+
 ## 2026-10-16 — Mode discret : le score de diversification est masqué
 
 - Dans Placements, le badge « Diversification NN/100 » affichait encore le score en mode discret ; il est maintenant masqué comme les montants.

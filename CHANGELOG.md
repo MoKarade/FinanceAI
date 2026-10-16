@@ -6,6 +6,11 @@
   « Epargne Mensuelle » et « Liquidites ». Elle dit maintenant « Flux net », « Dépenses (avec
   inflation) », « Épargne mensuelle » et « Liquidités ». Aucun chiffre ne change.
 
+## 2026-09-29 — Futur : boutons du panneau du jour plus lisibles
+
+- Les contours de « ← Veille », « Lendemain → », « Revenir à aujourd'hui » et « Détail complet → » sont
+  plus marqués : on distingue enfin les boutons du fond, même avec une vue fatiguée.
+
 ## 2026-10-15 — Guide d'aide (bouton ?) réécrit : accents, tutoiement, plus de fonctions retirées
 
 - Le guide de chaque onglet est écrit en français correct, avec les accents et en tutoyant. Il ne parle plus des curseurs ni des « données théoriques » (retirés le 2026-09-29), du « Départ en 2026 » ni de « v4.0 ».
@@ -21,7 +26,6 @@
 ## 2026-10-15 — Contrat du hub en v1.4.0
 
 - Le contrat du hub passe de `v1.3.1` à `v1.4.0` : ajout d'un sous-chemin `/session`, rien ne change pour FinanceAI (même version de contrat, même résumé publié).
-
 ## 2026-10-15 — Transactions : accents et tutoiement
 
 - Les messages et libellés de l'onglet Transactions sont écrits en français correct : « Filtre par catégorie », « Catégorie à appliquer », « Choisir une catégorie… », « transaction(s) mises à jour », « classée(s) par règles — rien à envoyer à l'IA », « Tout semble déjà classé ! Utilise le mode manuel si besoin. ».

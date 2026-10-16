@@ -40,6 +40,10 @@ Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions 
   Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
   `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
 
+## 2026-10-15 — Budget : dates de la période personnalisée assez larges
+
+- [x] `[BUDGET-DATES-PERSO-LARGES]` Les champs « Date de début » / « Date de fin » (`components/budget/pilotage.tsx`) passent de `w-28` à `w-36` pour montrer la date complète. Test : `tests/components/budget.periodePerso.test.tsx`.
+
 ## 2026-10-15 — Assurances : ligne sur deux rangées sur téléphone
 
 - [x] **`[ASSURANCE-LIGNE-MOBILE]`** — `PatrimoineExtended.tsx` (`InsurancePanel`) : grille 6 colonnes sur téléphone

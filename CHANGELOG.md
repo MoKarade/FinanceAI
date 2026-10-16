@@ -25,6 +25,10 @@
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
 
+## 2026-10-15 — Budget : les dates de la période personnalisée sont assez larges
+
+- Dans le Budget, en choisissant « Dates », les deux champs de date (début et fin) affichent maintenant la date en entier, sans la couper.
+
 ## 2026-10-15 — Assurances : la ligne tient sur deux rangées sur téléphone
 
 - Sur téléphone, une police d'assurance (type, assureur, capital, prime, date, supprimer) passe sur deux rangées lisibles au lieu d'une seule rangée écrasée ; sur grand écran rien ne change.

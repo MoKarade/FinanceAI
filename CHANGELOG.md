@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-16 — Hub : la valeur nette n'affiche plus la tendance des placements
+
+- Sur la carte FinanceAI du hub, la flèche à côté de « Valeur nette » était la variation du jour des seuls
+  placements, ce qui laissait croire que toute la valeur nette avait bougé. Elle est retirée ; la variation
+  du jour reste sur la ligne « Placements ». La valeur nette elle-même ne change pas.
+
 ## 2026-10-16 — Rapport PDF : la page Patrimoine s'additionne
 
 - Dans le PDF, les dettes sont maintenant au solde d'aujourd'hui (les prélèvements depuis ta dernière saisie sont déduits,

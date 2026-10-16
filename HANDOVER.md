@@ -4,6 +4,9 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-16 — **`[HUB-TREND-VALEUR-NETTE-EST-LA-SEANCE]`** : plus de tendance trompeuse sur la valeur nette du hub (FinanceAI#1156)
+> `mcp/hubSummary.ts` : le metric « Valeur nette » ne publie plus de `trend` (c'était la séance des seuls placements) ; « Placements » la garde. Test : `tests/mcp/hubSummary.test.ts`. Effet côté hub : la carte n'affiche plus de flèche sur la valeur nette.
+>
 > ## 🟦 Session 2026-10-16 — **`[PDF-DETTES-SOLDE-BRUT]`** : le PDF s'additionne avec lui-même (FinanceAI#1154)
 > `useDerivedFinancials` expose `ecartCourtier` ; `exportPdfEcran` imprime `totalDebts = dettesHorsImmo` et `investmentsTotal = nonReg + ecartCourtier` ;
 > `buildDebtsRows(state, aujourdhuiIso)` passe par `soldeDetteAujourdhui` (jour REQUIS). Garde : `tests/services/pdfAdditionneAvecLuiMeme.test.ts`

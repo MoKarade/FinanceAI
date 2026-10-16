@@ -200,8 +200,6 @@
 - [ ] 🟡 **`[FUTUR-PANNEAU-REPOS-DEBUT-DE-MOIS]`** (S, [Probable], à confirmer à l'écran) — au
   repos, le panneau du jour désigne le 1er du mois (premier point `monthIndex ≥ 0`,
   `panneauPas.ts:53-57`), pas aujourd'hui.
-- [ ] 🟡 **`[HUB-TREND-VALEUR-NETTE-EST-LA-SEANCE]`** (S) — la tendance collée à « Valeur nette »
-  est la variation de séance des seuls placements (`mcp/hubSummary.ts:177`).
 - [ ] 🟡 **`[HUB-FRAICHEUR-HORODATEE-PAR-LE-CRON]`** (S) — « Dernière synchro » prend l'heure de
   n'importe quelle écriture du blob, cron des cours compris : « ok » possible avec des transactions
   figées.

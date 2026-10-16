@@ -13,9 +13,17 @@
 //   node qualite/portes.mjs --seulement-mutation → juge uniquement le rapport de mutation (CI hebdo)
 //   node qualite/portes.mjs --maj       → resserre les seuils sur les chiffres améliorés
 //
+// Trois modes réservés à la CI, qui répartissent le même travail sur plusieurs machines
+// (FinanceAI#1181 : le contrôle « Qualité » passait de 10 à 13 min, presque tout en tests sous couverture
+// exécutés en série). Ils ne retirent aucune mesure : la même comparaison au même cliquet a lieu, une fois, à la fin.
+//   --statique           → typage, lint, code mort, architecture ; écrit qualite/mesures-statiques.json, ne juge pas
+//   --tranche i/n        → la tranche i sur n des tests, sous couverture ; écrit .vitest-reports/blob-i-n.json, ne juge pas
+//   --fusion <n> <dir> <fichier>  → fusionne les n tranches de <dir> (couverture comprise), lit <fichier> (mesures
+//                          statiques) et juge. Il échoue si une tranche manque : jamais de verdict sur des tests absents.
+//
 // Écrit qualite/rapport.json (non versionné) : c'est ce que lit le cockpit de l'Atelier.
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -57,13 +65,10 @@ function lint() {
   durees.lint = r.secondes;
 }
 
-function testsEtCouverture() {
-  const r = lancer(
-    // reportOnFailure : sans lui, UN test rouge supprime tout le rapport de couverture (défaut Vitest).
-    // vitest_args (config) : réglages propres à l'app, ex. un délai plus long sous instrumentation.
-    "npx --no-install vitest run --coverage --coverage.reporter=json-summary --coverage.reporter=text-summary " +
-      `--coverage.reportOnFailure=true --reporter=json --outputFile=coverage/tests.json ${config.vitest_args || ""}`,
-  );
+const OPTIONS_COUVERTURE = "--coverage --coverage.reportOnFailure=true";
+
+// Lit ce que vitest vient d'écrire (rapport JSON des tests + résumé de couverture) et en tire les mesures.
+function mesurerTestsEtCouverture(r) {
   const tests = JSON.parse(readFileSync(join(RACINE, "coverage", "tests.json"), "utf8"));
   mesures["tests.echecs"] = tests.numFailedTests + (tests.numRuntimeErrorTestSuites || 0) + (r.code && !tests.numFailedTests ? 1 : 0);
   mesures["tests.total"] = tests.numTotalTests;
@@ -80,6 +85,45 @@ function testsEtCouverture() {
   }
   mesures["couverture.lignes_coeur"] = pct(couvertes, total);
   durees.tests = r.secondes;
+}
+
+function testsEtCouverture() {
+  const r = lancer(
+    // reportOnFailure : sans lui, UN test rouge supprime tout le rapport de couverture (défaut Vitest).
+    // vitest_args (config) : réglages propres à l'app, ex. un délai plus long sous instrumentation.
+    `npx --no-install vitest run ${OPTIONS_COUVERTURE} --coverage.reporter=json-summary --coverage.reporter=text-summary ` +
+      `--reporter=json --outputFile=coverage/tests.json ${config.vitest_args || ""}`,
+  );
+  mesurerTestsEtCouverture(r);
+}
+
+// CI : une tranche des tests, sous couverture, dans un « blob » que --fusion rassemblera. Ne juge rien : un test
+// rouge ici met la tranche en rouge (code de sortie), mais le verdict du cliquet se rend après la fusion.
+function tranche(indexSurTotal) {
+  const r = lancer(
+    `npx --no-install vitest run --shard=${indexSurTotal} ${OPTIONS_COUVERTURE} ` +
+      `--reporter=blob --reporter=dot ${config.vitest_args || ""}`,
+  );
+  console.log(r.sortie.split("\n").slice(-60).join("\n"));
+  console.log(`Tranche ${indexSurTotal} : ${Math.round(r.secondes)} s (code ${r.code}).`);
+  process.exit(r.code);
+}
+
+// CI : fusionne les tranches. Refuse de juger si l'une manque, sinon des tests absents passeraient pour réussis.
+function fusion(total, dossier) {
+  const attendus = Array.from({ length: total }, (_, i) => `blob-${i + 1}-${total}.json`);
+  const presents = existsSync(dossier) ? readdirSync(dossier) : [];
+  const manquants = attendus.filter((f) => !presents.includes(f));
+  const inattendus = presents.filter((f) => !attendus.includes(f));
+  if (manquants.length || inattendus.length) {
+    console.error(`FUSION IMPOSSIBLE — tranches manquantes : ${manquants.join(", ") || "aucune"} ; fichiers inattendus : ${inattendus.join(", ") || "aucun"}.`);
+    process.exit(1);
+  }
+  const r = lancer(
+    `npx --no-install vitest run --merge-reports=${dossier} --coverage.reportOnFailure=true --coverage ` +
+      `--coverage.reporter=json-summary --coverage.reporter=text-summary --reporter=json --outputFile=coverage/tests.json`,
+  );
+  mesurerTestsEtCouverture(r);
 }
 
 function codeMort() {
@@ -131,11 +175,40 @@ const LIBELLES = {
 };
 const TOLERANCE = 0.2; // points de % : bruit de mesure de la couverture
 
+const MESURES_STATIQUES = join(RACINE, "qualite", "mesures-statiques.json");
+
 function main() {
-  const etapes = args.has("--seulement-mutation") ? [] : [typecheck, lint, testsEtCouverture, codeMort, architecture];
+  const apres = (option, n) => {
+    const i = process.argv.indexOf(option);
+    return i < 0 ? undefined : process.argv.slice(i + 1, i + 1 + n);
+  };
+  const [trancheDemandee] = apres("--tranche", 1) ?? [];
+  if (trancheDemandee) tranche(trancheDemandee);
+
+  const demandeFusion = apres("--fusion", 3);
+  const statique = args.has("--statique");
+  let etapes = [typecheck, lint, testsEtCouverture, codeMort, architecture];
+  if (args.has("--seulement-mutation")) etapes = [];
+  else if (statique) etapes = [typecheck, lint, codeMort, architecture];
+  else if (demandeFusion) etapes = [];
   for (const etape of etapes) {
     process.stdout.write(`… ${etape.name}\n`);
     etape();
+  }
+  if (statique) {
+    writeFileSync(MESURES_STATIQUES, JSON.stringify({ mesures, durees }, null, 2));
+    console.log(`Mesures statiques : ${JSON.stringify(mesures)} (${JSON.stringify(durees)})`);
+    return;
+  }
+  if (demandeFusion) {
+    const [total, dossier, fichierStatique] = demandeFusion;
+    process.stdout.write("… fusion des tranches de tests\n");
+    fusion(Number(total), dossier);
+    durees.fusion_tests = durees.tests;
+    delete durees.tests;
+    const statiques = JSON.parse(readFileSync(fichierStatique, "utf8"));
+    Object.assign(mesures, statiques.mesures);
+    Object.assign(durees, statiques.durees);
   }
   if (args.has("--mutation") || args.has("--seulement-mutation")) mutation();
 

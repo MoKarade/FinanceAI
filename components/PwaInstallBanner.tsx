@@ -25,7 +25,7 @@ export const PwaInstallBanner: React.FC = () => {
         <div
             role="region"
             aria-label="Installer FinanceAI comme application"
-            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-md w-[calc(100%-2rem)] bg-surface/90 border border-white/10 backdrop-blur-sm rounded-xl shadow-lg p-3 flex items-center gap-3 animate-fade-in"
+            className="fixed bottom-[calc(76px+env(safe-area-inset-bottom)+0.75rem)] lg:bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-md w-[calc(100%-2rem)] bg-surface/90 border border-white/10 backdrop-blur-sm rounded-xl shadow-lg p-3 flex items-center gap-3 animate-fade-in"
         >
             <Icon name="smartphone" size={22} className="text-ink-300 shrink-0" />
             <div className="flex-1 min-w-0">

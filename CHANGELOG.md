@@ -29,6 +29,10 @@
 
 - Choisir un fichier qui n'est pas une sauvegarde FinanceAI affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » (le détail technique reste dans le journal d'erreurs).
 
+## 2026-10-15 — Transactions : supprimer une règle de classement demande d'abord confirmation
+
+- Un clic sur la croix d'une règle ouvre « Supprimer cette règle ? » (Annuler / Supprimer) ; une fois supprimée, « Règle supprimée » s'affiche. Avant : la règle disparaissait d'un clic, sans avertissement.
+
 ## 2026-10-15 — Budget : les dates de la période personnalisée sont assez larges
 
 - Dans le Budget, en choisissant « Dates », les deux champs de date (début et fin) affichent maintenant la date en entier, sans la couper.

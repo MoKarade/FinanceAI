@@ -21,6 +21,7 @@ import { contextualCategorize } from '../services/transactions/contextualCategor
 import { EmptyState } from './ui/EmptyState';
 import { PageHeader } from './ui/PageHeader';
 import { Icon } from './ui/Icon';
+import { ConfirmModal } from './ui/ConfirmModal';
 import { ImportBankStatement } from './import/ImportBankStatement';
 import { PrivateAmount } from './ui/PrivateAmount';
 import { useFinanceStore } from '../store/useFinanceStore';
@@ -196,9 +197,12 @@ export const Transactions: React.FC<TransactionsProps> = ({
         showToast(`Règle ajoutée : « ${maskPayee(rule.pattern, isPrivacyMode)} » → ${maskCategory(rule.category, isPrivacyMode)}`, 'success');
     };
 
+    // [REGLE-SUPPRESSION-CONFIRMATION] Le bouton ouvre une confirmation ; la suppression a lieu à la confirmation.
+    const [confirmDeleteRuleId, setConfirmDeleteRuleId] = useState<string | null>(null);
     const handleDeleteRule = (id: string) => {
         const updated = categorizationRules.filter(r => r.id !== id);
         setCategorizationRules?.(updated);
+        showToast('Règle supprimée', 'success');
     };
 
     const handleApplyRuleNow = (rule: CategorizationRule) => {
@@ -777,8 +781,8 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                 <span className="text-ink-200 font-bold flex-1 truncate">"{rule.pattern}"</span>
                                                 <Icon name="chevron-right" size={12} className="text-ink-500 hidden sm:inline shrink-0" />
                                                 <PrivateText quoi="categorie" className="text-ink-100 bg-white/10 px-2 py-0.5 rounded-sm font-bold truncate max-w-[120px]">{rule.category}</PrivateText>
-                                                <button onClick={() => handleApplyRuleNow(rule)} aria-label={`Appliquer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-ink-300 hover:text-primary transition-all text-tiny font-bold ml-1">Appliquer</button>
-                                                <button onClick={() => handleDeleteRule(rule.id)} aria-label={`Supprimer la regle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-500 transition-all ml-1 p-2 -m-1"><Icon name="close" size={13} /></button>
+                                                <button onClick={() => handleApplyRuleNow(rule)} aria-label={`Appliquer la règle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 text-ink-300 hover:text-primary transition-all text-tiny font-bold ml-1">Appliquer</button>
+                                                <button onClick={() => setConfirmDeleteRuleId(rule.id)} aria-label={`Supprimer la règle ${rule.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 inline-flex text-danger-400 hover:text-danger-500 transition-all ml-1 p-2 -m-1"><Icon name="close" size={13} /></button>
                                             </div>
                                         ))}
                                     </div>
@@ -790,6 +794,18 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             )}
                         </section>
                     )}
+
+                    <ConfirmModal
+                        isOpen={confirmDeleteRuleId !== null}
+                        title="Supprimer cette règle ?"
+                        message="Les prochaines transactions ne seront plus classées automatiquement par cette règle."
+                        confirmLabel="Supprimer"
+                        onConfirm={() => {
+                            if (confirmDeleteRuleId) handleDeleteRule(confirmDeleteRuleId);
+                            setConfirmDeleteRuleId(null);
+                        }}
+                        onCancel={() => setConfirmDeleteRuleId(null)}
+                    />
 
                     {processing && (
                         <div role="status" aria-live="polite" className="bg-black/80 border border-green-500/30 rounded-lg p-3 font-mono text-tiny text-green-400 h-32 overflow-y-auto custom-scrollbar flex flex-col-reverse shadow-inner">

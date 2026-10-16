@@ -44,6 +44,10 @@ Libellés sans accent (« categorie », « deja classe », « mises a jour », �
   Il affiche « Ce fichier n'est pas une sauvegarde FinanceAI valide » ; le détail va au `logError`. Constante :
   `services/backupMessages.ts`. Test : `tests/services/backupMessages.test.ts`.
 
+## 2026-10-15 — `[REGLE-SUPPRESSION-CONFIRMATION]` suppression d'une règle de classement avec confirmation
+
+`components/Transactions.tsx` : la croix ouvre `ConfirmModal`, la suppression a lieu à la confirmation puis toast « Règle supprimée ». Test : `tests/components/Transactions.regleSuppression.test.tsx`. PR : à renseigner à l'ouverture.
+
 ## 2026-10-15 — Budget : dates de la période personnalisée assez larges
 
 - [x] `[BUDGET-DATES-PERSO-LARGES]` Les champs « Date de début » / « Date de fin » (`components/budget/pilotage.tsx`) passent de `w-28` à `w-36` pour montrer la date complète. Test : `tests/components/budget.periodePerso.test.tsx`.

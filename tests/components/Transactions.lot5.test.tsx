@@ -48,7 +48,7 @@ describe('[REFONTE-NAV-L5] deep-link Budget → Transactions (arrivée filtrée)
                 setTransactions={vi.fn()} apiKey="" budgetItems={[EPICERIE]}
             />,
         );
-        const select = screen.getByLabelText('Filtre par categorie') as HTMLSelectElement;
+        const select = screen.getByLabelText('Filtre par catégorie') as HTMLSelectElement;
         expect(select.value).toBe('Épicerie');
         // L'ancre du scroll suit la catégorie filtrée, et le focus est one-shot.
         expect(container.querySelector('[data-focus-section="category:Épicerie"]')).toBeTruthy();
@@ -57,7 +57,7 @@ describe('[REFONTE-NAV-L5] deep-link Budget → Transactions (arrivée filtrée)
 
     it('sans pendingFocus : filtre par défaut « All »', () => {
         render(<Transactions transactions={[tx(1, 'IGA', 'Épicerie')]} setTransactions={vi.fn()} apiKey="" budgetItems={[]} />);
-        expect((screen.getByLabelText('Filtre par categorie') as HTMLSelectElement).value).toBe('All');
+        expect((screen.getByLabelText('Filtre par catégorie') as HTMLSelectElement).value).toBe('All');
     });
 });
 
@@ -72,7 +72,7 @@ describe('[REFONTE-NAV-L5] cross-link « Voir au budget »', () => {
             />,
         );
         expect(screen.queryByText(/Voir au budget/)).toBeNull(); // pas de lien sur « All »
-        fireEvent.change(screen.getByLabelText('Filtre par categorie'), { target: { value: 'Épicerie' } });
+        fireEvent.change(screen.getByLabelText('Filtre par catégorie'), { target: { value: 'Épicerie' } });
         const link = screen.getByText(/Voir au budget/);
         fireEvent.click(link);
         expect(navSpy).toHaveBeenCalledWith(Tab.BUDGET, 'poste:Épicerie');
@@ -85,7 +85,7 @@ describe('[REFONTE-NAV-L5] cross-link « Voir au budget »', () => {
                 setTransactions={vi.fn()} apiKey="" budgetItems={[EPICERIE]}
             />,
         );
-        fireEvent.change(screen.getByLabelText('Filtre par categorie'), { target: { value: 'Autre' } });
+        fireEvent.change(screen.getByLabelText('Filtre par catégorie'), { target: { value: 'Autre' } });
         expect(screen.queryByText(/Voir au budget/)).toBeNull();
     });
 });

@@ -21,6 +21,10 @@
 
 Guide du bouton ? (`components/GuideModal.tsx`) : accents, tutoiement, mentions périmées retirées (curseurs, données théoriques, « Départ en 2026 », « v4.0 »). Test : `tests/components/GuideModal.langue.test.tsx`.
 
+## 2026-10-15 — `[TRANSACTIONS-LANGUE]` Transactions : accents et tutoiement
+
+Libellés sans accent (« categorie », « deja classe », « mises a jour », « par regles ») et vouvoiement corrigés dans `components/Transactions.tsx`. Test : `tests/components/Transactions.langue.test.tsx`. PR : carte 12.
+
 ## 2026-10-15 — Fintable : l'échec d'une passe est dit en mots simples
 
 - [x] **`[FINTABLE-ERREUR-SIMPLE]`** — `FintableSyncCard.tsx` affichait « échec — Appel Fintable /… : HTTP 401 … ».

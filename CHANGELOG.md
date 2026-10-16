@@ -14,6 +14,10 @@
 
 - Le contrat du hub passe de `v1.3.1` à `v1.4.0` : ajout d'un sous-chemin `/session`, rien ne change pour FinanceAI (même version de contrat, même résumé publié).
 
+## 2026-10-15 — Transactions : accents et tutoiement
+
+- Les messages et libellés de l'onglet Transactions sont écrits en français correct : « Filtre par catégorie », « Catégorie à appliquer », « Choisir une catégorie… », « transaction(s) mises à jour », « classée(s) par règles — rien à envoyer à l'IA », « Tout semble déjà classé ! Utilise le mode manuel si besoin. ».
+
 ## 2026-10-15 — Fintable : l'échec d'une synchro est dit en mots simples
 
 - Quand la synchro Fintable échoue, la carte dit « Fintable refuse la connexion : renouvelle ton jeton » ou « Fintable ne répond pas, réessaie dans un instant ». Le message technique est replié sous « Détail technique ».

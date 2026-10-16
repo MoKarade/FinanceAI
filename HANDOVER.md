@@ -10,6 +10,12 @@
 > (clic réel + vrai hook, discriminant : 3 tests sur 4 rouges avec l'ancien code). Limite [Probable] : l'écart courtier est classé dans « Non-Enregistré »
 > même s'il vient d'un panier CELI/REER (`placementsFaisantAutorite` ne le ventile pas par régime) ; la somme reste juste.
 >
+> ## 🟦 Session 2026-10-16 — **`[VERCEL-PREVERSIONS-COUPEES]`** (FinanceAI#1170)
+> `vercel.json` `git.deploymentEnabled` : `**` et `*` à `false`, `main` à `true` (même forme qu'app-template), `claude/*` gardé. Constat
+> avant : 10 préversions `agence/*` READY listées par Vercel le 16/10/2026 (dernière 09 h 57 UTC), car seul `claude/*` était coupé.
+> Garde : `tests/api/accessConfigFichiers.test.ts` (main seule activée). Chemin protégé : Marc fusionne. À vérifier après fusion :
+> une branche de test ne crée aucun déploiement, et le push de fusion sur `main` déploie en production.
+>
 > ## 🟦 Session 2026-10-16 — **`[FUTUR-AXE-Y-MINIMAL]` : Historique sur téléphone, axe Y masqué + badge** (FinanceAI#1144)
 > `ZoomableTimeChart` reçoit l'option `axeYMinimal` (défaut `false`) : axe masqué, `ReferenceDot` + `BadgeValeurFinale` sur le
 > dernier point (somme des aires empilées, `null` si une série manque ; `maskedTick` en mode discret). Seul `FutureHistorySection`

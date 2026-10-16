@@ -13300,3 +13300,20 @@ quelle, ne pas en déduire une parenté avec EVENTS. Contexte intégral :
   L'obstacle structurel qui bloquait la conversion (7 blocs conditionnels dispersés pour 4 onglets,
   un `role="tabpanel"` par bloc aurait produit des `id` en double) n'avait donc plus besoin d'être
   résolu : le contournement de fond était de ne plus avoir de panneaux exclusifs du tout.
+
+
+## Livré le 2026-10-16 — `[PDF-DETTES-SOLDE-BRUT]` (FinanceAI#1154)
+
+- [x] 🔧 **`[PDF-DETTES-SOLDE-BRUT]`** (S) — **LIVRÉ 2026-10-16 (FinanceAI#1154) : dettes au solde du jour via `useDerivedFinancials`, test `tests/services/pdfAdditionneAvecLuiMeme.test.ts`.** Le rapport PDF ne se recomposait pas avec lui-même.
+  `components/app/exportPdfEcran.ts` somme `state.debts.reduce((s, d) => s + d.balance, 0)` et
+  `services/pdfReport.ts` remplit chaque ligne (`balance`, `monthsToZero`) depuis `d.balance` —
+  aucun des deux ne passe par `soldeDetteAujourdhui`. Le même document affiche pourtant un
+  patrimoine net CORRECT (il vient de `computePresentNetWorth`, corrigé). **Mesuré sur le bail de
+  Marc : le PDF dépasse l'écran d'environ 3,6 %, et l'écart grandit d'un versement hebdomadaire chaque semaine.**
+  Un document exporté et partagé où `actifs − dettes ≠ valeur nette`, sans avertissement.
+  ⚠️ Pré-existant (`[DETTE-SOLDE-INSTANTANE-FIGE]`, 17/09) ; `[DETTE-VIREMENTS-REELS]` en élargit
+  la magnitude, il ne le crée pas. Routé plutôt que corrigé : deux fichiers qu'aucun des deux lots
+  ne touche.
+- [x] 🟡 **`[PDF-PLACEMENTS-SANS-ECART-COURTIER]`** (S, **LIVRÉ 2026-10-16 avec `[PDF-DETTES-SOLDE-BRUT]`**, FinanceAI#1154) — la
+  ligne « Non-Enregistré » du PDF est la somme des titres, l'actif net inclut l'écart courtier : la
+  page ne s'additionne pas.

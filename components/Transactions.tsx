@@ -214,7 +214,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
             }
             return t;
         }));
-        showToast(`${count} transaction(s) mises a jour`, 'success');
+        showToast(`${count} transaction(s) mises à jour`, 'success');
     };
 
     const availableCategories = useMemo(() => {
@@ -329,7 +329,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
         if (targetTxs.length === 0) {
             targetTxs = transactions.filter(t => !t.isDuplicate && !isLocked(t) && t.category === 'Autre');
             if (targetTxs.length === 0) {
-                showToast("Tout semble deja classe ! Utilisez le mode manuel si besoin.", "info");
+                showToast("Tout semble déjà classé ! Utilise le mode manuel si besoin.", "info");
                 setProcessing(false);
                 return;
             }
@@ -360,11 +360,11 @@ export const Transactions: React.FC<TransactionsProps> = ({
                     ? { ...t, category: cat, status: 'processed' as const, isTransfer: cat === 'Transfert' ? true : t.isTransfer, isAiProcessed: false, confidence: 100 }
                     : t;
             }));
-            setLiveLogs(prev => [...prev, `${ruled.size} classee(s) par regles (sans IA)${promoted > 0 ? `, dont ${promoted} abonnement(s) reconnu(s) a la recurrence` : ''}.`]);
+            setLiveLogs(prev => [...prev, `${ruled.size} classée(s) par règles (sans IA)${promoted > 0 ? `, dont ${promoted} abonnement(s) reconnu(s) à la récurrence` : ''}.`]);
             targetTxs = targetTxs.filter(t => !ruled.has(t.id));
         }
         if (targetTxs.length === 0) {
-            showToast(`${ruled.size} transaction(s) classee(s) par regles — rien a envoyer a l'IA.`, 'success');
+            showToast(`${ruled.size} transaction(s) classée(s) par règles — rien à envoyer à l'IA.`, 'success');
             setSelectedIds(new Set()); // même nettoyage que le chemin IA (finding panel : sélection qui restait cochée)
             setProcessing(false);
             return;
@@ -698,7 +698,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                                 }}
                                                 value=""
                                             >
-                                                <option value="" disabled>Choisir categorie...</option>
+                                                <option value="" disabled>Choisir une catégorie…</option>
                                                 {availableCategories.map(c => (
                                                     <option key={c} value={c}>{c}</option>
                                                 ))}
@@ -758,10 +758,10 @@ export const Transactions: React.FC<TransactionsProps> = ({
                                     <select
                                         value={newRuleCategory}
                                         onChange={e => setNewRuleCategory(e.target.value)}
-                                        aria-label="Categorie a appliquer"
+                                        aria-label="Catégorie à appliquer"
                                         className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-meta text-white focus:border-indigo-400 outline-hidden"
                                     >
-                                        <option value="">-- Categorie --</option>
+                                        <option value="">-- Catégorie --</option>
                                         {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                     <button
@@ -840,7 +840,7 @@ export const Transactions: React.FC<TransactionsProps> = ({
                             <div className={`flex items-center gap-2 ${etroit ? 'overflow-x-auto -mx-6 px-6 scrollbar-hide' : 'shrink-0'}`}>
                                 <span className="relative shrink-0">
                                     <select
-                                        aria-label="Filtre par categorie"
+                                        aria-label="Filtre par catégorie"
                                         className={`champ-nu appearance-none h-10 pl-3.5 pr-7 rounded-full border text-[13px] max-w-[180px] truncate cursor-pointer focus-ring ${selectedCategory !== 'All' ? 'bg-primary/15 border-primary/60 text-ink-50' : 'bg-surfaceHighlight border-white/10 text-ink-100'}`}
                                         value={selectedCategory}
                                         onChange={(e) => vueFiltree(() => setSelectedCategory(e.target.value))}

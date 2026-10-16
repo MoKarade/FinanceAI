@@ -4,6 +4,12 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-16 — **`[PANNEAU-VARIATION-RACCORD-PASSE-FUTUR]` : plus de « Variation du jour » au raccord** (FinanceAI#1142)
+> `recomputeDailyDiffs` (`services/projection/dailyCurve.ts`) retire les `diff*` d'un point projeté dont la veille
+> calendaire est un point RÉEL (`dayIsReal`). Le badge du panneau du jour disparaît ce jour-là (déjà masqué quand
+> `diffNW` est absent) ; aucun chiffre lissé. Non fait : décomposer l'écart 17/09 → 18/09 (bases de prix ?) ; le
+> libellé était seul en cause. Test : `tests/services/dailyCurve.test.ts` (« raccord réel → projeté »).
+
 > ## 🟦 Session 2026-09-29 (design) — **`[A11Y-PANNEAU]` : bordures des boutons fantômes >= 3:1**
 > Bordures du `PanneauJour` : `border-white/20` -> `/40` (Veille, Lendemain, Revenir à aujourd'hui),
 > `border-primary/30` -> `/45` (Détail complet), choisies par calcul de contraste composé sur les fonds du

@@ -132,6 +132,51 @@ describe('recomputeDailyDiffs — après fusion, à travers la frontière des mo
     });
 });
 
+// [RACCORD-PASSE-FUTUR, FinanceAI#1142] La marche entre le dernier jour RÉEL et le premier jour
+// PROJETÉ n'est pas une « variation du jour » : le diff est ABSENT, aucun chiffre n'est lissé.
+describe('recomputeDailyDiffs — raccord réel → projeté', () => {
+    // Données fictives : un saut de 5 000 $ au raccord, alors que le jour ne porte que quelques dollars.
+    const pt = (dayIso: string, NetWorth: number, real: boolean): ProjectionChartPoint => ({
+        monthIndex: 0, dayIso, NetWorth, CELI: NetWorth / 2, REER: NetWorth / 4, Liquidites: NetWorth / 8,
+        ...(real ? { dayIsReal: true } : {}),
+    } as unknown as ProjectionChartPoint);
+    const rec = (p: ProjectionChartPoint) => p as unknown as Record<string, unknown>;
+
+    it('deux points contigus réel puis projeté : AUCUN diff posé, valeurs intactes', () => {
+        const series = [
+            pt('2026-09-16', 100_000, true),
+            pt('2026-09-17', 100_010, true),
+            pt('2026-09-18', 105_012, false),
+            pt('2026-09-19', 105_020, false),
+        ];
+        recomputeDailyDiffs(series);
+        for (const k of ['diffNW', 'diffCELI', 'diffREER', 'diffLiquid']) {
+            expect(rec(series[2])[k]).toBeUndefined();
+        }
+        expect(series[2].NetWorth).toBe(105_012);
+        expect(series[1].NetWorth).toBe(100_010);
+    });
+
+    it('un diff déjà posé par le ledger au raccord est RETIRÉ, pas conservé', () => {
+        const projected = pt('2026-09-18', 105_012, false);
+        (projected as unknown as Record<string, number>).diffNW = 4_999;
+        recomputeDailyDiffs([pt('2026-09-17', 100_013, true), projected]);
+        expect(rec(projected).diffNW).toBeUndefined();
+    });
+
+    it('contrôles : réel→réel et projeté→projeté gardent leur variation du jour', () => {
+        const series = [
+            pt('2026-09-16', 100_000, true),
+            pt('2026-09-17', 100_010, true),
+            pt('2026-09-18', 105_012, false),
+            pt('2026-09-19', 105_020, false),
+        ];
+        recomputeDailyDiffs(series);
+        expect(rec(series[1]).diffNW).toBe(10);
+        expect(rec(series[3]).diffNW).toBe(8);
+    });
+});
+
 function daysCount(year: number, month0: number): number {
     return new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
 }

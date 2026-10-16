@@ -333,6 +333,7 @@ const FutureHistorySection: React.FC = () => {
                             isPrivacyMode={isPrivacyMode}
                             hiddenAccounts={hiddenAccounts}
                             showTotalLine={showTotalLine}
+                            axeYMinimal={isNarrowViewport}
                         />
                     </Suspense>
                 )}

@@ -1,10 +1,11 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { CHART_TOOLTIP_STYLE, CHART_TOOLTIP_ITEM_STYLE } from '../../utils/chartTooltip';
-import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceDot } from 'recharts';
 import { formatCompactCAD } from '../../utils/format';
 import { useTimeChartZoom } from '../../hooks/useTimeChartZoom';
 import { ChartDataTable, type ChartDataColumn } from './ChartDataTable';
 import { MASKED_AMOUNT_LABEL } from '../../utils/privacyAria';
+import { maskedTick } from '../../utils/chartPrivacy';
 
 /**
  * Phase D.2 — graphique temporel avec zoom molette + pan-on-drag.
@@ -47,6 +48,14 @@ interface ZoomableTimeChartProps {
     yFormatter?: (val: number) => string;
     /** Affiche la barre de contrôles (périodes + plein écran). Défaut true. */
     showControls?: boolean;
+    /**
+     * [FUTUR-AXE-Y-MINIMAL, FinanceAI#1144] Masque l'axe Y numérique (55 px récupérés pour le tracé)
+     * et le remplace par un badge portant la valeur du DERNIER point visible. Fourni par l'appelant,
+     * défaut `false` : les autres usages (StockChart, comparateur de titres) gardent leur axe.
+     * Le badge n'existe qu'en mode empilé (le haut de la pile = la somme des séries) et seulement
+     * si chaque série empilée a une valeur finie au dernier point — jamais un total partiel.
+     */
+    axeYMinimal?: boolean;
 }
 
 // Présélections de période (lookback depuis la dernière date). On n'affiche que
@@ -100,6 +109,49 @@ export function tooltipValue(
     return privacyMode ? MASKED_AMOUNT_LABEL : yFormatter(val);
 }
 
+/**
+ * Total EMPILÉ du dernier point visible (haut de la pile d'aires = ce que le badge ancre). `null`
+ * si la valeur n'est pas honnêtement calculable : aucune aire, une série absente/non finie au
+ * dernier point (un trou n'est pas un 0 — le total serait partiel). Les séries `line` (ex. la
+ * ligne « Total » superposée) ne s'empilent pas : exclues.
+ */
+export function totalEmpileDernierPoint(
+    visibleData: ReadonlyArray<Record<string, unknown>>,
+    series: ReadonlyArray<ZoomableSeries>,
+): number | null {
+    const last = visibleData[visibleData.length - 1];
+    const aires = series.filter((s) => s.type !== 'line');
+    if (!last || aires.length === 0) return null;
+    let total = 0;
+    for (const s of aires) {
+        const v = last[s.key];
+        if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+        total += v;
+    }
+    return total;
+}
+
+/**
+ * Forme du badge « valeur du dernier point » (`ReferenceDot`, recharts y injecte `cx`/`cy`).
+ * Le dernier point colle au bord droit du graphe : la pastille se pose à sa GAUCHE (contrairement
+ * à `TodayValueBadge`, ancrée à droite d'un point central) et reste dans la zone visible.
+ */
+export const BadgeValeurFinale = (props: { cx?: number; cy?: number; value?: string }) => {
+    const { cx, cy, value } = props;
+    if (!Number.isFinite(cx) || !Number.isFinite(cy) || !value) return null;
+    const h = 22;
+    const w = Math.round(value.length * 12 * 0.58 + 20);
+    const x = Math.max(2, (cx as number) - w - 8);
+    const y = Math.max(2, (cy as number) - h - 8);
+    return (
+        <g aria-hidden="true" style={{ pointerEvents: 'none' }}>
+            <circle cx={cx} cy={cy} r={4} fill="#ffffff" stroke="#0B0E14" strokeWidth={1.5} />
+            <rect x={x} y={y} width={w} height={h} rx={11} fill="#0B0E14" fillOpacity={0.92} stroke="#ffffff" strokeOpacity={0.55} />
+            <text x={x + w / 2} y={y + h / 2 + 0.5} textAnchor="middle" dominantBaseline="central" fill="#ffffff" fontSize={12} fontWeight="bold">{value}</text>
+        </g>
+    );
+};
+
 export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
     data,
     xKey,
@@ -109,6 +161,7 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
     stacked = true,
     yFormatter = defaultYFormatter,
     showControls = true,
+    axeYMinimal = false,
 }) => {
     const { containerRef, containerEl, visibleData, isZoomed, isPanning, handlers, reset, showRange } = useTimeChartZoom(data);
 
@@ -155,6 +208,19 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
         if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
         else el.requestFullscreen?.().catch(() => {});
     }, [containerEl]);
+
+    // [FUTUR-AXE-Y-MINIMAL] Valeur du badge : calculée seulement quand l'axe est masqué ET empilé,
+    // formatée comme l'axe (`yFormatter`) et masquée en mode discret (`maskedTick`, source du « *** »).
+    const badgeFinal = useMemo(() => {
+        if (!axeYMinimal || !stacked || visibleData.length === 0) return null;
+        const total = totalEmpileDernierPoint(visibleData, series);
+        if (total === null) return null;
+        return {
+            x: visibleData[visibleData.length - 1][xKey] as string | number,
+            y: total,
+            texte: maskedTick(privacyMode, yFormatter)(total),
+        };
+    }, [axeYMinimal, stacked, visibleData, series, xKey, privacyMode, yFormatter]);
 
     // [A11Y-CHARTS] colonnes de la table de données sr-only (alternative texte au graphe Recharts,
     // opaque aux lecteurs d'écran). Le mode privé masque les valeurs (parité avec l'axe/tooltip).
@@ -232,13 +298,18 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
                         minTickGap={40}
                         tickFormatter={(str) => formatTick(str, spanDays)}
                     />
-                    <YAxis
-                        stroke="#555"
-                        tick={{ fontSize: 10 }}
-                        width={55}
-                        domain={['auto', 'auto']}
-                        tickFormatter={(val) => privacyMode ? '***' : yFormatter(val)}
-                    />
+                    {axeYMinimal ? (
+                        // Axe masqué (domaine identique) : le tracé récupère la gouttière de 55 px.
+                        <YAxis hide domain={['auto', 'auto']} />
+                    ) : (
+                        <YAxis
+                            stroke="#555"
+                            tick={{ fontSize: 10 }}
+                            width={55}
+                            domain={['auto', 'auto']}
+                            tickFormatter={(val) => privacyMode ? '***' : yFormatter(val)}
+                        />
+                    )}
                     <Tooltip
                         contentStyle={CHART_TOOLTIP_STYLE}
                         itemStyle={CHART_TOOLTIP_ITEM_STYLE}
@@ -276,6 +347,15 @@ export const ZoomableTimeChart: React.FC<ZoomableTimeChartProps> = ({
                                 isAnimationActive={false}
                             />
                         ),
+                    )}
+                    {badgeFinal && (
+                        <ReferenceDot
+                            x={badgeFinal.x}
+                            y={badgeFinal.y}
+                            r={0}
+                            ifOverflow="extendDomain"
+                            shape={<BadgeValeurFinale value={badgeFinal.texte} />}
+                        />
                     )}
                 </ComposedChart>
             </ResponsiveContainer>

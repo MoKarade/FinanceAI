@@ -135,6 +135,7 @@ export const TaxBracketViz: React.FC<TaxBracketVizProps> = ({ annualGrossIncome,
                                 className="absolute top-0 h-full flex items-center justify-center"
                                 style={{
                                     left: `${startPct}%`,
+                                    // MONTANT-PUBLIC : largeur d'une tranche du barème (loi), pas une donnée de l'utilisateur
                                     width: `${widthPct}%`,
                                     background: `rgba(${colorBase}, ${intensity})`,
                                 }}

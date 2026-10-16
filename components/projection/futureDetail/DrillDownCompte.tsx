@@ -173,6 +173,7 @@ export const DrillDownCompte: React.FC<DrillDownCompteProps> = ({
                                         onClick={() => zoom.showRange(0, idxForYears(y))}
                                         className={`px-2 py-0.5 text-tiny font-bold rounded-sm transition-colors focus-ring ${active ? 'bg-primary text-dark' : 'text-ink-300 hover:text-dark hover:bg-white/10'}`}
                                     >
+                                        {/* NOMBRE-NON-MONETAIRE : axe d'âge ou d'année de la projection, pas une valeur dérivée du dossier */}
                                         {y} ans
                                     </button>
                                 );

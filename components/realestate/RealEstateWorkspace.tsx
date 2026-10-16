@@ -536,6 +536,7 @@ export const RealEstateWorkspace: React.FC<RealEstateWorkspaceProps> = ({
                                     aria-pressed={amortization === n}
                                     className={`h-9 rounded-lg text-[13px] transition-colors focus-ring ${amortization === n ? 'bg-ink-50 text-dark font-semibold' : 'text-ink-200 hover:bg-white/5'}`}
                                 >
+                                    {/* NOMBRE-NON-MONETAIRE : choix d'une durée d'amortissement (réglage proposé) */}
                                     {n} ans
                                 </button>
                             ))}

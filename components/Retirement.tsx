@@ -383,6 +383,7 @@ export const RetirementTooltip = React.memo(({ active, payload }: RetirementTool
     return (
         <div className="bg-surface border border-white/10 p-4 rounded-xl shadow-2xl max-w-[280px] z-50">
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/10">
+                {/* NOMBRE-NON-MONETAIRE : axe d'âge ou d'année de la projection, pas une valeur dérivée du dossier */}
                 <span className="text-body font-bold text-ink-50">{data.age} ans</span>
                 <span className={`text-meta font-bold px-2 py-1 rounded-md ${isRetired ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-info-500/10 text-info-400 border border-info-500/20'}`}>
                     {isRetired ? 'En retraite' : 'Accumulation'}

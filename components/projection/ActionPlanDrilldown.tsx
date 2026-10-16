@@ -125,6 +125,7 @@ export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartD
                         {current.label}
                         {current.ageStart != null && (
                             <span className="text-ink-400 font-normal">
+                                {/* NOMBRE-NON-MONETAIRE : axe d'âge ou d'année de la projection, pas une valeur dérivée du dossier (bornes d'âge du palier) */}
                                 {' · '}{current.ageStart}{current.ageEnd != null && current.ageEnd !== current.ageStart ? `–${current.ageEnd}` : ''} ans
                             </span>
                         )}

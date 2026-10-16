@@ -976,6 +976,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
                     // [BUDGET-REEL-PREVISIONNEL-OBJECTIF] Objectif = somme des cibles de dépense par
                     // catégorie, hors ÉPARGNE et hors simulateur d'inflation (cf. sa définition).
                     objectif={totalSpendObjectifDisplay}
+                    /* NOMBRE-NON-MONETAIRE : nombre de mois d'historique moyennés, aucun montant ni ratio financier */
                     titrePrevu={`Budget = moyenne des ${pastAverages.fullMonths} mois complets passés, hors impôts`}
                     // [BUDGET-IMPOTS-HORS-COMPARAISON] (décision Marc 2026-09-05, 3a) : les impôts sortent
                     // du réel ET la tuile le dit, montant à l'appui, dès qu'il y en a.

@@ -17346,3 +17346,13 @@ est déjà le 1er du mois suivant dès ~10 h au Québec le dernier jour du mois.
   (`process.env.TZ ?? Intl.DateTimeFormat().resolvedOptions().timeZone`). Jamais `delete`.
 - Un test qui passe seul et échoue en groupe, à une date précise, signale une fuite d'état
   global (fuseau, horloge simulée, store). On isole par `-t` avant de soupçonner le code.
+
+## `UN-CORRECTIF-PEUT-SORTIR-DU-CHAMP-DE-SA-PROPRE-REGEX` (2026-10-16, `[PRIVACY-GARDE-DUREES-SCORES-BARRES]`)
+
+En étendant `amountPrivacyScan` aux scores `{x}/100`, la regex a relevé le badge d'Investissements, puis
+le correctif (`{score}</PrivateAmount>/100`) a fait disparaître le site de la regex elle-même : la balise
+fermante s'intercalait avant `/100`. Le test d'anti-vacuité par témoin nommé l'a signalé avant le commit.
+- Après avoir corrigé un site relevé par une garde, relancer la garde SUR le site corrigé : une forme
+  corrigée que la regex ne reconnaît plus rend la garde aveugle à sa version non masquée (`<b>{x}</b>/100`).
+- Une exception de la garde pour les « définitions d'alias » (`const f = (v) => …`) doit se limiter aux
+  formateurs ; une flèche qui construit `${v} ans` est un rendu.

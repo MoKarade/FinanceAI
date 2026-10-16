@@ -229,6 +229,7 @@ export const MissingDataChecklist: React.FC<{ className?: string }> = ({ classNa
             <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden mb-4 border border-white/5">
                 <div
                     className={`h-full rounded-full transition-all duration-700 ${completedPct === 100 ? 'bg-success-500' : 'bg-linear-to-r/srgb from-warning-400 to-success-400'}`}
+                    /* NOMBRE-NON-MONETAIRE : taux de complétude de la saisie (étapes remplies), pas un ratio financier */
                     style={{ width: `${completedPct}%` }}
                     aria-hidden="true"
                 />

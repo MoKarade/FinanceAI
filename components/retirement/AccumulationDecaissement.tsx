@@ -64,12 +64,14 @@ export const AccumulationDecaissement: React.FC<Props> = ({ donnees, zoom, ageRe
         const bord = index === 0 || index === visibleTicksCount - 1;
         return (
             <text x={x} y={y + 12} textAnchor={index === 0 ? 'start' : index === visibleTicksCount - 1 ? 'end' : 'middle'} fill="#8896a8" fontSize={etroit ? 10 : 11} fontFamily="JetBrains Mono">
+                {/* NOMBRE-NON-MONETAIRE : axe d'âge ou d'année de la projection, pas une valeur dérivée du dossier */}
                 {etroit && !bord ? payload?.value : `${payload?.value} ans`}
             </text>
         );
     };
     const PastilleRetraite = (props: { viewBox?: { x?: number; y?: number } }) => {
         const x = props.viewBox?.x ?? 0;
+        // NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (âge de retraite)
         const texte = `Retraite · ${ageRetraite} ans`;
         const largeur = texte.length * (etroit ? 6.2 : 6.8) + (etroit ? 20 : 24);
         const hauteur = etroit ? 22 : 24;

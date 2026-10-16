@@ -715,7 +715,7 @@ export const Investments: React.FC<InvestmentsProps> = ({
             className={`h-[30px] lg:h-9 px-3 lg:px-4 rounded-full border text-meta lg:text-[13px] font-semibold flex items-center whitespace-nowrap ${scoreClasses}`}
             title="Sous-mesure : diversification du portefeuille + tendance vs marché (le score de santé financière GLOBAL est sur l'Accueil)"
         >
-            Diversification {diversificationScore}/100
+            Diversification <PrivateAmount>{diversificationScore}</PrivateAmount>/100
         </span>
     );
     const lienFutur = (

@@ -184,6 +184,7 @@ export const GuidedTour: React.FC = () => {
         <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-4" aria-hidden="true">
           <div
             className="h-full bg-primary transition-all duration-300"
+            /* NOMBRE-NON-MONETAIRE : progression d'une tâche (démarrage, import, visite guidée), pas une donnée du dossier */
             style={{ width: `${((idx + 1) / total) * 100}%` }}
           />
         </div>

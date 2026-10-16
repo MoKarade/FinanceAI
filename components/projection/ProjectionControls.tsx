@@ -234,6 +234,7 @@ export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
                         {/* [HORIZON-ESPERANCE-DE-VIE] Plus de curseur : la projection va toujours jusqu'à
                             l'espérance de vie de la personne 1 (réglée dans Retraite). */}
                         <p className="text-meta text-ink-300">
+                            {/* NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (espérance de vie réglable) */}
                             Horizon : jusqu'à <span className="text-secondary font-bold">{esperanceDeVie} ans</span> (espérance de vie, réglable dans Retraite)
                         </p>
                         <div>

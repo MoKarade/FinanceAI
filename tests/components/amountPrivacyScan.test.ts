@@ -133,6 +133,26 @@ const NOMBRE_DIRECT = /\bformatNumber\s*\(/;
  */
 const RATIO_BASE = /\bformatPercent\s*\(|\bformatVariationPct\s*\(|\.toFixed\(\s*\d*\s*\)[^\n%]{0,6}%/;
 
+/**
+ * [PRIVACY-GARDE-DUREES-SCORES-BARRES] Les trois familles que la garde ne voyait pas (Marc, 2026-10-16,
+ * option 1 sur #1149 : « étendre la garde »). Le lot 5 les couvrait par des tests de rendu seulement :
+ * un NOUVEAU site de ces familles passait sans que rien ne rougisse. Relevés, comme les ratios :
+ *  · SCORE_BASE — `{score}/100` (texte ou gabarit) ;
+ *  · BARRE_BASE — largeur/hauteur d'une barre en `${…}%`, `scaleX(`, `strokeDashoffset={…}`, et
+ *                 `aria-valuenow={…}` (la valeur d'une barre dite aux lecteurs d'écran) ;
+ *  · DUREE_BASE — `{n} mois`, `{n} ans`, `{n} an` (durée ou âge rendu).
+ * Même sortie que les ratios : une marque de mode discret dans la fenêtre, OU un jeton ci-dessus
+ * `NOMBRE-NON-MONETAIRE` pour un nombre qui n'est PAS dérivé du dossier (réglage saisi, horizon,
+ * axe d'âge ou d'année, fraîcheur d'une donnée, durée d'un barème). Un score, une barre ou une durée
+ * DÉRIVÉ du dossier se masque : le jeton ne le couvre pas.
+ * Volontairement hors périmètre : `jours` (fraîcheur de donnée, jamais une durée financière) et les
+ * `strokeDasharray` (décor de grille, pas une valeur).
+ */
+const SCORE_BASE = /\}(?:\s*<\/\w+>)?\s?\/\s?100\b/;
+const BARRE_BASE = /\b(?:width|height):\s*`[^`]*\$\{[^}]*\}\s*%|\bscaleX\(|\bstrokeDashoffset=\{|\baria-valuenow=\{/;
+const DUREE_BASE = /\}\s*(?:mois|ans?)\b/;
+const SCORE_BARRE_DUREE = (l: string): boolean => SCORE_BASE.test(l) || BARRE_BASE.test(l) || DUREE_BASE.test(l);
+
 interface Site { fichier: string; ligne: number; texte: string }
 
 function sitesNonMasques(): Site[] {
@@ -152,10 +172,12 @@ function sitesNonMasquesDans(brut: string, fichier: string): Site[] {
         const ALIAS = alias.length ? new RegExp(`\\b(${alias.join('|')})\\s*\\(`) : null;
         lines.forEach((l, i) => {
             const monetaire = MONEY_BASE.test(l) || (ALIAS !== null && ALIAS.test(l));
-            const nombre = NOMBRE_DIRECT.test(l) || RATIO_BASE.test(l);
+            const formateur = NOMBRE_DIRECT.test(l) || RATIO_BASE.test(l);
+            const nombre = formateur || SCORE_BARRE_DUREE(l);
             if (!monetaire && !nombre) return;
-            // La DÉFINITION d'un alias n'est pas un rendu — c'est son point d'APPEL qui compte.
-            if (/const\s+\w+\s*[:=][^\n]*=>/.test(l) && (MONEY_BASE.test(l) || nombre)) return;
+            // La DÉFINITION d'un alias de formateur n'est pas un rendu — c'est son point d'APPEL qui compte.
+            // (Pas pour scores/barres/durées : une flèche qui rend `${v} ans` EST un rendu.)
+            if (/const\s+\w+\s*[:=][^\n]*=>/.test(l) && (MONEY_BASE.test(l) || formateur)) return;
             const fenetre = lines.slice(Math.max(0, i - W), i + W + 1).join('\n');
             const fenetreBrute = lignesBrutes.slice(Math.max(0, i - W), i + W + 1).join('\n');
             // Le jeton ne regarde QUE vers le haut (ligne courante + 2 au-dessus) : posé pour un site,
@@ -263,6 +285,61 @@ describe('[A11Y-PRIVACY-SCAN-GLOBAL] aucun montant rendu n\'échappe au mode dis
         expect(sitesNonMasquesDans(variation, 's.tsx').map((s) => s.ligne)).toEqual([2]);
         expect(sitesNonMasquesDans(pct.replace('{formatPercent(taux, 1)}', '<PrivateAmount>{formatPercent(taux, 1)}</PrivateAmount>'), 's.tsx')).toEqual([]);
         expect(sitesNonMasquesDans('{/* MONTANT-PUBLIC : barème */}\n<span>{formatPercent(taux, 1)}</span>', 's.tsx')).toEqual([]);
+    });
+
+    it('[PRIVACY-GARDE-DUREES-SCORES-BARRES] un score `/100` rendu en clair est relevé, sauf masqué ou déclaré', () => {
+        const score = 'const a = 1;\n<span>Santé {total}/100</span>\nconst b = 2;';
+        expect(sitesNonMasquesDans(score, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        // Dans un gabarit (la forme qui avait échappé : `${fvi}/100`).
+        expect(sitesNonMasquesDans('const v = ok ? `${fvi}/100` : \'—\';', 's.tsx').map((s) => s.ligne)).toEqual([1]);
+        expect(sitesNonMasquesDans(score.replace('{total}', '<PrivateAmount>{total}</PrivateAmount>'), 's.tsx')).toEqual([]);
+        expect(sitesNonMasquesDans('// MONTANT-MASQUE-AILLEURS : rendu dans <PrivateAmount>\n' + score, 's.tsx')).toEqual([]);
+        // Le score peut être refermé par une balise avant le `/100` (la forme du badge corrigé).
+        expect(sitesNonMasquesDans('<b>{total}</b>/100', 's.tsx')).toHaveLength(1);
+        expect(sitesNonMasquesDans('<PrivateAmount>{total}</PrivateAmount>/100', 's.tsx')).toEqual([]);
+        // Une division ordinaire n'est PAS un rendu de score.
+        expect(sitesNonMasquesDans('const taux = (rate / 100) / 12;', 's.tsx')).toEqual([]);
+    });
+
+    it('[PRIVACY-GARDE-DUREES-SCORES-BARRES] une barre dessinée par une valeur est relevée, sauf masquée ou déclarée', () => {
+        const barre = 'const a = 1;\n<div style={{ width: `${part * 100}%` }} />\nconst b = 2;';
+        expect(sitesNonMasquesDans(barre, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        expect(sitesNonMasquesDans('<circle strokeDashoffset={decalage} />', 's.tsx')).toHaveLength(1);
+        expect(sitesNonMasquesDans('<div role="progressbar" aria-valuenow={pct} />', 's.tsx')).toHaveLength(1);
+        expect(sitesNonMasquesDans('<span style={{ transform: `scaleX(${ratio})` }} />', 's.tsx')).toHaveLength(1);
+        // Barre vidée en mode discret : saine.
+        expect(sitesNonMasquesDans('<div style={{ width: `${isPrivacyMode ? 0 : part * 100}%` }} />', 's.tsx')).toEqual([]);
+        // Barre qui ne dessine rien de personnel : déclarée.
+        expect(sitesNonMasquesDans('{/* NOMBRE-NON-MONETAIRE : progression d\'une tâche */}\n' + barre.split('\n')[1], 's.tsx')).toEqual([]);
+        expect(sitesNonMasquesDans('// MONTANT-PUBLIC : tranche du barème\n' + barre.split('\n')[1], 's.tsx')).toEqual([]);
+        // Pas de faux positif sur une largeur fixe ou un décor de grille.
+        expect(sitesNonMasquesDans('<div style={{ width: \'100%\', height: 300 }} /><CartesianGrid strokeDasharray="3 3" />', 's.tsx')).toEqual([]);
+    });
+
+    it('[PRIVACY-GARDE-DUREES-SCORES-BARRES] une durée ou un âge rendu en clair est relevé, sauf masqué ou déclaré', () => {
+        const duree = 'const a = 1;\n<span>{moisDeCoussin} mois</span>\nconst b = 2;';
+        expect(sitesNonMasquesDans(duree, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        expect(sitesNonMasquesDans('<b>{fireAge} ans</b>', 's.tsx')).toHaveLength(1);
+        expect(sitesNonMasquesDans('const t = `${Math.round(age)} an`;', 's.tsx')).toHaveLength(1);
+        // Une FLÈCHE qui rend la durée est un rendu, pas un alias de formateur à ignorer.
+        expect(sitesNonMasquesDans('const fmtDuree = (v: number) => `${v} ans`;', 's.tsx')).toHaveLength(1);
+        expect(sitesNonMasquesDans(duree.replace('{moisDeCoussin}', '<PrivateAmount>{moisDeCoussin}</PrivateAmount>'), 's.tsx')).toEqual([]);
+        expect(sitesNonMasquesDans('{/* NOMBRE-NON-MONETAIRE : réglage saisi */}\n' + duree.split('\n')[1], 's.tsx')).toEqual([]);
+        // Le jeton d'un site du DESSOUS n'excuse pas une durée du dessus.
+        expect(sitesNonMasquesDans('<b>{moisDeCoussin} mois</b>\n<i/>\n<i/>\n{/* NOMBRE-NON-MONETAIRE */}\n<b>{horizon} ans</b>', 's.tsx').map((s) => s.ligne)).toEqual([1]);
+        // `jours` reste hors périmètre (fraîcheur d'une donnée, jamais une durée financière).
+        expect(sitesNonMasquesDans('<b>{n} jours</b>', 's.tsx')).toEqual([]);
+        // Le jeton n'excuse JAMAIS un montant sur la même ligne.
+        expect(sitesNonMasquesDans('{/* NOMBRE-NON-MONETAIRE */}\n<b>{formatCAD(x)} sur {n} ans</b>', 's.tsx').map((s) => s.ligne)).toEqual([2]);
+    });
+
+    it('[PRIVACY-GARDE-DUREES-SCORES-BARRES] anti-vacuité : chaque famille a ses sites réels dans components/', () => {
+        // Témoins NOMMÉS (un nom se vérifie, un compte se rebase). Si une famille n'a plus aucun site
+        // réel, sa regex est peut-être morte sans que « zéro site fautif » le dise.
+        const lire = (rel: string) => stripCommentsJsx(readFileSync(path.join(ROOT, rel), 'utf8')).split('\n');
+        expect(lire('components/Investments.tsx').some((l) => SCORE_BASE.test(l))).toBe(true);
+        expect(lire('components/budget/DualKPIStat.tsx').some((l) => BARRE_BASE.test(l))).toBe(true);
+        expect(lire('components/projection/StrategyOptimizerPanel.tsx').some((l) => DUREE_BASE.test(l))).toBe(true);
     });
 
     it('le jeton de dette `MONTANT-CHAINE-A-DECOUPER` a bien disparu du dépôt', () => {

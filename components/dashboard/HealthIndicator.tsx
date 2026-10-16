@@ -159,6 +159,7 @@ export const HealthIndicator: React.FC<{ className?: string }> = ({ className = 
                             className={`${colors.ring} transition-all duration-700`}
                             strokeWidth="8"
                             strokeDasharray={CIRCUMFERENCE}
+                            /* MONTANT-MASQUE-AILLEURS : `dashOffset` vaut CIRCUMFERENCE (anneau vide) en mode discret, voir plus haut */
                             strokeDashoffset={dashOffset}
                             strokeLinecap="round"
                         />

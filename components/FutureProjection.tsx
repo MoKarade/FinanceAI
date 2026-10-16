@@ -565,6 +565,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         for (const d of chartData as ProjectionChartPoint[]) {
             if (d.monthIndex < 0) continue; // pas d'annotation sur le passé reconstruit
             // [S5-REFONTE-FUTUR] Jalon « Retraite · 60 ans » en pastille au-dessus du tracé (maquette F-bureau).
+            // NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (âge de retraite)
             if (!retDone && d.isRetired) { markers.push({ monthIndex: d.monthIndex, label: `Retraite${d.age ? ` · ${Math.floor(d.age)} ans` : ''}`, color: '#e6eaf2', jalon: true }); retDone = true; }
             // [FUTUR-ICONS-RICH, ADR-3] RRQ/PSV retirés des lignes verticales → désormais icônes-jalons cliquables
             // (`deriveMilestoneIcons`) : évite la double représentation (ligne + pastille) du même mois.
@@ -1481,6 +1482,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
     // [MC-LABEL-FROZEN] Le compte vient du RÉSULTAT affiché, jamais de la config vivante : `results`
     // peut être GELÉ (curseur bougé sans relance). Résultat sans compte → « Monte Carlo » sans chiffre.
     const titreSucces = `Part des simulations Monte-Carlo où le capital ne s'épuise jamais — ${mcSublabel(runMC, results?.mcIterationsRun as number | null | undefined)}`;
+    // MONTANT-MASQUE-AILLEURS : `valeurVitalite` est rendue plus bas dans <PrivateAmount> (dd de la vitalité)
     const valeurVitalite = results?.fvi != null ? `${results.fvi}/100` : '—';
     const titreVitalite = runMC
         ? 'Vitalité financière : indice composite (30 % épargne / 30 % dette / 20 % liquidités / 20 % diversification).'
@@ -1500,6 +1502,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
             </div>
             <div className="min-w-0">
                 {/* [HORIZON-ESPERANCE-DE-VIE] L'horizon court jusqu'à l'espérance de vie de la personne 1. */}
+                {/* NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (horizon = espérance de vie) */}
                 <dt className="text-meta text-ink-400" title={`Jusqu'à ${esperanceDeVieEffective(retirementGoal)} ans`}>
                     À l&apos;horizon{anneesHorizon != null ? ` (${anneesHorizon} ans)` : ''}
                 </dt>
@@ -1576,13 +1579,16 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         : 'Personnalisé';
     const ageRrq = retirementGoal.rrqStartAge ?? Math.min(retirementGoal.targetAge, 65);
     const agePsv = retirementGoal.psvStartAge ?? 65;
+    // NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (âges RRQ et PSV)
     const rentes = ageRrq === agePsv ? `${ageRrq} ans` : `RRQ ${ageRrq} · PSV ${agePsv} ans`;
     const leviers: LevierAffiche[] = [
+        // NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (âge de retraite)
         { libelle: 'Âge de retraite', valeur: `${retirementGoal.targetAge} ans` },
         { libelle: 'Ordre de retrait', valeur: ordreRetrait },
         { libelle: 'Profil de rendement', valeur: profilRendement },
         { libelle: 'Rentes gouvernementales', valeur: rentes },
     ];
+    // NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (âge de retraite)
     const resumeLeviers = `Retraite à ${retirementGoal.targetAge} ans — retrait : ${ordreRetrait.toLowerCase()} — profil ${profilRendement.toLowerCase()} — rentes : ${rentes}`;
 
     // role="status" (live polite) : le badge apparaît après le calcul de projection → annoncé au

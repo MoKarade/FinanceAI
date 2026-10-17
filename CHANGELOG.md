@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-16 — Outil de tests en version 5
+
+- Les tests de l'application tournent maintenant sur vitest 5 (au lieu de 4.1), comme les autres applications. Aucun test n'a été retiré ni sauté ; rien ne change pour l'utilisateur.
+
 ## 2026-10-16 — Contrat du hub en v1.5.0
 
 - Le contrat du hub passe de `v1.4.0` à `v1.5.0` : il utilise maintenant zod 4, comme l'application, donc une seule copie de zod dans le projet. Rien ne change pour l'utilisateur ni pour le résumé publié au hub.

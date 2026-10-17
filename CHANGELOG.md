@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-17 — Socle visuel commun : les variables sont posées
+
+- Les couleurs de base des applications du hub (fonds, textes, contours, accent, états réussite / attention / erreur) sont maintenant déclarées une fois dans l'application, avec les valeurs du thème sombre actuel. Rien ne change à l'écran : aucun écran ne les lit encore, ils y passeront un par un.
+- Un contrôle automatique vérifie que ces couleurs restent lisibles et empêche d'ajouter de nouvelles couleurs écrites en dur : leur nombre est mesuré (439 classes de palette, 1 305 blanc/noir de Tailwind, 220 codes hex au 17/10/2026) et ne peut plus que baisser.
+
 ## 2026-10-17 — Vérification de types en mode strict
 
 - Le code est maintenant vérifié par TypeScript en mode strict complet (`"strict": true`), comme les autres applications. Rien ne change pour l'utilisateur : seuls des types ont été précisés (chargement différé des écrans, infobulles des graphiques, deux fonctions passées en paramètre).

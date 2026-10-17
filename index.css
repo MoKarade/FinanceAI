@@ -153,6 +153,44 @@
   }
 }
 
+/* [SOCLE-VISUEL-1] Variables du socle visuel commun des apps du hub (MoKarade/app-template,
+   app/globals.css, tâche #39), aux valeurs SOMBRES de FinanceAI : poser ces variables ne change
+   aucun pixel, rien ne les lit encore. Les écrans y passent par groupes (tâche FinanceAI#1176), le
+   thème clair vient en dernier. Verrou : tests/guards/socleVisuel.test.ts (variables définies, couples
+   texte/fond au WCAG, nombre de couleurs hors variables qui ne monte pas).
+   `--surface` existe déjà plus bas (#0e1014) ; `--fond` = `dark` et `--surface-douce` =
+   `surfaceHighlight` du tailwind.config.js, le test le vérifie. */
+:root {
+  /* Fonds et surfaces. */
+  --fond: #07090d;
+  --surface-douce: #15181e;
+  --bordure: #262a33;
+  /* Contour de champ, de case et de bouton secondaire : au moins 3:1 sur le fond (WCAG 1.4.11). */
+  --bordure-champ: #6f7b8e;
+
+  /* Textes : `--texte` est le slate-200 du corps de page actuel. */
+  --texte: #e2e8f0;
+  --texte-doux: #94a3b8;
+
+  /* L'accent ne sert QU'À l'action principale ; `--repere` : surtitre, navigation active,
+     catégorie, jamais un état. */
+  --accent: #e6eaf2;
+  --accent-fonce: #c3cad8;
+  --sur-accent: #07090d;
+  --repere: #fb923c;
+  --repere-doux: #2a1b14;
+
+  /* Sémantique : « ça va », « attention », « erreur », déclarées une fois. */
+  --succes-fond: #0f2a24;
+  --succes-texte: #6ee7b7;
+  --alerte-fond: #2c2410;
+  --alerte-texte: #fbbf24;
+  --erreur-fond: #331618;
+  --erreur-texte: #f87171;
+
+  --rayon: 16px;
+}
+
 @layer utilities {
   :root {
     --primary: #e6eaf2;

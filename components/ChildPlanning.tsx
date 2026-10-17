@@ -405,7 +405,7 @@ export const ChildPlanning: React.FC<ChildPlanningProps> = ({ goals = [], setGoa
                                     <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
                                     <XAxis dataKey="age" tick={<TickAge />} tickLine={false} axisLine={false} ticks={[0, 5, 10, 15, 20, 25]} interval={0} />
                                     <YAxis orientation="right" ticks={reperesCout} domain={['dataMin', 'dataMax']} stroke="#8896a8" tick={{ fontSize: etroit ? 10 : 11, fontFamily: 'JetBrains Mono' }} tickLine={false} axisLine={false} width={etroit ? 40 : 48} tickFormatter={maskedTick(isPrivacyMode, (v: number) => formatCompactCAD(v))} />
-                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(Math.abs(v)), name]} labelFormatter={l => `Âge ${l} ans`} />
+                                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v, name) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : fmt(Math.abs(Number(v))), String(name)]} labelFormatter={l => `Âge ${l} ans`} />
                                     <ReferenceLine y={0} stroke="rgba(255,255,255,0.3)" />
                                     {SERIES_COUT.map((serie) => (
                                         <Bar key={serie.cle} dataKey={serie.cle} stackId="a" fill={serie.couleur} fillOpacity={0.85} name={serie.libelle} />

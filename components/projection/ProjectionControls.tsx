@@ -25,7 +25,7 @@ interface LiveCSVBalances {
 
 interface ProjectionControlsProps {
     projection: ProjectionConfig;
-    updateProj: (key: keyof ProjectionConfig, val: unknown) => void;
+    updateProj: (key: keyof ProjectionConfig, val: ProjectionConfig[keyof ProjectionConfig]) => void;
     updateReturnRate: (key: string, val: number) => void;
     runMC: boolean;
     setRunMC: (v: boolean) => void;

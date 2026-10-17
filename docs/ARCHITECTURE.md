@@ -12,7 +12,7 @@
 
 | Couche | Technologie | Notes |
 |---|---|---|
-| UI | React 19 + TypeScript (strict) | `noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables` |
+| UI | React 19 + TypeScript (strict) | `"strict": true` (depuis le 17/10/2026, FinanceAI#1198) ; `noImplicitAny`, `strictNullChecks`, `useUnknownInCatchVariables` restent écrits en clair |
 | Bundler | Vite 8 (Rolldown) | esbuild en dev, Rollup pour le bundle prod, source-maps activées |
 | Styling | Tailwind CSS + index.css | Design tokens custom (couleurs sémantiques, scale typo) |
 | State | Zustand 5 + `persist` middleware | Schema versionné (v1 → v7), migrations en code |

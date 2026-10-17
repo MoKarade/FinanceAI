@@ -114,7 +114,11 @@ export async function importWithRetry<T>(factory: () => Promise<T>, chunkName?: 
     }
 }
 
-export function lazyWithRetry<T extends React.ComponentType<unknown>>(
+// Même contrainte que React.lazy (`ComponentType<any>`) : `ComponentType<unknown>` refusait tout
+// composant à props typées sous strictFunctionTypes (props en position contravariante), et T garde
+// les vraies props pour l'appelant.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- contrainte imposée par React.lazy
+export function lazyWithRetry<T extends React.ComponentType<any>>(
     factory: () => Promise<{ default: T }>,
     chunkName?: string,
 ): React.LazyExoticComponent<T> {

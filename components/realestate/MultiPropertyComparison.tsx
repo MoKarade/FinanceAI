@@ -107,7 +107,7 @@ export const MultiPropertyComparison: React.FC<MultiPropertyComparisonProps> = (
                         <YAxis stroke="#555" tick={{ fontSize: 10 }} tickFormatter={maskedTick(isPrivacyMode, (v: number) => `${(v / 1000).toFixed(0)}k`)} width={50} />
                         <Tooltip
                             contentStyle={CHART_TOOLTIP_STYLE}
-                            formatter={(val: number, name: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val), name]}
+                            formatter={(val, name) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(val)), String(name)]}
                             labelFormatter={v => `Année ${v}`}
                         />
                         <Legend iconSize={8} wrapperStyle={{ fontSize: '10px' }} />

@@ -39,7 +39,7 @@ interface ProjectionControlsMobileProps {
     projection: ProjectionConfig;
     /** [HORIZON-ESPERANCE-DE-VIE] Âge où s'arrête la projection (espérance de vie de la personne 1). */
     esperanceDeVie: number;
-    updateProj: (key: keyof ProjectionConfig, val: unknown) => void;
+    updateProj: (key: keyof ProjectionConfig, val: ProjectionConfig[keyof ProjectionConfig]) => void;
     updateReturnRate: (key: string, val: number) => void;
     runMC: boolean;
     liveCSVBalances: LiveCSVBalances;

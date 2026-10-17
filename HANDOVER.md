@@ -4,6 +4,9 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-17 — **`[TS-STRICT]`** : `"strict": true` dans `tsconfig.json` (FinanceAI#1198)
+> Le mode strict complet révélait 74 erreurs, de trois causes seulement : (1) `lazyWithRetry` (`utils/lazyWithRetry.tsx`) contraignait `ComponentType<unknown>`, refusé par `strictFunctionTypes` pour tout composant à props typées (55 erreurs en cascade dans `TabRouter`, `App`, `Layout`…) : même contrainte que `React.lazy` (`ComponentType<any>`, un seul `eslint-disable` justifié) ; (2) 11 `formatter`/`labelFormatter` Recharts annotés `(val: number)` alors que la lib passe `ValueType` : paramètres inférés, `Number(val)`/`String(nom)` (sortie identique pour les valeurs numériques) ; (3) deux props de callback typées `unknown` (`updateProj` des commandes de projection, `onUpdateItem` du tableau Budget) alignées sur le type réel de leur fonction. Aucun `@ts-ignore`, aucun `any` ajouté hors la contrainte de `lazyWithRetry`. CLAUDE.md et ARCHITECTURE.md ne disent plus « strict partiel ».
+>
 > ## 🟦 Session 2026-10-16 — **`[VITEST-5]`** : vitest 4.1 → 5.0.5 (FinanceAI#1197)
 > `vitest` et `@vitest/coverage-v8` en `^5.0.5` (lockfile : seuls les paquets vitest bougent ; les champs `libc` que npm 10 retire sont remis, même geste que pour le contrat). `vitest.config.ts` et `stryker.config.mjs` inchangés : aucune option retirée n'y servait. Le commentaire en tête de `vitest.config.ts` cite encore `vitest ^4` à propos d'`environmentMatchGlobs` : exact, l'option reste retirée. `console.log` reste intercepté en v5 (revérifié, `docs/CONVENTIONS.md`). `stryker-mutator/vitest-runner@10` accepte `vitest >=2` : pas relancé ici (`npm run mutation` est long et hors du gate).
 >

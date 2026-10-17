@@ -180,7 +180,7 @@ export const PerformanceComparee: React.FC<Props> = ({ donnees, series, selectio
                                 <Tooltip
                                     contentStyle={CHART_TOOLTIP_STYLE}
                                     labelFormatter={(d) => formatDate(jour(String(d)))}
-                                    formatter={(v: number, cle: string) => [pctSerie(cle, v, 2), decor.get(cle)?.libelle ?? cle]}
+                                    formatter={(v, cle) => [pctSerie(String(cle), Number(v), 2), decor.get(String(cle))?.libelle ?? String(cle)]}
                                 />
                                 {visibles.map((s) => {
                                     const d = decor.get(s.id)!;

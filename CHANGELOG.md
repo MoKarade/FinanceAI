@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-17 — Vérification de types en mode strict
+
+- Le code est maintenant vérifié par TypeScript en mode strict complet (`"strict": true`), comme les autres applications. Rien ne change pour l'utilisateur : seuls des types ont été précisés (chargement différé des écrans, infobulles des graphiques, deux fonctions passées en paramètre).
+
 ## 2026-10-16 — Outil de tests en version 5
 
 - Les tests de l'application tournent maintenant sur vitest 5 (au lieu de 4.1), comme les autres applications. Aucun test n'a été retiré ni sauté ; rien ne change pour l'utilisateur.

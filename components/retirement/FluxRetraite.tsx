@@ -68,7 +68,7 @@ export const FluxRetraite: React.FC<Props> = ({ donnees, zoom, colonnes, isPriva
                                 contentStyle={CHART_TOOLTIP_STYLE}
                                 cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                                 labelFormatter={(age) => `${age} ans`}
-                                formatter={(val: number | string, nom: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(val)), nom]}
+                                formatter={(val, nom) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(val)), String(nom)]}
                             />
                             <Bar dataKey="IncomeRetirement" name="Rentes RRQ + PSV" fill="#34b39a" fillOpacity={0.75} radius={[2, 2, 0, 0]} isAnimationActive={false} />
                             <Line type="linear" dataKey="Expenses" name="Besoin mensuel" stroke="#f87171" strokeWidth={2} dot={false} isAnimationActive={false} />

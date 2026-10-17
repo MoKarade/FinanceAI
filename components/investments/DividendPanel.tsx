@@ -200,7 +200,7 @@ export const DividendPanel: React.FC<DividendPanelProps> = ({
                                     contentStyle={CHART_TOOLTIP_STYLE}
                                     itemStyle={CHART_TOOLTIP_ITEM_STYLE}
                                     labelStyle={{ color: '#9ca3af', fontSize: '10px', marginBottom: '4px' }}
-                                    formatter={(val: number) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val), 'Revenu Mensuel']}
+                                    formatter={(val) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(val)), 'Revenu Mensuel']}
                                 />
                                 <Bar dataKey="Revenu" fill="#4f9d86" radius={[4, 4, 0, 0]} maxBarSize={40}>
                                     {dividendProjectionData.map((_, index) => (

@@ -94,7 +94,7 @@ interface BudgetGroupTableProps {
     splitRatio1: number;
     userNames: [string, string];
     timeView: TimeView;
-    onUpdateItem: (index: number, field: keyof BudgetCategory, value: unknown) => void;
+    onUpdateItem: (index: number, field: keyof BudgetCategory, value: BudgetCategory[keyof BudgetCategory]) => void;
     onDeleteItem: (id: string | undefined) => void;
     onAddItem: (nature: 'Besoin' | 'Envie' | 'Epargne') => void;
     /** [REFONTE-NAV-L5] Cross-link « Voir les transactions » d'un poste (catégorie du même nom). */
@@ -437,7 +437,7 @@ const EditeurPoste: React.FC<EditeurPosteProps> = ({
                             <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
                             <XAxis dataKey="name" stroke="#8896a8" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                             <YAxis stroke="#8896a8" tick={{ fontSize: 10 }} width={36} tickLine={false} axisLine={false} tickFormatter={maskedTick(isPrivacyMode, (v: number) => String(v))} />
-                            <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={CHART_TOOLTIP_STYLE} formatter={(val: number) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(val)} />
+                            <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={CHART_TOOLTIP_STYLE} formatter={(val) => isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(val))} />
                             <ReferenceLine y={displayTarget} stroke="#8896a8" strokeDasharray="3 3" label={{ position: 'right', value: 'Cible', fill: '#8896a8', fontSize: 10 }} />
                             <Bar dataKey="value" fill={isOver ? '#f87171' : '#34b39a'} radius={[4, 4, 0, 0]} maxBarSize={40} />
                         </BarChart>

@@ -98,7 +98,7 @@ export const ScenariosAchatLocation: React.FC<Props> = ({ donnees, annees, rende
                             <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
                             <XAxis dataKey="year" tick={<TickAn />} ticks={reperesAnnees} interval={0} tickLine={false} axisLine={false} />
                             <YAxis orientation={etroit ? 'left' : 'right'} mirror={etroit} ticks={reperes} domain={[0, 'dataMax']} stroke="#8896a8" tick={{ fontSize: etroit ? 10 : 11, fontFamily: 'JetBrains Mono', dy: etroit ? -8 : 0 }} tickLine={false} axisLine={false} width={etroit ? 60 : 52} tickFormatter={maskedTick(isPrivacyMode, (v: number) => formatCompactCAD(v, { repere: true }))} />
-                            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelFormatter={(y) => `Année ${y}`} formatter={(v: number, nom: string) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(v), SERIES.find((s) => s.cle === nom)?.libelle ?? nom]} />
+                            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelFormatter={(y) => `Année ${y}`} formatter={(v, nom) => [isPrivacyMode ? MASKED_AMOUNT_LABEL : formatCAD(Number(v)), SERIES.find((s) => s.cle === nom)?.libelle ?? String(nom)]} />
                             {[...SERIES].reverse().map((s) => (
                                 <Line key={s.cle} type="monotone" dataKey={s.cle} stroke={s.couleur} strokeWidth={s.epaisseur} strokeDasharray={s.pointilles ? '4 4' : undefined} dot={false} isAnimationActive={false} />
                             ))}

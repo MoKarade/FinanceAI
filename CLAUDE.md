@@ -1,7 +1,7 @@
 # CLAUDE.md — FinanceAI
 
 App perso de planification financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite, assistant Claude).
-100 % navigateur : React 19 + Vite 8 + TS 5.9 (strict partiel : pas de `strict`, `strictNullChecks` + `noImplicitAny` actifs) + Tailwind 4, Zustand 5 (persist), Zod, Recharts, Vitest 4.
+100 % navigateur : React 19 + Vite 8 + TS 5.9 (`strict: true` depuis le 17/10/2026) + Tailwind 4, Zustand 5 (persist), Zod, Recharts, Vitest 5.
 Hors navigateur : `api/` (relais Anthropic, Vercel) et `mcp/` (serveur MCP + hub). Prod : Vercel. Tout en français.
 Structure plate (pas de `src/`) : `components/ hooks/ services/ store/ utils/ mcp/ api/ tests/ docs/`. Moteur : `services/projection/`.
 Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests / 638 fichiers**. Détail du comptage : `docs/claude/entete.md`.

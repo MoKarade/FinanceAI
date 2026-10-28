@@ -1,0 +1,12 @@
+{
+  "/#DEBT": {
+    "fichier": "debt.png",
+    "statut": 200,
+    "sha256": "7ffe4f9cf9c499245aac2393bf93146891a9ca4ff4389415b62b2d35fa52be32"
+  },
+  "/#FUTURE": {
+    "fichier": "future.png",
+    "statut": 200,
+    "sha256": "10ef01b048da074d9c8215e8510dd66768e8f8946dba2644b94389fe306f8989"
+  }
+}

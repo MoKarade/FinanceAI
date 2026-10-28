@@ -117,11 +117,14 @@ export async function repondreLiaAsk(request: Request, deps: DepsLia = {}): Prom
     // Anti-CSRF : un POST de navigateur porte toujours `Origin` ; absent ou étranger → refus.
     if (!origineAutorisee(request.headers.get('origin'), (k) => env[k])) return reponse({ error: 'origine_refusee' }, 403);
 
-    const identite = await verifierSession(
-        lireCookie(request.headers.get('cookie'), NOM_COOKIE_SESSION_HUB),
-        clesPubliques(env.HUB_SESSION_PUBLIC_KEYS),
-        deps.maintenant ? { maintenant: deps.maintenant } : {},
-    );
+    const cookie = lireCookie(request.headers.get('cookie'), NOM_COOKIE_SESSION_HUB);
+    if (!cookie) return reponse({ error: 'unauthenticated' }, 401);
+
+    // Sans clés publiques lisibles ou sans propriétaire connu, on ne sait pas qui est qui : refus, pas de repli.
+    const cles = clesPubliques(env.HUB_SESSION_PUBLIC_KEYS);
+    if (cles === null || !env.AUTHORIZED_EMAIL?.trim()) return reponse({ error: 'configuration_absente' }, 503);
+
+    const identite = await verifierSession(cookie, cles, deps.maintenant ? { maintenant: deps.maintenant } : {});
     if (!identite) return reponse({ error: 'unauthenticated' }, 401);
     if (!estProprietaire(identite.email, env.AUTHORIZED_EMAIL)) return reponse({ error: 'reserve_au_proprietaire' }, 403);
 

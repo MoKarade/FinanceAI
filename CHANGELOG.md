@@ -6,6 +6,10 @@
 - Les vérifications tournent désormais sur les machines GitHub (gratuites) au lieu du robot unique du PC : une PR n'attend plus une demi-heure.
 - Les numéros d'issues ont changé : voir la correspondance dans `HANDOVER.md`.
 
+## 2026-10-28 — Courbe Placements : commande de diagnostic dans la console de l'app (#22)
+
+- `financeaiDiagnosticCourbe()` nomme le titre derrière chaque saut de la courbe, directement dans l'app, sans copier ton état nulle part. Elle ne sort que des dates, des symboles et des pourcentages.
+
 ## 2026-10-28 — FinanceAI n'ouvre plus qu'à toi : la connexion du hub devant tout le site
 
 - Sans ta session du hub, `finance.hubperso.com` te renvoie à la connexion du hub ; les appels de l'app (assistant, cours, comptes) reçoivent un refus net, et un autre courriel est refusé. Seule la sonde de santé reste publique.

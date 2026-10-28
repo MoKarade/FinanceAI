@@ -17,11 +17,20 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { LoginGate } from './components/auth/LoginGate';
 import { installPreloadErrorReload } from './utils/lazyWithRetry';
+import { useFinanceStore } from './store/useFinanceStore';
+import { installerDiagnosticConsole } from './services/history/diagnosticCourbeConsole';
 
 // PH1-a — filet anti « Failed to fetch dynamically imported module » : un chunk périmé
 // (deploy pendant la session) ou bloqué (redirect d'auth) déclenche UN reload au lieu
 // de casser l'onglet. Installé avant le render pour couvrir le tout premier preload.
 installPreloadErrorReload();
+
+// [COURBE-DIAGNOSTIC-CONSOLE][#1330] `await financeaiDiagnosticCourbe()` dans la console : rejoue le vrai
+// `buildMarketData` sur l'état déjà chargé (lecture seule, aucun réseau, sortie sans montant ni quantité).
+installerDiagnosticConsole(window, () => {
+  const { assets, fxRates } = useFinanceStore.getState();
+  return { assets, fxRates: fxRates as Record<string, number> | undefined };
+});
 
 // [LIA-1253][#1267] LIA, présente tout le temps : montée par `demarrerLia` HORS du rendu (document.body), donc ni le
 // Suspense, ni l'ErrorBoundary, ni le LoginGate ne la retirent. Import dynamique pour la garder hors du chunk d'entrée

@@ -45,7 +45,7 @@ export const PayslipUploadCard: React.FC<PayslipUploadCardProps> = ({ targetUser
     const [result, setResult] = useState<{ gross: number; net: number; tax: number; freq: string } | null>(null);
 
     // [AI-TAXCENTER-APPLY-NOGATE] Plomberie PARTAGÉE (`useWriteConfirmation`) : elle était écrite
-    // ici ET dans `useAiChat`, à l'octet près. La règle du mode discret — le modal affiche des
+    // ici ET dans l'ancien chat (retiré), à l'octet près. La règle du mode discret — le modal affiche des
     // montants, donc l'écriture en attente est REFUSÉE si le mode s'active — vit désormais dans le
     // hook, où toute nouvelle surface en hérite.
     const { pendingWrite, requestConfirmation, resolvePendingWrite } = useWriteConfirmation();

@@ -94,7 +94,7 @@ describe('computeGrossAssets', () => {
 });
 
 // Garde-fou keystone (audit 2026-06-17, H1 / AI-CTX-FX) : SOURCE UNIQUE du NW présent.
-// Discrimine le bug d'omission des dettes (Dashboard `useDerivedFinancials` + `AiAssistant`
+// Discrimine le bug d'omission des dettes (Dashboard `useDerivedFinancials` + l'ancien assistant (retiré)
 // recalculaient cash+investments SANS dettes). Toutes les surfaces routent désormais ici → parité.
 describe('computePresentNetWorth (source unique du NW présent)', () => {
   const initial = { 'A': 1000 };

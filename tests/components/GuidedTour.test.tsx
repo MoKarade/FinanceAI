@@ -33,7 +33,7 @@ describe('GuidedTour', () => {
         startTour();
         expect(screen.getByRole('dialog', { name: /tutoriel guidé/i })).toBeTruthy();
         expect(screen.getByText(/visite guidée/i)).toBeTruthy();
-        expect(screen.getByText(/Étape 1 \/ 15/)).toBeTruthy();
+        expect(screen.getByText(/Étape 1 \/ 14/)).toBeTruthy();
     });
 
     it('Suivant avance et ouvre l\'onglet de l\'étape', () => {
@@ -42,7 +42,7 @@ describe('GuidedTour', () => {
         // [REFONTE-NAV Lot 1] Étape 2 = Futur (le cœur — l'Accueil est retiré) → setActiveTab appelé.
         fireEvent.click(screen.getByText(/Suivant/));
         expect(mockSetActiveTab).toHaveBeenCalledWith(Tab.FUTURE);
-        expect(screen.getByText(/Étape 2 \/ 15/)).toBeTruthy();
+        expect(screen.getByText(/Étape 2 \/ 14/)).toBeTruthy();
     });
 
     it('Passer ferme le tour et le marque comme vu', () => {

@@ -55,7 +55,6 @@ export const NAV_GROUPS: NavGroup[] = [
         label: 'Outils',
         items: [
             { tab: Tab.TAX, label: 'Impôts', icon: 'tax' },
-            { tab: Tab.ASSISTANT, label: 'Assistant', icon: 'bot' },
             { tab: Tab.SETTINGS, label: 'Réglages', icon: 'settings' },
         ],
     },
@@ -65,7 +64,7 @@ export const NAV_GROUPS: NavGroup[] = [
 export const PROFILE_TAB = Tab.PROFILE;
 
 /** Onglets épinglés dans la barre mobile (le reste passe par « Plus »). */
-export const MOBILE_BAR_TABS: Tab[] = [Tab.FUTURE, Tab.TRANSACTIONS, Tab.ASSISTANT];
+export const MOBILE_BAR_TABS: Tab[] = [Tab.FUTURE, Tab.TRANSACTIONS, Tab.BUDGET];
 
 /** L'item de nav qui représente cet onglet (y compris les onglets rattachés, ex. projets immo). */
 export const navItemOfTab = (tab: Tab): NavItem | undefined =>

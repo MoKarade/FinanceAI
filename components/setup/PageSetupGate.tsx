@@ -146,12 +146,6 @@ export const PAGE_SETUP: Partial<Record<Tab, PageSetup>> = {
     },
     // [REFONTE-NAV-L2b] Tab.DASHBOARD retiré : l'Accueil est supprimé (deep-link #DASHBOARD → #FUTURE),
     // plus aucune page à gater ni carte SetupHub à afficher pour cet onglet.
-    [Tab.ASSISTANT]: {
-        mode: 'hard',
-        title: 'Assistant IA',
-        intro: "L'assistant a besoin de ta clé API Anthropic (Claude) pour répondre à tes questions.",
-        requirementIds: ['anthropicKey'],
-    },
 };
 
 const EMPTY_FIELDS: RequirementField[] = [];

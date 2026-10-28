@@ -23,7 +23,7 @@
  *                           (contexte de l'assistant IA, prompt du diagnostic). Décision Marc
  *                           2026-09-05 (`[PRIVACY-CONTEXTE-IA]`) : MASQUER — le jeton ne dispense
  *                           pas du mode discret, il déclare que le canal est gaté EN AMONT et
- *                           PROUVÉ : chokepoint du chat (`useAiChat.viewContext.test.tsx`),
+ *                           PROUVÉ : chokepoint du chat (le test du chokepoint du chat (retiré avec l'ancien chat)),
  *                           diagnostic Budget (`budgetAiModalModeDiscret.test.tsx`). Un nouveau
  *                           canal qui poserait ce jeton sans sa garde amont serait un trou.
  *  · `MONTANT-MASQUE-AILLEURS` — le masquage existe, mais hors de la fenêtre : un formateur d'axe

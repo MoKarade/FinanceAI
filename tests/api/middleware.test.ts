@@ -1,6 +1,7 @@
 // @vitest-environment node
 // [SESSION-HUB] Le garde du site (FinanceAI#1159) : ce que rend le middleware pour une page, une API, une sonde, un autre courriel,
 // une configuration absente. Valide ET rejeté pour chaque règle ; sessions ES256 réelles (tests/helpers/sessionHub.ts).
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { garderSite, urlConnexionHub } from '../../api/_lib/gardeSite';
 import { reinitialiserCacheAcces } from '../../api/_lib/accesHub';
@@ -26,6 +27,47 @@ describe('session du propriétaire : la requête continue (null)', () => {
     });
 });
 
+describe('[PWA-PUBLIC] manifeste et icônes lisibles sans session (FinanceAI#39)', () => {
+    const PUBLICS = ['/manifest.webmanifest', '/manifest.json', '/icon.svg', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png', '/apple-touch-icon.png'];
+    it.each(PUBLICS)('%s : GET et HEAD passent sans session et sans appel au hub', async (chemin) => {
+        const horsLigne = async () => { throw new Error('le hub ne doit pas être appelé'); };
+        for (const methode of ['GET', 'HEAD']) {
+            expect(await garderSite(req(chemin, { methode }), sansEnv, { fetchImpl: horsLigne as unknown as typeof fetch }), `${methode} ${chemin}`).toBeNull();
+        }
+    });
+    it('la requête avec une chaîne de requête passe aussi (le chemin seul compte)', async () => {
+        expect(await garde(req('/manifest.webmanifest?v=3'))).toBeNull();
+    });
+    it.each(PUBLICS)('%s : une autre méthode que GET/HEAD reste refusée (401 JSON)', async (chemin) => {
+        expect((await garde(req(chemin, { methode: 'POST' })))?.status).toBe(401);
+    });
+    it.each([
+        '/manifest.webmanifest/x',
+        '/manifest.webmanifestX',
+        '/manifest.webmanifest.map',
+        '/Manifest.webmanifest',
+        '//manifest.webmanifest',
+        '/icon.svg/..%2Fapi',
+        '/icon-192.png.bak',
+        '/assets/icon-192.png',
+        '/robots.txt',
+        '/api/yahoo/search?q=a',
+        '/portfolio-history.csv',
+    ])('%s : jamais ouvert, une page reste redirigée (302), /api reste 401', async (chemin) => {
+        const r = await garde(req(chemin));
+        expect(r?.status, chemin).toBe(chemin.startsWith('/api/') ? 401 : 302);
+    });
+    it('le manifeste public est identique à manifest.json et ne contient aucune donnée de l\'utilisateur', () => {
+        const racine = new URL('../../', import.meta.url);
+        const web = readFileSync(new URL('public/manifest.webmanifest', racine), 'utf-8');
+        const json = readFileSync(new URL('public/manifest.json', racine), 'utf-8');
+        expect(JSON.parse(web)).toEqual(JSON.parse(json));
+        expect(Object.keys(JSON.parse(web)).sort()).toEqual(
+            ['background_color', 'categories', 'description', 'display', 'icons', 'id', 'lang', 'launch_handler', 'name', 'orientation', 'scope', 'short_name', 'start_url', 'theme_color'],
+        );
+    });
+});
+
 describe('sans session', () => {
     it('une PAGE est redirigée (302) vers la connexion du hub, avec la page demandée pour revenir', async () => {
         const r = await garde(req('/?onglet=placements#x'));
@@ -35,8 +77,8 @@ describe('sans session', () => {
         expect(loc.searchParams.get('callbackUrl')).toBe(`${SITE}/?onglet=placements`);
         expect(r!.headers.get('cache-control')).toBe('no-store');
     });
-    it('un fichier statique (chunk JS, icône de sonde) est redirigé aussi : la sonde d\'expiration de l\'app le voit', async () => {
-        for (const chemin of ['/assets/noyau-abc.js', '/icon.svg', '/sw.js', '/manifest.json']) {
+    it('un fichier statique hors liste blanche (chunk JS, sonde de session, service worker) est redirigé : la sonde d\'expiration de l\'app le voit', async () => {
+        for (const chemin of ['/assets/noyau-abc.js', '/robots.txt', '/sw.js', '/portfolio-history.csv']) {
             expect((await garde(req(chemin)))?.status, chemin).toBe(302);
         }
     });

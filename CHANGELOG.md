@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-28 — L'app s'installe de nouveau : manifeste et icônes lisibles sans connexion (#39)
+
+- `finance.hubperso.com/manifest.webmanifest` (et les icônes) répondait par une redirection vers la connexion du hub, ce qui bloquait l'installation de l'app et la vérification du hub. Ces fichiers, sans aucune donnée, sont maintenant publics ; tout le reste reste derrière la session du hub.
+- La détection de session expirée lit désormais `/robots.txt` (toujours protégé) au lieu de `/icon.svg`.
+
 ## 2026-10-28 — FinanceAI est maintenant un dépôt public (#30)
 
 - Le code de FinanceAI est publié dans un dépôt neuf, sans l'historique ni aucune donnée personnelle de son propriétaire ; l'ancien dépôt est gardé en privé sous le nom `FinanceAI-archive`.

@@ -1,0 +1,106 @@
+// tests/services/import/disnat/fixtureReleve.ts
+//
+// [PTF-L1F-PARSEUR-DISNAT] Relevé Disnat ENTIÈREMENT FICTIF, qui reproduit la FORME des vrais relevés
+// (lignes telles que les rend l'extraction PDF) et chacun des pièges mesurés sur l'ancien parseur au
+// Lot 0 — jamais leur contenu. Numéro de client `0000000`, titres et montants inventés, ISIN au préfixe
+// non attribué `ZZ`. ⚠️ Le dépôt est public : aucun relevé réel, aucun extrait, ne vient ici.
+//
+// Pièges couverts, chacun à un endroit précis :
+//   - un saut de page AU MILIEU de l'activité (l'ancien l'avalait comme suite de l'opération),
+//   - des positions APRÈS un « Total … » de catégorie (l'ancien s'arrêtait au premier « Total »),
+//   - une page « Détails de vos actifs (… suite) » (l'ancien la relisait en double),
+//   - l'indicateur ² imprimé seul sur la ligne précédente, le prix marqué « * »,
+//   - une position SANS symbole dont la quantité colle à un coût unitaire à milliers (« 42 1 011,2657 »),
+//   - des montants à milliers (« 1 250,00 », « -1 239,95 »), une conversion « CONV. EN CAD @ »,
+//   - un coût non établi (« ND »), un fractionnement imprimé en quantité REÇUE,
+//   - la ligne « ENCAISSE » (perdue par l'ancien parseur) suivie de son propre « Total ».
+
+const ENTETE = ['Relevé de portefeuille', 'Au 31 janvier 2026', 'Numéro de client : 0000000'];
+
+export const LIGNES: readonly string[] = [
+    ...ENTETE,
+    'Sommaire de votre portefeuille',
+    '0000000A3 Comptant 1 000,00 0,00 419,50 50 000,00 50 419,50 70,00',
+    '* Tous les montants indiqués ci-haut sont exprimés en dollars canadiens. Le taux de conversion était de 1,00 USD = 1,35612 CAD.',
+    'Page 1 de 6',
+    ...ENTETE,
+    'Profil de votre compte comptant - 0000000A3',
+    'Intérêts et dividendes Variation de l’encaisse',
+    'Période ($) Cumul annuel ($) Solde de fermeture au 31 décembre 2025 1 000,00 $',
+    'Intérêts facturés 0,00 0,00',
+    'Autres 600,00 1 250,00',
+    'Variation de l’encaisse -580,50 $',
+    'Solde de fermeture au 31 janvier 2026 419,50 $',
+    'Activité mensuelle',
+    'Date de transaction Date de règlement Opération Quantité Description Prix ($) Montant ($)',
+    '14/01/2026 08/01/2026 TRANSFERT REÇU 180 ALPHA ASIE UCITS',
+    'TRSF IN',
+    '14/01/2026 09/01/2026 TRANSFERT REÇU 42 ALPHA MONDE UCITS',
+    'TRSF IN',
+    '15/01/2026 15/01/2026 FRAIS TRANSFERT EUROCLEAR/INTL -600,00',
+    '19/01/2026 16/01/2026 DÉPÔT REÇU D’UNE CAISSE 1 250,00',
+    '20/01/2026 21/01/2026 ACHAT 100 BETA CDR C$HDG 12,3995 -1 239,95',
+    'INTERNET DIRECT/STP',
+    'Page 3 de 6',
+    ...ENTETE,
+    '25/01/2026 25/01/2026 IMPÔT DE NON-RÉSIDENT 20 GAMMA SA -3,15',
+    '25/01/2026 25/01/2026 DIVIDENDE 20 GAMMA SA 12,60',
+    'CONV. EN CAD @ 1.36340',
+    'Détails de vos actifs',
+    'Coût unitaire',
+    'Description Symbole Quantité Coût comptable ($) Prix du marché ($) Devise Valeur marchande ($) % Indic. Statut',
+    'moyen ($)',
+    'Actions et fonds d\'actions',
+    '2',
+    'ALPHA ASIE UCITS ALAS 180 71,9234 12 946,21 51,8640 * USD 12 660,09 5,73 C',
+    '2',
+    'ALPHA MONDE UCITS 42 1 011,2657 42 473,16 991,1040 41 626,37 18,83 C',
+    'Page 4 de 6',
+    ...ENTETE,
+    'Détails de vos actifs (0000000A3 suite)',
+    'Coût unitaire',
+    'Description Symbole Quantité Coût comptable ($) Prix du marché ($) Devise Valeur marchande ($) % Indic. Statut',
+    'moyen ($)',
+    'GOLD LINGOTS ETC 115 0,0001 0,01 455,7500 USD 71 075,94 32,15 C',
+    'GAMMA SA GAMA 20 530,2730 10 605,46 488,1610 9 763,22 4,42 C',
+    'Total actions et fonds d\'actions 66 024,84 135 125,62 61,11',
+    'Fonds communs de placement',
+    'BETA CDR C$HDG BETA 100 12,3995 1 239,95 12,5000 1 250,00 0,57 C',
+    'Total fonds communs de placement 1 239,95 1 250,00 0,57',
+    'Valeur totale de votre compte comptant - 0000000A3 67 264,79 136 375,62 61,68',
+    'Page 5 de 6',
+    ...ENTETE,
+    'Profil de votre compte comptant USD - 0000000B1',
+    'Période ($) Cumul annuel ($) Solde de fermeture au 31 décembre 2025 0,00 $',
+    'Solde de fermeture au 31 janvier 2026 1 499,74 $',
+    'Activité mensuelle',
+    'Date de transaction Date de règlement Opération Quantité Description Prix ($) Montant ($)',
+    '13/01/2026 08/01/2026 TRANSFERT REÇU 6 KAPPA CORP',
+    '20/01/2026 20/01/2026 RETENUE D\'IMPÔT 6 KAPPA CORP -1,71',
+    '20/01/2026 20/01/2026 DIVIDENDE 6 KAPPA CORP 11,40',
+    '22/01/2026 21/01/2026 FRACTIONNEMENT D\'ACTIONS 54 KAPPA CORP',
+    '28/01/2026 29/01/2026 VENTE 10 KAPPA CORP 150,0000 1 490,05',
+    'Détails de vos actifs',
+    'Actions et fonds d\'actions',
+    '2',
+    'KAPPA CORP KAPA 50 132,4590 6 622,95 142,7010 USD 9 675,99 4,38 C',
+    'DELTA NOUVELLE EMISSION DLT 10 ND ND 5,0000 USD 67,80 0,03 C',
+    'Total actions et fonds d\'actions 6 622,95 9 743,79 4,41',
+    'Encaisse et équivalents',
+    'ENCAISSE 1 499,74 1 499,74 0,59',
+    'Total encaisse et équivalents 1 499,74 1 499,74 0,59',
+    'Valeur totale de votre compte comptant USD - 0000000B1 6 622,95 9 743,79 4,41',
+    'Page 6 de 6',
+];
+
+/** Référentiel fictif : description imprimée dans l'activité → ISIN, et devise de cotation. */
+export const ISIN: Record<string, string> = {
+    'ALPHA ASIE UCITS': 'ZZ0000000011',
+    'ALPHA MONDE UCITS': 'ZZ0000000012',
+    'BETA CDR C$HDG': 'ZZ0000000013',
+    'GAMMA SA': 'ZZ0000000014',
+    'KAPPA CORP': 'ZZ0000000015',
+};
+export const DEVISE: Record<string, 'CAD' | 'USD' | 'EUR'> = {
+    ZZ0000000011: 'USD', ZZ0000000012: 'EUR', ZZ0000000013: 'CAD', ZZ0000000014: 'EUR', ZZ0000000015: 'USD',
+};

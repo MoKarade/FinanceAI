@@ -1,0 +1,204 @@
+// services/history/buildPastPrefix.ts
+// [FUTUR-REAL-HISTORY / FUTUR-HIST-WIRING-TEST] Assemblage PUR du segment PASSÉ (monthIndex < 0) de la
+// courbe Futur, extrait du `useMemo` de `FutureProjection.tsx` pour être UNIT-TESTABLE (le câblage
+// money-critical — buckets → helper, dette soustraite, alignement des dates — se prouve sans rendre le
+// composant de ~1000 lignes). Verbatim : aucun changement de logique vs l'inline d'origine.
+//
+// Le patrimoine net de chaque point route par `pastNetWorthAt` → `computeRawNetWorth` (source unique),
+// en soustrayant la dette hors hypothèque au NIVEAU ACTUEL (`currentDebtNonImmo`, = `chartData[0]
+// .DettesNonImmo` du moteur — Option A, décision Marc 2026-07-24, pas de courbe d'amortissement
+// rétroactive, voir `DEBT-AMORTIZATION` au backlog) — MAIS chaque dette n'est soustraite qu'À PARTIR
+// de son `startDate` propre (`[PASSE-REEL-DETTE-1]`, 2026-08-21) : une dette qui n'existait pas
+// encore à un mois passé n'y figure pas, même si elle existe aujourd'hui.
+// ⚠️ Le gating se fait par SOUSTRACTION d'un delta (`sumNotYetStartedDebtsAtMonth`), jamais par
+// resommation complète des `debts[].balance` bruts : `currentDebtNonImmo` a déjà encaissé le pas
+// d'amortissement du mois 0 du moteur (intérêt + paiement), donc resommer les soldes bruts de
+// TOUTES les dettes actives diverge de ce total de quelques dizaines à quelques centaines de
+// dollars (mesuré) — cassant le raccord EXACT qu'Option A garantit. En delta, le cas « aucune dette
+// datée » reste bit-identique à avant (rien à exclure ⇒ soustraction nulle) ; seule la dette
+// EFFECTIVEMENT gatée porte l'approximation (bornée à elle, cf `debtSchedule.ts`).
+// ⚠️ [FUTUR-PAST-DEBT-FREEZE 2026-07-29] Ce module reste AGNOSTIQUE de la provenance exacte de
+// `currentDebtNonImmo`/`debts` : c'est à l'APPELANT (`FutureProjection.tsx`) de garantir des valeurs
+// FRAÎCHES (jamais un blob figé PROJECTION-PERSIST) — voir son commentaire dédié.
+
+import { reconstructCashHistory } from './reconstructCashHistory';
+import { reconstructRealEstateEquityByYear } from './reconstructRealEstateEquity';
+import { pastNetWorthAt } from './pastNetWorth';
+import { sumNotYetStartedDebtsAtMonth } from '../projection/debtSchedule';
+import { prepareSupplementAmortiAuMois, type DebtAmortissable } from '../projection/debtAmortization';
+import type { PortfolioHistoryPoint } from './reconstructPortfolioHistory';
+import type { RealEstateGoal } from '../../types';
+
+// ⚠️ `type` alias (PAS `interface`) VOLONTAIRE : un object-literal type a une signature d'index
+// implicite → `PastPrefixPoint` reste assignable à `Record<string, unknown>` (le consommateur d'affichage
+// `displayData`/ChartDataTable l'exige). Un `interface` casserait ce typecheck (mergeable → pas d'index implicite).
+type PastPrefixPoint = {
+    monthIndex: number;
+    year: number;
+    dateLabel: string;
+    Liquidites: number;
+    Immobilier: number;
+    /** [PAST-NW-BUSINESS-SANS-PRODUCTEUR] Valeur COURANTE des entreprises privées, plate sur le passé. */
+    Entreprise: number;
+    CELI: number;
+    CELIAPP: number;
+    REER: number;
+    REEE: number;
+    NonReg: number;
+    Crypto: number;
+    NetWorth: number | undefined;
+    /**
+     * [FUTUR-COURBE-DETTE 2026-09-18] Dette hors hypothèque du mois — PUBLIÉE, plus seulement
+     * consommée.
+     *
+     * ⚠️ Elle était déjà CALCULÉE ici (`debtNonImmo`, avec tout son gating par `startDate` et par
+     * l'amortissement) et servait uniquement à produire `NetWorth`. Le jour où la dette est devenue
+     * une COURBE, ce producteur est devenu le seul du passé à ne pas la publier — donc
+     * `detteSousZero` y lisait `undefined` et rendait `null` : un TROU silencieux dans la courbe,
+     * exactement là où Marc a demandé à la voir, et indiscernable d'une dette à zéro.
+     * Le jumeau `dailyPastLedger` la publie depuis toujours ; c'est l'ASYMÉTRIE qui était le défaut.
+     * ⚠️ `undefined` quand le patrimoine lui-même est inconnu (`hasNW` faux) : affirmer une dette
+     * sur un point dont on ne sait rien serait un chiffre crédible sans mesure derrière.
+     */
+    DettesNonImmo: number | undefined;
+    isPast: boolean;
+};
+
+interface BuildPastPrefixInput {
+    pastHistoryPoints: ReadonlyArray<PortfolioHistoryPoint>;
+    /** ⚠️ [DETTE-VIREMENTS-REELS] `payee` EST dans ce contrat, et son absence était un trou de
+     *  TYPE, pas un bug du jour : ces transactions sont passées telles quelles à
+     *  `prepareSupplementAmortiAuMois`, qui apparie les virements d'une dette liée PAR le marchand.
+     *  Le seul appelant passe aujourd'hui de vrais `Transaction` (où `payee` est requis), donc
+     *  `tsc` restait vert — mais rien n'EXIGEAIT que le champ survive : un appelant futur qui
+     *  construirait cette liste d'après le type déclaré ferait taire l'appariement EN SILENCE, et
+     *  la courbe au MOIS redeviendrait plate pendant que le badge et la courbe au JOUR, eux,
+     *  descendraient. Son jumeau `MinimalPastTransaction` (`dailyPastLedger`) le déclarait, lui :
+     *  c'est l'ASYMÉTRIE entre les deux qui était le signal. Mesuré, la divergence vaut
+     *  un écart au premier mois sur la fixture du bail. */
+    transactions: ReadonlyArray<{ date: string; amount: number; payee?: string; isDuplicate?: boolean; isTransfer?: boolean }>;
+    calculatedStartingCash: number;
+    realEstateGoals: ReadonlyArray<RealEstateGoal>;
+    startYear: number;
+    startMonth: number;
+    /** [DEBT-CADENCE-REELLE] Le JOUR d'aujourd'hui (ISO, doit tomber dans `startYear/startMonth`).
+     *  REQUIS et non optionnel : une dette à cadence sous-mensuelle a besoin d'un point d'arrivée au
+     *  JOUR, et sa série mensuelle en est DÉRIVÉE. Une porte optionnelle aurait laissé cette courbe
+     *  au mois retomber sur le palier mensuel pendant que le registre au jour, lui, descendrait à
+     *  chaque prélèvement — deux modules décrivant la même dette différemment, la classe de défaut
+     *  que ce lot existe pour ne pas créer. `null` est une réponse explicite (« jour inconnu »).
+     *  Le compilateur énumère les sites d'appel : c'est voulu. */
+    todayIso: string | null;
+    /** Dette hors hypothèque au niveau actuel (`DettesNonImmo` du moteur, valeur FRAÎCHE — cf en-tête). */
+    currentDebtNonImmo: number;
+    /** Dettes hors hypothèque (store, tableau FRAIS — cf en-tête) : sert UNIQUEMENT à déterminer quelles
+     *  dettes exclure de `currentDebtNonImmo` pour un mois passé où elles n'existaient pas encore. */
+    debts: ReadonlyArray<DebtAmortissable>;
+    /** [PAST-NW-BUSINESS-SANS-PRODUCTEUR] Valeur COURANTE des entreprises privées (prorata), portée PLATE
+     *  sur tout le passé — même convention que l'immobilier reconstruit par paliers. Absent = 0 : la
+     *  JSDoc de `pastNetWorthAt` promettait cette valeur depuis août sans qu'aucun appelant ne la passe,
+     *  d'où une MARCHE de la valeur entière au raccord passé→futur. */
+    privateBusinessValue?: number;
+}
+
+/** Ce que `buildPastPrefix` rend : les points, PLUS ce que l'écran doit pouvoir DIRE à leur sujet.
+ *
+ *  ⚠️ Le retour était un `PastPrefixPoint[]` nu. Il est devenu un objet au lot 97 pour laisser passer
+ *  `fluxPeriodeAnnulee` — la marche au raccord, que le lot 96 avait livrée côté vue au JOUR et pas
+ *  ici faute de ce fil. L'alternative (recalculer le flux du mois dans le composant) aurait fait une
+ *  SECONDE somme sur la même base d'exclusion, donc deux vérités qui divergent à la première
+ *  évolution de la règle. Le compilateur a énuméré les seize sites d'appel — c'est exactement ce
+ *  qu'on attend de lui. */
+interface PastPrefixResult {
+    points: PastPrefixPoint[];
+    /** [PASSE-REEL-RACCORD-CHUTE-MENSUEL] Flux net du mois COURANT, défait par la reconstruction du
+     *  cash pour produire le dernier point passé. Remonté tel quel depuis `reconstructCashHistory`. */
+    fluxPeriodeAnnulee: number;
+}
+
+/**
+ * Reconstruit les points du PASSÉ (monthIndex < 0) : placements (carry-forward) + cash + équité immo,
+ * NetWorth = Σ − dette courante. La ligne VN ne démarre qu'à la 1re transaction connue (`hasNW`) → avant,
+ * `NetWorth = undefined` (no-fake : pas de fausse ligne à 0). `points` est vide si aucun passé connu.
+ */
+export function buildPastPrefix(input: BuildPastPrefixInput): PastPrefixResult {
+    const { pastHistoryPoints, transactions, calculatedStartingCash, realEstateGoals, startYear, startMonth, todayIso, currentDebtNonImmo, debts, privateBusinessValue = 0 } = input;
+
+    const miOf = (ym: string): number => {
+        const [y, m] = ym.split('-').map(Number);
+        // Index relatif au DÉBUT de projection (mois 0 = startYear/startMonth).
+        // Le « -startMonth » est indispensable quand la projection démarre ≠ janvier.
+        return (y - startYear) * 12 + (m - 1 - startMonth);
+    };
+    const nowMonthKey = `${startYear}-${String(startMonth + 1).padStart(2, '0')}`;
+    const cashRes = reconstructCashHistory(transactions, calculatedStartingCash || 0, nowMonthKey);
+    const equityByYear = reconstructRealEstateEquityByYear(realEstateGoals, startYear);
+
+    const invByMi = new Map<number, PortfolioHistoryPoint>();
+    for (const p of pastHistoryPoints) {
+        const mi = miOf(p.date);
+        if (mi < 0) invByMi.set(mi, p);
+    }
+    const cashByMi = new Map<number, number>();
+    for (const c of cashRes.points) {
+        const mi = miOf(c.month);
+        if (mi < 0) cashByMi.set(mi, c.cash);
+    }
+    const mis = [...invByMi.keys(), ...cashByMi.keys()];
+    if (mis.length === 0) return { points: [], fluxPeriodeAnnulee: cashRes.fluxPeriodeAnnulee };
+    const minMi = Math.min(...mis);
+    const firstTxnMi = cashRes.firstMonth ? miOf(cashRes.firstMonth) : 1; // 1 = jamais de passé connu
+
+    // [DEBT-AMORTIZATION-CABLAGE] Séries d'amortissement calculées UNE fois pour toutes les dettes,
+    // hors de la boucle : la fonction préparée ne fait plus qu'indexer (cf. son commentaire).
+    const supplementAu = prepareSupplementAmortiAuMois(debts, startYear, startMonth, todayIso, transactions);
+
+    const out: PastPrefixPoint[] = [];
+    let lastInv: PortfolioHistoryPoint | null = null;
+    for (let mi = minMi; mi < 0; mi++) {
+        const invHere = invByMi.get(mi);
+        if (invHere) lastInv = invHere;
+        const inv = invHere ?? lastInv;
+        const cash = cashByMi.get(mi);
+        // Date calendaire réelle du point = startMonth + mi (mi est négatif au passé). Le « + startMonth »
+        // est indispensable quand la projection démarre ≠ janvier, sinon les libellés de date sont décalés.
+        const absMonth = startMonth + mi;
+        const year = startYear + Math.floor(absMonth / 12);
+        const month = (((absMonth % 12) + 12) % 12) + 1;
+        const immo = equityByYear.get(year) ?? 0;
+        const celi = inv?.CELI ?? 0, celiapp = inv?.CELIAPP ?? 0, reer = inv?.REER ?? 0,
+            reee = inv?.REEE ?? 0, nonReg = inv?.NonReg ?? 0, crypto = inv?.Crypto ?? 0;
+        const hasNW = mi >= firstTxnMi; // VN seulement à partir de la 1re transaction connue
+        // [PASSE-REEL-DETTE-1] `mi` partage le même repère absolu (mois 0 = début de projection,
+        // négatif au passé) que le `m` de simulation du moteur — cf. `moisDeSimulation`. Une dette
+        // DÉJÀ ACTIVE aujourd'hui mais non encore commencée à CE mi est retranchée du total (delta,
+        // cf en-tête de `sumNotYetStartedDebtsAtMonth`). `Math.max(0, …)` : le delta utilise le solde
+        // BRUT contre un total déjà post-amortissement — borne le résidu, une dette n'étant jamais négative.
+        // [DEBT-AMORTIZATION-CABLAGE] SECOND delta, additif comme le premier : ce qu'on devait EN PLUS
+        // à ce mois-là, pour les dettes qui s'amortissent VRAIMENT (`supplementAmortiAuMois` refuse
+        // les baux et les révolvants, et retombe à 0 dès qu'une donnée manque). Les deux corrections
+        // sont DISJOINTES : avant son `startDate`, une dette n'a pas de solde amorti, elle ne pèse
+        // que dans le premier delta. Le `Math.max(0, …)` global reste la même ceinture qu'avant.
+        const debtNonImmo = Math.max(0, currentDebtNonImmo
+            - sumNotYetStartedDebtsAtMonth(debts, startYear, startMonth, mi)
+            + supplementAu(mi));
+        out.push({
+            monthIndex: mi,
+            year,
+            dateLabel: `${year}-${String(month).padStart(2, '0')}`,
+            Liquidites: hasNW ? (cash ?? 0) : 0,
+            Immobilier: immo,
+            Entreprise: privateBusinessValue,
+            CELI: celi, CELIAPP: celiapp, REER: reer, REEE: reee, NonReg: nonReg, Crypto: crypto,
+            NetWorth: hasNW
+                ? pastNetWorthAt({ CELI: celi, CELIAPP: celiapp, REER: reer, REEE: reee, NonReg: nonReg, Crypto: crypto }, cash ?? 0, immo, debtNonImmo, privateBusinessValue)
+                : undefined,
+            // ⚠️ MÊME grandeur que celle passée à `pastNetWorthAt` juste au-dessus, jamais une
+            // seconde dérivation : deux calculs du même solde divergent au premier lot qui touche
+            // à l'un des deux, et aucun des deux n'est faux tout seul.
+            DettesNonImmo: hasNW ? debtNonImmo : undefined,
+            isPast: true,
+        });
+    }
+    return { points: out, fluxPeriodeAnnulee: cashRes.fluxPeriodeAnnulee };
+}

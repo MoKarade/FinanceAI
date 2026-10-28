@@ -1,0 +1,246 @@
+// services/projection/types.ts
+// Cycle 28 split: types partagés entre projection.ts et les sous-modules.
+// Élimine les imports circulaires (monthlyOutput, meltdownReer, cashflowAllocation → projection.ts).
+
+export type AllocationStrategy = 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | 'MELTDOWN_REER' | 'DEBT_FIRST' | 'PRIO_CELI_NO_RAP';
+
+export type FutureScenarioType =
+    | 'BASE'
+    | 'LIBERTE_55'
+    | 'HYPER_INFLATION'
+    | 'WINDFALL'
+    | 'ECONOMIC_WINTER'
+    // Phase 4 #4: compound stress scenarios (krach × inflation × LTC, héritage tardif)
+    | 'COMPOUND_STRESS'
+    | 'LATE_INHERITANCE';
+
+// Cycle 3 TS reviewer quick win #1 (ROI massif): typer chartData[] avec
+// ProjectionChartPoint élimine ~35 erreurs strict en cascade dans
+// RealEstate/Investments/ChildPlanning. Tous les champs optionnels pour
+// compat avec les entrées MC réduites (NetWorth + monthIndex seulement).
+export interface ProjectionChartPoint {
+    monthIndex: number;
+    NetWorth: number;
+    // Variantes MC (minimales)
+    P10?: number | null;
+    P50?: number | null;
+    P90?: number | null;
+    // Variantes déterministes (champ complet)
+    dateLabel?: string;
+    year?: number;
+    age?: number;
+    IncomeMarc?: number;
+    IncomeAnna?: number;
+    IncomeRetirement?: number;
+    Income?: number;
+    NetSalary?: number;
+    Expenses?: number;
+    childCost?: number;
+    childGross?: number;
+    childBenefits?: number;
+    ReeeContrib?: number;
+    ReeePayout?: number;
+    ImmoHypo?: number;
+    ImmoCharges?: number;
+    ImmoInterest?: number;
+    ImmoPrincipal?: number;
+    RentalIncome?: number;
+    Savings?: number;
+    Liquidites?: number;
+    CELI?: number;
+    CELIMax?: number;
+    CELIAPP?: number;
+    CELIAPPMax?: number;
+    REER?: number;
+    REERMax?: number;
+    REEE?: number;
+    NonReg?: number;
+    Crypto?: number;
+    RetraitREER?: number;
+    RetraitCELI?: number;
+    rapBalance?: number;
+    Immobilier?: number;
+    /** [ENG-W5-BUSINESS-NON-PUBLIE] Valeur des entreprises privées détenues (prorata), CONSTANTE sur
+     *  l'horizon. Terme `+1` du patrimoine : `NetWorth = Σ(actifs publiés, Entreprise incluse) − DettesNonImmo`. */
+    Entreprise?: number;
+    DetteTotale?: number;
+    /** [M5 audit 2026-06-17] Dettes NON immobilières = activeDebts + liquidDebt + smithManoeuvre
+     *  (DetteTotale SANS l'hypothèque). `NetWorth = Σ(actifs affichés, dont Immobilier=équité nette)
+     *  − DettesNonImmo` tient TOUJOURS, même sous hypothèque — contrairement à DetteTotale (qui inclut
+     *  l'hypothèque, déjà nettée dans Immobilier → reconstructabilité rompue sous prêt). */
+    DettesNonImmo?: number;
+    /** Découvert (liquidité négative non couverte) porté en dette [PV-6]. Inclus dans DetteTotale
+     *  et soustrait de NetWorth ; exposé pour que l'UI explique un patrimoine net négatif. */
+    LiquidDebt?: number;
+    diffNW?: number;
+    diffCELI?: number;
+    diffREER?: number;
+    diffLiquid?: number;
+    // [DETTE-CAST-DAILYCURVE 2026-09-04] Identité d'un point QUOTIDIEN de la courbe Futur
+    // ([FUTUR-DAILY-NATIVE]) — DÉCLARÉE ici pour que les points de fusion réel↔projeté soient
+    // TYPÉS : avant, 17 `as unknown as` faisaient taire tsc pile aux endroits money-critical où
+    // le passé réel remplace le projeté. Tous OPTIONNELS : un point mensuel ne les porte pas, et
+    // un champ non mesuré reste ABSENT (no-fake-data — jamais un défaut plausible).
+    /** Mois HÔTE du moteur (entier) — clé de jointure d'un jour ; `monthIndex` est fractionnaire. */
+    hostMonthIndex?: number;
+    /** Date ISO `YYYY-MM-DD` du jour. Présent ⇔ point quotidien. */
+    dayIso?: string;
+    dayOfMonth?: number;
+    isDailyPoint?: boolean;
+    /** Vrai si le jour vient du PASSÉ RÉEL (dailyPastLedger), reconstruit à partir de RIEN. */
+    dayIsReal?: boolean;
+    /** Un mouvement à DATE connue tombe ce jour-là (vs simple étalement). */
+    dayIsDated?: boolean;
+    dayLabels?: string[];
+    dayMovements?: Array<{ payee: string; amount: number }>;
+    dayMovementsTotal?: number;
+    priceAgeMaxDays?: number;
+    hasEstimatedPrice?: boolean;
+    /** [FUTUR-DAILY-ROLLOVER] Jour réel postérieur à la dernière sync bancaire confirmée. */
+    daySyncUnconfirmed?: boolean;
+    ImpotLatent?: number;
+    FluxImpots?: number;
+    ImpotRetraitREER?: number;
+    ImpotSalaireMois?: number;
+    ImpotGainsCap?: number;
+    ImpotDivers?: number;
+    TaxPaidRevenu?: number;
+    TaxPaidGains?: number;
+    TaxPaidDivers?: number;
+    TaxPaidREER?: number;
+    WithheldTaxRrif?: number;
+    FireTarget?: number;
+    CoastFIRE?: number;
+    BaristaFIRE?: number;
+    isRetired?: boolean;
+    // Centralisation Phase 3 — champs dérivés simples (Tier 1)
+    realNetWorth?: number;          // NetWorth déflaté à $ d'aujourd'hui
+    liquidityRunway?: number;       // Mois de dépenses couverts par Liquidites
+    mortgageRemainingMonths?: number; // Estimation linéaire balance/paiement
+    // Centralisation Phase 3 — Tier 2 (tracking REEE)
+    reeeContribCum?: number;        // Cumul contributions REEE (ménage)
+    reeeGrantsCum?: number;         // Cumul subventions SCEE+IQEE (ménage)
+    // Centralisation Phase 3 — Tier 3 (fiscalité + dividendes + pensions split)
+    marginalTaxRate?: number;       // Taux marginal d'imposition (%)
+    effectiveTaxRate?: number;      // Taux moyen d'imposition (%)
+    DividendIncome?: number;        // Dividendes mensuels NonReg
+    TaxableInvIncome?: number;      // Revenus de placement imposables
+    pensionRRQ?: number;            // Rente RRQ/RPC mensuelle
+    pensionPSV?: number;            // PSV + SRG mensuelle (après écrêtement)
+    pensionPrivee?: number;         // Pensions privées DB mensuelles
+    ContribCELI?: number;
+    ContribREER?: number;
+    ContribNonReg?: number;
+    MarketGrowthCELI?: number;
+    MarketGrowthREER?: number;
+    MarketGrowthNonReg?: number;
+    MarketGrowthCrypto?: number;
+    MarketGrowthLiquid?: number;
+    MarketGrowthCELIAPP?: number;
+    MarketGrowthREEE?: number;
+    MarketGrowthPctCELI?: number;
+    MarketGrowthPctREER?: number;
+    MarketGrowthPctNonReg?: number;
+    MarketGrowthPctCrypto?: number;
+    MarketGrowthPctLiquid?: number;
+    MarketGrowthPctCELIAPP?: number;
+    MarketGrowthPctREEE?: number;
+    NetTransferCELI?: number;
+    NetTransferREER?: number;
+    NetTransferNonReg?: number;
+    NetTransferCrypto?: number;
+    NetTransferLiquid?: number;
+    NetTransferCELIAPP?: number;
+    NetTransferREEE?: number;
+    ExpenseInflationImpact?: number;
+    ExpenseInflationPct?: number;
+    AccruedTaxRevenu?: number;
+    AccruedTaxGains?: number;
+    AccruedTaxDivers?: number;
+    AccruedTaxREER?: number;
+    lifeEvents?: string[];
+    /** [FUTUR-DAILY-EVENTS] Jour du mois (1-31) par message d'événement DATÉ (saisie avec date,
+     *  échéance fiscale). Absent = aucun événement daté ce mois. */
+    eventDays?: Record<string, number>;
+    flowEvents?: string[];
+    // Audit 2026-05: index signature narrow (unknown au lieu de any) pour
+    // forcer narrowing côté consommateur sans casser l'accès aux champs ad-hoc.
+    // [FUTUR-DAILY-EVENTS] + Record<string, number> : le membre `eventDays` doit être admis par
+    // la signature d'index (TS2411 sinon).
+    // [DETTE-CAST-DAILYCURVE] + Array<{payee; amount}> : même exigence pour `dayMovements`.
+    [extra: string]: number | string | boolean | string[] | Record<string, number> | Array<{ payee: string; amount: number }> | null | undefined;
+}
+
+// FIX cycle 2 TS reviewer (ROI massif): typer le retour de calculateFutureProjection
+// élimine ~40 erreurs en mode strict (cascade TS2339 sur consumers .chartData, .NetWorth, etc.).
+export interface ProjectionResult {
+    chartData: ProjectionChartPoint[];
+    finalNetWorth?: number;
+    estateNetWorth?: number;
+    /** Phase 1 refactor « REER par conjoint » : solde REER final attribué par conjoint
+     *  (Σ == solde REER commun final). Shadow/diagnostic ; consommé par la fiscalité en Phase 2. */
+    reerByUserFinal?: number[];
+    /** [ENG-TTP-UNSETTLED-HORIZON] Dette fiscale RÉCONCILIÉE (dernier décembre) jamais réglée par un
+     *  avril dans l'horizon (mesuré NET : 8,6 % du compteur à 10 ans, 51,5 % à 2 ans, 100 % à
+     *  1 an). Signé (négatif = remboursement dû) ; registre disjoint de totalEstateTax.
+     *  ⚠️ Ne PAS additionner à la main : la grandeur agrégée est lifetimeTaxTotal
+     *  (services/projection/lifetimeTax.ts — ttp + unsettled + estate, décision A4). */
+    unsettledTaxAtHorizon?: number;
+    totalTaxesPaid?: number;
+    totalGrowth?: number;
+    totalExpenses?: number;
+    minNetWorth?: number;
+    /** [PV-11a] — objectifs PARTIELLEMENT financés à leur deadline (drawn < visé) :
+     *  count = nb d'occurrences, total = somme des manques ($). ≠ shortfallRate (cashflow). */
+    goalShortfalls?: { count: number; total: number };
+    /** [BUDGET-SENSIBILITE-MOTEUR] « Si j'épargne X $/mois de plus, combien ça change à la fin ? »
+     *  — répondu par le MOTEUR (un second scénario BASE déterministe, dépenses − X), jamais par
+     *  une formule locale d'écran (la tuile de Budget inventait 145 648 $ pour tous les ménages ;
+     *  la vraie réponse va de 18 k$ à 307 k$ selon le persona). Coût mesuré : +2,5 à 4,1 % d'une
+     *  projection de production (MC 100 itérations). `null` = non calculé (appels ciblés
+     *  `onlyStratTypes` — goal seek, stress-test — ou valeur non finie) : un écran affiche alors
+     *  rien, jamais un 0. */
+    savingsSensitivity?: {
+        /** Épargne mensuelle supplémentaire simulée ($/mois). */
+        extraMonthlySavings: number;
+        /** Patrimoine successoral avec l'épargne en plus − sans. */
+        deltaEstateNetWorth: number;
+        /** Patrimoine en fin d'horizon avec l'épargne en plus − sans. */
+        deltaFinalNetWorth: number;
+    } | null;
+    shortfallMonths?: number;
+    shortfallRate?: number;
+    fireNumber?: number;
+    aiNote?: string;
+    strategyName?: string;
+    stratType?: FutureScenarioType | string;
+    stratDescription?: string;
+    pros?: string[];
+    cons?: string[];
+    icon?: string;
+    delayPensions?: boolean;
+    gainVsAuto?: number;
+    successRate?: number | null;
+    /** Survie BRUTE Monte Carlo (% de runs finissant patrimoine > 0). ⚠️ `successRate` est ÉCRASÉ
+     *  par le FVI quand MC tourne (V65) — pour un verdict de soutenabilité, utiliser CE champ. */
+    survivalRatePct?: number | null;
+    fvi?: number | null;
+    /** [MC-LABEL-FROZEN] Itérations Monte Carlo réellement exécutées pour CE résultat. Absent quand
+     *  le MC n'a pas tourné, ou pour un résultat calculé avant ce lot : l'UI doit alors afficher
+     *  « Monte Carlo » SANS chiffre plutôt qu'un nombre lu ailleurs (no-fake-data). */
+    mcIterationsRun?: number | null;
+    expertMetrics?: {
+        swr: number;
+        taxLeakage: number;
+        shortfallRisk: number;
+        sequenceRiskPct: number;
+        worstDecadeDrawdown: number;
+        criticalDecadeStartYear: number;
+        criticalDecadeEndYear: number;
+    } | null;
+    allResults?: ProjectionResult[];
+    bestStrategyIdx?: number;
+    actionPlan?: { monthlyCashflow: number; strategy: AllocationStrategy } | null;
+    // Audit 2026-05: unknown au lieu de any pour forcer narrow chez consommateurs.
+    [key: string]: unknown;
+}

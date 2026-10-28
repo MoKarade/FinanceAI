@@ -1,0 +1,76 @@
+# P1.6 — Lighthouse CI audit perf + a11y + best-practices + SEO.
+#
+# Workflow séparé du CI critique pour ne pas bloquer Tests+Build.
+# [S5-PERF] Depuis le 24/09/2026 : les 4 catégories sont des budgets bloquants (« error »), figés sur la
+# mesure CI du jour (perf 0,97 → seuil 0,90 pour absorber le bruit ; accessibilité, bonnes pratiques et SEO à 1).
+# 3 passages, médiane retenue : un seul passage variait de ±0,02 à 0,05 d'un run à l'autre.
+#
+# Résultats : artefact GitHub (.lighthouseci/) — plus de lien public (24/09/2026).
+
+name: Lighthouse CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main]
+
+concurrency:
+  group: lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    name: Lighthouse Audit
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || fromJSON('["self-hosted","pc-marc"]') }} # dépôt public : machines GitHub (gratuites) ; privé : robot du PC
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # [CI-PERSIST-CREDS] `actions/checkout` v2+ écrit le GITHUB_TOKEN dans la config git
+          # du runner POUR TOUT LE RESTE DU RUN : n'importe quelle étape suivante, y compris
+          # une action tierce, peut le lire. Ce job ne pousse rien, donc il n'en a pas besoin.
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+          # Robot du PC (dépôt privé) : ~/.npm y persiste déjà ; restaurer un cache de ~1,4 Go à chaque job coûtait ~80 s (FinanceAI#1305).
+          cache: ${{ (github.event.repository.private == false && 'npm') || '' }}
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      # [S5-CI-ALLEGEE] Construction directe (sans le prebuild qui relançait tout le lint : la CI s'en charge).
+      # [LIGHTHOUSE-HORS-RESEAU] L'audit ne doit dépendre d'aucun service tiers : l'app appelle la Banque du
+      # Canada au démarrage, et une panne de leur API (page d'erreur sans en-tête CORS) écrit une erreur dans
+      # la console, donc fait tomber « bonnes pratiques » sous 1 (rouge du 21/10/2026 sur FinanceAI#1233).
+      # Cette variable coupe l'appel dans CE build seulement ; aucun seuil de .lighthouserc.json n'est touché.
+      - name: Build
+        run: npx --no-install vite build --mode production
+        env:
+          VITE_AUDIT_HORS_RESEAU: '1'
+
+      # Robot du PC : aucun Chrome installé (« No Chrome installations found », mesuré le 21/10/2026).
+      # On réutilise le Chromium de Playwright (version figée par le lockfile, `--no-install`, voir ci.yml) via CHROME_PATH.
+      - name: Chromium pour Lighthouse (dépôt privé)
+        if: github.event.repository.private
+        run: |
+          npx --no-install playwright install chromium
+          echo "CHROME_PATH=$(node -e "process.stdout.write(require('@playwright/test').chromium.executablePath())")" >> "$GITHUB_ENV"
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12
+        with:
+          configPath: ./.lighthouserc.json
+          uploadArtifacts: true
+          # [S5-PERF] Rapports gardés en artefact GitHub seulement : plus de dépôt PUBLIC sur le stockage
+          # temporaire de Google (et un appel réseau de moins qui pourrait faire échouer le job).
+          temporaryPublicStorage: false
+        # [S5-PERF] Budgets FIGÉS (24/09/2026, décision de Marc « mesurer puis figer ») : plus de
+        # continue-on-error — un recul sous les seuils de .lighthouserc.json fait échouer le job.

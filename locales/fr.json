@@ -1,0 +1,31 @@
+{
+    "tabs": {
+        "dashboard": "Accueil",
+        "transactions": "Transactions",
+        "budget": "Budget",
+        "debt": "Dettes",
+        "investments": "Investissements",
+        "future": "Futur",
+        "real_estate": "Immobilier",
+        "child": "Enfant",
+        "retirement": "Retraite",
+        "tax": "Impôts & Docs",
+        "settings": "Paramètres",
+        "assistant": "Assistant IA"
+    },
+    "dashboard": {
+        "title": "Vue d'ensemble",
+        "subtitle": "Patrimoine consolidé et tendance",
+        "consolidated": "Tous comptes",
+        "future_predictor": "Patrimoine projeté",
+        "global_net_worth": "Valeur Nette Globale",
+        "passive_income_month": "Revenu Passif (Mois)",
+        "global_variation": "Variation Globale",
+        "take_action": "Passez à l'action",
+        "manage_goals": "Gérer les Objectifs",
+        "detailed_evolution": "Évolution Détaillée de vos Comptes",
+        "individual_assets": "Actifs Individuels (Bourse)",
+        "cash_savings": "Cash & Épargne (Liquidités)",
+        "credit_debts": "Crédit & Dettes"
+    }
+}

@@ -1,0 +1,2398 @@
+# À FAIRE — Marc (tâches humaines) + blocages remontés par Claude
+
+> **Batch de décisions routées le 2026-09-04 (lot 159) — ✅ les SIX répondues le jour même (en
+> session)**, réponses reportées sous chaque entrée et dans les tickets BACKLOG. — six tickets du BACKLOG attendaient une
+> décision « de Marc » SANS entrée ici : ils étaient bloqués sans être visibles. Chacune tient en
+> une réponse courte ; le détail chiffré vit dans le ticket BACKLOG du même ID.
+
+- [ ] 👤 **[MCP-DURCISSEMENT]** (2026-09-26) — **deux choses à NE PAS faire, une à faire quand tu veux.**
+  - ❌ **Ne jamais activer « Toujours autoriser » sur les outils d'écriture du connecteur FinanceAI dans claude.ai** (apply_payslip, apply_bank_statement, apply_broker_statement, apply_tax_slip, apply_debt, set_cash, set_budget_item, delete_item) : ce serait supprimer ta seule barrière humaine (`docs/adr/0023-confirmation-ecriture-mcp-par-jeton.md`).
+  - ❌ **Ne pas poser le secret GitHub `FINANCEAI_FINTABLE_SYNC_SECRET` avant que #1077 soit fusionnée ET que le journal public de `refresh-prices` ait été relu** (le journal du cron ne doit plus rien afficher de libre).
+  - ✅ **Clé d'accès** : le serveur alerte (journal + outil `ping`) si `FINANCEAI_ACCESS_KEY` fait moins de 32 caractères, sans rien couper. Quand tu veux : génère une nouvelle clé de 64 caractères hex (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`), mets-la dans le secret `financeai-access-key`, redéploie et ré-autorise le connecteur dans claude.ai ; puis pose la variable GitHub Actions `MCP_ACCESS_KEY_STRICT=1` (ou `ACCESS_KEY_STRICT=1` si tu déploies à la main avec `mcp/deploy.sh`, qui la transmet au serveur en `FINANCEAI_ACCESS_KEY_STRICT=1` : une variable ajoutée dans la console Cloud Run serait effacée au déploiement suivant) : à partir de là une clé faible ferme `/oauth/authorize` (le reste du serveur continue).
+  - 🔎 **Vérification à faire une fois en production** (limite par adresse) : depuis deux réseaux différents (Wi-Fi puis 4G), fais 3 essais de mauvaise clé sur la page d'autorisation du connecteur puis 6 de plus depuis le même réseau : seul ce réseau doit être bloqué (page « Trop de tentatives »), l'autre doit encore pouvoir autoriser. Si les deux se bloquent mutuellement, le dernier élément de `X-Forwarded-For` n'est pas l'adresse client derrière Cloud Run : le dire, il faudra adapter `adresseClient`. Aucune adresse n'est écrite dans les journaux.
+  - ⚠️ **Ordre pour la clé** : d'abord régénérer la clé (64 caractères hex) dans Secret Manager et redéployer, ENSUITE poser `MCP_ACCESS_KEY_STRICT=1` (sinon, avec l'ancienne clé faible, STRICT ferme `/oauth/authorize`).
+- [ ] 👤 **[MCP-CONFIRM-TOKEN]** (2026-09-26) — **ne jamais activer « Toujours autoriser » sur les outils d'écriture du connecteur FinanceAI dans claude.ai** (apply_payslip, apply_bank_statement, apply_broker_statement, apply_tax_slip, apply_debt, set_cash, set_budget_item, delete_item). Laisse claude.ai te demander l'approbation à CHAQUE appel : c'est ta seule barrière humaine ; le jeton du serveur empêche l'écriture en un appel, le rejeu et le changement d'arguments, mais pas un modèle qui rappelle aussitôt. Détail : `docs/adr/0023-confirmation-ecriture-mcp-par-jeton.md`.
+
+- [ ] 👤 **[CHIFFREMENT-PHASE1]** (2026-09-29, une fois la PR fusionnée et déployée) — **si tu veux chiffrer ta sauvegarde Drive : Réglages → « Créer une phrase secrète »** → suis les 3 étapes (choix de la phrase, lecture de l'avertissement + carte à imprimer/télécharger, case « copie hors ligne »). Sur un appareil avec empreinte/visage/Windows Hello, tu peux choisir de la mémoriser (redemandée quand même à chaque usage via ta biométrie — jamais un accès automatique). **En cas de perte/vol d'un appareil mémorisé : change la phrase depuis un AUTRE appareil** (Réglages) — ça coupe tous les appareils mémorisés d'un coup, c'est ton seul outil de révocation. Détail : `docs/adr/0026-chiffrement-phase1-memorisation-webauthn.md`. Rien n'est chiffré tant que tu n'actives rien toi-même.
+
+- [ ] 👤 **[VERROU-ECRITURE]** (2026-09-29, une fois la PR fusionnée et déployée MCP+Vercel) — **avant de demander à claude.ai d'importer un document (relevé, feuillet…) : ouvre FinanceAI → Réglages → « Écritures MCP » → clique « Autoriser 15/30/60 min »**. Par défaut, TOUTES les écritures sont refusées même si tu le demandes dans la conversation — c'est voulu (défense contre un document piégé). Un bouton « Verrouiller maintenant » referme avant l'échéance. Rien à faire pour lire/discuter. Détail : `docs/adr/0025-verrou-ecriture-mcp-hors-chat.md`.
+
+- [x] 👤 ~~**[CF-ACCESS-MISE-EN-SERVICE]**~~ — **CADUC (2026-10-28, décision de Marc : reco B de FinanceAI#1159)**. Plus de mur Cloudflare, plus de variable `CF_ACCESS_*` à poser,
+  rien à faire à la main : la session du hub ferme FinanceAI (`middleware.ts`, `docs/adr/0027-session-hub-garde.md`). Si les variables `CF_ACCESS_*`
+  existent encore sur Vercel, elles ne servent plus : à supprimer à l'occasion (aucun effet). Retour arrière : `git revert` de la PR.
+
+- [x] 👤 **[PTF-L05B-MESURE-SOURCES]** (2026-09-24, ✅ fait le jour même, mesure lancée) — **deux secrets pour mesurer les sources de cours
+  depuis la CI** (mon conteneur n'a aucun réseau vers EODHD, Yahoo ni la Banque du Canada ; la CI,
+  oui). Dans GitHub → `MoKarade/FinanceAI` → Settings → Secrets and variables → Actions → *Secrets* :
+  - `MESURE_ANCRES` : colle le contenu du fichier `mesure-ancres-secret.json` que je t'ai préparé
+    HORS dépôt (tes lignes, leurs symboles et les clôtures publiques aux 3 dates de relevé, SANS
+    aucune quantité ni solde) ;
+  - `EODHD_TOKEN_MESURE` (optionnel) : la clé d'un compte EODHD **GRATUIT**. Ne souscris rien.
+
+  ✅ Secrets posés et recollés le 2026-09-24 ; mesure réussie au 2ᵉ lancement. Résultats dans
+  `[PTF-L05B-MESURE-SOURCES]` du BACKLOG : les sources gratuites suffisent. Le journal est public : il n'imprime que des verdicts par rang (`L1`…),
+  jamais un symbole ni un prix.
+
+- [x] 👤 **[PTF-QUESTIONS-LOT0]** (2026-09-24, ✅ **répondues le jour même, en session**) — les
+  questions du Lot 0 de la refonte du portefeuille. Décisions consignées dans
+  `docs/adr/0019-decisions-refonte-portefeuille.md` (sans aucune donnée personnelle ; ta date et la
+  nature exacte de l'acquisition restent hors dépôt). Ce qu'elles te laissent à faire est listé
+  juste en dessous et dans `[MCP-DEPLOY-CONTINU-MORT]`.
+  ⚠️ Ne copie PAS le fichier de vérification dans le dépôt : il est ignoré par `.gitignore` et une
+  garde (`tests/confidentialitePortefeuille.test.ts`) refuse ses clés.
+
+- [ ] 👤 **[PTF-L1A-ROUVRIR-APPAREILS]** (2026-09-24) — **rouvre FinanceAI une fois sur ton
+  téléphone, ton PC de dev et ton PC 24/7**, après le déploiement du lot 1a (ADR 0020). Rien à faire
+  d'autre : ouvrir, laisser charger. C'est ce qui garantit qu'aucun appareil resté sur une ancienne
+  version ne s'ouvre vide le jour où le grand livre de ton portefeuille sera importé. Dis-moi quand
+  c'est fait : l'import (lot 1g) attend ce feu vert.
+
+- [x] 👤 **[PTF-JOURNAL-PUBLIC]** (2026-09-24, ✅ **fait le jour même sur ta décision**) — les
+  anciens journaux du cron « Rafraîchir les prix » montraient la liste de tes titres. Le cron ne
+  l'imprime plus, et les journaux des 254 passes déjà publiées ont été SUPPRIMÉS (vérifié : le plus
+  récent rend 404). Les passes restent listées, sans contenu.
+
+- [ ] 👤 **[PTF-RELEVES-DEPUIS-OUVERTURE]** (2026-09-25, conséquence de ta décision « B ») —
+  **garde sous la main TOUS tes relevés du courtier depuis l'ouverture de chaque compte.** L'import
+  (lot 1g) les demandera dans l'ordre, en commençant par le premier : l'app compte 0 $ pour un compte
+  avant son premier relevé importé, donc un historique qui commencerait en cours de route serait faux.
+  Rien à faire maintenant.
+
+- [ ] 👤 **[PTF-FISCALISTE]** (2026-09-24) — **faire confirmer le coût fiscal de tes titres** (don
+  reçu : la règle générale est la valeur de marché à la date du don, mais une origine étrangère peut
+  la changer). D'ici là, l'app affichera une valeur PROVISOIRE, marquée comme telle (ADR 0019 §4).
+
+- [ ] 👤 **[CASHFLOW-REVENU-GONFLE-PAR-UN-VIREMENT]** (2026-09-24) — un virement entrant **unique**
+  de fin décembre 2025 est classé « Revenus divers » : il est moyenné comme un revenu mensuel et
+  gonfle le cashflow que publie ton hub. Si ce n'était pas un revenu, reclasse-le (Transactions →
+  la ligne → catégorie « Transfert ») ; le défaut de calcul, lui, est au BACKLOG.
+
+- [ ] 👤 **[HUBPERSO-HORS-DEPOT]** (2026-09-24, à faire dans Hubperso, pas ici) — deux défauts
+  relevés dans le code de Hubperso en lisant la carte FinanceAI : la page de détail écrit « sur 7 j »
+  en dur (la fenêtre réelle peut être plus courte) et la mini-courbe espace ses points par RANG, pas
+  par date (un trou de trois jours ressemble à un jour). Je ne modifie pas Hubperso depuis ici.
+
+- [ ] 👤 **[MCP-DEPLOY-CONTINU-MORT]** (2026-09-21) — **le déploiement automatique du serveur MCP
+  est mort, et c'est lui qui aurait évité la panne d'aujourd'hui.** Le workflow
+  `Deploy MCP (Cloud Run)` échoue à CHAQUE push en ~12 secondes : `GCP_PROJECT_ID` n'est pas défini
+  et les secrets d'authentification manquent. Conséquence : la SEULE voie vers Cloud Run est
+  `./mcp/deploy.sh` lancé à la main depuis ton PC — c'est-à-dire la voie qui peut embarquer un clone
+  périmé (je viens d'ajouter un refus pour ça, mais un refus ne remplace pas une automatisation).
+  **Ce que je ne peux pas faire d'ici** : créer des secrets GitHub et configurer un compte de
+  service Google Cloud exige des droits que je n'ai pas, et `console.cloud.google.com` est **403 au
+  CONNECT** depuis mon conteneur.
+  **Le geste, dans le dépôt GitHub `MoKarade/FinanceAI` → Settings → Secrets and variables →
+  Actions** :
+  - *Variables* → `GCP_PROJECT_ID` = `<ton-projet-gcp>`
+  - *Secrets* → `GCP_WIF_PROVIDER` (le fournisseur d'identité fédérée Workload Identity) et
+    `GCP_DEPLOY_SA` (l'adresse du compte de service qui a le droit de déployer sur Cloud Run).
+  Si tu préfères ne pas monter la fédération d'identité, dis-le : le workflow peut être adapté à une
+  clé de compte de service classique (moins bien, mais fonctionnel). Dans les deux cas, dis-moi quand
+  c'est posé — je vérifierai qu'un run passe au VERT sur un vrai push, pas en le supposant.
+  ⚠️ **Et si tu choisis de ne rien faire** : dis-le aussi, je retirerai le workflow plutôt que de le
+  laisser échouer à chaque push. Un rouge permanent n'alerte plus personne — il enseigne le rouge.
+  ✅ **Décision 2026-09-24 (ADR 0019 §9)** : tu poses ces paramètres. C'est aussi ce qui met en
+  ligne la lecture des taux par le serveur (`[FX-SERVEUR-JAMAIS-RAFRAICHI]`), et la réparation du
+  cron Fintable (tu as choisi de le réparer) passe par le même redéploiement.
+  ⚠️ **2026-09-25 — il reste UN geste** : tu as posé les paramètres, mais le workflow est
+  **désactivé à la main** côté GitHub (état `disabled_manually`, posé le 2026-09-23 vers 21 h 54, heure de Montréal ; mon lancement manuel a été refusé). Tant qu'il
+  l'est, aucun push ne déploie et rien n'est rouge. **Geste** : GitHub → `MoKarade/FinanceAI` →
+  onglet **Actions** → dans la liste de gauche **Deploy MCP (Cloud Run)** → bouton **Enable
+  workflow**. Dis-moi quand c'est fait : je lance un déploiement et je vérifie qu'il passe au vert.
+  ⚠️ **2026-09-25, 13:56 UTC — réactivé et lancé par toi, ÉCHEC** (run `36144220105`) : le job de
+  déploiement a été **ignoré** parce que GitHub ne voit PAS `GCP_PROJECT_ID` comme *variable de
+  dépôt*. **Vérifie** : Settings → Secrets and variables → Actions → onglet **Variables** (pas
+  « Secrets ») → section **Repository variables** → `GCP_PROJECT_ID` = `<ton-projet-gcp>`. Si tu
+  l'as mise dans l'onglet *Secrets*, ou dans un *Environment*, le workflow ne la lit pas
+  (`vars.GCP_PROJECT_ID`). Les deux autres (`GCP_WIF_PROVIDER`, `GCP_DEPLOY_SA`) vont, elles, dans
+  l'onglet **Secrets**. Puis relance « Run workflow » sur Deploy MCP.
+
+
+- [x] 👤 **[DÉPLOIEMENT — VERCEL-MERGES-NON-DEPLOYES]** (2026-09-18) — ✅ **RÉSOLU TOUT SEUL le jour
+  même, à 21:47 UTC : NE FAIS RIEN.** Vercel a rattrapé au troisième push — le merge de la PR #996
+  (`d66fe5be`, tête de `main`, qui porte LES TROIS lots) a déclenché un déploiement de production
+  passé **`READY`**, et une reprise tardive de `ebe74ef3` (PR #995) s'est lancée dans la foulée.
+  Le `Redeploy` demandé ci-dessous **n'a plus lieu d'être**.
+  ⚠️ **Pourquoi cette entrée est cochée et non supprimée** : un routage périmé qui envoie l'humain
+  faire un geste inutile est aussi nuisible qu'un blocage non signalé (`DOC-STALE-IMPOSSIBILITY`) —
+  et le RÉCIT, lui, vaut d'être gardé : c'est la deuxième fois que ce dépôt voit la même panne, et
+  les deux fois elle s'est résolue « au push suivant ». Le texte d'origine est conservé tel quel
+  ci-dessous : il dit ce qu'on savait AVANT le rattrapage.
+  ⚠️ **Ce qui reste à toi, et à toi seul** : ouvrir l'app et vérifier que ta courbe de dette ne
+  descend plus sous zéro. La réponse SERVIE n'est pas lisible depuis mon conteneur.
+
+  **~~[texte d'origine, 21:38 UTC] deux merges d'affilée sur `main` n'ont produit AUCUN déploiement
+  de production.~~** Le site servait alors encore la version d'avant tes deux correctifs de dette.
+  **Mesuré** (`mcp__Vercel__list_deployments`, cible `production`) :
+  | commit | PR | fusionné | déploiement |
+  |---|---|---|---|
+  | `68cd1734` | #991 | 20:07 | créé à 20:07:16, **`QUEUED` 43 min**, puis `READY` |
+  | `38162e50` | #994 | 20:38 | **AUCUN** — ni `QUEUED`, ni `BUILDING`, ni `ERROR`, ni `CANCELED` |
+  | `ebe74ef3` | #995 | 21:36 | **AUCUN** |
+  Les onze déploiements précédents de la journée ont tous leur enregistrement créé **dans les
+  secondes** qui suivent le merge, puis passent `READY` en quelques minutes. Un enregistrement
+  absent 58 minutes après le merge n'est donc pas de la lenteur.
+  **Écarté par la mesure** : `vercel.json` porte bien `git.deploymentEnabled { "claude/*": false }`,
+  mais ça ne vise **pas** `main` — ce n'est pas la configuration qui saute ces commits.
+  **~~Le geste, que toi seul peux faire~~ (PLUS NÉCESSAIRE — gardé pour la prochaine fois)** : ouvre le tableau de bord Vercel du projet `finance-ai` →
+  onglet *Deployments* → bouton **Redeploy** sur le dernier déploiement de production, **en cochant
+  « use existing Build Cache: off »**, ou *Settings → Git* → **Redeploy** le dernier commit de `main`
+  (`ebe74ef3`). Si le bouton n'apparaît pas, c'est que l'intégration GitHub a décroché : *Settings →
+  Git → Disconnect / Connect* la reconnecte.
+  **Pourquoi je ne peux pas le faire d'ici** : `vercel.com` répond **403 au CONNECT** depuis mon
+  conteneur (refus de POLITIQUE du proxy, cf. `CLAUDE.md` §6), l'URL `*.vercel.app` est derrière le
+  SSO, et je ne lance pas de déploiement de production de moi-même pendant qu'un incident de file
+  est en cours — j'empilerais au lieu de débloquer. **Dis-le-moi et je le lance.**
+  ⚠️ C'est la classe d'incident pour laquelle `CLAUDE.md` §6 existe : le 31/07/2026, Hubperso et
+  BatchChef sont restés **cinq jours** sans déploiement, CI verte, rien de rouge nulle part.
+  ⚠️ Et la seconde moitié de §6 (« contrôler l'effet sur la réponse RÉELLE ») n'est pas mesurable
+  depuis ce conteneur : **toi seul** peux ouvrir `finance.hubperso.com` et vérifier que ta courbe de
+  dette ne descend plus sous zéro.
+
+- [x] 👤 **[MESURE — FX-TAUX-JAMAIS-ARRIVES]** (2026-09-16) — ✅ **FAITE le 2026-09-17, et elle a
+  donné la cause.** Marc a cliqué, lu le diagnostic (« au moins une des deux séries était absente »)
+  puis ouvert l'URL de l'API : `observations[0]` est la dernière valeur du **dong vietnamien**, série
+  abandonnée fin **2019**, et les séries vivantes étaient dans l'entrée SUIVANTE. Le code lisait
+  l'index zéro. Corrigé par `[FX-OBSERVATION-COHORTE]`. Le texte d'origine est conservé ci-dessous —
+  il dit ce qu'on savait AVANT la mesure.
+  **~~ouvre Réglages → Système & diagnostics, carte « Taux de change », et dis-moi ce qu'elle
+  raconte.~~**
+  **Ce qui est déjà mesuré** : ton état porte les taux ÉCRITS EN DUR dans le code (facteurs
+  **1,4000** pour l'USD et **1,4700** pour l'EUR, au dix-millième — `DEFAULT_FX_RATES`,
+  « approximation Q1 2026 »). Tes positions sont toutes en USD ou EUR, donc **100 %** de la
+  valeur de tes placements en dépend. La lecture de la Banque du Canada n'a donc **jamais** abouti
+  chez toi, ou son résultat n'a jamais été écrit.
+  **Pourquoi je ne peux pas aller plus loin d'ici** : `www.bankofcanada.ca` répond **403 au CONNECT**
+  depuis mon conteneur (refus de POLITIQUE du proxy, comme `vercel.com` et `finance.hubperso.com`,
+  cf. `CLAUDE.md` §6). Je ne peux ni tester la requête, ni voir ce que ton navigateur reçoit.
+  **Deux gestes, dans cet ordre** : (1) clique **« Réessayer maintenant »** et lis la phrase de
+  diagnostic — elle nomme la cause (réseau / erreur du serveur / réponse vide / série manquante) ;
+  (2) si ça ne passe toujours pas, **saisis les deux taux à la main** dans la même carte. Ils
+  convertiront tes avoirs, et l'app continuera d'afficher qu'ils viennent de toi.
+  ⚠️ Tant que le taux vient du repli, un compte courtier en devise étrangère reste **nommé et non
+  converti** : c'est délibéré — un montant faux et crédible serait pire que l'omission.
+- [ ] 👤 **[DÉPLOIEMENT — HUB-MCP-PERIME]** (2026-09-17) — **lance
+  `PROJECT_ID=<ton-projet-gcp> ./mcp/deploy.sh`.** Trois chiffres faux sur ta carte du hub partent
+  ensemble avec ce seul geste.
+  **PREUVE que le serveur servi est PÉRIMÉ, pas cassé** : ta capture du 17 sept. 17 h 38 affiche
+  encore le libellé daté « PLACEMENTS (SÉANCE DU 17 SEPTEMBRE) » et les métriques « Variation de la
+  séance » / « Variation 7 jours ». Ces trois choses ont été **supprimées du code** par la PR #983,
+  mergée le 2026-09-17 à 21:32 UTC. Un binaire qui les rend encore est donc antérieur.
+  **Ce que le redéploiement corrige** :
+  · un « Placements » sous-évalué d'environ 10 % — total amputé
+    des titres à queue de chandelles périmée, corrigé par `[HUB-TOTAL-AMPUTE]` (PR #981) ;
+  · des variations aberrantes « sur 7 j » (jusqu'à plusieurs centaines de %) — le hub dérive l'évolution 7 j de **chaque**
+    métrique, donc publier une variation lui faisait calculer une variation de variation
+    (`[HUB-SPARKLINE-VARIATION-DE-VARIATION]`, PR #983) ;
+  · « pas encore d'historique » sous une valeur pourtant publiée — le hub indexe la série **par le
+    libellé**, et « Placements (16 sept.) » changeait de clé chaque séance (même PR).
+  ⚠️ La carte « Cohérence » ne peut pas le voir : elle compare ce que le hub déclare à ce que l'app
+  publie, et les deux lisent le **même** vieux serveur.
+  ⚠️ Rappel `[MCP-DEPLOY-SILENCIEUX]` : `deploy-mcp.yml` reste gardé par `vars.GCP_PROJECT_ID != ''`,
+  jamais satisfait — le job est `skipped` à chaque push, donc aucun push ne déploiera jamais le MCP
+  tant que la variable n'est pas posée dans les réglages du dépôt.
+- [ ] 👤 **[VÉRIF — FX-OBSERVATION-COHORTE]** (2026-09-17) — **une fois le déploiement passé, rouvre
+  la carte « Taux de change » et clique « Réessayer maintenant » une dernière fois.**
+  Attendu : le badge passe à **« Taux Banque du Canada »**, les chiffres deviennent **1,3947** (USD)
+  et **1,6073** (EUR) — ou les valeurs du jour —, et une ligne neuve annonce **« Valeur publiée par
+  la Banque du Canada le AAAA-MM-JJ »**. ⚠️ Je ne peux pas le vérifier d'ici : l'hôte est refusé au
+  CONNECT depuis mon conteneur, et l'URL Vercel est derrière le SSO (`CLAUDE.md` §6).
+  ⚠️ **Ne recopie plus les 1,4000 / 1,4700 dans les champs de saisie** — ce sont les valeurs de repli
+  affichées en exemple ; les saisir les ferait passer pour un taux que tu assumes, avec le droit
+  d'écrire un total de compte. Si tu saisis, saisis un taux lu ailleurs.
+- [x] **[DÉCISION — ENG-MELTDOWN-JAMBE-ARRIVEE, reste]** (2026-09-04, lot 157) — la jambe
+  d'arrivée du meltdown REER→non-enregistré est maintenant AFFICHÉE (fait, sans déplacer
+  d'argent). Reste la vraie question : l'argent arrivé en COURS de mois doit-il toucher un mois
+  PLEIN de croissance ? Aujourd'hui oui (rendement « fantôme » de mi-mois) ; le corriger déplace
+  **−5 045,04 $** de patrimoine final (−0,12 %) et contredit deux goldens « NEUTRALITÉ NW » posés
+  avec preuve bit-identique. [Probable] Recommandation : corriger (l'exclusion de mi-mois est déjà
+  la règle pour les cotisations ordinaires — le meltdown est la seule arrivée qui y échappe), en
+  re-basant les goldens SCIEMMENT avec la mesure dans le commit.
+  ✅ **RÉPONDU 2026-09-04 (en session)** : CORRIGER — exclure l'arrivée du meltdown du mois plein de croissance, re-base SCIEMMENT des 2 goldens NEUTRALITÉ avec la mesure dans le commit.
+  ✅ **LIVRÉE au lot 160 (2026-09-05)** — mesuré −155,82 $ de patrimoine final sur la fixture de référence (le rendement fantôme disparaît).
+- [x] **[DÉCISION — ENG-GOALSHORTFALLS-CHAMP-MORT]** (routée 2026-09-04) — `goalShortfalls` est
+  calculé correctement et lu par PERSONNE. (a) supprimer le champ mort, ou (b) l'exposer sur Futur
+  (« ton but n'a pas pu être financé, il manquait X $ »). [Probable] Recommandation : (b) —
+  l'information existe déjà et répond à une vraie question d'utilisateur ; mais c'est du scope
+  d'écran que tu n'as pas demandé, donc je ne le fais pas sans ton oui.
+  ✅ **RÉPONDU 2026-09-04 (en session)** : (b) EXPOSER sur Futur (« ton but n'a pas pu être financé, il manquait X $ »).
+  ✅ **LIVRÉE au lot 163 (2026-09-05)** — bandeau sur l'onglet Futur, montant masquable au mode discret.
+- [x] **[DÉCISION — ENG-PROPGROWTH-CONFIG-DEAD]** (re-recensé 2026-09-04) — les immeubles
+  LOCATIFS croissent à 3 %/an, taux NON réglable (le champ config est lu par le moteur mais
+  aucune UI ne l'écrit). (a) champ `propertyGrowthRate?` par immeuble locatif (comme les biens),
+  ou (b) réglage global. [Probable] Recommandation : (a), cohérent avec les buts immobiliers qui
+  ont déjà leur taux par bien.
+  ✅ **RÉPONDU 2026-09-04 (en session)** : (a) champ `propertyGrowthRate?` PAR IMMEUBLE locatif ; le réglage config-niveau mort est retiré du chemin.
+  ✅ **LIVRÉE au lot 164 (2026-09-05)** — champ « Croissance %/an » par immeuble dans le panneau des locatifs ; le lecteur config est retiré du chemin.
+- [x] **[DÉCISION — ENG-RENEWAL-CHOC-MORT + RATE-MISMATCH]** (mesuré 2026-08-25) — le « choc de
+  taux » au renouvellement hypothécaire vaut ZÉRO pour tout identifiant atteignable (dérivé du
+  hachage d'un id technique) : le risque de renouvellement n'est PAS modélisé. (1) Le modéliser
+  (par SAISIE d'un taux de renouvellement attendu — jamais par hachage) ou retirer le mécanisme et
+  le dire ? (2) L'activer expose un vrai bug d'argent déjà diagnostiqué (`RATE-MISMATCH` : l'intérêt
+  mensuel resterait à l'ancien taux — les deux se livrent ENSEMBLE). [Probable] Recommandation :
+  saisie « taux de renouvellement attendu » par bien (défaut = taux actuel ⇒ comportement inchangé),
+  livrée avec le correctif RATE-MISMATCH dans le même lot.
+  ✅ **RÉPONDU 2026-09-04 (en session)** : SAISIE « taux de renouvellement attendu » par bien (défaut = taux actuel ⇒ comportement inchangé), livrée AVEC le correctif RATE-MISMATCH dans le même lot.
+  ✅ **LIVRÉE au lot 161 (2026-09-05)** — le champ « Taux Renouvellement » du Studio immobilier pilote enfin le moteur ; PMT et intérêt suivent ensemble.
+- [x] **[DÉCISION — ENG-FVI-EFFICIENCY-ESTATE]** (mesuré, relecture #681) — l'« efficacité
+  fiscale » du FVI affiche 100 % dès que l'impôt courant est négatif (situation NORMALE d'un
+  salarié) et ignore l'impôt successoral — mesuré : PRIO_REER passe de 100 % à 0 % selon la
+  définition (−20 points de FVI). Le FVI alimente Vitalité, le PDF et deux outils MCP. (a) brancher
+  l'impôt À VIE dans le calcul (re-base FVI massif, assumé), ou (b) documenter dans un ADR que le
+  FVI mesure autre chose. [Probable] Recommandation : (a) — un indicateur qui dit 100 % à presque
+  tout le monde ne discrimine rien.
+  ✅ **RÉPONDU 2026-09-04 (en session)** : (a) BRANCHER l'impôt à vie dans le calcul — re-base FVI massif assumé.
+  ✅ **LIVRÉE au lot 165 (2026-09-05)** — et le re-base « massif » s'est mesuré à ZÉRO test : aucun n'épinglait un FVI calculé. **Les SIX décisions du 2026-09-04 sont livrées.**
+- [x] **[DÉCISION — ENG-RANKING-MODULES-ORPHELINS]** (re-cadré revue #683) — `rankStrategies` n'a
+  AUCUN appelant (alias vérifiés) : brancher ou retirer ? ⚠️ S'il est branché un jour, son score
+  `balanced` compte l'impôt successoral DEUX fois (à corriger d'abord). [Probable] Recommandation :
+  retirer (un module mort entouré de tests a l'air vivant et coûte à chaque refactor) — le
+  branchement resterait possible depuis git si le besoin naît.
+
+  ✅ **RÉPONDU 2026-09-04 (en session)** : RETIRER le module (re-branchement possible depuis git si le besoin naît).
+  ✅ **LIVRÉE au lot 162 (2026-09-05)** — module et tests retirés, avertissement du double-comptage laissé au nouveau domicile des exports vivants.
+- [x] **[DÉCISION — FISC-RRSP-RENTAL-EARNED]** (2026-09-04) — le moteur ne crée AUCUN droit REER
+  ✅ **RÉPONDU 2026-09-05 (en session)** — volet (2) : **(a) champ de propriété optionnel par immeuble, défaut 50/50**.
+  ✅ **LIVRÉE au lot 171 (2026-09-05)** — champ « Propriétaire (droits REER) » sur les deux écrans, moteur câblé, T4040 cité comme relayé dans FISCAL_REFERENCE §7.
+  Volet (1), recherche du 2026-09-05 (voir « 🔎 Recherche » plus bas) : le guide **T4040** liste le « revenu net de
+  location de biens immeubles » dans le revenu gagné et les « pertes de location » en déduction — source
+  RELAYÉE par la recherche web (la page canada.ca reste illisible d'ici) ; à citer telle quelle, avec cette mention.
+  pour un revenu de location (confirmé dans le code : le loyer net nourrit le registre des rentes,
+  jamais l'assiette de revenu gagné per-conjoint). Avant de corriger, DEUX réponses requises :
+  **(1) La source fiscale.** La règle « le revenu NET de location est du revenu gagné au sens de
+  146(1) LIR » doit être confirmée par une source officielle (guide ARC **T4040**, section
+  « revenu gagné », ou le texte de 146(1)). Je ne peux pas la citer moi-même : `canada.ca` est
+  bloqué depuis cet environnement (`EGRESS_BLOCKED`, tenté le 2026-09-04 — même blocage déjà
+  consigné pour LégisQuébec). Sans source, la règle du dépôt interdit d'écrire le calcul.
+  **(2) L'attribution par conjoint.** Les droits REER sont un registre PAR CONJOINT, mais un
+  immeuble locatif du modèle n'appartient à personne (aucun champ de propriété). À qui va le
+  loyer net d'un couple : 50/50 ? au conjoint 1 ? un champ de propriété à ajouter au formulaire ?
+  [Probable] Recommandation : champ de propriété optionnel (défaut 50/50), cohérent avec le
+  partage déjà fait ailleurs — mais c'est une décision produit, pas technique.
+
+- [x] **[DÉCISION — TX-INTERAC-BUDGET]** (2026-08-26, audit `[BUDGET-TRANSACTIONS-SYNC-AUDIT]`) —
+  ✅ **RÉPONDU 2026-09-05 (en session)** : **(a)** — un Interac REÇU est routé vers `'Remboursement'` (crédit sur la dépense), jamais un revenu. Ticket `[TX-INTERAC-REMBOURSEMENT]` au BACKLOG.
+  ✅ **LIVRÉE au lot 172 (2026-09-05)** — règle d'import posée (FR et EN), garde de chaîne CSV → revenu du Budget.
+  un Interac REÇU doit-il être un REVENU ou un CRÉDIT sur le poste de dépense ? Deux décisions déjà
+  prises se contredisent : `spendRules.ts` documente « l'entrant ne devient PAS un revenu … ne
+  jamais recompter un remboursement comme une rentrée » et prévoit un mécanisme dédié
+  (`CREDIT_BACK_CATEGORIES = {'Remboursement'}`), mais AUCUNE règle de catégorisation
+  (`services/import/categoryRules.ts`) ne produit jamais `'Remboursement'` — un Interac reçu est
+  classé `Revenus divers` (compté comme un revenu réel), un Interac envoyé `Autre` (dépense pleine).
+  Mesuré (couple : 600 $ resto payés, 300 $ renvoyés par Interac) : **300 $ de faux revenu, 9,1 %**
+  du revenu affiché du mois — qui alimente la tuile Revenus, le badge Excédentaire/Déficitaire, le
+  KPI Restant et le payload envoyé à l'IA. Les 6 tests de `spendRules.test.ts` testent une
+  combinaison (catégorie `'Remboursement'` + payee `'Virement Interac a Julie'`) que la production
+  ne fabrique jamais.
+  **Deux options** : (a) ajouter une règle de catégorisation qui route les Interac REÇUS vers
+  `'Remboursement'` (active enfin le mécanisme existant, cohérent avec la doc de `spendRules.ts`) ;
+  (b) documenter que `'Revenus divers'` est le bon classement pour un Interac reçu et retirer/
+  requalifier le mécanisme `CREDIT_BACK` mort. Sans trancher, le revenu affiché reste gonflé par
+  tout Interac récurrent (loyer partagé, remboursement de colocataire, etc.).
+
+- [x] **[DÉCISION — BUDGET-LEDGER-REVENUS-ORPHELINS]** (2026-08-26, même audit) — le grand livre
+  ✅ **RÉPONDU 2026-09-05 (en session)** : **(b)** — les positifs hors salaire/revenus divers sont EXCLUS du revenu, explicitement et sous un nom visible (jamais perdus en silence). Ticket `[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]` au BACKLOG.
+  ✅ **LIVRÉE au lot 174 (2026-09-05)** — grand livre et KPI disent le même revenu ; section « Entrées hors revenu » nommée ligne par ligne.
+  budget (`utils/budgetSync.ts`) signale les DÉPENSES orphelines (catégories de transactions sans
+  poste, panneau Parité) mais AUCUN équivalent côté REVENUS : tout montant positif hors
+  `{Salaire, Revenus divers}` (retour marchand, remboursement d'impôt, dépôt non catégorisé…)
+  disparaît en silence du KPI Revenus, du KPI Restant, du badge Excédentaire/Déficitaire et du
+  payload IA — alors que le MÊME montant apparaît dans le total du grand livre. Mesuré (salaire
+  6 000 $ + retour Amazon 200 $ + dépôt non catégorisé 500 $) : KPI Revenus = 6 000 $, total du
+  grand livre = 6 700 $ sur le MÊME écran (écart 11,7 %), deux « soldes du mois » différents
+  affichés côte à côte. Corollaire : le grand livre affiche des lignes de REVENU nommées
+  « Magasinage » ou « Impôts » (un retour marchand ou un remboursement d'impôt classés comme des
+  rentrées). **À trancher** : le grand livre doit-il compter ces positifs en revenus (et si oui,
+  faut-il un panneau de parité REVENUS symétrique de celui des dépenses) ou doit-il les exclure
+  explicitement (et alors sous quel nom, pour ne pas les perdre silencieusement) ?
+
+- [x] **[DÉCISION — BUDGET-IMPOTS-POSTE]** (2026-08-26, même audit) — les impôts payés (catégorie
+  ✅ **RÉPONDU 2026-09-05 (en session)** : **(a)** — les impôts sortent des DEUX côtés de la comparaison (réel ET cible). Ticket `[BUDGET-IMPOTS-HORS-COMPARAISON]` au BACKLOG.
+  ✅ **LIVRÉE au lot 173 (2026-09-05)** — réel et prévu sur la même assiette, montant exclu nommé sur la tuile.
+  `Impôts`, exclue de `isSpend`/`NON_BUDGET_CATEGORIES` parce que la PROJECTION travaille déjà sur
+  un revenu net) faussent la comparaison budget↔réel de l'écran Budget : `totalSpent`/
+  `pastAverages.expenseAvg` comptent TOUS les négatifs (impôts inclus), mais `totalBudgetDisplay`
+  (Σ des cibles des postes) ne peut structurellement pas les inclure puisque `Impôts` est exclu des
+  postes — écart mesuré 44 %, entièrement structurel (le badge affiche « Excédentaire +2 300 $ »
+  quand l'excédent réel est 1 500 $). Pire : si on crée un poste « Impôts » à la main pour le
+  suivre, la synchro auto le SUPPRIME au chargement suivant (il n'a jamais de transaction « Épicerie
+  »-like au sens `isSpend`), rendant le conseil du panneau Parité (« crée un poste du même nom »)
+  auto-annulé pour cette catégorie. **À trancher** : les impôts doivent-ils avoir un poste budget
+  (et alors `isSpend`/la synchro doivent-ils changer), ou l'écran doit-il exclure les impôts des
+  DEUX côtés de la comparaison (réel ET cible) pour rester cohérent ?
+
+- [x] **[DÉCISION — PROJ-NW-FALAISE-REER]** (2026-08-21) — la cascade de décaissement
+  ✅ **RÉPONDU 2026-09-05 (en session)** : **(b) plancher de préservation CELI** (contre ma reco (a)) — le CELI ne descend pas sous X mois de dépenses tant que le REER n'est pas vide ; X à fixer PAR MESURE (24 proposé dans le ticket), plan-first, re-base des goldens SCIEMMENT et mesure du CLASSEMENT des stratégies avant/après.
+  AUTO_MARGINAL a un MUR au sommet du palier 14 % : au-delà, elle vide le CELI avant le REER.
+  Mesuré : deux couples identiques à 1 000 $ de REER près finissent à **112 k$ d'écart** (celui
+  qui « préserve » son REER au-delà du palier perd — son CELI meurt plus tôt, puis tout sort au
+  marginal plein). Trois options, choisis-en une :
+  **(a) Lisser le mur** — au-delà du palier, continuer à retirer du REER en partageant
+  REER/CELI (ex. 50/50) au lieu de tout basculer sur le CELI. Le moins de re-base, corrige la
+  falaise, garde l'esprit « optimiser le marginal ».
+  **(b) Plancher de préservation CELI** — le CELI ne descend jamais sous X mois de dépenses
+  (X = 24 ?) tant que le REER n'est pas vide : au-delà du palier, on tire du REER quand même.
+  Plus proche de la vraie planification (le CELI est le dernier abri), re-base plus large.
+  **(c) Statu quo documenté** — la bascule est réelle fiscalement ; on documente la sensibilité
+  dans l'UI (« résultat sensible autour des seuils de palier ») sans changer le moteur.
+  Ma reco : **(a)**, mesurable et borné ; (b) est meilleur produit mais mérite son propre lot.
+  Détail complet : `[PROJ-NW-FALAISE-REER]` au BACKLOG.
+
+- [x] **[VERCEL-PROD-679-NON-DEPLOYE]** ✅ **RÉSOLU 2026-08-21 00:10 UTC** — le merge #680 a déclenché le déploiement production (sha 683b520, contient #679+#680) ; la limite s'est libérée après minuit UTC. (Historique : 2026-08-20 22:18 UTC) — le merge #679 sur `main`
+  (`4c67d5b`, droits REER par personne) n'a **pas** créé de déploiement production Vercel
+  (limite quotidienne « 100/jour » du plan gratuit atteinte au moment du push ; les previews
+  remarchent depuis). Le site sert encore le build de #676. Claude vérifie au prochain merge que
+  production rattrape ; si finance.hubperso.com reste sur l'ancien build demain, redéployer à la
+  main depuis le dashboard Vercel (Redeploy sur le dernier commit de main) — ou considérer la
+  limite du plan gratuit si les journées à ~15 PR deviennent la norme.
+
+> Ce que **Claude ne peut pas faire seul** (comptes Google/Drive/Cloudflare/Vercel,
+> ressenti visuel sur device, secrets) + les **blocages** que Claude découvre en
+> chemin. Claude **ajoute** ici ; Marc coche. Détail des tests manuels par onglet :
+> `docs/MANUAL_TEST_CHECKLIST.md`. Tâches que Claude peut faire : `BACKLOG.md`.
+
+---
+
+# 🔓 INDEX — tout ce qui me débloque (balayage exhaustif du 2026-08-06)
+
+> Demandé par Marc : « prépare-moi la liste de ce que je dois faire pour te débloquer le backlog au
+> complet ». Balayage complet de `BACKLOG.md` + de ce fichier. Chaque entrée dit **ce que ça coûte**
+> et **ce que ça débloque**. Le détail de chacune est plus bas dans ce fichier ou dans le BACKLOG.
+>
+> ⚠️ **Lis d'abord ceci** : rien ici n'est bloqué sur du travail que je pourrais faire à ta place.
+> Il reste ~40 items **non gatés** au BACKLOG (a11y, dette technique, tests, perf) que je continue
+> d'avancer sans toi. Cette liste est ce qui débloque **le reste**.
+
+## 🔎 `[DOCS-PROTECTION]` — revue HEBDOMADAIRE (pole-securite, dès la fusion de l'ADR 0024)
+
+Chaque semaine, pole-securite relit les lignes AJOUTÉES à `docs/claude/lecons.md` et `docs/CONVENTIONS.md`
+(`git log -p --since=7.days -- docs/claude/lecons.md docs/CONVENTIONS.md`) : une consigne en prose, sans URL ni commande,
+n'est pas vue par le détecteur automatique. Rien à faire pour Marc sauf si pole-securite signale une ligne.
+
+## 🧭 `[IA-NAV-LABELS]` — DÉCISION (routée le 2026-09-04, lot 140)
+
+> ✅ **Tranché le 2026-09-05 (option 3 : garder le rail replié) — ticket FERMÉ et archivé au lot 177.**
+
+✅ **RÉPONDU 2026-09-05 (en session)** : option **(3)** — garder le rail replié, **fermer le ticket** (l'a11y est déjà couverte).
+
+Le ticket demande des libellés de navigation visibles par défaut (aujourd'hui : rail replié de
+64 px, libellés au survol/focus). Mais le rail replié est un CHOIX de la Phase B.1 (expansion en
+overlay sans décaler le contenu), et le ticket propose deux remèdes exclusifs — élargir le rail
+par défaut (mange ~200 px de contenu sur chaque écran) ou un rail intermédiaire avec libellés
+courts. **Coût** : une réponse parmi trois : (1) rail large par défaut, (2) rail intermédiaire
+(~120-160 px, libellés visibles, contenu à peine décalé), (3) garder le rail replié (fermer le
+ticket — l'a11y est déjà couverte : `aria-label` par item, expansion au focus clavier).
+**Ce que ça débloque** : `[IA-NAV-LABELS]`, et la moitié nav de `[UI-TABS-RICH]` qui y est
+adossée. [Probable] Option 3 ou 2 — le survol/focus ouvre déjà les libellés en un geste, et
+l'écran utile est précieux sur portable.
+
+## 🧭 `[ENG-NET-MODEL-RESIDUAL]` volet CALIBRATION — DÉCISION (routée le 2026-09-04, lot 139)
+
+✅ **RÉPONDU 2026-09-05 (en session)** : **rester au diagnostic** — pas de calibration. Volet clos.
+
+Le volet DIAGNOSTIC est livré (l'onglet Impôts affiche l'écart net déclaré ↔ net du modèle quand
+ton brut est saisi à la main et que l'écart dépasse 1 %). Reste la seconde piste du ticket :
+**réconcilier** — appliquer au boot un facteur calibré pour que le net du modèle retombe sur ton
+net déclaré. Ça changerait TOUTES les projections des profils au brut saisi (mesuré ±3 à 7 k$/an
+selon la fixture), dans un sens qui dépend du profil. **Coût** : une réponse (« calibrer » ou
+« rester au diagnostic »). **Ce que ça débloque** : la fermeture définitive du biais (a) de
+`FISCAL_REFERENCE` §9. [Probable] Le diagnostic suffit — le brut déduit (défaut depuis
+`[MIGRATE-GROSS-135]`) n'a pas le biais, et calibrer par-dessus une saisie divergente masquerait
+une saisie périmée au lieu de la faire corriger.
+
+## ✅ `[ENG-T1213-NET-MONTHLY]` — RÉPONDU par Marc le 2026-09-03 : **retirer le bouton + forcer à OFF** — LIVRÉ (lot 118)
+
+> **Réponse de Marc** : option 1 (retirer le bouton), et sur la sous-question du réglage déjà
+> enregistré : **forcer à OFF partout** — le moteur ignore la valeur persistée, le champ reste dans
+> le type (aucune migration de données). Livré au lot 118 ; la garde du lot 114 s'est INVERSÉE au
+> même endroit (`tests/services/t1213ToggleInerte.test.ts`).
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
+
+**C'est le plus grave de cette liste.** Dans les réglages avancés de la projection, il y a un bouton
+« T1213 retenue source ON/OFF ». Dans la vraie vie, le formulaire T1213 te permet de faire réduire
+l'impôt retenu sur chaque paie pour tenir compte de tes cotisations REER : tu encaisses plus tous les
+mois au lieu d'attendre ton remboursement d'avril. C'est neutre à positif pour toi, jamais négatif.
+
+**Ce que l'app en fait.** Elle n'en modélise que la moitié : activer le bouton réduit bien la retenue
+(donc ton remboursement d'avril disparaît), mais le net que tu encaisses chaque mois vient du salaire
+net que tu as SAISI — il ne monte jamais. Tu perds l'économie sans jamais toucher la contrepartie.
+
+**Combien**, mesuré sur un célibataire à 150 000 $ qui épargne 3 000 $/mois :
+
+| horizon | bouton OFF | bouton ON | écart |
+|---|---|---|---|
+| 5 ans | 596 195 $ | 499 933 $ | −96 263 $ (−16,1 %) |
+| 10 ans | 877 470 $ | 662 078 $ | −215 392 $ (−24,5 %) |
+| 20 ans | 1 676 357 $ | 1 186 194 $ | −490 163 $ (−29,2 %) |
+| 30 ans | 2 258 470 $ | 1 227 051 $ | **−1 031 419 $ (−45,7 %)** |
+
+Le pourcentage **grandit** avec l'horizon : ce n'est pas une erreur bornée, c'est une économie
+annuelle qu'on cesse de capitaliser. Le ticket d'origine n'annonçait qu'un montant (−183 598 $) et
+sous-estimait donc la gravité d'un facteur cinq.
+
+**Trois options :**
+
+1. **Retirer le bouton de l'interface.** Immédiat, et il ne peut aujourd'hui que nuire. On perd un
+   réglage que personne ne peut utiliser correctement. *Ma recommandation, tant que 2 n'est pas fait.*
+2. **Modéliser correctement** : majorer le net mensuel de l'économie de retenue. C'est le vrai
+   correctif, mais il bute sur une difficulté que le ticket ne mentionne pas — tes cotisations REER
+   de l'année ne sont connues qu'en décembre, alors que ton net de janvier en dépendrait. Il faudrait
+   se baser sur l'année précédente (ce que fait le vrai T1213, d'ailleurs). Lot à part, plan d'abord.
+3. **Ne rien changer, mais avertir** : garder le bouton en affichant que le modèle est incomplet.
+   Le moins bon des trois à mes yeux : ça laisse un chiffre faux à l'écran, avec un avertissement.
+
+En attendant ta réponse, le fait est FIGÉ par un test (`t1213ToggleNuisible.test.ts`) qui rougira le
+jour où le défaut sera corrigé, pour qu'on ne le re-livre pas par accident.
+
+---
+
+</details>
+
+## ✅ `[IMMO-3-FORMULES]` volet CLAMP — RÉPONDU le 2026-09-03 : **retirer le plancher**
+
+> **Réponse de Marc** : option 1. La courbe dit la vérité, y compris quand elle est mauvaise —
+> cohérent avec `no-fake-data`. ✅ **LIVRÉ au lot 119 (PR #850, 2026-09-04)** : retiré le `Math.max(0, …)` de `Equite` dans
+> `runAmortization`, et re-baser les tests d'historique concernés AVEC leur explication.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
+
+**Ce qui se passe.** Quand l'app reconstruit l'historique de ton immobilier, elle calcule l'équité
+d'un bien comme « ce qu'il vaut moins ce que tu dois dessus » — mais elle refuse le résultat
+négatif et affiche **zéro** à la place. Un bien qui vaut moins que son hypothèque (le cas
+*underwater* : marché en baisse, mise de fonds minimale, premières années) apparaît donc comme
+« ni dette ni valeur », alors que la réalité est un déficit.
+
+**Pourquoi ça compte.** Ce zéro ne se contente pas de cacher le déficit : il le **retire du
+patrimoine passé**. Ta courbe historique est alors trop haute d'exactement le montant du déficit,
+au moment précis où l'information serait la plus utile.
+
+**Pourquoi je ne tranche pas seul.** Retirer ce plancher change ce que l'écran MONTRE dans une
+situation difficile, et rien dans le dépôt ne dit laquelle des deux tu veux. Trois options :
+
+1. **Retirer le plancher** — la courbe dit la vérité, y compris quand elle est mauvaise. C'est
+   cohérent avec la règle « no-fake-data » du projet (un zéro crédible est pire qu'un chiffre juste
+   qui dérange). *Ma recommandation.*
+2. **Garder le plancher, mais le SIGNALER** — l'équité reste à zéro et une mention explique
+   « la valeur ne couvre pas l'hypothèque ». Plus doux, mais le patrimoine reste faux.
+3. **Ne rien changer** — statu quo, et j'ajoute une note dans la documentation pour que la limite
+   soit au moins écrite quelque part.
+
+**Ce qui est déjà fait.** L'autre moitié du même ticket est livrée : la prime d'assurance prêt
+(SCHL) manquait au calcul de l'historique, qui surestimait ton équité de 8 400 $ à 15 600 $ selon
+le profil. Corrigé et mesuré ; les deux formules de l'écran concordent maintenant.
+
+---
+
+</details>
+
+## ✅ `[ENG-GOALS-HORS-TOTALEXPENSES]` — RÉPONDU le 2026-09-03 : **attendre l'affichage du SWR**
+
+> **Réponse de Marc** : ne rien changer maintenant. Le coût est nul tant que le SWR n'est affiché
+> nulle part ; la garde du lot 110 rougira le jour où quelqu'un le branche. Rien à livrer.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
+
+**Ce qui se passe.** Quand un de tes objectifs financiers arrive à échéance, l'app sort l'argent du
+compte visé — le patrimoine baisse, la sortie est bien enregistrée. Mais le **compteur total de
+dépenses** de la simulation, lui, ne la compte pas.
+
+**Ce que ça coûte aujourd'hui : rien à l'écran.** Le seul calcul qui lit ce compteur est le **taux
+de retrait sécuritaire** (SWR), et ce chiffre n'est affiché nulle part dans l'app. Vérifié.
+
+**Le risque est pour plus tard.** Si un jour on affiche ce taux, il sera **sous-estimé** — donc ton
+plan aurait l'air plus sûr qu'il ne l'est. C'est le genre d'erreur qu'on ne voit pas : le chiffre est
+plausible, juste trop optimiste.
+
+**⚠️ Et le correctif évident est un vrai bug.** Le code contient volontairement une ligne qui « ne
+fait rien », avec un commentaire qui explique pourquoi. La rendre active semble être *la* correction
+— elle retirerait ton argent **une deuxième fois** du flux mensuel, parce que ce compteur-là n'est
+pas un compteur de rapport : c'est celui qui pilote ta trésorerie. J'ai posé un test qui rougit si
+quelqu'un tente cette « correction ».
+
+**Deux options :**
+1. **Ne rien faire pour l'instant** — la limite est documentée et testée ; elle deviendra urgente le
+   jour où on voudra afficher le taux de retrait sécuritaire. *(recommandé)*
+2. **Séparer les deux compteurs** — un pour la trésorerie, un pour le rapport. C'est le seul
+   correctif juste, mais il touche le cœur du moteur et mérite son propre lot avec plan préalable.
+
+</details>
+
+## ✅ `[HEALTH-CORRUPTION…]` (a) — RÉPONDU le 2026-09-03 : **un marqueur discret**
+
+> **Réponse de Marc** : option 2 — *différente de ma recommandation*, qui était de ne rien changer.
+> ✅ **LIVRÉ au lot 122 (PR #853, 2026-09-04)** : une pastille (pas une phrase) dans le résumé « Santé financière » quand au moins
+> une métrique est exclue pour donnée INVALIDE, cliquable vers le détail. ⚠️ Ne doit PAS s'afficher
+> pour une métrique simplement non calculable — c'est toute la distinction qui justifie le marqueur.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
+
+**Ce qui est déjà réglé.** Quand *aucune* de tes métriques n'est calculable, le résumé de santé le
+dit honnêtement au lieu d'afficher « 0/100 » en rouge. Et sur l'écran de détail, une métrique exclue
+parce que ta donnée est invalide s'annonce différemment d'une métrique simplement non calculable.
+
+**Ce qui reste.** Dans le **résumé** (la ligne « Santé financière » en tête de Futur), une métrique
+exclue pour **donnée invalide** est invisible : le résumé n'affiche que le score global. Or les deux
+cas ne se valent pas — une donnée invalide, **tu peux la corriger** ; une métrique non calculable
+(ton objectif FIRE n'est pas défini, par exemple) n'appelle aucune action.
+
+**Pourquoi je ne tranche pas.** Le résumé est un résumé : son rôle est de ne PAS multiplier les
+affirmations. Y ajouter un signal, c'est ajouter du bruit permanent pour un cas rare — et le dépôt a
+déjà appris qu'un avertissement permanent finit par ne plus être lu.
+
+**Trois options :**
+1. **Ne rien changer** — l'information existe sur l'écran de détail, à un clic. *(recommandé)*
+2. **Un marqueur discret** dans le résumé (une pastille, pas une phrase) quand au moins une métrique
+   est exclue pour donnée invalide, cliquable vers le détail.
+3. **Une phrase** dans le résumé — le plus visible, et le plus bruyant.
+
+</details>
+
+## ✅ `[BUDGET-DEUX-NETS-MEME-ECRAN]` — RÉPONDU le 2026-09-03 : **nommer la base**
+
+> **Réponse de Marc** : option 2. La paie déclarée reste le dénominateur — aucun chiffre ne bouge —
+> et le badge le DIT. ✅ **LIVRÉ au lot 120 (PR #851, 2026-09-04)** : mention « de la paie déclarée » + infobulle sur le badge « Effort ».
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
+
+**Ce qui se passe.** Dans la carte fiscale de l'écran Budget, la ligne **« Revenu Net Disponible »**
+est calculée depuis ton **brut**, par le moteur fiscal. Juste en dessous, le badge **« Effort : X % »**
+de chaque conjoint est calculé sur le **net que tu as saisi** dans ton profil. Deux bases
+différentes, à quelques lignes d'écart, sans que rien ne le dise.
+
+**Ce n'est pas un bug de calcul.** Les deux chiffres sont justes : l'un dit ce que le modèle fiscal
+prédit à partir de ton salaire brut, l'autre ce que tu reçois réellement d'après ta paie. Leur écart
+mesure la distance entre les deux — utile en soi.
+
+**L'écart, mesuré sur quatre paires réalistes** (il change de signe, ce n'est pas un biais) :
+
+| Brut / mois | Net saisi | Net recalculé | Écart |
+|---|---|---|---|
+| 8 200 $ | 5 620 $ | 5 604 $ | **−0,3 %** |
+| 7 100 $ | 4 995 $ | 4 906 $ | **−1,8 %** |
+| 5 000 $ | 3 600 $ | 3 695 $ | **+2,6 %** |
+| 12 000 $ | 7 500 $ | 7 763 $ | **+3,5 %** |
+
+Sur un « Effort » de 40 %, un écart de 3,5 % déplace le badge d'environ **1,4 point**.
+
+**⚠️ Le ticket d'origine se trompait sur un point** : il annonçait que la carte de répartition
+*affiche* le net saisi (« 5 000 $ »). Vérifié ligne à ligne — il n'est **jamais affiché comme
+montant**, il ne sert que de dénominateur au badge « Effort » et à la largeur des barres. Il n'y a
+donc pas de second montant à étiqueter, et le correctif « mettre une mention sur chacun » ne
+s'applique pas tel quel.
+
+**Deux options, et je ne tranche pas parce que la première change un pourcentage que tu vois :**
+1. **Aligner** le dénominateur d'« Effort » sur le net recalculé de la même carte. Le badge devient
+   cohérent avec le chiffre au-dessus, mais sa valeur bouge (jusqu'à ~1,4 point).
+2. **Garder ta paie déclarée** comme base — c'est défendable, c'est l'argent que tu touches vraiment
+   — et le **nommer** sur le badge (« sur ta paie déclarée »). Aucun chiffre ne bouge.
+   *(ma recommandation : c'est celle qui ne déplace rien et qui supprime quand même la confusion)*
+
+</details>
+
+## ✅ `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` — RÉPONDU le 2026-09-03 : **ne rien changer**
+
+> **Réponse de Marc** : option 1. Le taux global reste un réglage d'écrans, la carte par compte
+> pilote la projection. La garde du lot 107 fige le fait. Rien à livrer.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
+
+**Le fait, mesuré.** L'app a **deux** réglages de rendement : un taux **global** (`returnRate`) et
+une **carte par compte** (CELI / REER / non-enregistré / crypto / liquidités). Le moteur de
+projection ne lit **que la carte par compte**. Le taux global ne déplace pas un dollar de ta
+projection — vérifié en le faisant passer du simple au triple : patrimoine final **identique au
+dollar près**.
+
+**Il n'est pas mort pour autant.** Trois écrans le lisent vraiment :
+- l'atelier **Immobilier**, comme hypothèse de croissance des placements pour la comparaison
+  « acheter ou investir » ;
+- et **Projets de vie**, où il produit le « coût d'opportunité » affiché : « si cet argent avait été
+  investi à X % au lieu d'être dépensé… ».
+
+**Le vrai risque est ailleurs.** Ce champ a déjà fait dérailler deux mesures internes qui croyaient
+simuler à 5 % et tournaient sur les taux par défaut. J'ai posé une garde qui fige le fait : si
+quelqu'un câble le champ un jour, un test rouge le signalera — le câblage deviendra un acte
+délibéré. *(L'alarme du ticket sur « des dizaines de tests faussés » est **réfutée** : 72 fichiers
+posent ce champ, 69 posent aussi la carte par compte, et les 3 restants sont des écrans qui
+l'utilisent légitimement.)*
+
+**La décision t'appartient, parce qu'elle change ce que tu vois :**
+1. **Ne rien changer** — le taux global reste un réglage d'écrans, la carte par compte pilote la
+   projection. C'est l'état actuel, et il est cohérent une fois qu'on le sait. *(recommandé)*
+2. **Retirer le taux global** et faire lire aux trois écrans une valeur dérivée de la carte par
+   compte (une moyenne, ou le taux du non-enregistré). Un réglage de moins, mais le « coût
+   d'opportunité » de Projets de vie changerait de valeur.
+3. **Câbler le taux global sur le moteur** — il faudrait alors décider ce qu'il fait de la carte par
+   compte : l'écraser entièrement ? servir de défaut ? Cette option change les projections de tout
+   le monde et demande un plan à part.
+
+</details>
+
+## ✅ `[MIGRATE-GROSS-DEJA-PERSISTE]` — RÉPONDU le 2026-09-03 : **migrer en DEMANDANT**
+
+> **Réponse de Marc** : option 3. Détecter la signature (`brut == arrondi(net × 1,35)`) et PROPOSER
+> la correction ; ne jamais écrire tout seul. ✅ **LIVRÉ au lot 121 (PR #852, 2026-09-04)**. ⚠️ Le point non négociable : aucune
+> écriture automatique sur une saisie de l'utilisateur — c'est irréversible côté app.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
+
+**Le problème.** Un ancien défaut fabriquait ton salaire brut en multipliant le net par 1,35. Il est
+corrigé — mais **seulement pour les configurations qui n'avaient pas encore de brut enregistré** :
+`migrateUserConfig` fait `u.grossSalary || (…)`, donc dès que le champ existe, le repli est
+court-circuité et la mauvaise valeur reste. Le correctif ne rattrape personne dont le brut a déjà
+été écrit.
+
+**Ce qu'on pourrait faire.** Une migration qui re-dérive le brut **quand il vaut exactement
+`arrondi(net × 1,35)`** — la signature du défaut est reconnaissable.
+
+**Pourquoi je ne le fais pas seul.** ⚠️ Le risque est symétrique et il porte sur TES données : si tu
+as SAISI un brut qui coïncide par hasard avec 1,35 × net, la migration l'écraserait. Écraser une
+saisie de l'utilisateur est irréversible côté app. Le ticket lui-même dit « décision produit à poser
+à Marc avant de coder ».
+
+**Trois options :**
+1. **Ne rien faire** — le défaut reste sur les configs déjà écrites, et se corrige à la main en
+   ré-saisissant le brut. *(le plus prudent)*
+2. **Migrer avec la signature** — re-dériver quand `brut == arrondi(net × 1,35)`, en acceptant le
+   risque d'écraser une coïncidence.
+3. **Migrer en DEMANDANT** — détecter la signature et afficher un message qui te propose la
+   correction, sans jamais écrire tout seul. *(ma recommandation : c'est le seul qui ne peut pas
+   détruire une saisie)*
+
+</details>
+
+## ✅ `[FMT-PROMPT-MONTANTS]` — RÉPONDU le 2026-09-03 : **tout migrer + abandonner l'arrondi**
+
+> **Réponse de Marc** : migrer les 17 sites vers `formatCAD` — *différent de ma recommandation* —
+> et, sur la sous-question, **abandonner l'arrondi à 100 $**.
+> ⚠️⚠️ **CONSÉQUENCE OBLIGATOIRE, à livrer DANS LE MÊME LOT** : le texte de consentement de l'app
+> promet « montants arrondis à 100$ ». Sans l'arrondi, cette phrase devient FAUSSE — c'est un
+> engagement de vie privée affiché à l'utilisateur, pas un détail technique. Le lot n'est pas
+> livrable sans la correction du consentement.
+> ✅ **LIVRÉ au lot 123 (PR #854, 2026-09-04)** : 4 exemptions retirées, 17 sites migrés, arrondi
+> abandonné, consentement corrigé (« montants exacts ») + garde de cohérence promesse ↔ mécanisme.
+
+<details><summary>Énoncé d'origine (conservé)</summary>
+
+
+**Contexte.** Les lots 100-103 ont fermé la classe « montant formaté hors `utils/format.ts` » sur
+tous les écrans et tous les journaux du moteur. Il reste **17 sites**, tous du texte lu par un
+modèle : les prompts (`BudgetAiModal`, `services/claude.ts`, `services/aiChat/viewContext.ts`) et
+les résumés d'outils MCP (`mcp/ingest/applyDocument.ts`).
+
+**Pourquoi je ne tranche pas seul.** Ce n'est pas un oubli, c'est un arbitrage :
+1. `BudgetAiModal` et `claude.ts` arrondissent **délibérément à 100 $** — c'est une mesure de vie
+   privée, et le texte de consentement de l'app la promet en toutes lettres (« montants arrondis à
+   100$ »). Y appliquer `formatCAD` afficherait le montant au dollar près dans le prompt.
+2. `formatCAD` rend « — » sur une valeur non finie. Dans un prompt, ces sites ont déjà leur propre
+   traitement (`'(non disponible)'`, `null` qui fait OMETTRE la ligne) — souvent meilleur, parce
+   qu'un « — » se lit comme une valeur par un modèle.
+3. L'espace **insécable** de `formatCAD` entre dans le texte envoyé à l'API. Sans effet connu, mais
+   c'est un changement de ce que le modèle LIT, donc à décider et non à subir.
+
+**Ce que je propose** *(recommandation)* : les LAISSER tels quels et garder l'exemption déclarée.
+Le formateur d'écran répond à des contraintes d'écran (typographie, masquage, « — » honnête) qui ne
+sont pas celles d'un prompt.
+
+**Si tu veux l'inverse**, le lot est petit : retirer les 4 entrées d'`EXEMPTIONS` dans
+`tests/components/formatMonetaireSourceUnique.test.ts` et migrer les 17 sites — mais il faut alors
+décider ce qu'on fait de l'arrondi à 100 $ (le garder EN PLUS de `formatCAD`, ou l'abandonner et
+corriger le texte de consentement).
+
+</details>
+
+## A00. ✅ RÉPONDU par Marc le 2026-08-20 — règle sourcée, transcrite
+
+> **Réponse reçue** (recherche sourcée : canada.ca, Retraite Québec, dépliant RQAP, U. Sherbrooke) :
+> les prestations versées PAR le RQAP, l'AE et le RRQ ne sont assujetties à AUCUNE des trois
+> cotisations — seule l'imposition s'applique. Assiette de cotisation = revenus de TRAVAIL
+> uniquement. Transcrit dans `FISCAL_REFERENCE.md` §2 + ADR dans `docs/adr/0015-prestations-rqap-ae-rrq-hors-assiette.md`.
+> `[RQAP-PRESTATION-COTISATIONS]` et `[AE-PLAFOND-MANQUANT]` sont DÉBLOQUÉS.
+> ⚠️ Marc a aussi demandé de débloquer le proxy pour revenuquebec.ca — testé depuis ce conteneur le
+> 2026-08-20 16:10 UTC : **encore 403** (CONNECT tunnel failed). Le déblocage n'a pas atteint cette
+> session ; à re-tester à la prochaine session ou après modification de la politique réseau de
+> l'environnement.
+
+### (historique de la demande, conservé)
+⚠️ SOURCER UNE RÈGLE FISCALE — 4 328 $/an en jeu (ajouté 2026-08-20, revue de PR #667)
+
+- [ ] **Confirmer qu'une prestation du RQAP n'est pas assujettie aux cotisations RRQ / AE / RQAP.**
+
+**Ce que j'ai mesuré** (`[RQAP-PRESTATION-COTISATIONS]` au BACKLOG) : le moteur fait payer des
+cotisations RRQ + AE + RQAP **sur la prestation de congé parental elle-même**. Sur une prestation de
+56 650 $ : net **42 366,76 $** au lieu de **46 695,26 $** → **4 328,50 $/an de cotisations
+fantômes**. C'est **1,57×** le gain de 2 750 $/an que la PR #667 vient de restaurer sur le plafond.
+
+**Pourquoi je ne l'ai pas corrigé.** Le correctif code est d'un seul paramètre. Mais il déplace de
+l'argent en s'appuyant sur une affirmation fiscale — « une prestation du RQAP n'est pas un revenu de
+travail » — et le non-négociable du dépôt est que toute valeur ou règle fiscale vient de
+`docs/FISCAL_REFERENCE.md`, **datée et sourcée**. Je ne code pas sur ma propre supposition, même
+quand elle me paraît évidente.
+
+**Pourquoi toi et pas moi.** Le proxy réseau de mon environnement **bloque** `revenuquebec.ca`,
+`rqap.gouv.qc.ca` et `rrq.gouv.qc.ca` (erreur `EGRESS_BLOCKED`). Je ne peux pas lire la source
+officielle. Deux minutes pour toi, impossible pour moi.
+
+**Ce que j'ai besoin que tu regardes** — la page qui répond exactement à la question :
+<https://www.revenuquebec.ca/fr/entreprises/retenues-a-la-source-et-cotisations-de-lemployeur/calcul-des-retenues-et-des-cotisations/cotisations-au-rqap/remunerations-non-assujetties/>
+(« Rémunérations **non assujetties** au Régime québécois d'assurance parentale »).
+
+**La question précise** : les prestations versées PAR le RQAP (maternité, paternité, parentales)
+figurent-elles dans les rémunérations non assujetties ? Et même question côté RRQ et AE.
+
+**Réponds-moi juste ça**, et je fais le reste : ancrage en `FISCAL_REFERENCE.md` §2 avec la source
+et la date, correctif d'une ligne, test discriminant, mesure avant/après.
+
+⚠️ **Si tu m'autorises une autre voie** : tu peux aussi me dire « débloque le proxy pour
+revenuquebec.ca » (c'est un réglage de l'environnement, côté toi), et je sourcerai moi-même.
+
+---
+
+## A00b. ✅ CLOS le 2026-08-21 — Vercel a rattrapé le déploiement de PRODUCTION du merge #687
+
+- [x] **Vérifié via l'API Vercel** (`list_deployments`, projet `finance-ai`) : le déploiement
+  `dpl_D2X3T5eWvaqYvaoEFiFd6N3MhV9N` est `READY`/`production` sur le commit `3bbc380` (#690),
+  qui contient `3dd9d9d` (#687) dans son historique linéaire (`3dd9d9d`→`c8654d1` #688→`67b954b`
+  #689→`3bbc380` #690). Le lot `[PASSE-REEL-DETTE-1]` (dette absente du passé avant sa date de
+  début) est bien EN LIGNE. Cause probable du rattrapage : PR #690 (`git.deploymentEnabled` dans
+  `vercel.json`) a coupé les previews sur `claude/*`, libérant le quota 100/jour partagé pour que
+  le prochain push sur `main` passe. Item d'origine conservé ci-dessous comme historique.
+
+- [x] ~~Vérifier/débloquer le déploiement Vercel de `finance-ai`.~~ Le merge de la PR #687
+  (`[PASSE-REEL-DETTE-1]`, sha `3dd9d9d`, mergé 2026-08-21 17:31 UTC) n'a produit **aucun
+  déploiement** — ni production, ni preview — plus de 6 minutes après le merge, alors que tous
+  les merges précédents d'aujourd'hui (#684, #685, #686) avaient un déploiement production
+  `READY` en quelques secondes. Le projet a heurté DEUX FOIS aujourd'hui le message Vercel
+  « Resource is limited — try again in 24 hours (more than 100, code: api-deployments-free-per-day) »
+  (sur des previews de PR, pas encore sur `main`) — très probablement la même limite bloque
+  maintenant silencieusement le déploiement de `main`, sans commentaire visible nulle part
+  puisque ce n'est plus une preview de PR qui poste un commentaire GitHub.
+
+## A0. Smoke test 2 minutes — pincement sur TON téléphone (ajouté 2026-08-12, PR #596)
+
+- [x] ✅ **FAIT — réponse Marc 2026-08-20 : « marche »** (le pincement zoome le graphe).
+  (historique) Tester le zoom au pincement sur ton vrai téléphone dès le déploiement : ouvre la courbe
+  Futur, pince à 2 doigts (écarte = zoom, resserre = dézoom, translate = déplace), vérifie que
+  1 doigt fait toujours défiler la page et qu'un tap sélectionne un jour. **Pourquoi toi** : mes
+  e2e tactiles ne couvrent que Chromium — si ton téléphone est un iPhone (Safari/WebKit), le
+  moteur est différent et seul un vrai appareil le prouve (finding MOYEN code-reviewer #596).
+  Si le pincement zoome la PAGE au lieu du graphe, dis-le : le correctif est connu
+  (`gesturestart` WebKit à bloquer en plus).
+
+## A. Réponses par oui/non — 2 minutes chacune, aucun compte à ouvrir
+
+Ce sont les moins chères et les plus débloquantes. Une phrase suffit pour chacune.
+
+| # | Question | Ce que ça débloque | Impact mesuré |
+|---|---|---|---|
+| A1 | Les droits REER doivent-ils être calculés **par personne** (règle ARC) plutôt que sur le revenu du ménage ? C'est un changement de modèle, je le ferais avec plan + mesure avant/après. | `[FISC-RRSP-ROOM-PER-USER]` | **45 000 $ vs 34 480 $** de droits/an sur un ménage mono-gagnant à 250 k$ |
+| A2 | Ton « ok » du 2026-07-06 sur `[FISC-TAXDEC-INCR]` voulait dire **« code-le »** ou **« laisse pour plus tard »** ? Je n'ai jamais osé trancher (risque $ élevé, re-base de goldens). | `[FISC-TAXDEC-INCR]` | 3 sous-fixes de `taxDecember` |
+| A3 | Le crédit pension fédéral de 2 000 $ est gelé nominalement mais traité en espace RÉEL. Le corriger **re-base les goldens retraités**. GO ? | `[FISC-PENSION-CREDIT-REAL]` | ≤ **250 $/pers/an**, ~12 k$ sur 30 ans, sens NON conservateur |
+| A4 | « Impôt minimum » dans le classement de stratégies doit-il inclure l'**impôt successoral**, ou rester « impôt payé de ton vivant » ? | `[ENG-RANKTAX-ESTATE]` | PRIO_CELI sort 1er avec **1,3 M$** d'impôt latent ignoré |
+| ~~A5~~ | ✅ **RÉPONDU 2026-08-20 (ADR 0014), LIVRÉ PR #684** : « on attend le clic Activer, pareil pour enfant » — défaut inchangé, badge « Non comptée dans la simulation » sur bien et enfant inactifs. | `[UX-ISACTIVE-BADGE]` | Livré |
+| ~~A6~~ | ✅ **RÉPONDU 2026-08-20 (ADR 0014), LIVRÉ PR #684** : OUI au champ `isOwned` + popup « est-ce acheté ? » à la date planifiée passée. | `[ENG-PAST-OWNED-VS-PLANNED]` | Livré — les +156 628 $ / +307 081 $ fantômes sont fermés |
+| A7 | En scénario de STRESS (i ≠ 2 %), faut-il indexer les paliers d'impôt à `simInflation` (fidèle au CPI, contredit l'ADR 009) ou garder le statu quo documenté (conservateur) ? | `[FISC-BRACKET-CPI-STRESS]` | Impôt total **+106 %** à i = 8 %. **0 effet** à i = 2 % (ton défaut) |
+| ~~A8~~ | ✅ **RÉPONDU 2026-09-05 : la liste RESTE dans Budget** — volet emplacement de `[SUBS-TAB]` fermé. (historique) La liste des abonnements vit dans **Budget**. Tu as dit « sous-onglet de Transactions ». Le manque réel (pouvoir refuser un faux positif) est **livré** (#570) — déménager n'apporte plus rien. **Je déménage quand même, ou on laisse ?** | `[SUBS-TAB]` volet emplacement | Aucun — pur confort de navigation |
+| ~~A9~~ | ✅ **RÉPONDU 2026-09-05 : mode couple pris en charge** → `[FISC-SOLO-INVEST-SPLIT]` débloqué. ✅ **Livré au lot 180 (2026-09-05)** : le placement suit son détenteur (`Asset.owner`, réglable dans la carte « Répartition du portefeuille par personne » de l'onglet Placements). (historique) `[FISC-SOLO-INVEST-SPLIT]` ne mord que si le foyer passe en mode couple avec un seul salaire. | `[FISC-SOLO-INVEST-SPLIT]` | **0 $ en mode solo**, un écart annuel en couple mono-salarié |
+| A10 | As-tu une assurance médicaments **PRIVÉE** ou es-tu à la **RAMQ** ? Je ne peux pas le deviner et ça change la prime. | `[ENG-RAMQ-FIELDS]` | Prime RAMQ vs 0 |
+| ~~A11~~ | ✅ **RÉPONDU 2026-09-05 : OUI, un toast** → `[PURGE-TOAST-UX]` débloqué. ✅ **Livré au lot 176 (2026-09-05)**. (historique) Le pull Drive qui purge des artefacts persona ne fait qu'un log. **Veux-tu un toast visible ?** | `[PURGE-TOAST-UX]` | Confort |
+| ~~A12~~ | ✅ **RÉPONDU 2026-09-05 : TOUT ce qui était cité** (retraite, épuisement d'un compte, début RRQ/PSV, bascule de stratégie), **en bref**, chaque annotation **désactivable en décochant** → ticket `[FUTUR-ANNOTATIONS]`. (historique) Sur la courbe du Futur, **qu'est-ce que tu veux voir annoté** ? (âge de retraite ? épuisement d'un compte ? bascule de stratégie ? début RRQ/PSV ?) — question de ton brief de 2026-06-10, jamais répondue. | `[PH4-FUT]` | Feature entière en attente |
+| ~~A13~~ | ✅ **RÉPONDU 2026-08-06** : « chaque semaine jeudi, pareil pour dette ». Paie et paiements de dette sont donc **hebdomadaires, le jeudi**. | `[FUTUR-DAILY]` | **Livré** : `weeklyDeltasForMonth` convertit les montants MENSUELS du store en versements hebdomadaires (×12/52) et les pose à chaque jeudi. Un mois à 5 jeudis reçoit bien 5 paies. ⚠️ Reste une limite assumée : le MOTEUR raisonne au mois et ignore les mois à 5 paies — le rythme affiché est juste, le total du mois reste celui du moteur. |
+
+**Réponses du 2026-09-05 (en session) sur des questions qui n'étaient qu'au BACKLOG** — reportées dans chaque ticket :
+- `[PRIVACY-CONTEXTE-IA]` → **masquer** : en mode discret, les montants ne partent pas non plus vers l'assistant. ✅ **Livré au lot 175 (2026-09-05)** — le chat l'était déjà, le diagnostic Budget l'est maintenant (égress + ouvreur).
+- `[ENG-DIVORCE-ALLOC-ASSIETTE]` → **« comme mesuré »** : après une séparation, l'assiette des allocations est le revenu du parent seul (`soloHousehold`), 166 → 250 $/mois sur la fixture. ✅ **Livré au lot 178 (2026-09-05)**.
+- `[FISC-DEC-FLUX-ASSIETTE-TIMING]` → **corriger** : les retraits REER de décembre doivent entrer dans l'assiette (fuite réelle, +25 568 $ d'impôt mesuré sur la fixture retraités). ✅ **Livré au lot 179 (2026-09-05)** — et le même trou existe un cran plus haut pour la récupération PSV (`[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`, routé, non corrigé : hors du périmètre de ta réponse).
+- `[FISC-REEE-GRANT-CLAWBACK]` → **GO pour retenter** (périmètre chiffré en 7 facettes). L'utilisateur ne sait PAS séparer cotisations et subventions sur un REEE réel → la part subvention se DÉRIVE des règles SCEE/IQEE sur l'historique de cotisation, hypothèse écrite et affichée, jamais un chiffre inventé.
+- `[AUTH-REMEMBER-DEVICE]` → **retirer la déconnexion automatique 8 h** quand « se souvenir de cet appareil » est actif (ré-auth seulement pour les Réglages).
+- Section 4 des tâches humaines : jetons Fintable **révoqués** (C1 fait) ; C2/C3/C4/C6/C0 à **ré-expliquer en détail** (fait en session le 2026-09-05, à reporter ici en clair au prochain lot) ; C5 (profondeur Fintable) : Marc croit que le plan en offre plus → à MESURER par `npm run fintable:dry -- --days 365` chez lui ; C8 (branches mortes) : plus tard. Section D (vérifs écran) : à redemander plus tard — Marc n'a que son téléphone.
+
+**`[PROFIL-SWITCH]`** (4 questions d'un coup, posées le 2026-08-01) — ✅ **tranché le 2026-09-05 (réponse 8 : un seul profil, Marc, pour toujours) → CADUQUE, archivé au lot 177 avec `[PROFIL-NOMMER-MARC]` (recensé : aucun écran ne nomme le profil courant).** — ⚠️ touche la
+✅ **RÉPONDU 2026-09-05 (en session)** : « profil actuel = Marc, **seul profil, pour toujours** ». Donc : un seul profil RÉEL, il pousse seul vers Drive, la clé existante EST « Marc », et les autres profils ne sont que des personas de test — le multi-profil réel est CADUQUE ; il ne reste au plus qu'à nommer le profil courant « Marc » là où l'app le désigne.
+persistance de tes VRAIES données, je ne code rien avant :
+1. Combien de profils **RÉELS** ? (juste « Marc » + des personas de test, ou plusieurs réels ?)
+2. Lequel pousse vers Drive — un seul, ou chacun son fichier ?
+3. Que devient le profil actuel au premier lancement (la clé existante devient « Marc » ?)
+4. Le switch doit-il exiger une confirmation (anti-fausse-manip) ?
+
+## 🧭 Plans à valider — lot 181 (2026-09-05) : quatre tickets « plan d'abord », onze questions d'un coup
+
+> Tes réponses du 2026-09-05 ont débloqué ces quatre tickets en demandant un plan AVANT de coder.
+> Voici les plans courts et TOUTES les questions en un seul batch (une recommandation par question,
+> `[Certain]`/`[Probable]` indiqués). Réponds par numéro (« Q1 a, Q2 b… ») ; sans réponse, je ne
+> code aucun des quatre et je continue les tickets MESURÉS du BACKLOG qui n'attendent personne.
+
+### P1 — `[AUTH-REMEMBER-DEVICE]` : retirer la déconnexion automatique 8 h quand « se souvenir de cet appareil » est coché
+- **Constat** `[Certain]` : l'option n'existe pas encore. La déco 8 h vit dans `services/sync/inactivityLogout.ts`
+  (horodatage local, lu au boot ET par le polling) ; `handleInactivityLogout` révoque le jeton. Le journal
+  D4 (raison GIS des reconnexions) n'a jamais été lu : tu n'as que ton téléphone.
+- **Plan** : (1) case « Se souvenir de cet appareil » sur la carte Drive (Réglages › Sauvegarde), préférence
+  locale à l'appareil (jamais synchronisée, comme le jeton) ; (2) cochée → la borne 8 h ne coupe plus la
+  reprise silencieuse (boot + polling), le jeton se renouvelle sans clic tant que la session Google le
+  permet ; (3) ré-auth exigée seulement pour les sous-onglets sensibles des Réglages ; (4) garde :
+  « préférence ignorée » → rouge ; contrôle : case décochée = comportement d'aujourd'hui, identique.
+- **Q1** « Réglages » à protéger = (a) **Clés API + Sauvegarde seulement** (reco — c'est là que vivent les
+  secrets et Drive) · (b) tout l'onglet Réglages.
+- **Q2** Ré-auth = (a) **nouveau consentement Google (popup)** (reco — marche pour tout le monde) · (b)
+  re-saisie de la passphrase quand elle est active, popup sinon.
+- **Q3** Durée du « souvenir » = (a) **illimitée** (reco : c'est ta demande) · (b) 30 jours puis re-login
+  (borne Loi 25 conservée).
+- **Q4** `[Probable]` Une partie des reconnexions « trop souvent » vient d'un ÉCHEC de renouvellement
+  Google (cookies tiers bloqués, session Google expirée) que « se souvenir » ne peut PAS contourner :
+  (a) **livrer quand même et lire D4 après** (reco) · (b) lire D4 d'abord (il te faut un ordinateur).
+
+### P2 — `[PROJ-NW-FALAISE-REER]` (b) plancher de préservation CELI
+- **Constat** `[Certain]` : `cashflowAllocation.ts` (bloc « Palier 14 % ») remplit le REER jusqu'au sommet
+  du palier (mur dur) puis la cascade vide le CELI en premier — d'où les 112 k$ d'écart pour 1 000 $ de REER.
+- **Plan** : (1) MESURER X : balayer 12 / 18 / 24 / 36 mois de dépenses sur les 7 personas + la fixture
+  72/72 du ticket ; relever patrimoine final, impôt à vie, mois de mort du CELI et le CLASSEMENT des
+  stratégies ; (2) règle : au-delà du palier, si `CELI < X × dépenses mensuelles` et `REER > 0`, tirer
+  du REER avant le CELI ; (3) goldens re-basés SCIEMMENT, chacun avec son mécanisme ; (4) garde de
+  pente (« ±1 000 $ de REER d'ouverture ne déplace plus 112 k$ ») + contrôle « CELI ≥ plancher tant que
+  REER > 0 ».
+- **Q5** X = (a) **24 mois sauf si la mesure montre un meilleur point, et je tranche par la mesure**
+  (reco) · (b) tu veux voir le tableau avant que je fixe X.
+- **Q6** Le plancher s'applique à (a) **AUTO_MARGINAL seulement** (reco — c'est elle qui a le mur) ·
+  (b) toutes les stratégies qui décaissent.
+
+### P3 — `[FISC-REEE-GRANT-CLAWBACK]` : re-tentative cadrée (7 facettes déjà chiffrées)
+- **Plan en 3 lots** : (1) poches PAR ENFANT + amorçage du solde d'ouverture (part subvention DÉRIVÉE des
+  règles SCEE/IQEE sur l'historique de cotisation — hypothèse écrite et affichée, jamais un chiffre
+  inventé) + conservation de flux (registre entrant/sortant des subventions) ; (2) fermeture :
+  remboursement des subventions non utilisées, PRA imposé au SOUSCRIPTEUR (barème indexé), cotisations
+  non taxées ; (3) dérivés (`latentTax`, `netWorth`, succession) + transfert entre frères/sœurs. Chaque
+  lot mesuré sur les 3 cas du ticket (ouverture, deux bénéficiaires d'âges différents, PRA en 2051).
+- **Q7** Souscripteur par défaut du RÉEE = (a) **toi (user1)** (reco) · (b) le conjoint · (c) un champ à
+  choisir par enfant.
+- **Q8** À la fermeture du RÉEE d'un enfant, transférer le solde à un frère/sœur qui étudie encore :
+  (a) **automatique tant qu'un autre enfant a du solde** (reco — c'est ce qu'on fait dans la vraie vie
+  pour ne rien rembourser) · (b) jamais (rembourser tout de suite).
+
+### P4 — `[FUTUR-ANNOTATIONS]` : annoter la courbe Futur
+- **Plan** : (1) quatre types (âge de retraite, épuisement d'un compte, début RRQ/PSV, bascule de
+  stratégie) dérivés de champs DÉJÀ publiés par le moteur — grep avant d'ajouter un champ ;
+  (2) marqueur + libellé court, MÊME écrêtage que les pastilles d'événements (rang après écrêtage) ;
+  (3) quatre cases à décocher, préférence persistée (champ additif, pas de migration) ; (4) garde :
+  chaque type apparaît sur une fixture qui le déclenche, disparaît quand décoché, rang stable.
+- **Q9** « Épuisement d'un compte » vise (a) **CELI, REER, non-enregistré et liquidités** (reco) ·
+  (b) CELI et REER seulement.
+- **Q10** En mode discret, les annotations restent visibles (elles ne portent AUCUN montant) :
+  (a) **oui** (reco) · (b) non, tout disparaît.
+
+### Q11 — `[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]` (découverte du lot 179, MESURÉE au lot 181)
+- Le bloc de récupération PSV de décembre lit les retraits REER AVANT le meltdown du même mois — même
+  trou que celui que tu as fait corriger pour l'impôt (réponse 15), un lecteur plus haut. Mesuré sur
+  quatre retraités à HAUT revenu (2 à 2,5 M$ de REER, 25 ans) : **0,00 $ sous AUTO_MARGINAL** (la
+  récupération est déjà PLEINE, un dollar de plus ne change rien) ; sous MELTDOWN, **+180 $** de
+  patrimoine (couple) et **−2 920 $** (solo), impôt à vie −416 / −918 $. Petit, et de signe non évident.
+  (a) **corriger dans le même geste que le lot 179** (déplacer le bloc après le meltdown, garde d'ordre)
+  (reco : cohérence, coût XS) · (b) laisser tel quel, documenté.
+
+## B. Sources fiscales officielles — le proxy sortant me les BLOQUE
+
+Je ne peux joindre ni `canada.ca` ni Service Canada (403). Un faux correctif dans un moteur d'impôt
+est pire que le bug : je ne touche à rien sans la source. **Une capture d'écran suffit.**
+
+> ⚠️ **Re-vérifié le 2026-08-25** : toujours bloqué, et pas seulement l'ARC — `canada.ca`,
+> `revenuquebec.ca`, `bankofcanada.ca` et les moteurs de recherche répondent tous **403** au proxy
+> de sortie (relevé dans son journal de refus). Ce n'est donc pas une panne passagère à re-tenter :
+> tant que la politique réseau ne change pas, **aucune** valeur fiscale ne peut être sourcée depuis
+
+> le conteneur. Je continue à router ici plutôt que d'inventer.
+
+### 🔎 Recherche du 2026-09-05 — ce que la recherche web a rendu, et ce qui MANQUE encore
+
+> Demande de Marc le 2026-09-05 : « essaie de refaire toi une recherche plus approfondie et ensuite dis-moi tout ce
+> qu'il te manque ». Mesuré le 2026-09-05 : la LECTURE de page est bloquée sur TOUS les domaines essayés
+> (`canada.ca`, `laws-lois.justice.gc.ca`, `revenuquebec.ca`, `budget.finances.gouv.qc.ca`, CFFP Sherbrooke,
+> CQFF, KPMG, CIBC — `EGRESS_BLOCKED`), mais la **recherche** web répond : ce qui suit est donc de la
+> source **RELAYÉE** (résumés de moteur de recherche citant les pages), pas une page lue. Assez pour
+> avancer en le disant ; pas assez pour prétendre avoir lu le règlement.
+
+| # | Trouvé (source relayée) | Code aujourd'hui | Verdict | Ce qui manque |
+|---|---|---|---|---|
+| ~~B1~~ ✅ **LIVRÉ lot 168** | FERR : **94 ans = 18,79 %**, **95 et plus = 20,00 %** (tables 2026 Empire Vie, Retraite 101, calculconversion, CIBC Wood Gundy — toutes citent les facteurs prescrits, règl. 7308) | 20 % dès 94 ans | ⚠️ écart CONFIRMÉ (+13 726 $ mesuré) → corriger `[FISC-RRIF-94-FACTOR]` | rien de bloquant ; une capture de la table 7308(4) ferait passer la source de « relayée » à « lue » |
+| ~~B2~~ ✅ **LIVRÉ lot 169** | SRG couple (les deux avec PSV) : réduction de **1 $ par 4 $ de revenu COMBINÉ pour chaque conjoint** (= 0,25 $/adulte, 0,50 $/couple) ; personne seule : 1 $ par 2 $ (TurboImpôt, Wealthsimple, FADOQ, Servitax — cohérents) | 0,50 $ PAR ADULTE sur le combiné → 2× trop vite | ⚠️ écart CONFIRMÉ (0 $ vs 7 944 $/an) → corriger `[FISC-GIS-COUPLE-RATE]` | la TABLE officielle Service Canada (seuils exacts par période) : capture souhaitable, non bloquante pour le TAUX |
+| ~~B3~~ ✅ **ancré lot 170** | Ligne 361 QC : réduction **18,75 %** du revenu FAMILIAL (revenu net + celui du conjoint) au-delà du seuil ; **chaque conjoint remplit sa propre Annexe B** et y reporte le MÊME revenu familial (ligne 20) (Revenu Québec « Ligne 361 », DT Max) | par conjoint sur le revenu familial total | ✅ cohérent avec le code → `[FISC-LINE361-PERCONJOINT-REDUC]` passe de « à vérifier » à « confirmé (relayé) » | une capture de l'Annexe B partie B pour lever le [Probable] |
+| B4 | Taux fédéral le plus bas : **14,5 % pour 2025** (moyenne pondérée, baisse au 1er juillet), **14 % dès 2026** ; les crédits non remboursables suivent ce taux, MAIS un **crédit d'impôt compensatoire** (2025-2030) garde l'équivalent de 15 % pour la part des crédits qui dépasse le 1er palier (58 523 $ en 2026), pour les contribuables du 2e palier (KPMG 2026, ImpôtExpert, Thomson Reuters, DPB) | 15 % plat | ⚠️ écart CONFIRMÉ pour 2026 (~165 $/pers/an) → `[FISC-FED-CREDITRATE-15]` devient un correctif à DEUX étages (taux de base 14 % + compensatoire) | la **formule exacte** du crédit compensatoire (page ARC « Quoi de neuf 2025 » ou le formulaire) — c'est LE morceau qu'aucun résumé ne donne |
+| ~~B5~~ ✅ **livré lot 171** | T4040 : le revenu gagné inclut le **revenu net de location de biens immeubles** (ligne 12600) ; on soustrait les **pertes de location** | aucun droit créé | ⚠️ manque CONFIRMÉ (~4 320 $/an) → `[FISC-RRSP-RENTAL-EARNED]` débloqué avec la décision (a) | rien de bloquant |
+| ~~B6-B7~~ ✅ **ancré lot 170** | RAP : remboursement sur **15 ans**, à partir de la **2e année** suivant le retrait ; allègement : 1er retrait entre le **1er janvier 2022 et le 31 décembre 2025** → début à la **5e année** (ARC « Comment rembourser… », CFFP, iA) | identique (15 ans ; grâce 5 si 2022-2025, sinon 2) | ✅ code EXACT → ancrer en `FISCAL_REFERENCE` §7/§8 avec la source relayée | rien |
+| B8 | REEE : fermeture au plus tard le **31 décembre de la 35e année** suivant l'ouverture ; cotisations pendant **31 ans** (canada.ca « Gestion du plan », Desjardins, RBC) | ferme à 25 ans de l'enfant (hypothèse de simulation) | ✅ « 35 ans » CONFIRMÉ (relayé) — mais c'est 35 ans après l'OUVERTURE, pas un âge | **décision** : garder 25 ans comme hypothèse de simulation DOCUMENTÉE (ma reco — fin d'études typique) ou aligner sur l'ouverture + 35 ans |
+| ~~B9~~ ✅ **ancré lot 170** | Plafonds REER 2010 → 2023 : 22 000 · 22 450 · 22 970 · 23 820 · 24 270 · 24 930 · 25 370 · 26 010 · 26 230 · 26 500 · 27 230 · 27 830 · 29 210 · 30 780 (CQFF, KPMG, Manuvie, BNC) | **identiques, les 14** | ✅ CONFIRMÉ → ancrer en `FISCAL_REFERENCE` §7 | rien |
+
+**Ce qu'il te manque encore, en tout et pour tout** : (1) la formule exacte du crédit compensatoire fédéral (B4) — une capture de la page ARC ou de la ligne du formulaire ; (2) une décision sur B8 (25 ans assumé, ou ouverture + 35) ; (3) optionnel, pour passer de « relayé » à « lu » : captures de la table 7308(4) (B1) et de la table SRG de Service Canada (B2). Tout le reste avance avec la source relayée, marquée comme telle.
+
+| # | Ce qu'il me faut | Ticket | Impact mesuré |
+|---|---|---|---|
+| ~~B1~~ | ✅ **CORRIGÉ au lot 168 (2026-09-05) sur source relayée** — reste optionnel : une capture de la table 7308(4) pour passer de « relayée » à « lue ». (historique) **Règlement 7308(4) LIR**, facteur FERR à **94 ans**. Le code dit 20,00 %, le prescrit serait 18,79 % (le plateau ne commençant qu'à 95). | `[FISC-RRIF-94-FACTOR]` | **+13 726 $** de patrimoine final |
+| ~~B2~~ | ✅ **CORRIGÉ au lot 169 (2026-09-05) sur source relayée** — reste optionnel : une capture de la table Service Canada pour passer de « relayée » à « lue ». (historique) **Table SRG couple** (Service Canada) : taux de récupération sur le revenu COMBINÉ. Le code applique 0,50 **par adulte** → récupération 2× trop rapide. | `[FISC-GIS-COUPLE-RATE]` | **0 $ vs 7 944 $/an** à 15 888 $ de revenu combiné |
+| ~~B3~~ | ✅ **CONFIRMÉ et ancré au lot 170 (2026-09-05, relayé)**. (historique) **Annexe B** de la déclaration QC : la réduction de 18,75 % de la ligne 361 s'applique-t-elle par conjoint sur le revenu FAMILIAL total ? | `[FISC-LINE361-PERCONJOINT-REDUC]` | ≤ 986 $/an, couple 65+ seulement (**0 $ pour toi aujourd'hui**) |
+| B4 | **Taux ARC des crédits non remboursables** : le code dit 15 %, le 1er palier fédéral est à 14 %. Seule affirmation du doc SANS source. | `[FISC-FED-CREDITRATE-15]` | ~**165 $/pers/an** si faux |
+| ~~B5~~ | ✅ **LIVRÉ au lot 171 (2026-09-05, T4040 relayé)**. (historique) **LIR 146(1), définition de « revenu gagné »** : le revenu NET de location en fait-il partie ? Le moteur ne le compte pas. | `[FISC-RRSP-RENTAL-EARNED]` | ~**4 320 $/an** de droits REER non créés sur 24 k$ de loyer net |
+| ~~B6~~ | ✅ **ANCRÉ au lot 170 (2026-09-05, relayé)** — le code était exact. (historique) **RAP / HBP — durée de remboursement.** Le moteur étale le remboursement sur **15 ans** (`realEstateMonth.ts`, `state.rapBorrowed / 15`). Vraie règle ARC, mais écrite nulle part dans `FISCAL_REFERENCE.md`. Confirme « 15 ans » et je l'ancre. | `[FISC-RAP-15ANS]` | non mesuré — change la MENSUALITÉ de remboursement, donc le cash disponible |
+| ~~B7~~ | ✅ **ANCRÉ au lot 170 (2026-09-05, relayé)** — les trois valeurs ensemble, le code était exact. (historique) **RAP / HBP — période de grâce avant le 1ᵉʳ remboursement.** Le moteur applique **5 ans** pour un retrait entre **2022 et 2025**, et **2 ans** sinon (`realEstateMonth.ts`, `graceYears`). Ça ressemble à la mesure du **budget fédéral 2024**. Il me faut les **trois** valeurs : les deux bornes d'années ET la durée de grâce — ⚠️ elles doivent bouger ENSEMBLE, en confirmer une seule laisserait une règle à moitié fausse. | `[FISC-RAP-GRACE-WINDOW]` | non mesuré — décale de 3 ans le début du remboursement |
+| B8 | **REEE — âge de fermeture.** Le moteur ferme le régime à **25 ans** (`childrenReee.ts`, `childAgeMonths === 25 * 12`). Le ticket affirme que le régime réel autorise **35 ans**, mais un ticket n'est pas une source et je ne peux pas vérifier. Deux questions : (1) quel est l'âge réel ? (2) veux-tu qu'on s'aligne, ou qu'on garde 25 comme limite de simulation assumée ? | `[FISC-REEE-AGE-FERMETURE]` | non mesuré — 10 ans de croissance à l'abri en jeu |
+| ~~B9~~ | ✅ **ANCRÉ au lot 170 (2026-09-05, relayé)** — les 14 valeurs identiques. (historique) **Plafonds REER 2010 → 2023** (14 valeurs, 22 000 → 30 780 $, `utils/tax.ts`). Elles pilotent les droits REER HISTORIQUES, donc de l'argent, et n'apparaissent nulle part dans `FISCAL_REFERENCE.md` (le §7 ne liste que 2024+). Elles ont l'air justes, mais la règle du dépôt dit qu'un chiffre sans source est suspect. Une capture de la page ARC « Plafonds de cotisation REER » suffit. | `[FISC-RRSP-LIMITS-PRE2024-DOC]` | non mesuré — reconstruction des droits accumulés avant le début de la simulation |
+
+## C0. Identifiants de modèle datés — je ne peux pas les deviner (ajouté 2026-09-02, lot 70 ; mis à jour 2026-10-28)
+
+- [ ] **Relever les instantanés DATÉS de Haiku 5.5, Sonnet 5.5 et Opus 5.5** sur `platform.claude.com` s'il en existe (forme
+  `claude-…-AAAAMMJJ`), puis me les donner. Au 28/10/2026 Anthropic ne publie que l'id sans date pour la famille 5.5 :
+  rien à faire tant que ça ne change pas.
+  **Pourquoi** : un id sans date est un ALIAS que le fournisseur peut repointer vers une autre version, à un autre tarif — le coût
+  affiché dans le chat deviendrait faux sans que rien ne le signale. Je ne peux pas inventer ces identifiants : un mauvais id
+  casserait **tous** les appels du chat. Une fois les ids connus, la substitution est mécanique (`services/aiChat/models.ts`
+  et `pricing.ts`) et un test refuse déjà un inventaire périmé — il guidera.
+  Ticket : `[AI-MODELID-EPINGLER-SNAPSHOTS]`. En attendant, l'infobulle du coût dit honnêtement que
+  le tarif date du 2026-10-28 et que l'identifiant peut avoir bougé.
+
+## C. Configuration de comptes — je n'ai pas les accès
+
+| # | Action | Où | Ce que ça débloque |
+|---|---|---|---|
+| ~~C1~~ | ✅ **FAIT — confirmé par Marc le 2026-09-05** (« fait »). (historique) 🔴 **Révoquer les 2 jetons Fintable collés en clair dans le chat** (les deux en `read+write`) | Fintable → Dashboard → API | **Sécurité.** À faire même si tout le reste attend |
+| C2 | 3 secrets Secret Manager + redéployer Cloud Run + 2 secrets GitHub Actions | GCP + GitHub | `FINTABLE-3` — la sync quotidienne AUTOMATIQUE (aujourd'hui, seule l'ouverture de l'app synchronise) |
+| C3 | Redéployer le serveur MCP sur Cloud Run | `mcp/deploy.sh` | `MCP-CATEGORY-ALLOWLIST` (#502) — sans ça, claude.ai peut encore écrire des catégories inventées |
+| C4 | Poser `PROXY_ACCESS_TOKEN` + `VITE_PROXY_ACCESS_TOKEN` sur Vercel, redéployer, smoke test | Vercel | `P0-PROXY` — le relais BYOK, livré mais jamais allumé |
+| C5 | Créer la dette **« carte de crédit »** (vrai taux + paiement minimum) et vérifier qu'elle n'existe pas déjà en double | App → Réglages → Dettes | Sync du solde de carte. ⚠️ Un doublon compte la dette 2× dans ton patrimoine |
+| C6 | Me donner ta **date de bascule** (dernière transaction saisie à la main) + construire `.fintable-roles.json` avec le VRAI régime fiscal de chaque compte | Local | Mapping Fintable sans doublons. ⚠️ Un mauvais `taxRegime` fausse l'impôt de toute la projection |
+| C7 | Confirmer la **profondeur d'historique réellement offerte** par ton plan Fintable payant (90 j demandés, **30 rendus** au dernier test) | Fintable | `[FINTABLE-BACKFILL-HISTORY]` — ⚠️ en l'état il n'importera **aucune** transaction de plus |
+| C8 | Supprimer la branche morte **`claude/lot-53`** (bouton « Delete branch » sur https://github.com/MoKarade/FinanceAI/branches) | GitHub | Ménage. Elle a été RECRÉÉE par accident le 2026-09-01 : mon `git push` du correctif est arrivé après le squash-merge de la PR #779, qui avait déjà supprimé la branche. Son commit `130e910` est **identique** à ce que la PR #780 a livré — rien n'y est perdu. ⚠️ Je ne peux pas la supprimer moi-même : `git push origin :claude/lot-53` rend **HTTP 403** au proxy de sortie (les pushs normaux passent, la suppression non — 6 essais). |
+
+## D. Vérifications sur ton écran — je ne vois pas l'app tourner
+
+| # | Vérification | Ce que ça débloque |
+|---|---|---|
+| D1 | Ouvre la console : le log `services/portfolio.ts:60-62` apparaît-il ? | `[ASSET-CURRENCY-BACKFILL]` — je ne code **rien** avant ce signal |
+| D2 | Le repli Yahoo en PROD : la courbe « Évolution détaillée » se remplit-elle ? Sinon teste `/api/history/yahoo/XEQT.TO?period1=…&period2=…` — si ça rend du HTML au lieu du JSON, dis-le-moi | Courbes d'historique du portefeuille |
+| D3 | Avec ta clé Finnhub : sélectionner une suggestion d'action fait-il encore quitter la page ? Si oui, **quel geste exact** ? | `[RECH-ACTION-UX]` — je n'ai pas pu reproduire sans clé |
+| D4 | Si Drive redemande une reconnexion → Réglages → Diagnostics → la raison GIS exacte | `AUTH-DRIVE-STILL-RECONNECT` |
+| D5 | Fenêtre privée neuve → login Google → toutes les données ET les clés API reviennent ? | `O3` — preuve de la sync Drive en réel |
+
+## E. Gros chantiers — le GO est donné, c'est MOI qui dois préparer le cadrage
+
+⚠️ **Ne rien faire ici.** Je le note pour que tu ne cherches pas ce qui bloque : ces trois-là
+attendent que je te prépare un GROS batch de questions, pas une action de ta part.
+
+- `[PH4-BUD]` — refonte Budget (ton « faut tout refaire »)
+- `[NAV-IA-CONSOLIDATE]` — 14 destinations de navigation → ~6
+- `[FISC-REEE-GRANT-CLAWBACK]` — reprise du RÉEE, **tenté et reverté** le 2026-08-05 (le correctif
+  mesurait PIRE que le bug). Le périmètre est maintenant connu et chiffré en 7 facettes ; il me
+  faut juste ton go pour repartir, et **une donnée** : sur un RÉEE existant, sais-tu dire **combien
+  est de la cotisation et combien est de la subvention** ? Sans ça je dois supposer.
+
+## F. Ce qui reste et que je fais SANS toi
+
+Pour que tu voies l'équilibre : `[CHAT-PAGE-CONTEXT-V2]`, les 11 constantes fiscales restantes à
+ancrer, `[FISC-RRIF-FRACTIONAL-AGE]` ✅, `[FISC-REF-DEDUP]` ✅, tout le lot a11y (`[A11Y-INK500]`
+et 4 autres), la dette technique (god-files, primitives UI, tokens couleur), les trous de tests,
+`[FUZZ-ONETIME-FLOWS]`, `[HARDEN-SNAPSHOT-RACE]`, `[DEP-ESLINT10]`. **Je continue sur ceux-là.**
+
+---
+
+## 🔴 DÉTAIL de B1 et A1 — les deux écarts que je ne peux pas trancher seul (2026-08-06)
+
+L'audit de `[FISC-CONST-ANCHOR-DEBT]` a trouvé deux écarts à impact $ MESURÉ. Je ne les corrige
+pas : le proxy sortant **bloque `canada.ca`** (403), donc je ne peux pas produire la source
+officielle — et un faux fix dans un moteur d'impôt est pire que le bug laissé en place.
+
+### 1. Facteur de retrait minimum FERR à 94 ans — **13 726 $** d'écart mesuré
+`services/projection/helpers.ts:95` code `94: 0.2000`. Le facteur prescrit serait **18,79 %**, le
+plateau de 20 % ne commençant qu'à **95 ans**. Faisceau d'indices INTERNE : la progression du
+tableau est régulière (+0,0185 de 92 à 93) puis fait un saut anormal (+0,0366 de 93 à 94) avant de
+plafonner ; et la ligne suivante du même tableau écrit « 95 ans et + : plafond 20 % » — si 94 valait
+déjà 20 %, le plateau commencerait à 94.
+👉 **Ce qu'il me faut** : la valeur du règlement **7308(4)** de la Loi de l'impôt sur le revenu pour
+l'âge 94 (ou une capture de la table ARC des facteurs FERR prescrits post-2015).
+Impact si confirmé : retrait forcé de 1,21 % de trop sur le solde FERR à 94 ans, sorti de l'abri
+fiscal et imposé au marginal — **+13 726 $** de patrimoine final sur une fixture REER 6 M$.
+
+### 2. Droits REER mis en commun au niveau du MÉNAGE — **+10 520 $/an** de droits fantômes
+`services/projection/taxJanuary.ts:165` calcule `min(plafond × nb_conjoints, revenu_MÉNAGE × 18 %)`.
+La règle ARC est **par personne** : un conjoint sans revenu gagné n'ouvre AUCUN droit.
+**Mesuré** (ménage 250 k$ brut avec un seul gagnant, 2027) : le moteur donne **45 000 $** de droits,
+la règle en donne **34 480 $**.
+👉 **Ce n'est pas un bug à corriger au fil de l'eau** : c'est un changement de modèle (droits par
+tête, sur le revenu gagné par tête) qui touche la déduction REER, donc l'impôt, donc la projection
+entière. **Dis-moi si tu veux que je le fasse** — avec un plan et une mesure avant/après.
+En attendant, la doc doit dire « approximation MÉNAGE » plutôt que de laisser croire à la règle ARC.
+
+## ✅ FINTABLE — import GELÉ depuis le 2026-07-31 : RÉSOLU ET VÉRIFIÉ (2026-08-05)
+
+Constat mesuré côté serveur : **dernière transaction importée = 2026-07-31**, la veille de la fin
+de ton essai Fintable (2026-08-01) ; la sync Drive de l'app fonctionne, elle. Le cron serveur n'a
+jamais été monté (secrets GCP à poser par toi) → le SEUL canal actif est la sync à l'ouverture de
+l'app. Je ne peux pas voir le `fintableSyncReport` d'ici (aucun tool MCP ne l'expose — ticket
+`[FINTABLE-STALE-ALERT]` créé) ni joindre `fintable.io` (403 tunnel).
+
+**RÉSOLU 2026-08-05 — cause racine trouvée par MARC, corrigée par PR `[FINTABLE-TOKEN-PERSIST]`** :
+le jeton Fintable n'était PAS persisté (écrit dans le store mémoire seulement, jamais dans le
+coffre chiffré) → perdu au premier rechargement → sync « jeton absent » en boucle. La corrélation
+avec la fin d'essai (2026-08-01) était un LEURRE de timing. Depuis le fix, le jeton est sauvegardé
+comme les autres clés (coffre chiffré, au blur + avant Tester/Synchroniser, échec affiché).
+
+- [x] ✅ **Jeton re-collé — CONFIRMÉ PAR MARC 2026-08-05 15:03 UTC (« jeton marche »).** Vérifié
+  côté serveur dans la foulée : les 5 jours manquants sont RATTRAPÉS (11 transactions du 2026-07-31
+  au 2026-08-05 : loyer, télécom, épicerie, crédit de solidarité). Le fix
+  `[FINTABLE-TOKEN-PERSIST]` (#559) est donc validé EN CONDITIONS RÉELLES, pas seulement en test.
+- [x] ✅ **Plan fintable.io — implicitement validé** : l'import a repris et rapporte des
+  transactions, ce qui exige `can_sync: true`. L'hypothèse « fin d'essai » était bien un leurre de
+  timing (la vraie cause était le jeton non persisté). Rien à faire côté abonnement.
+
+## FINTABLE — pourquoi aucune position ? (remonté par Claude 2026-07-29)
+- [x] **Forme de l'API fournie, jeton en place, dry-run RÉUSSI** — plusieurs comptes, 121 transactions lues.
+  Le fix `pending=1/0` (PR #524) est confirmé **par mesure**. (Je ne peux toujours PAS appeler
+  `fintable.io` depuis l'exécution cloud : 403 au tunnel CONNECT sur tous les chemins.)
+- [x] **Décidé par la mesure : on GARDE tes 18 mois d'historique manuel** — 90 jours demandés,
+  **30 rendus** (2026-06-29 → 2026-07-28). Ta réponse de cadrage « supprimer l'historique, n'utiliser
+  que Plaid » est caduque : l'appliquer coûtait ~17 mois de données.
+- [x] **Docteur lancé — CAUSE IDENTIFIÉE (2026-07-29)** : tes comptes arrivent par **UNE SEULE
+  connexion, une institution via PLAID** (santé OK, dernière sync réussie le jour même). **Aucune connexion
+  SNAPTRADE** — or chez Fintable le courtage passe par SnapTrade. Un compte de placement lié via un
+  lien bancaire expose son solde sans jamais exposer ses positions. Le plan n'est PAS en cause
+  (`can_sync: OUI`), les connexions sont saines : c'est bien un problème de **type de lien**.
+- [x] **Positions : IMPOSSIBLE via Fintable — clos par la mesure (2026-07-29)** — l'annuaire public
+  donne **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple Trade) ; `q=<courtier>` → 0
+  résultat, « l'institution » est `supported: false`. Limite du produit, pas une config.
+  Tes positions continuent de passer par `apply_broker_statement` (dépose un relevé courtier dans le
+  chat) — ça marche déjà et ça ne coûte rien. À rouvrir seulement si tu changes de courtier.
+- [x] **Plan payant : tu as tranché (2026-07-29)** — tu prends un plan pour garder l'import automatique
+  des transactions + les soldes de référence. (Ma reco était l'inverse ; arbitrage assumé, tracé.)
+- [ ] **Créer la dette « carte de crédit » dans FinanceAI, une seule fois** — la sync
+  ne mettra à jour que le **solde** : Fintable ne fournit ni taux d'intérêt ni paiement minimum, et je
+  refuse de les inventer. Va dans Réglages → Dettes et crée-la avec son vrai taux et son paiement
+  minimum. ⚠️ Si tu en as **déjà** une pour cette carte, ne la duplique pas — dis-moi son nom exact et
+  je le mettrai dans la config, sinon elle sera comptée deux fois dans ton patrimoine.
+- [ ] **Me donner la date de bascule** — le jour de ta dernière transaction déjà importée à la main.
+  C'est ce qui empêche les doublons : la dédup de l'app compare `date|montant|libellé`, or le libellé
+  de Fintable (le nom de marchand normalisé) ne sera pas celui de tes relevés PDF → même dépense, clé
+  différente, doublon silencieux qui fausserait ton solde ET tes dépenses réelles. En ne prenant que
+  ce qui est strictement après cette date, il n'y a aucun recouvrement possible.
+- [ ] **Construire le fichier de rôles de comptes** (une fois) — pour l'aperçu de mapping :
+  ```bash
+  # 1. Récupère les ids de tes comptes (sortie locale, ne la recolle pas telle quelle)
+  FINTABLE_TOKEN="$(gcloud secrets versions access latest --secret=financeai-fintable-token --project=<ton-projet-gcp>)" \
+    npm run fintable:dry -- --show-ids
+  # 2. Crée .fintable-roles.json à la racine (gitignoré) :
+  #   { "<id compte chèque>":  {"kind":"cash"},
+  #     "<id compte épargne>":  {"kind":"cash"},
+  #     "<id MC>":   {"kind":"debt","debtName":"carte de crédit"},
+  #     "<id compte courtier 1>": {"kind":"investment","taxRegime":"<régime>"},
+  #     "<id compte courtier 2>": {"kind":"investment","taxRegime":"<régime>"},
+  #     "<id compte REER>":  {"kind":"investment","taxRegime":"REER"} }
+  #
+  # ⚠️ [FINTABLE-6] `taxRegime` (CELI | REER | NON-ENREG) : mets le VRAI régime de chaque compte —
+  # je ne le devine jamais. Il décide dans quel panier fiscal l'écart entre le solde du courtier et
+  # tes titres saisis est ventilé ; s'y tromper fausse l'impôt de toute la projection. Omettre le
+  # champ n'est pas bloquant : le montant du courtier s'affiche quand même, mais l'écart reste hors
+  # projection et l'aperçu te le signale (« ⚠ régime NON déclaré »).
+  # 3. Aperçu — TOUJOURS sans écriture :
+  FINTABLE_TOKEN="…" npm run fintable:dry -- --days 90 --roles .fintable-roles.json --after <ta-date-de-bascule>
+  ```
+  Colle-moi l'aperçu (montants masqués par défaut) : je vérifie que le compte de transactions retenues,
+  les liquidités visées et la dette correspondent à ce que tu attends **avant** qu'on écrive quoi que ce soit.
+- [ ] **Vérifier le doublon de dette carte de crédit** (avant le Lot 2) — tu as choisi que la carte de crédit
+  alimente une dette dans FinanceAI. Regarde dans Réglages → Dettes si tu en as déjà une
+  saisie à la main pour cette carte : si oui, il faudra la retirer au moment de brancher la sync, sinon
+  elle sera comptée deux fois dans ton patrimoine.
+- [ ] **Rappel sécurité — 2 jetons Fintable ont été collés en clair dans le chat** (les deux avec scope
+  `read+write`). Si tu ne l'as pas déjà fait, révoque-les dans Dashboard → API et garde uniquement le
+  jeton lecture-seule qui est en Secret Manager.
+
+## FINTABLE-3 — activer le cron de sync quotidien (remonté par Claude 2026-07-29)
+> Le code (orchestrateur serveur + endpoint + workflow GitHub) est livré et testé (16 tests) — ce qui
+> reste est de la CONFIGURATION que je ne peux pas faire à ta place (Secret Manager + secrets GitHub).
+> Tant que ces 5 secrets n'existent pas, `/fintable-sync` reste DÉSACTIVÉ (404, aucun risque) — rien
+> ne se déclenche tout seul avant que tu aies fait ces étapes. Détail complet : `mcp/README.md`
+> § « Sync Fintable planifiée — POST /fintable-sync ».
+- [ ] **3 secrets Google Secret Manager** (le jeton `financeai-fintable-token` existe déjà, lecture seule) :
+  ```bash
+  # Secret d'auth de la route (≥16 caractères, garde-le pour l'étape GitHub)
+  node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))" \
+    | tr -d '\n' | gcloud secrets create financeai-fintable-sync-secret --data-file=- --project=<ton-projet-gcp>
+
+  # Le fichier de rôles que tu as déjà construit (.fintable-roles.json, à la racine du repo, gitignoré)
+  gcloud secrets create financeai-fintable-roles-json --data-file=.fintable-roles.json --project=<ton-projet-gcp>
+
+  # Accès en lecture au service Cloud Run (même $RUNTIME_SA que pour les autres secrets déjà en place)
+  for S in financeai-fintable-sync-secret financeai-fintable-token financeai-fintable-roles-json; do
+    gcloud secrets add-iam-policy-binding "$S" \
+      --member="serviceAccount:$RUNTIME_SA" \
+      --role="roles/secretmanager.secretAccessor" --project=<ton-projet-gcp>
+  done
+  ```
+- [ ] **Redéployer le serveur MCP** : `PROJECT_ID=<ton-projet-gcp> ./mcp/deploy.sh` — `deploy.sh` détecte
+  les 3 secrets et active `POST /fintable-sync` automatiquement (log au démarrage confirme).
+- [ ] **2 secrets GitHub Actions** (repo → Settings → Secrets and variables → Actions) :
+  ```
+  FINANCEAI_MCP_URL              = <la même URL que celle déjà utilisée pour refresh-prices.yml>
+  FINANCEAI_FINTABLE_SYNC_SECRET = <le secret généré à l'étape 1 ci-dessus>
+  ```
+  Une fois posés, `.github/workflows/fintable-sync.yml` tourne automatiquement 1×/jour (10:00 UTC) —
+  aucune autre action de ta part. Tu peux le déclencher manuellement dans l'onglet Actions du repo
+  pour vérifier tout de suite sans attendre le lendemain.
+- [ ] **Vérifier le résultat de la 1ʳᵉ passe** dans l'app → Système & diagnostics → carte « Sync Fintable ».
+
+## MCP-CATEGORY-ALLOWLIST — redéploiement Cloud Run requis (remonté par Claude 2026-07-24, PR #502)
+- [ ] **Redéployer le serveur MCP sur Cloud Run** pour que l'allowlist de catégories (PR #502) prenne
+  effet côté claude.ai (leçon AITOOLS-SEC : une révision Cloud Run est séparée du deploy Vercel — l'app
+  web, elle, est déjà protégée par le même module partagé). Commande habituelle dans `mcp/README.md`
+  § Cloud Run (`gcloud run deploy --source .`). Sans ça, claude.ai peut encore écrire des catégories
+  inventées (la validation n'agit qu'à l'ÉCRITURE — rien ne re-valide rétroactivement l'existant ;
+  au pire, une catégorie inventée devient un poste au prochain sync du Budget, design Lot C).
+
+## PORTFOLIO-HISTORY — vérif visuelle post-deploy (remonté par Claude 2026-07-22, PR #485)
+- [ ] **Smoke test du repli Yahoo en PROD** (2 min, après le deploy Vercel) : ouvre le Dashboard en données
+  réelles → la courbe « Évolution détaillée » doit se remplir (au besoin recharge une fois passé ~1 min
+  d'hydratation). Si les courbes restent vides pour tes actions (pas la crypto), le suspect n°1 est le
+  rewrite Vercel `/api/history/yahoo/:symbol` qui ne transmettrait pas les query params `period1/period2`
+  (prouvé OK en dev, [Probable] côté Vercel — jamais exécuté en prod). Test direct :
+  `https://<ton-domaine>/api/history/yahoo/XEQT.TO?period1=1700000000&period2=1750000000&interval=1d`
+  doit rendre du JSON Yahoo (pas la page HTML de l'app). Dis-le à Claude si ça rend du HTML.
+
+## O-SYNC — Décisions durcissement sync (Vague 3, remontées par Claude 2026-07-16)
+> Les 2 gros wins de Vague 3 sont livrés (ARCH-SYNC-SPLIT #455, SYNC-FETCH-TIMEOUT #456). Les 2 items
+> restants touchent des chemins money-critical (ta zone de perte de données) et méritent TON arbitrage avant
+> que Claude code — d'où ce point plutôt qu'un pilote auto.
+
+- [ ] **`[SEC-DRIVE-ENCRYPT-DEFAULT]` — chiffrer le payload Drive par défaut ? (décision archi)**
+  - **Le pour** : aujourd'hui le payload Drive est en CLAIR (`enc:false`) par défaut ; seules les clés API
+    sont chiffrées (via le `sub` Google, `keyCipher`). Étendre ce chiffrement `sub` à tout le payload sort les
+    données financières du clair dans le fichier appData.
+  - **Le contre (pourquoi Claude n'a pas foncé)** : gain de sécurité **modeste** — le fichier vit déjà dans
+    ton `appDataFolder` PRIVÉ (accès = ton compte Google + scope `drive.appdata`), et la clé dérivée du `sub`
+    n'est **pas un secret** (le `sub` est dans le jeton OAuth → un attaquant qui a ton compte peut la redériver,
+    aveu de `keyCipher.ts`). Le vrai zéro-knowledge, c'est la passphrase (déjà dispo, opt-in).
+  - **Le coût réel (pas un « M »)** : ça touche la mécanique EXACTE de l'anti-clobber qui t'a sauvé de la perte de tes données :
+    (1) `decideOnLoad` lit le payload clair pour l'optimisation « contenu identique → noop » (`syncEngine.ts:54`)
+    → chiffré, elle saute → **faux conflits bruyants** sur des données identiques à la reconnexion ;
+    (2) `summarizeForConflict` lit `assets`/`transactions` en clair pour le modal « cet appareil vs Drive »
+    → il faudrait déchiffrer avant de résumer ; (3) `SyncEnvelope.enc` est un booléen dont `true` = passphrase
+    zéro-knowledge → il faudrait un 3ᵉ état (`enc:'sub'`), donc **migration de format** + rétro-compat des vieux
+    blobs clairs. C'est faisable (le `sub` est dispo → déchiffrer-avant-décider), mais c'est un chantier
+    money-critical, pas un quick-win.
+  - **Ma reco [Probable]** : **basse priorité**. Le gain (données pas en clair dans TON Drive privé) ne justifie
+    pas le risque de retoucher l'anti-clobber pour une clé non-secrète. Si tu veux du vrai secret → active la
+    **passphrase** (déjà là). Dis-moi si tu veux quand même le chiffrement `sub` par défaut et je le fais en
+    plan détaillé + panel + discriminants sur les 2 scénarios d'incident.
+- [x] **`[MCP-WRITE-VERSION-TOKEN]` — ✅ FAIT (ton GO « 2 oui », 2026-07-16)** — OCC per-call plumbé
+  (`getWithVersion`/`save(next,expectedVersion)`), 2 tool-calls MCP concurrents ne peuvent plus se clobber. Discriminant prouvé.
+
+## O1 — Auth : RETIRER Cloudflare → ✅ **FAIT (2026-06-16)**
+> Cloudflare RETIRÉ de FinanceAI : Access (mur) supprimé + apex/www dé-proxifiés (DNS only → Vercel TLS direct).
+> Auth = **gate Google in-app** actif (`VITE_GOOGLE_GATE=1`). Le tunnel CF du `hub` reste (projet séparé).
+> ⚠️ Piège vécu : le client OAuth était PARTAGÉ avec CF Access (redirect_uri `cdn-cgi/access/callback`) → l'avoir
+> retiré cassait le login CF → restauré le temps de valider, puis CF retiré proprement.
+
+- [x] **A. Client OAuth Google créé** (`550313627083-…`, débloque aussi la sync Drive).
+- [x] **B. Gate activé** : `VITE_GOOGLE_CLIENT_ID` + `VITE_GOOGLE_GATE=1` (Vercel) + redéployé.
+- [x] **C. Validé** : login Google → données reviennent ; `?nogate=1` OK ; reload sans re-login.
+- [x] **D. Cloudflare retiré** : app Access supprimée ; apex+www en « DNS only » (gris) → Vercel.
+- [x] **E. CSP nettoyée** par Claude (`cloudflareinsights` retiré de `vercel.json` + `index.html`) + docs MAJ.
+- **Ce que ça engendre** : tu PERDS l'auth CF (→ gate Google, qui ouvre au multi-user), le WAF/anti-bot/DDoS
+  CF, et CF Web Analytics. Tu GARDES TLS + CDN (Vercel). Bonus : disparition d'un déclencheur du bug
+  « Failed to fetch chunk » (CF Access 302 sur session expirée, PH1-b). **Risque** : plus de WAF/DDoS CF —
+  acceptable en perso/petit groupe ; pour un vrai produit public → backend + rate-limiting (O4/P0-PROXY).
+- **Côté Claude (sur ton GO)** : CSP cleanup (E), durcir le gate (bouton « déconnexion », sélecteur de
+  compte), MAJ docs (CLAUDE.md « Cloudflare en place » → retiré, SESSION_HANDOVER). Claude ne fait RIEN
+  qui expose l'app avant ta confirmation que le gate est validé.
+
+## O6 — Questions du brief 2026-06-10 (réponses requises, Claude ne devine pas)
+- [x] ~~**Q2 (Phase 1 / Cloudflare)** / **Analyse Cloudflare (PH1-b)**~~ — **CADUC (2026-06-16)** : Cloudflare complètement retiré (O1). Apex+www en DNS only → Vercel direct.
+- [ ] **Q1 (Phase 4 / Futur — à répondre avant que Claude code PH4-FUT)** : qu'est-ce que tu veux
+  voir ANNOTÉ sur la courbe ? (âge de retraite ? épuisement d'un compte ? bascule de stratégie ?
+  début RRQ/PSV ? autre ?)
+
+## O2 — Connecteur MCP : héberger le `.mcpb` (1 clic)
+Le code est prêt et déployé ; il manque l'hébergement du bundle (Marc avait signalé
+« le fichier mcp arrive pas à télécharger » — cause : `.mcpb` jamais hébergé).
+- [ ] Créer `mcp/drive/connector-client.json` (copier `.example`) avec le client OAuth
+  **« Desktop » PARTAGÉ** (id + secret). **Gitignoré** — jamais commité.
+- [ ] `npm run mcp:pack` → `dist/FinanceAI.mcpb`.
+- [ ] Héberger : déposer dans `public/financeai-connector.mcpb` (redéployer) **ou**
+  pointer `VITE_CONNECTOR_MCPB_URL` vers une release.
+- [ ] Tester l'install 1 clic (Claude Desktop) + « connecte mes finances » → vraies données.
+
+## O8 — Déployer le serveur MCP sur Cloud Run → claude.ai web/mobile (Lot 4 livré, actions GCP restantes)
+Le code des 4 lots est mergé (what-if + séries, transport HTTP, OAuth 2.1, Docker/deploy/CI). Pas-à-pas
+COMPLET dans `mcp/README.md` § « Déployer sur Cloud Run ». Résumé des actions Marc (Google Cloud, ~15 min) :
+- [ ] Projet GCP + `gcloud auth login` + activer les API (run, secretmanager, cloudbuild, artifactregistry).
+- [ ] Générer 2 clés (`node -e "…randomBytes…"` — PowerShell natif, cf README) : signature + **ta clé d'accès**.
+- [ ] `npm run mcp:auth` en local → créer les **3 secrets** Secret Manager (signing-key, access-key,
+  google-refresh depuis `~/.financeai-mcp/credentials.json`) + IAM `secretAccessor` sur google-refresh.
+- [ ] `PROJECT_ID=… ./mcp/deploy.sh` → récupère l'URL `https://…run.app/mcp`.
+- [ ] claude.ai (ou mobile) → Settings → Connectors → Add custom connector → coller l'URL → autoriser avec la clé d'accès.
+- [ ] (Optionnel) déploiement continu : configurer `GCP_PROJECT_ID` (var repo) + `GCP_WIF_PROVIDER`/`GCP_DEPLOY_SA` (secrets).
+- ⚠️ **Avant exposition** (BACKLOG `MCP-CLOUDRUN-AUTH-HARDENING`) : clé d'accès aléatoire (fait à l'étape 2),
+  `min-instances 1` (déjà dans deploy.sh), rate-limit `/oauth/authorize` recommandé. Kill-switch : régénérer signing-key.
+- (Optionnel) définir `VITE_MCP_SERVER_URL` sur Vercel → la carte « Connecter à Claude » de l'app affiche l'URL du connecteur.
+
+## O3 — Prouver la sync Drive en réel (P0 produit multi-user)
+- [x] ~~Créer le `VITE_GOOGLE_CLIENT_ID`~~ — ✅ **FAIT (O1-A)** : client OAuth Google déployé.
+- [ ] **Valider sur hubperso.com** : fenêtre privée neuve → login Google → toutes les données + clés API reviennent
+  (cf checklist `BACKLOG.md` § sync).
+
+## O4 — Relais BYOK pour Claude (P0-PROXY, dark-launch awaiting env+flag)
+> ⚠️ **2026-09-25 [DURCISSEMENT-RELAIS] — les étapes (1) à (3) et (7) ci-dessous sont PÉRIMÉES** : le jeton de relais
+> (`PROXY_ACCESS_TOKEN` / `VITE_PROXY_ACCESS_TOKEN`) n'existe plus (il était public dans le bundle). **À faire** :
+> retirer ces deux variables de Vercel (Production + Preview) si elles y sont, et, par prudence, considérer la valeur
+> comme brûlée. Restent nécessaires pour l'IA locale : `VITE_CLAUDE_TRANSPORT=proxy`, `IA_LOCALE_URL`, `IA_LOCALE_CLE`.
+> Optionnelles : `RELAIS_SEL_EMPREINTE` (sel du mémo de clés), `RELAIS_ORIGINES` (origines supplémentaires),
+> `IA_LOCALE_MAX_TOKENS` (plafond local, défaut 8192). ADR 0021.
+>
+> **ORDRE OBLIGATOIRE** : (1) déployer d'abord la PR de durcissement ; (2) SEULEMENT ENSUITE retirer `PROXY_ACCESS_TOKEN` et
+> `VITE_PROXY_ACCESS_TOKEN` de Vercel. L'inverse casse le relais (l'ancien code exige encore le jeton).
+>
+> **Réserver la passerelle locale à TA clé** (obligatoire pour que le routage local marche : sans l'une de ces deux
+> variables, le routage local est DÉSACTIVÉ et tout va chez Anthropic — échec fermé). Deux moyens, sans jamais montrer ta
+> clé à un agent :
+> **Recommandé : commence par l'option EMPREINTE** (ci-dessous) : l'option organisation dépend de l'en-tête
+> `anthropic-organization-id`, non vérifié. ⚠️ `RELAIS_CLES_LOCALES` exige `RELAIS_SEL_EMPREINTE` : sans le sel, les empreintes
+> sont ÉCARTÉES (le sel serait aléatoire par instance) et le journal le dit (« sel manquant : empreintes ignorées »).
+> - **Organisation (le plus simple, [À vérifier])** : console.anthropic.com → Settings → l'identifiant d'organisation
+>   (non secret) → `RELAIS_ORG_LOCALE=<cet identifiant>`. Le relais compare avec l'en-tête `anthropic-organization-id`
+>   de la réponse count_tokens ; si Anthropic ne le renvoyait pas, le routage local reste coupé (échec fermé) → utiliser
+>   le moyen suivant.
+> - **Empreinte de ta clé** : (a) générer un sel aléatoire long (PowerShell : `-join ((48..57)+(97..122) | Get-Random -Count 40 | % {[char]$_})`),
+>   le poser sur Vercel : `RELAIS_SEL_EMPREINTE=<ce sel>` ; (b) sur ton PC : `$env:RELAIS_SEL_EMPREINTE="<ce sel>"; node scripts/empreinteCleRelais.mjs`
+>   → colle ta clé à l'invite (masquée, rien ne s'affiche) → le script imprime UNE empreinte ; (c) la poser sur Vercel :
+>   `RELAIS_CLES_LOCALES=<empreinte>` (plusieurs : séparées par des virgules). Redéployer après avoir posé ou changé le sel
+>   (changer le sel invalide les empreintes déjà calculées).
+> **Le nettoyage des données d'identification ne change PAS l'historique git** : les anciennes valeurs restent lisibles
+> dans l'historique tant que le dépôt est public et non réécrit. Ce n'est pas « réglé » ; c'est décidé à part (dépôt privé
+> ou réécriture d'historique).
+Code livré (2026-07-06, phases 1-2 seulement) : relais Edge Vercel, token chiffré, anti-abus.
+- [ ] **(1) Générer le token** : `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" (PowerShell : openssl absent sur Windows)` → copier.
+- [ ] **(2) Poser l'env Vercel SERVEUR** (`PROXY_ACCESS_TOKEN`) : ce token → Settings → Environment Variables
+  → Category **Functions** (serveur-side seulement) → `PROXY_ACCESS_TOKEN=<token>`.
+- [ ] **(3) Poser l'env build** (`VITE_PROXY_ACCESS_TOKEN`) → Category **Production** (ou **Preview** pour tester)
+  → `VITE_PROXY_ACCESS_TOKEN=<token>`.
+- [ ] **(4) Redéployer** Vercel (les nouvelles vars sont injected au build+Functions).
+- [ ] **(5) Smoke test** : dans l'app prod, activeR une fonction IA (« Résumer mes finances »). Doit fonctionner.
+- [ ] **(6) OPTIONNEL — basculer le transport** : une fois satisfait, poser `VITE_CLAUDE_TRANSPORT=proxy` (Production)
+  pour passer du relais par défaut (Vision en direct pour l'instant). Redéployer. Note : rollback = retirer le flag.
+
+- [ ] **(7) [IA-LOCALE] 2026-09-23 — tout en un** : les valeurs prêtes à coller (jeton relais généré, clé de
+  la passerelle IA locale) sont dans `C:\dev\atelier\passerelle\a-coller-vercel-financeai.txt` sur ton PC
+  (hors git). Poser en Production + Preview : `PROXY_ACCESS_TOKEN`, `VITE_PROXY_ACCESS_TOKEN`,
+  `VITE_CLAUDE_TRANSPORT=proxy`, `IA_LOCALE_URL=https://ia.hubperso.com`, `IA_LOCALE_CLE`. Remplace (1) à (6).
+  Pourquoi à la main : l'écriture de secrets dans Vercel par Claude est bloquée par son garde-fou. ADR 0018.
+
+⚠️ **Aucune clé Anthropic serveur à créer** — le relais utilise TA clé client (via le navigateur au premier appel
+  token=null), puis la chiffre via le token Vercel, réemballe + envoie à Anthropic. Zéro exposition cloud.
+
+## O5 — Validations manuelles sur device (ressenti / prod)
+- [ ] Fluidité zoom 60 fps sur tous les onglets ; PDF complet ; iOS Safari ; Lighthouse re-run.
+  Liste vivante détaillée : `BACKLOG.md` § « Tests manuels ».
+- [ ] **[RECH-ACTION-UX] confirmer le bug « sélectionner le prix fait quitter la page »** avec une **clé Finnhub
+  configurée** (Investissement → Ajouter une action → tape un nom → sélectionne une suggestion). Le dropdown
+  d'autocomplétion n'apparaît qu'avec une clé, que je n'ai pas en dev → je n'ai pas pu reproduire le symptôme
+  exact. J'ai corrigé la cause la plus évidente (Escape fermait toute la modale, désormais ferme juste le menu,
+  testé) + agrandi le dropdown + fallback gracieux si le symbole n'a pas de cours. Si le bug persiste avec ta
+  clé, dis-moi **exactement** quel geste le déclenche (clic suggestion ? « Suggérer prix historique » ? Entrée ?).
+
+---
+
+## Blocages / trous remontés par Claude (gouvernance G0, 2026-06-05)
+- [x] ~~Action `backlog-autocheck`~~ — **RETIRÉE (2026-06-09, demande Marc)** : workflow + script
+  supprimés, conditions `[skip-backlog]` retirées de `ci.yml`. Désormais **Claude coche lui-même**
+  le BACKLOG au merge de chaque PR (cf CLAUDE.md « Backlog tenu par Claude »). Plus rien à valider.
+- [x] **Branches mortes supprimées (2026-06-15)** — 16 distantes (12 mergées + `jolly-davinci-PQpC1`
+  qui portait 56 PR + `dependabot` PR #286 fermée + `chore/refresh-screenshots` + `loving-faraday`)
+  via l'API GitHub, et 7 locales mergées. `main` est désormais la **seule** branche (local + distant).
+  « Automatically delete head branches » est coché → les branches de PR mergées disparaissent seules.
+- [x] **Auto-merge débloqué + prouvé (2026-06-15)** — « Allow auto-merge » coché ; ruleset `main`
+  exige `Lint / Typecheck / Tests / Build` + `E2E (Playwright / Chromium)`. 4 PR (#288→#291) mergées
+  seules dès CI verte cette session, zéro intervention. Claude arme `--auto --squash` à la création de
+  chaque PR. (Reste à vérifier d'un œil le **bypass actor** de la ruleset — une app autorisée à contourner.)
+- [x] **9 agents projet + `/review-all`** : étaient absents (`.claude/` était gitignoré en
+  entier) → **créés par Claude** dans G0 et `.claude/` désormais committé pour les parties projet.
+- [x] **CLAUDE.md + hooks absents du repo** → installés dans G0 (push/merge autonome, guard
+  laisse passer le push).
+- [ ] **Agents GLOBAUX (`~/.claude/agents/`)** : référencés par CLAUDE.md mais propres à chaque
+  machine. En exécution **cloud**, Claude n'y a pas accès (seuls les agents projet committés et
+  les agents génériques du harness sont dispo). Sur les PC de Marc, ils restent à installer via
+  claude-config / ECC si voulu.
+- [x] **Docs périmées resynchronisées (PR #351, 2026-06-18)** : table §1 de `SESSION_HANDOVER.md` mise à
+  jour (#292/2042 tests/Cloudflare → #350/~2077 tests/gate Google in-app). Le reste du HANDOVER (bandeau de
+  tête + sessions) était déjà à jour.
+
+
+## Décisions design Phase 4 (Claude a fait tout l'autonome — 12 PR #250-261)
+> Les gains CONCRETS des onglets Futur/Investissement/Transactions/Retraite sont livrés. Restent 2
+> refontes purement DESIGN qui ont besoin de ta vision (Claude refuse de deviner = risque hors-sujet) :
+- **[PH4-BUD] Budget — refonte complète** : donne 2-3 irritants concrets (ce qui te gêne aujourd'hui)
+  pour cadrer. Pistes Claude : vue prévu/réel par groupe (Besoin/Envie/Épargne) en tête ; lien
+  budget→projection plus visible ; réduire les sous-sections.
+- **[PH4-FUT] annotations sur la courbe (Q1 de ton brief)** : QUOI annoter ? (âge retraite / épuisement
+  d'un compte / bascule de stratégie / événements de vie). + « Paramètres » renommé/allégé, conseils du
+  plan d'action déclinés mois/trimestre/semestre/année.
+
+
+## O7 — Valeurs fiscales RQ 2026 requises + décisions (résolu 2026-07-06)
+- [x] ✅ **[FISC-WELCOME-2026]** — données reçues 2026-07-06. Seuils reste du Québec 2026 (source *Gazette officielle du Québec,
+  Partie 1, 2025-06-07*) : **62 900 / 315 000** (indexation +2,3438 % vs 2025). Transcrit `FISCAL_REFERENCE.md` §8.
+  Item BACKLOG moisi en 🔧 ACTIONNABLE (effort S une fois les sources). Claude procède.
+- [x] ✅ **[W5-TAX-PROXY]** — décision Marc : **(a) garder les proxies plats** (0,45 locatif / 0,36 CCPC) documentés
+  en tant qu'estimation de taux marginal QC. Ajouter une mention UI + source QC dans `FISCAL_REFERENCE.md` (rapide).
+  Clos, reste UI+doc à Claude.
+- [x] ✅ **[HIST-NW-DEBT-DISCLAIMER]** — décision Marc : **(b) disclaimer visuel** sur la zone passée du graphe (honnête,
+  zéro fausse donnée). Code documenté (HIST-NW-NO-DEBT), reste le visuel UI → item 🔧 BACKLOG.
+- [ ] **[TP1G-VIVANT-SEUL]** — données reçues 2026-07-06. Grille crédit 65+/personne vivant seule (source MFQ fiche 110606)
+  : 2 172 $ (base) + supplément monoparental 2 681 $. Seuil revenu 42 955 $. Transcrit `FISCAL_REFERENCE.md` §4.
+  Item 🔧 ACTIONNABLE moyen (plan-first + discriminant git-stash + panel).
+- [x] ✅ **[FISC-TAXDEC-INCR]** — TRANCHÉ 2026-08-20 : réponse Marc A2 = **« code le »**.
+  GO explicite ; plan-first + re-base goldens assumé (risque $ élevé). Cf. ADR « Sept décisions ».
+
+## A0 — Quota Vercel (2026-08-12) — ✅ CLOS le 2026-08-13 : Marc est passé à Vercel PRO
+
+> Le plafond de 100 déploiements/jour du plan gratuit ne s'applique plus. Tout ce qui suit est
+> conservé comme HISTORIQUE (et pour les leçons `INFRA-QUOTA-FALSE-RESET`, qui restent valables :
+> ne pas conclure sur un quota depuis un déploiement isolé, et ne pas inférer l'état d'une CLASSE
+> de déploiement depuis un événement d'une AUTRE).
+
+- [x] **[INFRA-VERCEL-QUOTA]** — ✅ **La PROD est à jour. Deuxième correction de mon propre constat**
+  (vérifié le 2026-08-13 04:0x UTC via l'API Vercel, `list_deployments` + `get_deployment`).
+  **Le plafond ne frappe pas les deux classes de déploiement de la même façon** : les *previews* de
+  branche ont été refusées (« Deployment rate limited — retry in 24 hours », 01:56 et 02:18 UTC),
+  mais les deux déploiements de **PRODUCTION** sont passés :
+  - `dpl_AL8BmXD4bJKiU9eygHaZ3mG1wWQ1` → `e7267da` (#608), READY, 02:04 UTC ;
+  - `dpl_6UFUPhXoz5tD1hwbhzenszWLpuSi` → `d864239` (#609), READY, 02:27 UTC, alias
+    **`finance.hubperso.com`**, `aliasError: null`.
+  `d864239` est la tête actuelle de `main` → **la prod sert le dernier code**, refonte nav et lot
+  « filets de sécurité » compris. Aucun redéploiement à relancer.
+  ⚠️ Vérification HTTP réelle NON faite : `finance.hubperso.com` est bloqué par le proxy d'egress de
+  l'environnement d'exécution (curl → `CONNECT tunnel failed 403`, WebFetch → `EGRESS_BLOCKED`).
+  La preuve ci-dessus est l'enregistrement d'alias de Vercel, pas la réponse servie. 👤 Marc peut le
+  confirmer d'un coup d'œil.
+  **Deux leçons, symétriques, apprises à 50 minutes d'intervalle** (`INFRA-QUOTA-FALSE-RESET`) :
+  (1) ne pas conclure « quota résolu » parce qu'un déploiement passe — j'ai eu tort à 01:03 UTC ;
+  (2) ne pas conclure « prod bloquée » parce qu'un déploiement échoue — j'ai eu tort à 01:56 UTC, en
+  généralisant un échec de PREVIEW à la PRODUCTION sans vérifier cette dernière. Dans les deux cas
+  l'erreur est la même : **inférer l'état d'une classe d'objets depuis un événement d'une autre**.
+  La bonne question est toujours « quel déploiement, quelle cible, quel alias ? ».
+  Historique ci-dessous.
+- [x] **Historique** — Le plan Vercel GRATUIT plafonne à **100 déploiements/jour** ; plafond atteint le
+  2026-08-12 ~20:18 UTC (6 PR + pushes de la refonte nav dans la journée). Effet : previews ET **déploiement PROD
+  bloqués** jusqu'au reset — le code merge sur `main` mais hubperso.com garde la version d'avant.
+  **Décision Marc (2026-08-12) : attendre le reset**, pas d'abonnement Pro (règle « tout gratuit »).
+  Claude relance le déploiement lui-même au reset (rappels programmés : minuit heure Québec + 20:45 UTC en secours).
+  Mitigation appliquée côté Claude : **pushes groupés** (un push par PR au lieu d'un par correctif).
+  👤 Rien à faire pour Marc, sauf s'il veut changer d'avis sur le plan payant.
+
+## 2026-08-17 — Divorce et enfants : un modèle de GARDE manque (bloque `[ENG-DIVORCE-CHILDREN-REEE]`)
+
+**Ce que j'ai mesuré**, pour que la question soit précise :
+- le solde **REEE est déjà partagé** au divorce (`reee *= keep`, `services/projection.ts:764`) ;
+- mais `services/projection/childrenReee.ts` — cotisations, subventions, **allocations familiales**,
+  coûts d'enfants — ignore totalement le divorce (0 occurrence de `divorced`/`taxFilers`).
+
+**Ce que je ne peux pas décider à ta place.** Après un divorce, les allocations familiales et les
+coûts d'enfants suivent la **garde**. L'app n'a aucun champ de garde. Diviser par deux, garder
+entier, ou zéroïser sont trois hypothèses **également arbitraires** — et sur du money-critical,
+inventer un modèle est pire que ne rien faire.
+
+**Ce dont j'ai besoin** : garde partagée 50/50 ? Enfants à ta charge ? À celle de l'ex ? Et
+faut-il un champ de garde dans le profil, ou un pourcentage global suffit-il ?
+
+---
+
+## 2026-08-19 — Supprimer 7 branches distantes (je n'ai PAS la permission git)
+
+**Ce que j'ai fait moi-même** : les 6 branches LOCALES périmées sont supprimées, `main` et
+`claude/progress-check-yua8yy` remis sur `origin/main`.
+
+**Ce qui bloque** : `git push origin --delete <branche>` renvoie **HTTP 403** depuis mon
+conteneur (le proxy git n'autorise que les pushs de mise à jour), et le serveur MCP GitHub
+n'expose aucun `delete_ref`. Je ne peux donc pas les supprimer, même en tag d'archive.
+
+**À supprimer sans risque** — j'ai vérifié fichier par fichier que 100 % de leur contenu est
+présent sur `main` (tests, composants et code de chacune) :
+
+- [ ] `claude/children-reee-garde` (PR #643, livrée par #644)
+- [ ] `claude/eng-divorce-coherent` (PR #613, remplacée par #616)
+- [ ] `claude/futur-aria-et-fintable` (PR #642, livrée par #644)
+- [ ] `claude/futur-detail-jour-et-marchands` (livrée par #645)
+- [ ] `claude/impot-latent-debut` (PR #640, livrée par #641)
+- [ ] `claude/pdf-mode-discret` (PR #639, livrée par #641)
+
+**À décider — une seule contient du travail JAMAIS mergé** :
+
+- [ ] `claude/jolly-davinci-PQpC1` — historique **orphelin** (aucune base commune avec `main`,
+  vestige d'une vieille session distante). Son seul commit non livré est `538ae4d`
+  `[HIST-NW-DEBT-DISCLAIMER]` (2026-07-07) : un bandeau sous le graphe Futur annonçant que
+  « le patrimoine passé est affiché **hors dettes** ».
+  ⚠️ **Ce bandeau serait FAUX aujourd'hui** : `docs/adr/` (Décision 2, 2026-08-17)
+  verrouille que la dette du passé reste **figée au niveau actuel**, donc le passé MONTRE bien
+  la dette — c'est même ce qu'a établi la PR #628 par mesure. L'afficher mentirait à l'écran.
+  Ma reco : **supprimer** cette branche comme les autres. Je ne l'ai pas fait moi-même parce que
+  je ne peux pas non plus pousser un tag d'archive (même 403) — donc pas de filet en cas d'erreur
+  de ma part. Si tu préfères garder le filet : le commit reste accessible par son SHA `538ae4d`.
+
+Commande, si tu veux tout faire d'un coup depuis ton PC :
+
+```bash
+git push origin --delete claude/children-reee-garde claude/eng-divorce-coherent \
+  claude/futur-aria-et-fintable claude/futur-detail-jour-et-marchands \
+  claude/impot-latent-debut claude/pdf-mode-discret claude/jolly-davinci-PQpC1
+```
+
+## Décision produit + valeur à sourcer — `[ENG-LIQUIDDEBT-NEVER-REPAID]` (2026-08-19)
+
+> ✅ **RÉPONDU par Marc le 2026-09-14 (en clic)** : taux de découvert = **carte de crédit, ~19,99 %**.
+> ⚠️ [Certain] Ce n'est PAS une constante fiscale légale sourcée (ARC/RQ) — c'est un choix de Marc sur
+> SA situation. Je la documenterai dans `FISCAL_REFERENCE.md` §9 comme **hypothèse de modèle
+> assumée** (datée, avec sa justification), pas comme un chiffre sourcé — exactement la distinction
+> que `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER-FABRIQUE-SA-SOURCE` impose.
+>
+> **Reste la 2ᵉ moitié de la question (jamais posée en clic)** : priorité de remboursement. Je
+> propose de trancher par la mesure plutôt que redemander — à 19,99 %, rembourser AVANT de cotiser
+> au CELI/REER est mathématiquement dominant dans quasi tous les cas (le rendement après impôt d'un
+> compte enregistré ne rivalise pas avec 19,99 % garanti) ; je pars donc sur **remboursement
+> prioritaire dès qu'un surplus existe, ET alerte dans le plan d'action** — les deux volets du
+> ticket d'origine, jamais contredits par la réponse sur le taux. **Je m'arrête avant de coder** :
+> ce module (`cashflowAllocation.ts`, 508 lignes, marqué « ORDRE des opérations = comportement,
+> preuve par empreinte ») est le cœur money-critical de la cascade de décaissement — un plan court
+> AVANT d'y toucher, pas une supposition. Plan proposé, posé à Marc dans la même session :
+> 1. **Intérêt mensuel** : `liquidDebt *= (1 + 0.1999/12)` dans la boucle principale, appliqué APRÈS
+>    tout remboursement du mois (jamais sur un solde déjà éteint) — mesuré sur le persona insolvable
+>    du ticket AVANT de livrer (556 k$ gelé devient combien à 10/20/30 ans avec intérêt seul, sans
+>    remboursement, pour chiffrer l'écart isolément).
+> 2. **Remboursement prioritaire** : nouvelle étape dans `cashflowAllocation.ts`, AVANT toute
+>    cotisation CELI/REER de surplus — rembourser `min(liquidDebt, surplus disponible)`, empreinte
+>    du module re-mesurée pour prouver que l'ORDRE des autres opérations ne bouge pas hors de ce cas.
+> 3. **Exposition** : `LiquidDebt > 0` déjà publié (`monthlyOutput.ts`) → un item d'alerte dans le
+>    plan d'action existant (`ActionPlanDrilldown`), pas un nouveau mécanisme.
+> 4. Gardes : discriminant `git stash` sur le persona insolvable (patrimoine change AVEC le
+>    correctif, identique SANS `liquidDebt > 0`) ; conservation (`moneyConservation`) rejouée sur
+>    les 7 personas ; contrôle négatif `liquidDebt === 0` → aucun remboursement inventé.
+> **Question posée à Marc** (voir fin de réponse) : GO sur ce plan tel quel, ou ajustement d'abord ?
+
+**Le problème, mesuré.** `liquidDebt` est le découvert que le moteur crée quand les liquidités
+passent sous zéro. Il ne fait que **croître** : jamais remboursé, même avec des millions en liquide,
+et **jamais porteur d'intérêt**.
+
+> Mesuré : retraité insolvable, héritage de 1,5 M$ reçu — `liquidDebt` **gelé à 559 k$ pendant
+> 180 mois** à côté de **1,65 M$ de liquidités oisives**.
+
+À un taux de découvert de 10–20 %, l'intérêt omis vaut **56–112 k$/an**, soit **0,8–1,7 M$ sur
+15 ans**. C'est le plus gros montant encore ouvert au backlog.
+
+**Pourquoi je ne le corrige pas seul.** Il me manque deux choses que je ne peux pas inventer :
+
+1. **Un taux de découvert SOURCÉ.** Toute constante fiscale ou financière doit venir de
+   `docs/FISCAL_REFERENCE.md`, datée et sourcée. Je n'ai pas de source pour « le » taux de découvert :
+   ça dépend du produit (marge de crédit ~8-10 %, découvert de compte ~19-21 %, carte ~19,99 %).
+   **Dis-moi lequel s'applique à ta situation**, ou donne-moi la source à citer.
+2. **Un choix produit sur la priorité de remboursement.** Quand un surplus existe, le découvert
+   doit-il être remboursé **avant** de cotiser au CELI/REER (mathématiquement optimal à 19 %), ou
+   après ? Et faut-il l'exposer comme une alerte dans le plan d'action ?
+
+**Ce que je livre dès que tu tranches** : intérêt mensuel paramétrable, remboursement prioritaire dès
+qu'un surplus existe, et exposition dans le plan d'action. Le ticket complet est ci-dessous.
+
+<details>
+<summary>Ticket d'origine (extrait du BACKLOG)</summary>
+
+- [ ] 🔴 **`[ENG-LIQUIDDEBT-NEVER-REPAID]`** (M) — `liquidDebt` ne fait que croître : jamais
+  remboursé (même avec millions en liquide), **jamais porteur d'intérêt**. **Mesuré : retraité
+  insolvable, héritage de 1,5 M$, liquidDebt gelé 559 k$ pendant 180 mois à côté de 1,65 M$ de
+  liquidités oisives.** À taux découvert 10-20 %, omission 56-112 k$/an ≈ 0,8-1,7 M$ sur 15 ans.
+  **Correctif** : traiter comme vraie dette — (a) intérêt mensuel paramétrable, (b) remboursement
+  prioritaire dès qu'un surplus existe, (c) exposer dans le plan d'action.
+
+</details>
+
+## Anomalie GitHub Actions — `ci.yml` ne se déclenche pas pour une branche/PR (2026-08-26)
+
+**Ce que j'ai mesuré** : deux branches successives (`claude/lot-25`, PR #745 fermée, puis
+`claude/lot-25-retry`, PR #748) portant le même contenu (couverture de test divorce/immobilier,
+`docs/CONVENTIONS.md`) n'ont déclenché **aucun run** de `ci.yml` ni `lighthouse.yml` — les deux
+checks requis par la protection de branche sur `main` — malgré plusieurs pushs (dont un rebase +
+force-push qui change le SHA de tête). `CodeQL` (géré par GitHub, hors `.github/workflows/`) tourne
+normalement sur ces mêmes branches. Toutes les autres branches de lot poussées dans la même
+fenêtre (`claude/lot-24`, `-26`, `-27`) ont déclenché `ci.yml` sans problème, souvent en moins d'une
+minute.
+
+**Pourquoi je ne peux pas creuser plus loin seul** : je n'ai pas de visibilité sur les logs de
+livraison de webhooks GitHub (Settings → Webhooks → Recent Deliveries) ni sur les paramètres
+Actions du dépôt/compte (limites de concurrence, règles de désactivation ciblée) depuis cet
+environnement. Le workflow `ci.yml` est listé `state: active`, sans filtre `paths`/`branches`
+inhabituel qui expliquerait une exclusion ciblée.
+
+**Ce qui serait utile de vérifier côté GitHub (toi, ou un accès admin que je n'ai pas)** :
+Settings → Actions → General (limites de concurrence / exécutions en attente), et Settings →
+Webhooks → Recent Deliveries pour voir si l'événement `pull_request` a seulement échoué à être
+livré pour ces deux branches précises, ou n'a jamais été émis.
+
+**État actuel** : PR #748 reste ouverte, auto-merge (squash) armé, gate local vert — elle mergera
+dès que `ci.yml` finit par se déclencher et passer. Je la garde sous surveillance plutôt que de
+continuer à recréer des PR pour « forcer » un run.
+
+## `[BUDGET-CATEGORY-INCOME-SIGN]` — corrigé en partie, une question de PÉRIMÈTRE reste à trancher (2026-08-26)
+
+**Ce qui était cassé, et corrigé** : `computeBudgetParity`/`computeActualByOwner`
+(`utils/budget.ts`) additionnaient un crédit (« Remboursement ») au lieu de le DÉDUIRE du poste
+(`Math.abs` au lieu de `spendAmountOf`) — un remboursement de 250 $ sur une sortie de 400 $
+affichait **650 $** au lieu de **150 $** de « versé ce mois » (Planning › objectifs liés à un poste
+Remboursement). Mesuré, testé (perturbation confirmée : le test rougit sur le code d'avant), corrigé.
+
+**Ce que je n'ai PAS touché, et pourquoi c'est ton choix** : `components/Budget.tsx` (tableau
+principal des postes, répartition par conjoint, tendance 6 mois) filtre les transactions en amont
+avec `t.amount < 0` — un crédit « Remboursement » y est donc totalement **invisible** aujourd'hui
+(ni ajouté, ni déduit), alors que `monthlyActualsMap` (versé ce mois des objectifs) l'inclut et le
+déduit désormais correctement. Les deux écrans ne montrent donc pas la même chose pour un poste
+« Remboursement » : le tableau principal ignore le crédit, l'objectif le déduit.
+
+**La question** : veux-tu que le tableau principal (et la répartition par conjoint, et le graphique
+de tendance) traite AUSSI les crédits « Remboursement » comme une déduction — pour que les deux
+écrans concordent — ou préfères-tu garder le tableau principal « brut » (sorties seulement) et
+réserver la déduction aux objectifs ? Le premier choix changerait pour la première fois les
+montants affichés dans ton tableau Budget principal pour tout poste où des Interac de remboursement
+sont catégorisés « Remboursement » — je ne veux pas décider seul de changer ce que tu vois là.
+
+<details>
+<summary>Détail technique</summary>
+
+- `components/Budget.tsx:200` (`filtered`) et `:205` (`allSpend`) : `t.amount < 0 && !t.isTransfer
+  && !t.isDuplicate` → remplacer par `isSpend(t)` pour inclure/déduire les crédits, comme
+  `monthlyActualsMap` le fait déjà.
+- `components/Budget.tsx:232` (tendance 6 mois) : même filtre `t.amount >= 0` → skip, même
+  changement à appliquer si tu choisis la cohérence.
+- Aucun changement nécessaire à `computeBudgetParity`/`computeActualByOwner` eux-mêmes (déjà
+  corrigés, signature inchangée) — seul le filtre EN AMONT dans `Budget.tsx` déciderait.
+
+</details>
+
+## `[BUDGET-PREVU-BUG]` — diagnostiqué, deux décisions de méthodologie à trancher (2026-08-26)
+
+Ton exemple (« un revenu prévu irréaliste sur 1 trimestre ») est **reproduit exactement** :
+un compte avec 3 mois d'historique à un revenu mensuel R donne `incomeAvg = R` × 3
+(multiplicateur trimestre) = **3 R**. Le calcul est mathématiquement juste sur ses propres
+termes — le problème est que ces termes ne mesurent pas ce que « prévu » devrait vouloir dire.
+
+**Cause n°1 — la moyenne s'étend sur TOUT l'historique, jamais une fenêtre récente.**
+`fullHistoryMonths()` (`utils/budgetSync.ts:65`) part du PREMIER mois de transaction jamais vu et
+va jusqu'au mois précédent — le dénominateur ne fait que grandir, indéfiniment. Deux défauts
+mesurés : (a) sur un compte récent (peu de mois), un seul mois inhabituel domine complètement la
+moyenne — exactement ton cas ; (b) même sur un historique long, la moyenne réagit très lentement à
+un vrai changement de revenu (mesuré : 12 mois à 6 000 $ puis 6 mois à 3 000 $ → « prévu » encore à
+15 000 $/trimestre contre un réel de 9 000 $, **+67 % qui ne convergera jamais** tant que
+l'historique continue de s'allonger).
+**Ta décision** : veux-tu garder une moyenne PLEINE-HISTOIRE (stable mais lente à s'ajuster), ou
+passer à une fenêtre glissante (3, 6, 12 derniers mois) qui réagit plus vite aux changements réels ?
+Si fenêtre glissante, laquelle ?
+
+**Cause n°2 — des transferts/crédits ponctuels comptent comme du revenu récurrent.**
+`services/import/categoryRules.ts:89-90` route AUTOMATIQUEMENT vers « Revenus divers » (= revenu
+réel, entre dans la moyenne ci-dessus) : `DEPOT DIRECT`, `RISTOURNE`, `INTERET SUR`, `CREDIT
+REMISES`, `VIREMENT INTERAC DE`, `E-TRANSFER RECU`. Certains de ces motifs sont probablement de
+vrais revenus (intérêts, remises) ; d'autres (un Interac reçu, un dépôt direct ponctuel) sont
+peut-être des REMBOURSEMENTS d'une dépense partagée plutôt que du revenu récurrent. Il existe déjà
+une catégorie « Remboursement » prévue pour ça (`CREDIT_BACK_CATEGORIES`, `utils/spendRules.ts:32`,
+et le fix `[BUDGET-CATEGORY-INCOME-SIGN]` de cette même session la traite correctement quand elle
+est utilisée) — mais **aucune règle ne l'écrit jamais** : zéro transaction n'est aujourd'hui
+catégorisée « Remboursement » automatiquement. Mesuré : 900 $/mois d'Interac reçus classés à tort
+en revenu ajoute +2 700 $ au « prévu » trimestriel, ET la dépense correspondante reste comptée en
+entier ailleurs (double comptage dans les deux sens).
+**Ta décision** : parmi `VIREMENT INTERAC DE` / `E-TRANSFER RECU` (les deux motifs les plus
+ambigus), lesquels devraient plutôt aller vers « Remboursement » plutôt que « Revenus divers » ?
+Ou préfères-tu classer ça manuellement transaction par transaction ?
+
+**Cause n°3 (mineure, connexe)** : la « projection fin de mois » compare déjà période PLEINE vs
+période ÉCOULÉE pour le Mois + Dépenses (`components/Budget.tsx:301-304`), mais pas pour
+Trimestre/Année ni pour le Revenu — un écart mesuré d'environ **38 %** en milieu de trimestre/année
+(le prévu couvre toute la période, le réel seulement ce qui est écoulé). Si tu veux la même
+cohérence partout, je peux étendre le mécanisme existant une fois les causes 1-2 tranchées (le
+« prévu » lui-même doit d'abord être fiable avant de l'ajuster à l'avancement de la période).
+
+**Ce que je livre dès que tu trancheras 1 et 2** : `computeMonthlyActualAverages` mis à jour selon
+la méthodologie choisie, une règle « Remboursement » ajoutée aux motifs que tu désignes, et
+l'extension de la normalisation de période si tu la veux.
+
+<details>
+<summary>Ticket d'origine (extrait du BACKLOG)</summary>
+
+- [ ] 🔴 **`[BUDGET-PREVU-BUG]`** (M, possiblement money-critical) — le « budget prévu » semble pas
+  à jour et affiche des valeurs impossibles : exemple donné, une entrée d'argent prévue
+  sur 1 trimestre — irréaliste pour la situation de Marc. À diagnostiquer.
+
+</details>
+
+## `[DEBT-AMORTIZATIONYEARS-QUATRE-PRODUCTEURS-ZERO-LECTEUR]` — décision de Marc (2026-09-03)
+
+**La question en une phrase** : `Debt.amortizationYears` (la durée d'un prêt, en années) est écrit
+par quatre endroits de l'app, validé à l'import, exposé à l'assistant… et **lu par personne**. Que
+veux-tu qu'on en fasse ?
+
+**Ce qui est mesuré** : zéro lecture dans tout le code de production. Les trois usages qui portent ce
+nom concernent d'autres objets (un immeuble locatif, l'hypothèque du ménage dans un prompt,
+l'écriture par l'assistant). Aucun chiffre n'est donc FAUX aujourd'hui — c'est du poids mort, pas un
+bug.
+
+**Trois issues, et c'est un choix de produit, pas de technique** :
+
+1. **Le brancher** — un prêt à terme fini cesserait d'être payé à son échéance. ⚠️ Ça DÉPLACE de
+   l'argent dans la projection, et `termEndDate` fait déjà quelque chose de proche autrement : il
+   faudrait décider lequel des deux fait foi.
+2. **Le supprimer** du type, avec ses quatre écritures. ⚠️ Le type est PERSISTÉ : à examiner avec le
+   même soin qu'une migration.
+3. **Le laisser** et l'assumer par écrit (l'inventaire livré au lot 95 le surveille déjà et rougira
+   si quelqu'un le branche sans le dire).
+
+Je ne tranche pas seul : (1) touche de l'argent, (2) touche des données persistées.
+
+## `[W5-RENTAL-DPA-ELECTION]` — décision de Marc (2026-09-05)
+
+> ✅ **RÉPONDU par Marc le 2026-09-14 (en clic)** : **option 3 — élire AVEC vente et recapture.**
+> C'est le choix le plus complet et le plus coûteux à livrer : le ticket le disait lui-même
+> « exige d'abord de modéliser la vente d'un immeuble W5 (date, gain en capital, recapture) : un
+> lot M à part ». Rien n'existe aujourd'hui pour vendre un immeuble locatif dans le moteur — pas de
+> `LifeEvent` de disposition, pas de calcul de gain en capital sur un W5, pas de recapture de DPA.
+> **Je ne code pas sans un plan validé** : c'est un chantier nouveau (L), pas un correctif. Plan
+> proposé, posé à Marc dans la même session :
+> 1. **Modéliser la disposition d'un immeuble locatif** : un événement (date + prix de vente, ou
+>    « à la fin de l'horizon » par défaut) qui calcule le gain en capital (prix de vente − ACB,
+>    même mécanique que `RE-GAIN` pour les buts immobiliers) et l'ajoute à l'assiette imposable
+>    de l'année de vente.
+> 2. **DPA annuelle** : case à cocher par immeuble locatif + taux (défaut 4 %, catégorie 1, demi-année
+>    la 1ʳᵉ année), plafonnée pour ne jamais créer de perte (min avec le revenu locatif net avant DPA).
+>    `ccaTaken` (déjà dans le type, jamais lu) devient la source unique du solde cumulé.
+> 3. **Recapture à la vente** : `min(DPA cumulée, prix de vente − valeur nette comptable)` ajouté au
+>    revenu ordinaire de l'année de vente (LIR, la recapture n'est PAS un gain en capital).
+> 4. Docs : `FISCAL_REFERENCE.md` (méthode DPA + recapture, datée/sourcée), `PROJECTION.md`.
+> 5. Gardes : cas SANS élection (inchangé, contrôle négatif), cas AVEC élection sans vente (DPA
+>    réduit l'impôt courant, latent croît), cas AVEC vente (recapture imposée, impôt latent
+>    s'annule à ±arrondi près) — mesuré sur ≥3 horizons de vente (tôt/milieu/fin d'horizon).
+> **Question posée à Marc** (voir fin de réponse) : GO sur ce plan tel quel (chantier L, plusieurs
+> lots), ou préfère-t-il livrer d'abord l'option 1 (ne pas modéliser, le dire à l'écran — zéro
+> risque, quelques minutes) en attendant que le chantier de vente soit cadré à part ?
+
+**La question en une phrase** : veux-tu que la projection **élise la DPA** (la déduction pour
+amortissement d'un immeuble locatif) chaque année, et si oui, avec ou sans la reprise à la vente ?
+
+**Ce qui est mesuré** (lot 188) : le champ « DPA cumulée » (`ccaTaken`) de l'écran Patrimoine étendu
+n'est lu par **aucun** module — il servait à une recapture à la vente qui n'est pas modélisée. Le lot
+188 a livré la moitié qui ne demande aucun choix : les **intérêts hypothécaires** sont maintenant
+déduits du revenu locatif imposable (c'est la loi, T4036 ligne 8710 ; mesuré −49 k$ à −80 k$ d'impôt
+sur 10 à 30 ans pour un plex à 300 k$ de prêt). La DPA, elle, est un CHOIX : on peut l'élire ou non,
+elle ne peut pas créer une perte, et elle est reprise (imposée) le jour de la vente.
+
+**Trois issues** :
+
+1. **Ne pas la modéliser, et le dire à l'écran** — une note sous le champ « DPA cumulée » : « non
+   utilisée par la projection ». Prudent (patrimoine un peu sous-estimé pour un bailleur qui l'élit),
+   zéro nouveau calcul. [Recommandé tant que la vente n'est pas modélisée : élire une déduction sans
+   modéliser sa reprise gonflerait le patrimoine d'un impôt seulement différé.]
+2. **Élection par immeuble** (case à cocher + taux, défaut 4 % catégorie 1, demi-année la 1re année),
+   SANS recapture — l'impôt différé disparaît de la projection. Optimiste par construction.
+3. **Élection AVEC vente et recapture** — exige d'abord de modéliser la vente d'un immeuble W5 (date,
+   gain en capital, recapture) : un lot M à part.
+
+Je ne tranche pas seul : (2) et (3) déplacent de l'argent, et (2) le fait dans un seul sens.
+
+## Plan P5 à valider — `[IMMO-BUT-LOCATIF-LOYER-NON-IMPOSE-ACTIF]` + `[IMMO-BUT-LOCATIF-INTERET-BRUT]` (2026-09-05, lot 189)
+
+**Le fait en une phrase** : le loyer d'un immeuble saisi comme BUT immobilier (onglet Immobilier, case
+« loué ») n'est imposé par aucun barème tant que tu travailles — il ne l'est qu'une fois à la retraite.
+Et ses intérêts hypothécaires ne sont déduits nulle part. Les deux se corrigent ENSEMBLE (l'un sans
+l'autre donne un chiffre faux dans un sens ou dans l'autre — mesuré).
+
+**Ce que ça pèse** (couple actif 260 k$, condo loué 1 500 $/mois, prêt 280 k$ à 4,5 %) : impôt
++63 k$ à 10 ans, +157 k$ à 20, +264 k$ à 30 ; patrimoine projeté −76 k$ / −224 k$ / −437 k$. Les
+intérêts déduits rendent une partie : ≈ 87 k$ d'intérêts sur 10 ans, ≈ 117 k$ sur la vie du prêt,
+au taux marginal du ménage.
+
+**Plan proposé (un lot, S/M, money-critical)** :
+1. `taxDecember.ts` §1, branche ACTIVE : ajouter `accRentesYear` (part égale par adulte, en réel) à
+   l'assiette imposable — même forme que la branche retraitée ; l'assiette d'EMPLOI (RRQ/RQAP/AE)
+   reste le salaire seul. Sortir `accRentesYear` du ternaire de l'assiette d'empilement (§2/§3), comme
+   `accRetraitsReerYear` l'a été.
+2. `realEstateMonth.ts` : `accRentesYear += loyer − intérêt du mois` (T4036 ligne 8710), revenu GAGNÉ
+   sur la même base nette (T4040) ; trésorerie et affichage restent au loyer brut. Le code existe
+   (écrit et retiré au lot 189).
+3. Gardes : espion sur le contexte de décembre (assiette active = salaire + REER + loyer net), cas
+   retraité inchangé (contrôle), perturbations séparées pour chaque moitié ; re-base sciemment des
+   goldens des 7 fichiers de fixtures à `rentalIncomeMonthly`, chacun avec son sens mesuré.
+4. Docs : FISCAL_REFERENCE §6/§7, PROJECTION, CHANGELOG (visible : impôt en hausse pour tout
+   bailleur actif saisi en but immobilier).
+
+**Question Q12** : OK pour livrer ce plan tel quel ? (Alternative écartée : ne corriger que la
+déduction — c'est une perte sèche mesurée, −2,8 k$ à −10 k$ de patrimoine sans un dollar d'impôt en
+moins.) [Recommandé : OUI — c'est la loi, et l'écart grandit avec l'horizon.]
+
+---
+
+## Question Q13 — `knip` en CI ? (2026-09-06, lot 205)
+
+**Le fait** : `[KNIP-UNUSED-EXPORTS-73]` disait 73 exports inutilisés ; rejoué, 80 — le compte a dérivé de 7 en
+trois semaines sans que personne ne le voie, parce que `npm run knip` n'est lancé par rien. Le lot 205 le ramène à 0.
+
+**Options** :
+1. Ajouter une étape `npm run knip` au workflow `ci.yml` (bloquante) — le compte ne peut plus redériver, mais un export
+   ajouté « pour plus tard » rougit la CI. [Recommandé : oui, en bloquant sur les EXPORTS seulement (`--exclude types`)
+   tant que les 234 types ne sont pas triés.]
+2. Non bloquante (avertissement) — le compte reste visible, personne ne le lit (une alarme permanente s'ignore).
+3. Rien — re-trier à la main de temps en temps.
+
+Je ne le fais pas seul : c'est une modification de la chaîne d'outils (règle CLAUDE.md §5).
+
+---
+
+## Plan P6 à valider — `[FUTUR-ANNOTATIONS]` (2026-09-06, lot 211)
+
+**Le fait en une phrase** : tu as répondu à A12 (2026-09-05) sur le QUOI — retraite, épuisement d'un compte,
+début RRQ/PSV, bascule de stratégie, en bref, chaque type désactivable. Le COMMENT est un lot M sur le
+fichier le plus lourd de l'app (`FutureProjection.tsx`) : je ne le code pas sans ton OK sur ce plan.
+
+**Ce que le moteur donne déjà** (recensé dans `docs/PROJECTION_OUTPUT_SCHEMA.md`) : `isRetired` par mois
+(→ « Retraite »), `pensionRRQ` et `pensionPSV` par mois (→ premier mois > 0 = « RRQ », « PSV »), les séries
+par compte (→ premier mois à 0 $ après avoir été > 0 = « REER épuisé », « CELI épuisé »…). **Ce qu'il ne
+donne PAS** : la bascule de stratégie — `strategyName` est publié UNE fois par simulation, pas par mois ;
+`AUTO_MARGINAL` bascule sans le dire. Il faudrait publier un champ mensuel (`strategyMode`), un ajout
+additif au schéma de sortie.
+
+**Plan proposé (deux lots)** :
+1. **Lot A — moteur (XS)** : publier `strategyMode` par point (additif, défaut = stratégie de la
+   simulation), garde par espion sur une fixture qui bascule (une fixture où `AUTO_MARGINAL` change
+   d'avis existe : celle de `UNE-FIXTURE-QUI-SATURE-LA-CONTRAINTE-REND-LA-MESURE-AVEUGLE`, année 9).
+2. **Lot B — écran (M)** : un module PUR `utils/futureAnnotations.ts` dérive les annotations depuis
+   `chartData` (jamais un second calcul), testé type par type ; rendu par le mécanisme EXISTANT des
+   pastilles (`assignStackIndex` après écrêtage, `ClickableEventIcon`, `sampleEvenly`) avec une famille
+   « annotation » au-dessus de la courbe — pas de second mécanisme. Toggles : un petit menu
+   « Annotations » à côté de la légende, quatre cases, préférence persistée dans le store (champ optionnel
+   additif, aucun bump de schéma). Mode discret : les libellés ne portent aucun montant (« REER épuisé »,
+   jamais « REER à 0 $ »).
+3. Gardes : module pur (première occurrence seulement, rien si jamais ; contrôles par type), persistance du
+   toggle, nombre de pastilles rendues avant/après décochage, `aria-label` par annotation.
+
+**Question Q14** : OK pour ce plan ? Deux sous-questions :
+- Q14a — la bascule de stratégie exige le champ mensuel `strategyMode` (lot A) : OK, ou on livre les trois
+  autres types d'abord et la bascule ensuite ? [Recommandé : les trois d'abord — livrables sans toucher
+  au moteur.]
+- Q14b — où vivent les quatre cases : à côté de la légende du graphe [Recommandé], ou dans Réglages ?
+
+## Question Q15 — fonctions IA « cœur » en mode discret (2026-09-07, audit, lot 212)
+
+L'audit 2026-09-07 a trouvé trois cartes de CONSEIL qui envoient des montants à l'assistant en mode discret ;
+elles sont couvertes par ta décision du 2026-09-05 (« masquer ») et se corrigent sans te redemander
+(`[AI-PRIVACY-CONSEILS-NON-GATES]`). Restent deux fonctions qui ne sont PAS des conseils : la **catégorisation
+automatique** des transactions (`categorizeBatch`) et la **détection d'abonnements** (`detectSubscriptionsAI`),
+déclenchées par un IMPORT, qui envoient les libellés ET les montants. Ta décision de septembre parlait de
+« l'assistant » ; ces deux-là sont le cœur de l'import, et les bloquer en mode discret revient à désactiver
+l'import intelligent chaque fois que tu masques l'écran.
+
+**Question Q15** : en mode discret, que font ces deux fonctions ?
+- Q15a — **Laisser passer avec une bannière** « des montants partent vers l'IA malgré le mode discret »
+  [Recommandé : le mode discret protège l'ÉCRAN d'un regard, pas la connexion à ton propre fournisseur IA ; bloquer
+  l'import rendrait le mode discret coûteux à activer, donc moins utilisé].
+- Q15b — **Bloquer** (même règle que les conseils : refus + message, l'import attend la sortie du mode discret).
+- Q15c — **Masquer les montants** dans le prompt (libellés seuls) — ⚠️ la catégorisation perd un signal utile
+  (un « TIM HORTONS 4,50 $ » et un « TIM HORTONS 450 $ » ne sont pas la même dépense).
+
+## Question Q16 — au divorce, l'entreprise privée se partage-t-elle ? (2026-09-07, lot 214)
+
+> ✅ **RÉPONDU par Marc le 2026-09-14 (en clic)** : **Q16a** — la partager comme le reste (`× keep`),
+> hypothèse « société d'acquêts par défaut ». **LIVRÉ le même jour** :
+> `[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]`, `privateBusinessValue` (`let`) désormais `*= keep` au
+> divorce, garde `tests/services/divorceBusinessShare.test.ts` (discriminant confirmé).
+
+En publiant enfin la valeur de l'entreprise privée dans la courbe (lot 214), le panel a vu ce que personne ne pouvait
+voir avant : au DIVORCE, tous les actifs sont divisés selon `divorceSplitPct` (CELI, REER, immobilier, immeubles
+locatifs, dettes…) **sauf l'entreprise**, qui reste à 100 %. Mesuré : avec une entreprise de 900 000 $ et un partage à
+75 %, le patrimoine final est +900 000 $ par rapport au même scénario sans entreprise — partagée comme le reste, il
+resterait 225 000 $. Ce n'est pas un bug mécanique évident : au Québec, le patrimoine familial (partagé de droit)
+n'inclut PAS les actions d'une société ; ce qui en advient dépend du régime matrimonial (société d'acquêts : oui,
+séparation de biens : non) et de la convention entre conjoints.
+
+**Question Q16** : que fait le moteur au divorce avec la valeur d'une entreprise privée ?
+- Q16a — **La partager comme les autres actifs** (`× keep`), avec une note « société d'acquêts par défaut »
+  [Recommandé : cohérent avec tout le reste du partage, qui ne distingue pas non plus les biens propres ; la
+  simulation surestime aujourd'hui le patrimoine post-divorce de toute la valeur de l'entreprise].
+- Q16b — **La laisser intacte**, mais l'ÉCRIRE (commentaire + garde) : « l'entreprise est un bien propre »
+  [réaliste en séparation de biens, mais c'est le seul actif traité ainsi — l'incohérence resterait].
+- Q16c — **Un réglage par entreprise** (`partageableAuDivorce`, défaut = partagée) — S, une case de plus dans W5.7.
+
+---
+
+## `[FINTABLE-CARTE-DETTE-AUTO]` — la carte n'est pas une dette : c'est un solde à DEUX SENS
+
+**Statut : PLAN POSÉ, EN ATTENTE DU GO DE MARC.** Rien n'est codé.
+
+### Ce que Marc a tranché (2026-09-14, en clic)
+
+1. **Créer la dette automatiquement** à partir du solde Fintable (contre ma recommandation).
+2. « **parfois mon crédit fait que j'ai de l'argent en plus et parfois de l'argent en moins** » — donc
+   le solde de cette carte **oscille des deux côtés de zéro par conception**, ce n'est pas un cas limite.
+3. Sur Fintable, devoir de l'argent s'affiche en **NÉGATIF** (`-500` pour 500 $ dus).
+4. Quand le solde est **en sa faveur**, il veut que le surplus **compte comme des liquidités** — et non
+   une dette à 0 $ (mon option recommandée). C'est le choix le plus exact et le plus coûteux ; il est
+   assumé, et il change le modèle : la carte cesse d'être « une dette » pour devenir un compte à solde
+   SIGNÉ, dont les deux moitiés vont dans deux registres différents.
+
+### ⚠️ Ce que la réponse n°3 révèle : le code suppose exactement l'INVERSE
+
+`services/fintable/mapSnapshot.ts` porte `const owed = Math.abs(account.balance)` avec, juste
+au-dessus, « un solde NÉGATIF signifie un crédit en ta faveur ». Sous la convention que Marc décrit,
+les deux cas sont **inversés** :
+
+| situation réelle | solde Fintable | ce que le code fait aujourd'hui |
+|---|---|---|
+| tu DOIS 500 $ | `-500` | dette de 500 $ ✅ …mais l'avertissement « **crédit en ta faveur** » se déclenche **à chaque passe**, sur le cas NOMINAL |
+| tu as 200 $ EN TROP | `+200` | **dette fantôme de 200 $**, **sans aucun avertissement** |
+
+⚠️ **Correction du 2026-09-16** : ce tableau annonçait « patrimoine net faux de 400 $ ». C'est
+**200 $**, pas 400 $. La dette inventée (200 $) se corrigera avec le signe ; les 200 $ que
+l'émetteur te doit, eux, ne sont représentables **par aucune convention** aujourd'hui —
+`applyDebt` refuse un solde négatif ou nul, donc l'app n'a aucun endroit où mettre une carte
+en crédit. C'est une décision de l'étape 2, pas un effet du signe.
+
+`Math.abs` sauve la grandeur du cas nominal **par accident**, et c'est exactement ce qui rendait le
+défaut invisible. Un avertissement qui parle sur le cas normal et se tait sur le cas anormal est pire
+qu'absent (classe « un avertissement PERMANENT est un avertissement mort »).
+
+⚠️ **Confiance** : `[À vérifier]`. Marc décrit ce que **l'écran** de Fintable affiche ; le champ
+`accounts[].balance` de l'API est lu tel quel par `services/fintable/decode.ts` (aucune transformation
+de signe), mais personne n'a encore comparé les deux sur une vraie passe. Le plan ci-dessous commence
+donc par une mesure, pas par un correctif. Le jeton serveur étant révoqué (401), cette mesure passe par
+le navigateur de Marc.
+
+### ✅ ÉTAPE 1 LIVRÉE le 2026-09-16 — **MESURE OBTENUE le jour même**
+
+Le rapport de synchro du 2026-09-16 a publié :
+
+> « carte de crédit (xxxx) » → **positif**
+
+Marc, interrogé sur cette passe : **« c'est en ma faveur »**.
+
+**La convention de Fintable est donc établie : `négatif = tu DOIS`, `positif = c'est en ta faveur`.**
+
+⚠️ **Une seule observation a suffi, et ce n'est pas un coup de chance — c'est la SEULE qui pouvait
+trancher.** Dans le cas nominal (Marc doit de l'argent), les deux conventions rendent le MÊME
+résultat : `Math.abs(−500)` et `Math.abs(+500)` valent tous les deux 500, donc mille passes
+normales n'auraient jamais rien appris. C'est la branche RARE — la carte en crédit — qui sépare les
+deux hypothèses, et c'est exactement celle-là qui s'est présentée. L'hypothèse « positif = dû »,
+écrite en commentaire dans le code depuis toujours et jamais mesurée, est **réfutée**.
+
+⚠️ **Nuance honnête** : cette mesure réfute « positif = dû » de façon décisive. Elle est *compatible*
+avec « négatif = dû » sans le prouver positivement — il faudrait pour ça une seconde passe où Marc
+doit effectivement de l'argent et où le solde arrive en négatif. Aucune décision ne l'attend : le
+plan de l'étape 2 (`dû = max(0, −solde)`) est déjà écrit dans ce sens, et il est confirmé.
+
+✅ **Bonne nouvelle : rien n'est faux aujourd'hui dans ton patrimoine net.** Aucune dette n'est
+associée à cette carte (`Dettes mises à jour : aucune`), donc la dette fantôme que le
+`Math.abs` aurait fabriquée n'a **jamais été écrite**. Le défaut est réel et il n'a pas encore
+coûté un dollar.
+
+⚠️ **Ce qui reste faux, c'est le COMMENTAIRE** : `mapSnapshot.ts` affirme encore « un solde négatif
+signifie un crédit en ta faveur », soit l'inverse de la mesure. Un commentaire faux dans du code
+money-critical est un piège pour la prochaine session — il se corrige avec l'étape 2, dans le même
+lot que le `Math.abs` qu'il explique.
+
+### Plan proposé — trois étapes, la première ne déplace aucun dollar
+
+**Étape 1 — MESURER le signe (aucun changement de comportement).** Le rapport de synchro affiche déjà
+des avertissements ; y ajouter, pour chaque compte au rôle `debt`, le **signe** du solde reçu (jamais
+le montant : le rapport part aussi dans les journaux GitHub Actions en clair, cf. `[PR #531]`). Une
+passe de Marc tranche alors la table ci-dessus définitivement. Coût : quelques lignes, zéro risque.
+
+**Étape 2 — le solde signé va dans DEUX registres MUTUELLEMENT EXCLUSIFS.** Une fois le signe confirmé :
+
+- `dû = max(0, -solde)` → payload de dette (comme aujourd'hui, mais dérivé du bon sens) ;
+- `surplus = max(0, +solde)` → s'ajoute à la **cible de liquidités**, au même titre qu'un compte chèque.
+
+Les deux ne sont jamais non nuls ensemble : c'est un seul montant vu de deux côtés, et il doit être
+**partagé**, pas reflété (leçon `PARTAGER-LE-MONTANT-PAS-SES-REFLETS` — deux registres oubliés avaient
+coûté 75 957 $ d'écart). Quand la carte bascule d'un sens à l'autre, l'autre registre doit **retomber à
+zéro dans la même passe**, sinon le patrimoine compte deux fois.
+
+⚠️ **Obstacle mesuré sur ce chemin** : `mcp/ingest/applyDocument/cashBalance.ts` **refuse** une cible de
+liquidités négative (`doc.targetCad < 0` → `throw`), ce qui **rejette le payload entier**. Tant que le
+surplus de la carte est le seul terme ajouté, la cible reste positive (le compte chèque domine) — mais
+c'est une condition, pas une garantie, et elle doit être écrite dans un test.
+
+**Étape 3 — la création automatique de la dette.** Elle reste bloquée sur **un seul chiffre** :
+
+- Le **taux** est tranché : **le taux de la carte** (décision de Marc du même jour, `[ENG-LIQUIDDEBT-NEVER-REPAID]`
+  plus haut dans ce fichier).
+- Le **paiement minimum** n'a **aucun défaut dans le dépôt** — vérifié : il est saisi à la main partout,
+  et `debtAmortization` refuse d'amortir sans `minimumPayment > 0`. `applyDebt`
+  (`mcp/ingest/applyDocument/debt.ts`) exige les trois champs pour CRÉER (une mise à jour partielle n'en
+  exige aucun). En inventer un (« 5 % du solde ») serait un chiffre non sourcé qui pilote l'amortissement
+  de toute la projection.
+  ⚠️ La règle québécoise du paiement minimum existe (LPC), mais je **n'ai pas pu la citer** : accès réseau
+  bloqué depuis ce conteneur (`EGRESS_BLOCKED` sur LégisQuébec). La consigner sans source lui donnerait
+  l'autorité d'un texte de loi (`UNE-AFFIRMATION-JURIDIQUE-NON-CITEE-HERITE-DE-L-AUTORITE-DU-DOCUMENT`).
+
+### ✅ RÉPONDU par Marc le 2026-09-14 : paiement minimum = **[montant retiré]**
+
+Chiffre donné par Marc lui-même (son relevé), donc ni inventé ni « hypothèse de modèle » : il peut
+entrer tel quel dans `applyDebt`. Avec le taux déjà tranché (taux de la carte), **les trois champs requis pour
+CRÉER la dette sont désormais disponibles** — il ne reste que le GO sur le plan en trois étapes
+ci-dessus, dont l'étape 1 (mesurer le signe) ne déplace aucun dollar.
+
+⚠️ Un paiement minimum de quelques dollars sur une carte à taux élevé n'éteint pratiquement jamais le solde : c'est
+le minimum CONTRACTUEL, pas le paiement réel de Marc (il vire de grosses sommes — plusieurs milliers de dollars le
+2026-09-14). Si le moteur ne sert que le minimum, la projection montrera une dette qui ne descend
+jamais. À trancher en même temps que le GO : sert-on le minimum contractuel ou le paiement
+RÉEL observé dans les transactions ?
+
+### ⚠️ Correction : « la mesure était inatteignable » était FAUX
+
+Le ticket affirmait que tu ne pourrais pas faire cette mesure « faute de `debtName` sur tes cartes ».
+Re-vérifié sur le code réel le 2026-09-16 : c'est faux **depuis PR #956** — un nom de dette vide
+laisse désormais le compte ROUTÉ, il arrive bien dans le bloc qui lit le solde et n'en ressort que
+trois lignes plus bas. La mesure était donc à quelques lignes de distance, pas hors de portée. C'est
+cette vérification qui a fixé la seule contrainte du lot : publier le signe **avant** ces sorties.
+
+### En attendant, ça marche déjà
+
+`[FINTABLE-CARTE-SANS-DETTE]` est livré et **en ligne** (PR #956, déploiement vérifié READY) : tes
+transactions de carte entrent dans le budget dès maintenant, sans aucune dette. Seul le solde de la
+carte n'est pas suivi — et vu le tableau ci-dessus, ne pas le suivre est aujourd'hui **plus juste** que
+le suivre.
+
+---
+
+## `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]` — des transactions fausses dans ton état, des dépenses fantômes
+
+> ✅ **Réimport FAIT le 2026-09-15** (montants du relevé) — il reste **4 lignes à exclure par Marc**, détail au bas de cette section.
+
+**Statut : MESURÉ, DÉCISION DE RÉPARATION EN ATTENTE.** Rien n'a été écrit dans tes données.
+
+### Le défaut
+
+Fintable livre le montant dans la **devise d'ORIGINE** de la transaction, en l'étiquetant
+`currency: "CAD"` (la devise du COMPTE). Le filtre de devise du mapper lit l'ÉTIQUETTE : il n'a donc
+jamais pu tirer. Ton relevé de carte, lui, fait foi — il est en CAD.
+
+Mesuré en appariant une à une tes transactions à ton relevé : **des dépenses gonflées de plusieurs fois leur montant facturé**.
+la plupart surévaluées (ratio ≈ ×3,6), **quelques-unes en USD SOUS-évaluées** (1,417 à 1,427) — le défaut
+va dans les DEUX sens. Contrôle négatif : trois marchands locaux tombent au cent
+près (conversion au terminal, donc facturés en CAD d'origine).
+
+### La table de correction
+
+| Marchand (tel qu'importé) | Date app | Importé | **Facturé CAD** | Écart |
+|---|---|---:|---:|---:|
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| **TOTAL** | | **[montant retiré]** | **[montant retiré]** | **[montant retiré]** |
+
+⚠️ **Cette table n'est PAS complète** : mes captures du relevé s'arrêtent au 08 SEP pour la partie
+facturée et ne montrent pas tout le 09-10 SEP. Au moins deux lignes de ton état (deux dépenses
+de la fin du relevé) n'ont pas pu être appariées faute de la ligne de relevé correspondante.
+Une réparation COMPLÈTE exige le relevé complet.
+
+### ⚠️ MESURÉ le 2026-09-14 : ce n'est PAS toi, le bouton n'existe pas pour ton cas
+
+Marc : « j'arrive pas à les marquer en doublon ». **Il a raison, et c'est structurel.** Le seul point
+d'entrée du marquage « doublon » dans l'app est `DuplicatesPanel`, et ce panneau n'affiche que les
+**groupes trouvés par le DÉTECTEUR** (`findDuplicateGroups` : même date/montant/marchand à une
+tolérance près). Ses lignes en devise étrangère ne sont le doublon de **rien** — elles sont uniques, juste
+au mauvais montant. Elles n'apparaîtront donc **jamais** dans ce panneau. Il n'existe aucun autre
+chemin vers `isDuplicate` dans l'interface.
+
+**Le seul levier par ligne qui existe aujourd'hui** est le bouton ⇄ « virement » de la liste
+Transactions (`toggleTransfer`). Il neutralise bel et bien la ligne — `isTransfer` l'exclut du cash
+(`reconstructCashHistory`), des dépenses ET des revenus (`isSpend`, `isIncome`) — mais il **étiquette
+une vraie dépense comme un virement interne**, ce qui est faux, et il faut le faire **une fois par ligne**.
+
+⚠️ **Et une correction par transaction COMPENSATOIRE est impossible** — vérifié dans le code, pas
+supposé. `computeMonthlyActualAverages` ne compte un montant POSITIF que dans deux cas : catégorie
+`Salaire`/`Revenus divers` (→ revenu), ou `isCreditBack` (catégorie ∈ `CREDIT_BACK_CATEGORIES`, qui
+ne contient QUE `'Remboursement'`). Un montant positif posé en « Transport » pour annuler une dépense surévaluée
+serait **purement ignoré** : ni revenu, ni réduction de dépense. Et en « Remboursement », le net du
+poste est planché à zéro (`Math.max(0, spent − credit)`), donc absorbé. Les deux voies donnent un
+**no-op qui a l'air d'un correctif** — le pire des résultats.
+
+### ⚠️ Le vrai blocage est une DÉCISION VERROUILLÉE, et sa prémisse est partiellement fausse
+
+`docs/adr/0009-suppressions-via-mcp-delete-item.md`, point 3 :
+
+> **Transactions : DIFFÉRÉ** (pas de `delete_transaction`). […] le chemin sûr existant (marquer
+> `isDuplicate`/`isTransfer`) a une sémantique métier que l'IA ne doit pas deviner. **À réévaluer sur
+> un besoin concret de Marc.**
+
+Deux choses :
+
+1. **Le besoin concret est arrivé** — c'est exactement le cas que l'ADR se réservait de réévaluer.
+2. **Son repli n'existe pas ici** : « le chemin sûr existant » suppose que `isDuplicate` est
+   atteignable. Pour une ligne qui n'est le doublon de rien, il ne l'est pas. L'ADR décrit une porte
+   de sortie qui, mesurée, est fermée pour cette classe de défaut.
+
+### ✅ LIVRÉ dans la foulée : le bouton existe maintenant (onglet Transactions)
+
+Je n'ai PAS rouvert l'ADR — inutile. La capacité existait déjà dans le modèle
+(`markTransactionsAsDuplicate` est une fonction PURE qui accepte n'importe quels ids), et la
+sélection multiple existait déjà dans l'écran (case à cocher par ligne, plage au Maj-clic). Il
+manquait seulement le FIL entre les deux : la sélection ne pouvait RIEN faire d'autre que
+re-catégoriser, et aucun libellé ne le disait.
+
+**Ce que tu fais maintenant, dans « Transactions » :**
+
+1. Filtre pour isoler les lignes à neutraliser (la recherche, ou le filtre par catégorie).
+2. Coche une ligne → une barre apparaît : « N sélectionnée(s) ».
+3. Clique **« Sélectionner les N filtrées »** — ça dépasse la page (tes lignes s'étalent sur
+   plusieurs pages de 50, et la case « tout cocher » de l'en-tête ne couvre QUE la page courante).
+4. Clique **« Exclure des calculs »**.
+
+Les lignes restent visibles dans l'historique, mais sortent du solde, du budget et des revenus.
+**C'est réversible** : « Annuler tous les marquages » dans le panneau « Doublons ».
+
+Dis-moi quand c'est fait — j'importe les bons montants (les montants facturés au lieu des montants importés) dans la
+foulée, et ton solde redevient juste.
+
+⚠️ **L'ADR reste fermée, et c'est volontaire** : je ne me suis toujours pas donné le droit de
+modifier une transaction existante. Ce que ce lot corrige, c'est que TOI tu peux le faire en
+quatre gestes au lieu d'un par ligne — et que la décision de neutraliser une ligne reste la tienne.
+
+### Pourquoi je ne l'ai pas corrigée tout seul
+
+Il n'existe **aucun outil qui modifie ou supprime une transaction existante** : `apply_bank_statement`
+ne fait qu'AJOUTER, et sa dédup porte sur (date + montant + marchand) — ré-importer le bon montant
+ajouterait donc une SECONDE ligne au lieu de corriger la première, et doublerait la dépense.
+
+Le seul levier propre est `isDuplicate` : il exclut une ligne de **tous** les calculs (cash, budget,
+grand livre du passé), et c'est exactement ce à quoi il sert (« artefact d'import »). Il se pose à la
+main dans l'écran Transactions. La réparation complète est donc en deux temps — **marquer les
+lignes « doublon », puis ré-importer les montants du relevé** — et l'ordre compte : ajouter d'abord
+ferait doubler la dépense tant que le marquage n'est pas fait.
+
+C'est une migration de tes données financières RÉELLES : elle attend ton feu vert explicite.
+
+### ✅ RÉIMPORT FAIT le 2026-09-15 — (ton feu vert : « tu peux réimporter avec les bons montants »)
+
+Écrit dans ton état par `apply_bank_statement` (sauvegarde horodatée automatique avant écriture) :
+**Transactions ajoutées, 0 doublon, 0 rejet.** Pas tout le tableau — huit lignes du
+tableau ont été ÉCARTÉES, toutes dans le sens prudent (importer moins, jamais plus).
+
+**A. Quatre lignes dont l'original est encore ACTIF dans tes calculs** — mesuré le 2026-09-15 sur
+ton état (instantané Drive de 4 min) : elles ressortent d'une recherche qui EXCLUT les lignes
+marquées, donc elles ne sont pas marquées. Les réimporter aurait compté la dépense **deux fois**.
+
+| ligne | date | encore compté | montant réel | manque |
+|---|---|---:|---:|---:|
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+| [transaction retirée] | — | — | — | — |
+
+✅ **FAIT le 2026-09-16.** Marc a exclu les quatre lignes, et les quatre bons montants ont été
+importés (4 ajoutées / 0 rejet, sauvegarde `…2026-09-16T18-20-27-514Z.bak.json`).
+La précondition a été vérifiée **par ligne**, jamais comme propriété globale : trois des quatre lignes
+ne ressortent plus d'une recherche qui EXCLUT les
+lignes marquées → elles sont bien exclues.
+
+⚠️ **Et la quatrième ligne a failli me faire suspendre un import parfaitement légitime** : elle
+RESSORTAIT de la recherche. Mais à une autre date et pour un autre montant, alors que la ligne à corriger est du
+la date et le montant du relevé — **deux transactions différentes chez le même marchand**, la seconde
+arrivée avec le rattrapage d'historique du jour. Une recherche par MARCHAND ne dit rien d'une LIGNE :
+c'est le couple (date, montant) qui identifie. Lue trop vite, elle aurait suspendu une correction légitime au motif
+d'un doublon qui n'existait pas.
+
+Ces quatre dépenses ne sont donc plus sous-évaluées.
+
+**B. Quatre billets de métro du 2026-08-31 n'ont pas été remis.** Tu avais répondu **« 2 vrais
+achetés »** sur ce groupe : le tableau en apparie 6, je n'en ai réimporté que **2**.
+Les **2** du 2026-09-08 sont conservées — ta réponse portait sur le groupe du 31 août, et le relevé
+les apparie séparément. Si eux aussi sont des doublons d'import, dis-le : ces deux-là à exclure.
+
+**C. Trois libellés portent un suffixe `(2/2)`** — deux libellés de transport (deux jours distincts) et un de restauration
+Ce sont deux dépenses RÉELLES identiques le même jour, et la dédup de l'import jette la
+seconde dès que date + montant + marchand coïncident (elle le dit elle-même : « doublon SUSPECT au
+sein du même lot »). Le suffixe est la seule façon de conserver les deux montants sans toucher à un
+seul chiffre. Tu peux le retirer à la main si ça te gêne.
+
+**D. Huit lignes sont en « Non catégorisé »** — des prestataires
+aux libellés opaques. Ce
+sont des prestataires étrangers que je ne peux pas identifier ; leur inventer une catégorie aurait
+été une affirmation, pas une donnée. ⚠️ Et les billets de métro ont reçu **Transport** en dur : la règle
+d'import lit `\bMETRO\b` et l'aurait classé **Épicerie** (le supermarché québécois), ce qu'un
+billet de métro à l'étranger n'est pas.
+
+**E. Aucun nom de compte** n'est attaché à ces lignes — je n'ai pas de quoi lire le libellé exact
+de ta carte, et en inventer un serait faux. Ça ne change **aucun** calcul (`computeCashLedger` ne
+lit pas le compte), seulement l'affichage.
+
+⚠️ **Le tableau reste incomplet** (voir l'avertissement plus haut) : mes captures du relevé
+s'arrêtent au 08 SEP. Les deux lignes du 2026-09-10 jamais appariées
+sont **exclues** de tes calculs et n'ont donc **pas** de remplaçante — cette dépense-là manque
+entièrement tant que je n'ai pas la fin du relevé.
+
+### 🧭 La mesure qui décide de la SUITE — 30 secondes, et je ne peux pas la prendre
+
+Tu as demandé que « ce problème n'arrive pas ». Pour le corriger **exactement**, il faut savoir si
+l'API Fintable dit quelque part la devise RÉELLE d'une transaction. Notre contrat
+(`FtRawTransaction`) a été écrit d'après la **documentation**, jamais d'après une réponse observée,
+et le décodeur **jette en silence** tout champ qu'il ne connaît pas — donc la question n'avait
+jusqu'ici aucune réponse possible.
+
+⚠️ **Je ne peux pas la poser moi-même** : `fintable.io` est refusé par le proxy sortant de mon
+conteneur (403 au CONNECT, et `EGRESS_BLOCKED` via l'outil de récupération web — mesuré le
+2026-09-15, à ne pas retenter à l'aveugle). Ce qu'on sait des pages publiques : Fintable relaie
+**Plaid** et **Finicity**, et chez Plaid une transaction porte `iso_currency_code`.
+
+**Deux façons d'obtenir la réponse — la seconde ne te demande rien :**
+
+1. **Tout de suite**, sur le PC qui fait tourner le serveur MCP (la commande n'affiche QUE des noms
+   de champs — aucun montant, aucun marchand, et le jeton n'est jamais écrit) :
+
+   ```bash
+   curl -s -H "Authorization: Bearer $FINTABLE_TOKEN" \
+     "https://fintable.io/api/v2/transactions?limit=1&pending=0" \
+     | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const t=(JSON.parse(s).data||[])[0]||{};console.log(Object.keys(t).sort().join('\n'))})"
+   ```
+
+   (⚠️ `pending=0` et non `pending=false` : l'API est derrière Laravel, qui refuse la chaîne
+   « false » dans une query string — le client du dépôt encode déjà 1/0 pour cette raison,
+   commentaire `[FINTABLE-BOOL-QUERY]` à l'appui.)
+
+   Colle-moi la liste. Si elle contient un `iso_currency_code`, un `original_amount`, un
+   `unofficial_currency_code` ou équivalent, **le correctif devient exact** et je le livre.
+
+2. **Sans rien faire** : la prochaine synchronisation te le dira toute seule. Le rapport porte
+   maintenant un avertissement qui **nomme** les champs reçus et ignorés. S'il ne dit rien, c'est
+   une mesure aussi : l'API n'envoie rien hors contrat, et il faudra passer par le recoupement de
+   SOLDE (la seule autre grandeur fiable, bien donnée en CAD) — qui exige d'abord de corriger la
+   bascule qui jette les transactions de ta carte.
+
+
+
+---
+
+## `[DETTE-AUTO-BAIL-PRETEUR]` — le contrat est un BAIL, pas un prêt : deux blocages avant d'écrire quoi que ce soit
+
+**Statut : CONTRAT LU ET VÉRIFIÉ, RIEN N'A ÉTÉ ÉCRIT DANS TES DONNÉES.** Deux faits changent la
+décision, et aucun des deux n'était connu quand tu as répondu au menu.
+
+### Ce que dit le contrat (concessionnaire et date retirés)
+
+Seuls les paramètres qui servent au MODÈLE sont consignés ici. ⚠️ **Le dépôt est PUBLIC** : le NIV,
+ton adresse, ton téléphone, le numéro de contrat et le nom du vendeur sont DÉLIBÉRÉMENT omis — ils
+n'ont aucune valeur de calcul et n'ont rien à faire dans un dépôt public.
+
+| Paramètre | Valeur au contrat |
+|---|---|
+| Nature | **Offre de LOCATION (bail)** — pas un prêt |
+| Véhicule | véhicule neuf |
+| Date du contrat / livraison | **[date retirée]** |
+| Prix total | [montant retiré] |
+| Rabais manufacturier | [montant retiré] |
+| **Coût capitalisé** | **[montant retiré]** |
+| **Versement** | **[montant retiré]/semaine** taxes comprises |
+| **Terme** | [terme retiré] |
+| **Taux** | **[taux retiré]** |
+| **Valeur résiduelle** | **[montant retiré]** |
+| Kilométrage | [kilométrage retiré] |
+| Institution | le prêteur |
+
+**Lecture VÉRIFIÉE par l'arithmétique, pas seulement par l'œil** : versement avant taxes + taxes = versement total au cent près, et l'unité du terme (mois) se déduit du reste. [chiffres retirés]
+
+### ⚠️ BLOCAGE 1 — ce que tu paies n'est PAS ce que dit le contrat
+
+- Contrat : **[montant retiré]/semaine**
+- Mesuré dans tes transactions (prélèvements hebdomadaires du financier, sur les premières semaines
+  du bail) : **un versement hebdomadaire plus élevé**
+- Écart : [écart retiré]
+
+Le document que tu m'as envoyé s'intitule « Contrat de Vente — **Offre** de Location » : c'est une
+OFFRE, et le bail signé a pu changer. Je ne choisis pas : **lequel des deux est la vérité ?** Un
+versement faux se propage à toute la projection, et l'écart mensualisé entre contrat et réel se
+répète sur toute la durée du bail.
+
+### ⚠️ BLOCAGE 2 — un BAIL ne s'amortit pas, et le moteur le REFUSE exprès
+
+`services/projection/debtAmortization.ts` porte `KIND_AMORTISSANT['auto-lease'] = false`, avec sa
+raison écrite : « type de dette qui n'amortit pas un SOLDE (bail, révolvant, inconnu) ». Ce n'est pas
+un oubli, c'est une décision — et elle est juste : dans un bail tu ne rembourses pas un capital vers
+zéro, tu paies l'usage d'un véhicule que tu ne possèdes pas, jusqu'à une valeur résiduelle.
+
+Ta demande (« qu'elle diminue avec chaque virement ») reste parfaitement légitime — mais la grandeur
+qui décroît n'est pas la même :
+
+1. **L'engagement restant** = versements qui restent × montant. Décroît à chaque paiement, c'est ce
+   que tu dois encore contractuellement. Au moment de l'écriture : quelques versements faits sur l'ensemble du terme.
+2. **Le solde capitalisé** = coût capitalisé qui descend vers la VALEUR RÉSIDUELLE, pas
+   vers zéro. C'est la vision comptable du bail.
+
+Les deux sont défendables et **ne donnent pas le même patrimoine net**. Il faut choisir.
+
+### ⚠️ Et ta saisie actuelle est fausse sur les deux chiffres
+
+Ta dette « bail » porte **un montant rond et un taux** qui ne sont pas ceux du contrat, qui dit **un autre coût capitalisé à
+un autre taux**. Le montant saisi est un chiffre rond qui ne figure nulle part au contrat.
+⚠️ Et ton patrimoine net ne contient **aucun véhicule à l'actif** (liquidités + placements − dette du bail =
+la valeur nette que l'app affiche) : tu portes donc une dette importante pour une auto qui n'existe pas
+dans ton bilan. Pour un bail c'est un choix défendable (tu ne possèdes pas le véhicule), mais c'en est
+un, et il doit être délibéré plutôt que subi.
+
+### ✅ TRANCHÉ par Marc le 2026-09-14, et ÉCRIT
+
+> « le bon prix est celui que je paie car j'ai des offres en plus, calcule combien ça fera en tout…
+> modifie le prêt par rapport au contrat »
+
+**Combien ça fera en tout** — au versement que tu paies réellement (sur toute la durée du bail) :
+
+| | |
+|---|---:|
+| Total des versements | **[montant retiré]** |
+| (au contrat seul) | [montant retiré] |
+| **Ce que tes options ajoutent sur le terme** | **[montant retiré]** |
+| Déjà versé | [montant retiré] |
+| Reste à verser (versements restants) | **[montant retiré]** |
+| **+ si tu ACHÈTES le véhicule à la fin** (valeur résiduelle) | +[montant retiré] |
+| **Total si tu achètes** | **[montant retiré]** |
+
+**Ce qui a été écrit dans ton état** (`apply_debt`, sauvegarde horodatée créée avant — réversible) :
+
+| Champ | Avant | Après |
+|---|---:|---:|
+| `balance` | [montant retiré] | **[montant retiré]** (versements restants au 2026-09-14) |
+| `interestRate` | [taux retiré] | **0 %** |
+| `minimumPayment` | **[montant retiré]** | **[montant retiré]** (= versement hebdomadaire × 52 ÷ 12) |
+| `rateProvider` | — | le prêteur |
+
+⚠️ **Pourquoi 0 % et pas le taux du contrat — c'est mesuré, pas un avis.** Le moteur amortit tout
+solde actif : `intérêt = solde × taux/12`, puis `solde += intérêt − paiement`. Or le solde que j'ai
+écrit est la **somme des versements restants**, et un versement de bail **contient déjà l'intérêt**.
+Ressaisir le taux du contrat par-dessus le compte donc **deux fois** :
+
+| Taux saisi | Dette éteinte en | Total versé |
+|---|---:|---:|
+| **0 %** | **la durée réelle du terme** (à un mois près) | **exactement le solde saisi** ✅ |
+| taux du contrat | ≈ 7 mois de plus | ≈ 16 % de plus |
+
+Soit **+7 mois et ≈ 16 % de versements que tu ne feras jamais**. Le taux du contrat reste consigné ici et au
+`BACKLOG` : il décrit le contrat, il n'a rien à faire dans un champ qui multiplie un solde déjà
+tout-compris.
+
+⚠️ **Ton paiement était sous-évalué d'environ quatre fois dans l'app** par rapport à ce que l'auto te coûte vraiment — le
+plus gros des quatre écarts, et il ne venait pas du contrat mais d'une vieille saisie. Effet mesuré
+dans l'app juste après l'écriture : patrimoine net **[montant retiré] → [montant retiré]**, dépenses mensuelles
+**en hausse d'environ un quart**, **cashflow mensuel en baisse d'environ un tiers**. Ta capacité d'épargne projetée était
+surévaluée de plusieurs centaines de dollars par mois.
+
+### ⚠️ Ce qui RESTE à faire, et seulement dans l'écran (le MCP ne peut pas)
+
+Dans **Réglages → Dettes**, sur le bail auto :
+
+1. **Type** → « bail auto » (`auto-lease`). Sans ça, le moteur la traite comme un prêt ordinaire.
+2. **Date de début** → **la date du contrat** (date du contrat et de la livraison). Avant cette date, la dette
+   sort du bilan — sinon ton passé porte un bail que tu n'avais pas encore.
+3. **Date de fin de terme** → **la date de fin du contrat** (fin du terme). Le moteur cesse alors de payer, et s'il reste
+   un solde il le DIT au lieu de l'effacer.
+
+⚠️ Et la **valeur résiduelle du contrat** n'existe nulle part dans le modèle : si tu comptes
+acheter le véhicule à la fin, c'est une décision à cadrer à part (ni `Debt` ni `Asset` ne portent
+aujourd'hui « rachat de bail »).
+
+### ⚠️ Et je ne peux PAS tout écrire par le MCP
+
+`apply_debt` accepte `balance`, `interestRate`, `minimumPayment`, `category`, `amortizationYears`,
+`rateProvider` — mais **ni `kind`, ni `startDate`, ni `originalBalance`, ni `termEndDate`**. Or ce
+sont exactement les champs que réclame ta demande. Ils existent et sont saisissables **dans
+Réglages → Dettes** ; par le serveur MCP, ils sont hors de portée. Élargir `apply_debt` est du code,
+money-critical, et attend ton GO.
+
+---
+
+## 🔴 2026-09-16 — UN clic, et tes transactions de carte de crédit recommencent à rentrer
+
+**Le défaut est corrigé dans le code** (`[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`), mais il
+te reste peut-être **une seule action**, et la synchro te dira si elle te concerne.
+
+### Ce qui se passait
+
+L'import gardait UN seul repère « ne rien reprendre avant ma transaction la plus récente », tous
+comptes confondus. Ton compte chèque affiche ses opérations le jour même et poussait ce repère
+chaque jour ; ta carte les affiche ~3 jours plus tard, donc elle arrivait **toujours derrière** et
+se faisait écarter. Mesuré sur 12 passes quotidiennes simulées : **12 transactions de chèque sur 12
+reçues, 0 de carte sur 9**. Contrôle : avec une carte qui afficherait le jour même, **12 sur 12**.
+
+Désormais **chaque compte a son propre repère**. Mesuré après correctif : **9 sur 9**.
+
+### ⚠️ L'action, si la synchro nomme ta carte
+
+Un compte dont **aucune** transaction n'est encore identifiée à son nom n'a pas de repère à lui : il
+reste sur l'ancien, donc il continue d'être écarté. Le rapport de synchro le dit maintenant en
+toutes lettres, par exemple :
+
+> Compte(s) en retard de postage sans historique connu : **ta carte**. […] Lance « Rattraper
+> l'historique » dans Réglages UNE fois pour l'amorcer.
+
+Si tu vois ce message : **Réglages → Rattraper l'historique**, une seule fois. Ensuite le repère de
+ce compte avance tout seul et le message disparaît.
+
+Si tu ne le vois pas, il n'y a rien à faire — ta carte est déjà connue et le correctif agit seul.
+
+### Pourquoi je ne le fais pas automatiquement
+
+Ouvrir la fenêtre d'un compte inconnu rapatrierait **tout son historique sans dédoublonnage** — et
+dans ton cas précis ça rejouerait les **lignes en devise étrangère aux MAUVAIS montants**, ceux qu'on vient
+de corriger : la protection anti-doublon compare date + **montant** + marchand, donc elle ne
+reconnaîtrait pas les lignes corrigées. « Rattraper l'historique », lui, passe par un classement des
+doublons avec arbitrage — c'est le bon outil, et il existe déjà.
+
+### ⚠️ Et une nuance ajoutée après relecture (elle peut retarder l'effet chez toi)
+
+Le repère d'un compte ne « voit » que les lignes portant SON nom de compte. Tes lignes saisies à la
+main — dont les **lignes en devise étrangère réécrites le 15 septembre** — n'en portent aucun. Or ce sont elles qui
+t'empêchaient jusqu'ici qu'une dépense déjà connue soit réimportée.
+
+Sans précaution, le nouveau repère les aurait **réimportées aux montants d'origine** (donc faux), la
+protection anti-doublon ne les reconnaissant pas puisqu'elle compare le libellé, que j'ai modifié.
+Mesuré : **3 doublons écrits**. C'est refabriquer exactement ce qu'on venait d'enlever.
+
+Donc : le repère d'un compte ne recule jamais au-delà de ta dernière ligne « sans compte ». Tant que
+celle-ci est récente (début septembre pour ces lignes), le gain reste partiel pour la carte — et il
+se rétablit **tout seul** à mesure que les jours passent, sans rien faire de ta part.

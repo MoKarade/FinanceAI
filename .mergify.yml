@@ -1,0 +1,84 @@
+# Fusion automatique par Mergify (plan gratuit), en place depuis le 15/10/2026.
+# Remplace l'ancienne fusion automatique de l'Atelier (auto-merge.yml, armement, kit modeles/auto-merge).
+# Une PR prête (pas en brouillon, sans label « hold ») est fusionnée en squash dès que tous les
+# contrôles obligatoires sont verts.
+# Chemins protégés (.github/, hooks, qualite/, vercel.json, drizzle/, .env, extras du dépôt) : fusionnés aussi,
+# SI le contrôle « Garde-fou » est vert (oui écrit de Marc, 15/10/2026). Rouge = la PR attend et une issue
+# `qui:marc` s'ouvre. Règles et tests : MoKarade/.github, scripts/garde-fou.mjs. Ce fichier ne se modifie pas seul.
+# Branche protégée « à jour avant fusion » : Mergify exige une seule vérification à la fois.
+merge_queue:
+  max_parallel_checks: 1
+queue_rules:
+  - name: default
+    merge_method: squash
+    batch_size: 1
+    # Sans cette ligne Mergify calcule le délai (`auto`) d'après la durée récente des contrôles de la file (3 min 25 s le 21/10/2026) :
+    # une PR verte dont la CI de lot dure plus longtemps sort de la file (« Checks timed out », app-template#117). Même réglage que MoKarade/.github.
+    checks_timeout: 30 min
+    queue_conditions:
+      - base = main
+      - -draft
+      - label != hold
+      - label != do-not-merge
+      # Chemins protégés : fusionnés si le contrôle « Garde-fou » est vert (oui écrit de Marc, 15/10/2026). Il est vert
+      # d'office hors chemins protégés. Exception Dependabot conservée (oui de Marc, MoKarade/.github#26) : montée
+      # mineure ou corrective des actions, rien hors de .github/, aucun commit d'un autre auteur. Les majeures :
+      # elles passent par le garde-fou comme tout le reste.
+      - or:
+          - 'check-success = Garde-fou'
+          - and:
+              - 'author = dependabot[bot]'
+              - 'head ~= ^dependabot/github_actions/'
+              - '-files ~= ^(?!\.github/)'
+              - 'dependabot-update-type ~= ^version-update:semver-(minor|patch)$'
+              - '-dependabot-update-type = version-update:semver-major'
+              - '-commits[*].author ~= ^(?!(dependabot\[bot\]|mergify\[bot\])$)'
+      - 'check-success = Lint / Typecheck / Tests / Build'
+      - 'check-success = E2E (Playwright / Chromium)'
+      - 'check-success = Analyze (javascript-typescript)'
+      - 'check-success = Qualité (lint · couverture · code mort · architecture)'
+      - 'check-success = Sécurité (secrets · analyse statique)'
+      - 'check-success = Lighthouse Audit'
+    merge_conditions:
+      - base = main
+      - -draft
+      - label != hold
+      - label != do-not-merge
+      # Chemins protégés : fusionnés si le contrôle « Garde-fou » est vert (oui écrit de Marc, 15/10/2026). Il est vert
+      # d'office hors chemins protégés. Exception Dependabot conservée (oui de Marc, MoKarade/.github#26) : montée
+      # mineure ou corrective des actions, rien hors de .github/, aucun commit d'un autre auteur. Les majeures :
+      # elles passent par le garde-fou comme tout le reste.
+      - or:
+          - 'check-success = Garde-fou'
+          - and:
+              - 'author = dependabot[bot]'
+              - 'head ~= ^dependabot/github_actions/'
+              - '-files ~= ^(?!\.github/)'
+              - 'dependabot-update-type ~= ^version-update:semver-(minor|patch)$'
+              - '-dependabot-update-type = version-update:semver-major'
+              - '-commits[*].author ~= ^(?!(dependabot\[bot\]|mergify\[bot\])$)'
+      - 'check-success = Lint / Typecheck / Tests / Build'
+      - 'check-success = E2E (Playwright / Chromium)'
+      - 'check-success = Analyze (javascript-typescript)'
+      - 'check-success = Qualité (lint · couverture · code mort · architecture)'
+      - 'check-success = Sécurité (secrets · analyse statique)'
+      - 'check-success = Lighthouse Audit'
+merge_protections_settings:
+  auto_merge_conditions:
+    - base = main
+    - -draft
+    - label != hold
+    - label != do-not-merge
+    # Chemins protégés : fusionnés si le contrôle « Garde-fou » est vert (oui écrit de Marc, 15/10/2026). Il est vert
+    # d'office hors chemins protégés. Exception Dependabot conservée (oui de Marc, MoKarade/.github#26) : montée
+    # mineure ou corrective des actions, rien hors de .github/, aucun commit d'un autre auteur. Les majeures :
+    # elles passent par le garde-fou comme tout le reste.
+    - or:
+        - 'check-success = Garde-fou'
+        - and:
+            - 'author = dependabot[bot]'
+            - 'head ~= ^dependabot/github_actions/'
+            - '-files ~= ^(?!\.github/)'
+            - 'dependabot-update-type ~= ^version-update:semver-(minor|patch)$'
+            - '-dependabot-update-type = version-update:semver-major'
+            - '-commits[*].author ~= ^(?!(dependabot\[bot\]|mergify\[bot\])$)'

@@ -1,0 +1,39 @@
+# CLAUDE.md — FinanceAI
+
+App perso de planification financière (fiscalité ARC + Revenu Québec, Monte Carlo retraite, assistant Claude).
+100 % navigateur : React 19 + Vite 8 + TS 5.9 (`strict: true` depuis le 17/10/2026) + Tailwind 4, Zustand 5 (persist), Zod, Recharts, Vitest 5.
+Hors navigateur : `api/` (relais Anthropic, Vercel) et `mcp/` (serveur MCP + hub). Prod : Vercel. Tout en français.
+Structure plate (pas de `src/`) : `components/ hooks/ services/ store/ utils/ mcp/ api/ tests/ docs/`. Moteur : `services/projection/`.
+Compte de tests (source unique, MESURÉ 2026-09-18, `cc0aa63c`) : **6 319 tests / 638 fichiers**. Détail du comptage : `docs/claude/entete.md`.
+
+## Index — le détail vit dans `docs/claude/` (ce fichier reste ≤ 60 lignes / ≤ 10 Ko)
+- Principes complets : `docs/claude/principes.md` · Conventions de code : `docs/claude/conventions-code.md`
+- Git, PR, cycle autonome, backlog dans les issues, docs à chaque push : `docs/claude/workflow-git.md`
+- Commandes : `docs/claude/commandes.md` · Gate avant commit : `docs/claude/verifications.md`
+- Après merge, déploiement Vercel : `docs/claude/deploiement.md` · Hub / CarAI : `docs/claude/hub.md`
+- Où vit quoi : `docs/claude/documentation.md` · Leçons (clés MAJUSCULES) : `docs/claude/lecons.md` (+ `docs/CONVENTIONS.md`)
+- CI : `docs/claude/ci.md` · Style, compte-rendu : `docs/claude/style.md` · Agents, hooks : `docs/claude/agents.md`
+- Chemins sensibles : `docs/claude/chemins-sensibles.md` · En-tête historique : `docs/claude/entete.md`
+- Graphe de code (hooks et MCP `graphify` posés, 0 jeton ; `scripts/graphe.sh query|affected|path|explain` avant de grepper ; wiki : `graphify-out/wiki/index.md`) : `docs/claude/graphe-code.md`
+- État : `HANDOVER.md` · Tâches : les issues du dépôt (`BACKLOG.md` n'est qu'un renvoi ; humaines : `docs/A_FAIRE_MOI.md`) · Architecture : `docs/ARCHITECTURE.md`
+- Valeurs fiscales : `docs/FISCAL_REFERENCE.md` · Décisions : `docs/adr/`
+
+## Commandes
+`npm run dev` · `test` · `test:watch` · `test:e2e` · `typecheck` · `lint` · `build` (prebuild = lint) · `knip` · `check-contrast` · `mcp:dev|auth|connect|pack`.
+**Gate avant CHAQUE commit** : `npm run typecheck && npm run lint && npm run test && npm run build`. Jamais `npx tsc`.
+
+## Règles NON NÉGOCIABLES (texte complet dans `docs/claude/principes.md`)
+1. **No-fake-data** : aucune donnée simulée en prod ; projection absente → `<ProjectionRequired>` ; valeur non finie/absente → « — » ou `null`, jamais `0` (y compris dans un prompt IA).
+2. **Secrets** : jamais en clair (code, repo, chat). Clés API en IDB chiffré, exclues de localStorage, backups et push Drive.
+3. **Dépôt à tenir comme PUBLIC** (public visé, privé en attendant depuis le 21/10/2026) : jamais NIV, adresse, téléphone, n° de contrat ; jamais de montant dans un rapport de synchro ni un journal CI. La règle ne s'assouplit pas parce que le dépôt est privé aujourd'hui.
+4. **Chemins sensibles** (`scripts/hooks/**`, `.github/**`, `.claude/**`, settings*, commit-gate*, `api/**`, `mcp/**`, `vercel.json`, `vite.config.ts`, `index.html`) : fusionnés par Mergify seulement si le contrôle « Garde-fou » est vert (oui de Marc, 15/10/2026) ; rouge, ils attendent Marc.
+5. **Sources uniques** : futur = `lastProjection.chartData` (grep le moteur avant tout calcul UI) ; patrimoine net = `computeRawNetWorth`.
+6. **Fiscal** : toute constante vient de `docs/FISCAL_REFERENCE.md` (datée, sourcée) ; chiffre non sourcé = suspect. Salaires MENSUELS (×12).
+7. **Formatage** : `formatCAD` / `formatPercent` uniquement ; devises natives → `assetValueCad`.
+8. **Git** : branche `claude/<slug>`, PR avec `--base main` explicite, commits `[ID] desc`. Jamais `--no-verify`. Destructif → confirmer avec Marc.
+9. **Store** : champ additif optionnel = pas de bump de version ; bump seulement pour restructurer.
+10. **Tenue docs** : même PR : `HANDOVER.md`, `CHANGELOG.md`, README touchés ; la tâche se suit dans son issue, pas dans `BACKLOG.md` ; leçon → `docs/CONVENTIONS.md`, sinon « push sans leçon ».
+11. **Déploiement** : après un merge qui change ce qui est servi, vérifier un déploiement Vercel production `READY` sur le bon SHA (CSP de `vercel.json` enforcée).
+
+## Conduite
+Mode de travail : instructions du projet Claude « Apps » (mode PDG depuis le 15/10/2026) ; proposer ≠ faire. `[YYYY-MM-DD HH:MM UTC]` en tête de chaque réponse. Qualité d'abord, coût tokens non contraint.

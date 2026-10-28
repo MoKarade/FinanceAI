@@ -1,0 +1,534 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+/* [S5-TAILWIND4] Les jetons (couleurs, typo, rayons, animations) restent dans tailwind.config.js,
+   lu par @config : une seule source, que les scripts de contraste et les tests lisent aussi. */
+@config './tailwind.config.js';
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+/* [S5-TAILWIND4] Parité avec la v3, mesurée écran par écran (styles calculés, avant/après) :
+   - le préflight v4 remet à zéro la marge intérieure de TOUS les éléments ; la v3 laissait aux
+     cellules de tableau celle du navigateur (1 px) → tableaux 2 px plus bas par ligne, pages plus courtes ;
+   - les boutons v4 prennent le curseur par défaut ; la v3 (et toute l'app) supposait la main. */
+@layer base {
+  td,
+  th {
+    padding: 1px;
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility premium-card {
+  @apply relative overflow-hidden transition-colors duration-200 border border-white/6;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  /* [S5-REFONTE-R2] Cartes posées à plat (maquettes) : plus d'ombre portée ni de lévitation au survol. */
+
+  &:hover {
+    @apply border-white/10;
+  }
+
+  &::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none bg-linear-to-br from-white/5 to-transparent;
+  }
+
+  &:hover::before {
+    @apply opacity-100;
+  }
+}
+
+@utility text-gradient-primary {
+  /* Text Gradients */
+  @apply bg-clip-text text-transparent bg-linear-to-r from-primary to-emerald-400 font-bold;
+}
+
+@utility text-gradient-secondary {
+  @apply bg-clip-text text-transparent bg-linear-to-r from-secondary to-purple-400 font-bold;
+}
+
+@utility glow-primary {
+  /* Custom Glows */
+  box-shadow: 0 0 20px var(--primary-glow);
+}
+
+@utility glow-secondary {
+  box-shadow: 0 0 20px var(--secondary-glow);
+}
+
+@utility glass-panel {
+  /* Glass panel (migre depuis index.html) */
+  background: rgba(14, 16, 20, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+
+  &:hover {
+    background: rgba(30, 35, 48, 0.75);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  }
+}
+
+@utility privacy-blur {
+  /* Privacy blur */
+  transition: filter 0.3s ease;
+}
+
+@utility focus-ring {
+  /* Focus ring unifié pour tous les contrôles interactifs */
+  @apply outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-dark;
+}
+
+@utility card-subtle {
+  /* Card "subtle" — variante pour sous-cards imbriquées */
+  @apply bg-white/3 border border-white/5 rounded-card;
+}
+
+@utility section-header {
+  /* Section header — pattern uniforme dans toutes les Cards */
+  @apply flex items-center justify-between mb-4 pb-3 border-b border-white/5;
+}
+
+@utility kpi-label {
+  /* KPI Label — petit caps avec tracking, pattern uniforme */
+  @apply text-tiny uppercase text-ink-400;
+}
+
+@utility lift-on-hover {
+  /* Phase D2 — microinteraction: lift léger au hover, utilisé sur les Cards
+   *  cliquables (deep-link cross-tab, navigation, etc.) */
+  @apply transition-all duration-200;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@utility pb-safe {
+  /* Phase D1 — safe-area inset pour iOS bottom nav (notch + home indicator) */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@utility touch-target {
+  /* Phase D1 — surface tactile minimum 44x44 (WCAG / Apple HIG) */
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Phase D1 — Polish 360px : text-display et text-kpi sont trop grands sur mobile ; rabaissés sur
+ * viewports étroits, taille pleine au-delà. [S5-TAILWIND4] Règle CSS simple (hors @utility) : un
+ * @utility du même nom que l'utilitaire de taille du thème se fondrait avec lui. */
+@media (max-width: 639px) {
+  .text-display {
+    font-size: 1.5rem !important;
+    line-height: 2rem !important;
+  }
+  .text-kpi {
+    font-size: 1.375rem !important;
+    line-height: 1.75rem !important;
+  }
+}
+
+/* [SOCLE-VISUEL-1] Variables du socle visuel commun des apps du hub (MoKarade/app-template,
+   app/globals.css, tâche #39), aux valeurs SOMBRES de FinanceAI : poser ces variables ne change
+   aucun pixel, rien ne les lit encore. Les écrans y passent par groupes (tâche FinanceAI#1176), le
+   thème clair vient en dernier. Verrou : tests/guards/socleVisuel.test.ts (variables définies, couples
+   texte/fond au WCAG, nombre de couleurs hors variables qui ne monte pas).
+   `--surface` existe déjà plus bas (#0e1014) ; `--fond` = `dark` et `--surface-douce` =
+   `surfaceHighlight` du tailwind.config.js, le test le vérifie. */
+:root {
+  /* Fonds et surfaces. */
+  --fond: #07090d;
+  --surface-douce: #15181e;
+  --bordure: #262a33;
+  /* Contour de champ, de case et de bouton secondaire : au moins 3:1 sur le fond (WCAG 1.4.11). */
+  --bordure-champ: #6f7b8e;
+
+  /* Textes : `--texte` est le slate-200 du corps de page actuel. */
+  --texte: #e2e8f0;
+  --texte-doux: #94a3b8;
+
+  /* L'accent ne sert QU'À l'action principale ; `--repere` : surtitre, navigation active,
+     catégorie, jamais un état. */
+  --accent: #e6eaf2;
+  --accent-fonce: #c3cad8;
+  --sur-accent: #07090d;
+  --repere: #fb923c;
+  --repere-doux: #2a1b14;
+
+  /* Sémantique : « ça va », « attention », « erreur », déclarées une fois. */
+  --succes-fond: #0f2a24;
+  --succes-texte: #6ee7b7;
+  --alerte-fond: #2c2410;
+  --alerte-texte: #fbbf24;
+  --erreur-fond: #331618;
+  --erreur-texte: #f87171;
+
+  --rayon: 16px;
+}
+
+@layer utilities {
+  :root {
+    --primary: #e6eaf2;
+    --primary-glow: rgba(230, 234, 242, 0.14);
+    --secondary: #8b5cf6;
+    --secondary-glow: rgba(139, 92, 246, 0.4);
+    --dark: #07090d;
+    --surface: #0e1014;
+    --surface-highlight: #15181e;
+
+    /* Glassmorphism Tokens */
+    --glass-bg: rgba(14, 16, 20, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.07);
+    --glass-blur: 24px;
+
+    /* Animation Timings */
+    --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@layer base {
+  body {
+    /* [S5-REFONTE] Fond UNI des maquettes (#07090D) : plus d'aurore ni de dégradé — les halos
+       flous animés (blur 90 px en boucle) coûtaient aussi du rendu sur mobile. */
+    @apply bg-dark text-slate-200 font-sans antialiased;
+    min-height: 100vh;
+  }
+
+  /* Styles globaux inputs (migres depuis index.html).
+     [S5-REFONTE] `.champ-nu` : champ posé DANS une barre qui porte déjà fond, bordure et focus (chat),
+     ou `<select>` habillé en pastille (catégorie d'une transaction) qui porte les siens.
+     Opt-out ici, pas par des utilitaires `!important` : en couches, un !important de la couche base
+     l'emporte sur celui de la couche utilities (ordre inversé pour les déclarations importantes). */
+  input:not(.champ-nu), select:not(.champ-nu), textarea {
+    transition: all 0.2s ease;
+    background-color: rgba(11, 14, 20, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+  /* [S5-REFONTE] `.champ-alerte` : valeur « à préciser » (maquette E-immobilier : bordure et fond ambrés). */
+  select.champ-alerte:not(:focus) {
+    background-color: rgba(212, 162, 76, 0.08) !important;
+    border-color: rgba(212, 162, 76, 0.55) !important;
+  }
+  /* LUXE — focus aligné sur la marque (emerald/primary, au lieu du violet) + anneau
+     plus doux. Les composants demandaient déjà focus:border-primary ; le !important
+     global forçait le violet → incohérent. Corrigé ici, app-wide. */
+  input:not(.champ-nu):focus, select:not(.champ-nu):focus, textarea:focus {
+    background-color: rgba(11, 14, 20, 0.9) !important;
+    border-color: rgba(230, 234, 242, 0.45) !important;
+    box-shadow: 0 0 0 3px rgba(230, 234, 242, 0.12);
+  }
+
+  /* LUXE — champs texte/select/textarea plus arrondis (moderne, cohérent).
+     Exclut checkbox/radio/range/color (forme propre). */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(.champ-nu),
+  select:not(.champ-nu),
+  textarea {
+    border-radius: 0.5rem !important;
+  }
+}
+
+@layer utilities {
+  /* Animations */
+  @keyframes slideUpFade {
+    /* transform absent du keyframe 100% (cf cardRise) : `forwards` ne fige que
+     l'opacité → pas de translateY(0) résiduel qui supprimerait le lift au survol
+     des cartes ni ne créerait un bloc conteneur cassant position:fixed. */
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-premium-in {
+    animation: slideUpFade 0.7s var(--ease-premium) forwards;
+  }
+
+  /* ANIM — fondu d'entrée OPACITÉ PURE (aucun transform → ne crée pas de bloc
+   conteneur, ne casse pas position:fixed). Sert aux transitions d'onglet. */
+  @keyframes fadeInOpacity {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .animate-tab-in {
+    animation: fadeInOpacity 0.28s ease forwards;
+  }
+
+  /* LUXE — entrée chorégraphiée : les enfants DIRECTS d'un conteneur `.stagger-in`
+   montent en fondu, en cascade (style Apple/Google). Le transform est TRANSIENT
+   (≤0.75s incl. décalage) puis libéré (cf keyframe) → AUCUN bloc conteneur
+   résiduel (ne casse pas position:fixed) et le `:hover { transform }` des cartes
+   reste fonctionnel. */
+  @keyframes cardRise {
+    /* Le transform n'est PAS dans le keyframe 100% : avec `forwards`, seul l'état
+     du dernier keyframe (opacity:1) est figé. Le transform redevient donc libre
+     après l'entrée → le `:hover { transform }` des cartes n'est plus supprimé,
+     et aucun bloc conteneur transform résiduel ne casse position:fixed. */
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .stagger-in > * {
+    opacity: 0;
+    animation: cardRise 0.42s var(--ease-premium) forwards;
+  }
+  .stagger-in > *:nth-child(1) {
+    animation-delay: 0.03s;
+  }
+  .stagger-in > *:nth-child(2) {
+    animation-delay: 0.075s;
+  }
+  .stagger-in > *:nth-child(3) {
+    animation-delay: 0.12s;
+  }
+  .stagger-in > *:nth-child(4) {
+    animation-delay: 0.165s;
+  }
+  .stagger-in > *:nth-child(5) {
+    animation-delay: 0.21s;
+  }
+  .stagger-in > *:nth-child(6) {
+    animation-delay: 0.255s;
+  }
+  .stagger-in > *:nth-child(7) {
+    animation-delay: 0.3s;
+  }
+  .stagger-in > *:nth-child(n + 8) {
+    animation-delay: 0.33s;
+  }
+  /* Garde-fou : un enfant direct en position:fixed (overlay/modale) ne doit PAS
+   hériter du transform transitoire — sinon son positionnement viewport casse.
+   Rend `.stagger-in` sûr à poser sur n'importe quelle racine de page. */
+  .stagger-in > .fixed,
+  .stagger-in > [role='dialog'],
+  .stagger-in > [aria-modal='true'] {
+    opacity: 1;
+    animation: none;
+    transform: none;
+  }
+
+  /* Skeletons */
+  .skeleton-box {
+    @apply relative overflow-hidden bg-white/5 rounded-sm;
+  }
+
+  .skeleton-box::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.05),
+      transparent
+    );
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Sprint 2 H5 — Toast slide-in animation (remplace framer-motion, économie -80KB gzip). */
+  @keyframes toast-slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(50px) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+  @keyframes toast-slide-out {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+  }
+  .animate-toast-in {
+    animation: toast-slide-in 0.3s
+      var(--ease-out-back, cubic-bezier(0.34, 1.56, 0.64, 1)) forwards;
+  }
+  .animate-toast-out {
+    animation: toast-slide-out 0.2s ease-out forwards;
+  }
+
+  /* Mode test — bordure orange permanente sur le viewport pour éviter d'oublier
+   qu'on est en train de manipuler des fixtures et pas les vraies données. */
+  .test-mode-active {
+    outline: 3px solid #f59e0b;
+    outline-offset: -3px;
+    padding-top: 36px; /* compense la hauteur du banner top fixed */
+  }
+  @media (max-width: 767px) {
+    .test-mode-active {
+      padding-top: 48px;
+    }
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  /* LUXE — scrollbars fines aussi sur Firefox. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+
+  /* LUXE — surbrillance de sélection à la marque (emerald discret). */
+  ::selection {
+    background: rgba(230, 234, 242, 0.9);
+    color: #07090d;
+  }
+
+  /* LUXE — select : chevron custom (appearance-none) au lieu de la flèche native datée.
+   background-image distinct du background-color (!important du base) → pas de conflit ;
+   padding-right !important réserve la place du chevron quelle que soit la classe px inline.
+   [S5-REFONTE] Sauf `.champ-nu` (pastille qui porte son propre habillage, ou aucun chevron). */
+  select:not(.champ-nu) {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238896a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 0.9rem;
+    padding-right: 1.75rem !important;
+  }
+
+  /* G3b — plein écran du graphique via la Fullscreen API. L'élément passe dans le
+   « top layer » du navigateur, ce qui échappe aux ancêtres transformés
+   (animate-fade-in) qui piégeaient l'approche position:fixed. */
+  .chart-fullscreen:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    /* [FUTUR-AXE-Y-MINIMAL] `margin: 0` : le conteneur porte désormais `-mx-6` (pour déborder du
+     padding de la <Card> et utiliser toute la largeur, hors plein écran) — sans ce reset, la même
+     marge négative pousserait l'élément hors du viewport une fois en plein écran (width: 100vw). */
+    margin: 0;
+    background: #0b0e14;
+    padding: 1.5rem;
+  }
+
+  /* ============================================================
+ * Phase A1 (2026-05) — Tokens UI & helpers de refonte
+ * Classes utilitaires consommées par les nouvelles primitives.
+ * Ne pas utiliser directement dans les pages existantes — passer
+ * par <Button>, <Badge>, <KPIStat>, etc. (à coder en A2/A3).
+ * ============================================================ */
+}
+
+/* ============================================================
+ * P2.6 — Respect prefers-reduced-motion (WCAG 2.3.3 AAA)
+ * Désactive animations/transitions longues pour les utilisateurs
+ * sensibles aux mouvements (vestibulaires, anxiété, etc.).
+ * Garde les transitions courtes (≤10ms) pour préserver l'UX.
+ * ============================================================ */
+/* [S5-REFONTE-PERF] Premier affichage SANS animation d'entrée. `html.demarrage` (posée dans
+   index.html) est retirée au premier geste ou après 5 s (index.tsx). Tant qu'elle est là, les fondus
+   d'entrée durent 0 s : le contenu est visible dès la première image — un fondu de 0,5 s retardait
+   d'autant le plus grand affichage mesuré (Chrome ne le compte qu'une fois opaque).
+   ⚠️ Durée 0 et PAS `animation: none` : retirer ensuite la classe ne rejoue pas l'animation (même
+   nom, déjà terminée) ; un `none` la relancerait, et le contenu déjà affiché referait un fondu.
+   Ciblé sur les animations d'ENTRÉE seulement — un indicateur de chargement doit continuer de tourner. */
+.demarrage .animate-fade-in,
+.demarrage .animate-slide-up,
+.demarrage .animate-premium-in,
+.demarrage .animate-tab-in,
+.demarrage .stagger-in > * {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .skeleton-box::after {
+    animation: none !important;
+  }
+
+  .lift-on-hover:hover {
+    transform: none !important;
+  }
+
+  /* La cascade d'entrée part de opacity:0 — sans animation, il faut forcer la
+     visibilité, sinon le contenu resterait invisible. */
+  .stagger-in > * {
+    opacity: 1 !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* [A11Y-FUTUR-MILESTONES-KEYBOARD] Anneau de focus des pastilles d'événement du graphe Futur.
+   Dessiné en SVG (cercle .event-focus-ring) : l'outline CSS sur un <g> SVG est invisible dans
+   certains moteurs — l'anneau, lui, se rend partout où la pastille se rend. */
+.chart-event-icon:focus {
+  outline: none; /* remplacé par l'anneau SVG, jamais supprimé sans remplacement */
+}
+.chart-event-icon:focus-visible .event-focus-ring {
+  opacity: 1;
+}

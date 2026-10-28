@@ -1,0 +1,36 @@
+{
+  "_comment": "EXEMPLE — PAS des données réelles. Le serveur sert ce fichier en repli quand .claude/status.json n'existe pas. Le dashboard affiche un bandeau « Exemple » non masquable (source:'example').",
+  "schemaVersion": 1,
+  "updatedAt": "2026-06-17T14:32:10.220Z",
+  "source": "example",
+  "currentTask": "Revue PR #325 — calcul RRQ",
+  "progress": { "done": 3, "active": 1, "pending": 1, "total": 5, "pct": 60 },
+  "activeAgents": ["financial-integrity"],
+  "completedAgents": ["architect", "code-reviewer", "silent-failure-hunter"],
+  "pendingAgents": ["projection-validator"],
+  "criticalIssues": 0,
+  "warnings": 2,
+  "decision": { "verdict": "PENDING", "reason": "Revue en cours (financial-integrity)", "blockedBy": [] },
+  "agents": {
+    "financial-integrity": { "name": "financial-integrity", "status": "running", "task": "Vérifier paliers RRQ vs FISCAL_REFERENCE.md", "startedAt": "2026-06-17T14:31:55.000Z", "lastRun": "2026-06-17T14:31:55.000Z", "durationMs": null, "partial": false, "critical": 0, "warnings": 1 },
+    "architect": { "name": "architect", "status": "completed", "task": "Plan d'implémentation Control Center", "lastRun": "2026-06-17T14:28:10.000Z", "durationMs": 18200, "partial": false, "critical": 0, "warnings": 0 },
+    "code-reviewer": { "name": "code-reviewer", "status": "completed", "task": "Revue diff PR #325", "lastRun": "2026-06-17T14:29:40.000Z", "durationMs": 24100, "partial": false, "critical": 0, "warnings": 1 },
+    "silent-failure-hunter": { "name": "silent-failure-hunter", "status": "completed", "task": "Erreurs avalées diff PR #325", "lastRun": "2026-06-17T14:30:05.000Z", "durationMs": 15300, "partial": false, "critical": 0, "warnings": 0 },
+    "projection-validator": { "name": "projection-validator", "status": "pending", "task": null, "lastRun": null, "durationMs": null, "partial": false, "critical": 0, "warnings": 0 }
+  },
+  "pipeline": [
+    { "step": 1, "agent": "architect", "status": "completed", "durationMs": 18200 },
+    { "step": 2, "agent": "code-reviewer", "status": "completed", "durationMs": 24100 },
+    { "step": 3, "agent": "silent-failure-hunter", "status": "completed", "durationMs": 15300 },
+    { "step": 4, "agent": "financial-integrity", "status": "running", "durationMs": null },
+    { "step": 5, "agent": "projection-validator", "status": "pending", "durationMs": null }
+  ],
+  "risks": [
+    { "severity": "MOYEN", "agent": "code-reviewer", "file": "components/TaxBracketViz.tsx:41", "cause": "barèmes 2026 codés en dur pour une projection future", "impact": "taux effectif légèrement faux en retraite", "fix": "passer un prop year" }
+  ],
+  "audits": [
+    { "label": "paliers RRQ 2025 vs FISCAL_REFERENCE", "agent": "financial-integrity", "result": "warn", "detail": "MGA à revérifier 2026" },
+    { "label": "12 invariants moneyConservation", "agent": "projection-validator", "result": "pass", "detail": "12/12 verts" }
+  ],
+  "scores": { "security": 92, "financial": 98, "quality": 90, "ux": 95, "documentation": 88, "global": 93 }
+}

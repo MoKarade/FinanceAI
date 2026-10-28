@@ -1,0 +1,85 @@
+name: Refresh Playwright screenshot baselines
+
+# Workflow manuel : régénère les baselines des screenshots E2E sur ubuntu-latest
+# afin qu'elles matchent l'environnement de rendu utilisé par le job CI E2E
+# (sinon les comparaisons pixel-à-pixel échouent à cause des différences de
+# rendu de fontes entre l'OS qui a généré les baselines et le runner CI).
+#
+# Usage : Actions → "Refresh Playwright screenshot baselines" → Run workflow.
+# Le workflow crée une branche, commit les baselines mises à jour et ouvre
+# une PR draft à fusionner pour débloquer le job E2E.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    # Plafond : sans lui, un job fige tourne SIX HEURES avant d'echouer (vecu sur
+    # DriveAI le 19/08/2026). Calibre sur la duree reelle — non observe - Playwright.
+    timeout-minutes: 30
+    name: Update screenshot baselines (ubuntu-latest)
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || fromJSON('["self-hosted","pc-marc"]') }} # dépôt public : machines GitHub (gratuites) ; privé : robot du PC
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # [CI-PERSIST-CREDS] `true` EXPLICITE, et c'est le seul de ce dépôt.
+          #
+          # Ce job POUSSE : `git push -u origin "$BRANCH"` puis `gh pr create` (l. 59-61).
+          # Il a donc besoin du GITHUB_TOKEN laissé dans la config git par le checkout.
+          # L'écrire noir sur blanc plutôt que de compter sur le défaut a deux effets : la
+          # règle `AIK_yaml_actions_checkout_persist_credentials` ne le re-signale plus, et
+          # la prochaine session lit l'INTENTION au lieu de devoir la deviner — sans ça,
+          # quelqu'un poserait `false` par cohérence avec les cinq autres et casserait le
+          # push, avec une erreur d'authentification à l'autre bout du job.
+          persist-credentials: true
+
+      - name: Setup Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --ignore-scripts
+
+      - name: Install Playwright Chromium + deps système
+        # [CI-NPX-NO-INSTALL] `--no-install` : sans lui, `npx` TÉLÉCHARGE le paquet depuis le
+        # registre quand il ne le trouve pas localement, puis exécute ses scripts de cycle de vie
+        # — la surface que `--ignore-scripts` ferme à l'étape d'installation, rouverte ici, et sur
+        # une version NON figée (le registre sert la dernière). Avec le drapeau, npx n'utilise que
+        # le binaire de `node_modules/.bin`, donc la version qu'épingle le lockfile, et échoue
+        # franchement s'il manque au lieu d'aller le chercher. Mesuré le 18/09 : `npx --no-install playwright --version` rend « Version 1.60.0 », le binaire local (`@playwright/test` est une devDependency).
+        # ⚠️ Vérifié aussi que l'étape d'installation vit dans le MÊME job — sans elle, le drapeau
+        # transformerait un téléchargement silencieux en échec.
+        run: npx --no-install playwright install --with-deps chromium
+
+      - name: Régénérer les baselines (screenshots.spec.ts uniquement)
+        run: npx --no-install playwright test e2e/screenshots.spec.ts --update-snapshots
+
+      - name: Configurer git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit, push et ouverture d'une PR draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="chore/refresh-screenshots-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          git add e2e/__snapshots__
+          if git diff --staged --quiet; then
+            echo "Aucune différence dans les baselines — rien à publier."
+            exit 0
+          fi
+          git commit -m "chore(e2e): refresh Playwright screenshot baselines (ubuntu-latest)"
+          git push -u origin "$BRANCH"
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --draft \
+            --title "chore(e2e): refresh screenshot baselines (ubuntu-latest)" \
+            --body "Baselines régénérées sur ubuntu-latest pour matcher l'environnement du job E2E (Playwright / Chromium). Note: les pushs faits via GITHUB_TOKEN ne re-déclenchent pas automatiquement les workflows — fermer + rouvrir la PR (ou pousser un commit vide) pour faire tourner le job E2E sur les nouvelles baselines."

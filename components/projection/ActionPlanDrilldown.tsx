@@ -1,0 +1,245 @@
+import React, { useMemo, useState } from 'react';
+import {
+    buildRootBucket,
+    getChildBuckets,
+    levelName,
+    type PlanBucket,
+} from '../../services/projection/actionPlanHierarchy';
+import { ACTION_ACCOUNTS } from '../../services/projection/yearlyActions';
+import { Icon } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
+import { formatCAD } from '../../utils/format';
+import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
+
+interface ActionPlanDrilldownProps {
+    chartData: Array<Record<string, unknown>>;
+    strategyName?: string;
+}
+
+const cad = (v: number): string => formatCAD(v);
+
+const FlowChips: React.FC<{ flows: PlanBucket['flows'] }> = ({ flows }) => {
+    const deposits = ACTION_ACCOUNTS.filter((a) => flows[a.key] > 100);
+    const withdrawals = ACTION_ACCOUNTS.filter((a) => flows[a.key] < -100);
+    if (deposits.length === 0 && withdrawals.length === 0) {
+        return <span className="text-tiny text-ink-400">—</span>;
+    }
+    return (
+        <div className="flex flex-wrap gap-1.5 text-tiny font-mono">
+            {deposits.map((a) => (
+                <PrivateAmount key={a.key} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-sky-500/10 text-sky-300">
+                    <Icon name="cash" size={11} /> {a.label} +{cad(flows[a.key])}
+                </PrivateAmount>
+            ))}
+            {withdrawals.map((a) => (
+                <PrivateAmount key={a.key} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-orange-500/10 text-orange-300">
+                    <Icon name="bank" size={11} /> {a.label} −{cad(-flows[a.key])}
+                </PrivateAmount>
+            ))}
+        </div>
+    );
+};
+
+/**
+ * Plan d'action HIÉRARCHIQUE (Couche progressive) : on part d'une vue d'ensemble
+ * et on creuse au clic — décennie → 3 ans → année → semestre → trimestre → mois,
+ * puis les conseils concrets de la période. « Simple en surface, profond quand on
+ * creuse » : chaque niveau montre le net + les mouvements, le clic révèle le détail.
+ */
+export const ActionPlanDrilldown: React.FC<ActionPlanDrilldownProps> = ({ chartData, strategyName }) => {
+    // [FUTUR-MOBILE-PR5] Cibles tactiles 44 px pour « Pourquoi ? » (14 px) et la case « Marquer
+    // comme fait » (14 px) — mobile UNIQUEMENT, desktop inchangé (mandat Marc #13).
+    const isNarrowViewport = useViewportBelowSm();
+    const root = useMemo(() => buildRootBucket(chartData), [chartData]);
+    // On stocke le chemin par IDs (stables) et on RE-DÉRIVE les buckets à chaque
+    // rendu depuis chartData → toujours frais, robuste si le scénario change.
+    const [pathIds, setPathIds] = useState<string[]>([]);
+    // Aide de session (NON persistée, volontairement) : conseils cochés « fait » + « pourquoi »
+    // dépliés, indexés par clé bucket+rang. Se réinitialise au recalcul de la projection — c'est
+    // une checklist de revue, pas un suivi de tâches durable.
+    const [done, setDone] = useState<Set<string>>(new Set());
+    const [openWhy, setOpenWhy] = useState<Set<string>>(new Set());
+    const toggle = (set: React.Dispatch<React.SetStateAction<Set<string>>>, key: string) =>
+        set((prev) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+
+    const { trail, children } = useMemo(() => {
+        if (!root) return { trail: [] as PlanBucket[], children: [] as PlanBucket[] };
+        const t: PlanBucket[] = [root];
+        let cur = root;
+        for (const id of pathIds) {
+            const next = getChildBuckets(chartData, cur).find((k) => k.id === id);
+            if (!next) break; // id périmé (scénario changé) → on s'arrête là
+            t.push(next);
+            cur = next;
+        }
+        return { trail: t, children: getChildBuckets(chartData, cur) };
+    }, [root, chartData, pathIds]);
+
+    if (!root) return null;
+
+    const current = trail[trail.length - 1];
+    const net = current.deposited - current.withdrawn;
+    const idsBelowRoot = trail.slice(1).map((b) => b.id);
+
+    const drillTo = (b: PlanBucket) => setPathIds([...idsBelowRoot, b.id]);
+    const jumpTo = (trailIdx: number) => setPathIds(trail.slice(1, trailIdx + 1).map((b) => b.id));
+
+    return (
+        <div className="mt-6 bg-black/20 p-4 rounded-xl border border-white/5">
+            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                <span className="text-meta font-black text-white flex items-center gap-1.5">
+                    <Icon name="clipboard" size={14} className="text-ink-300" /> Plan d'action
+                </span>
+                {strategyName && <span className="text-tiny text-ink-400">selon {strategyName}</span>}
+            </div>
+
+            {/* Fil d'Ariane : clique pour remonter d'un niveau. */}
+            <nav aria-label="Niveau du plan" className="flex items-center flex-wrap gap-1 text-tiny mb-3">
+                {trail.map((b, i) => {
+                    const isLast = i === trail.length - 1;
+                    return (
+                        <React.Fragment key={b.id}>
+                            {isLast ? (
+                                <span className="px-1.5 py-0.5 rounded-sm bg-primary/15 text-primary font-bold">
+                                    {levelName(b.level)} · {b.label}
+                                </span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => jumpTo(i)}
+                                    className="px-1.5 py-0.5 rounded-sm text-ink-400 hover:text-ink-100 hover:bg-white/5 focus-ring transition-colors"
+                                >
+                                    {b.label}
+                                </button>
+                            )}
+                            {!isLast && <span aria-hidden="true" className="text-ink-400">›</span>}
+                        </React.Fragment>
+                    );
+                })}
+            </nav>
+
+            {/* Résumé de la période courante. */}
+            <div className="bg-white/3 rounded-lg p-3 mb-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                    <span className="text-meta font-bold text-white">
+                        {current.label}
+                        {current.ageStart != null && (
+                            <span className="text-ink-400 font-normal">
+                                {/* NOMBRE-NON-MONETAIRE : axe d'âge ou d'année de la projection, pas une valeur dérivée du dossier (bornes d'âge du palier) */}
+                                {' · '}{current.ageStart}{current.ageEnd != null && current.ageEnd !== current.ageStart ? `–${current.ageEnd}` : ''} ans
+                            </span>
+                        )}
+                    </span>
+                    <PrivateAmount className={`text-meta font-bold tabular-nums ${net >= 0 ? 'text-success-400' : 'text-orange-300'}`}>
+                        {net >= 0 ? 'Épargne nette +' : 'Décaissement '}{cad(net)}
+                    </PrivateAmount>
+                </div>
+                <FlowChips flows={current.flows} />
+                <PrivateAmount as="div" className="text-tiny text-ink-400 mt-2">
+                    Patrimoine en fin de période : <span className="text-ink-300 font-mono">{cad(current.netWorthEnd)}</span>
+                </PrivateAmount>
+            </div>
+
+            {/* Conseils de la période. */}
+            <div className="mb-3">
+                <div className="text-tiny font-bold text-ink-400 uppercase tracking-wide mb-1.5">Conseils</div>
+                <ul className="space-y-1.5">
+                    {current.advice.map((item, i) => {
+                        const key = `${current.id}-${i}`;
+                        const checkable = item.kind !== 'info';
+                        const isDone = done.has(key);
+                        const whyOpen = openWhy.has(key);
+                        const amountClass = item.kind === 'withdraw' || (item.amount ?? 0) < 0 ? 'text-orange-300' : 'text-success-400';
+                        return (
+                            <li key={key} className="rounded-lg bg-white/3 border border-white/5 px-2.5 py-2">
+                                <div className="flex items-start gap-2">
+                                    {checkable ? (
+                                        // [FUTUR-MOBILE-PR5] `<label>` et NON `<span>` : un `<span>` ne relaie PAS le
+                                        // clic à son `<input>` descendant — vérifié par mesure (a11y-auditor de ce
+                                        // lot), un tap dans la marge ajoutée ne cochait RIEN. Le `<label>` le fait
+                                        // nativement, sans texte visible (le nom accessible reste l'`aria-label` de
+                                        // l'input).
+                                        <label className={isNarrowViewport ? 'flex items-center justify-center min-h-[44px] min-w-[44px] shrink-0 cursor-pointer' : 'mt-0.5 shrink-0 cursor-pointer'}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isDone}
+                                                onChange={() => toggle(setDone, key)}
+                                                aria-label={`Marquer comme fait : ${item.text}`}
+                                                className="h-3.5 w-3.5 cursor-pointer accent-success-500 focus-ring rounded-sm"
+                                            />
+                                        </label>
+                                    ) : (
+                                        <span aria-hidden="true" className="mt-0.5 w-3.5 shrink-0 text-center text-ink-500">·</span>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-baseline justify-between gap-2">
+                                            <span className={`text-tiny ${isDone ? 'line-through text-ink-400' : checkable ? 'text-ink-100' : 'text-ink-300'}`}>
+                                                {item.text}
+                                            </span>
+                                            {item.amount != null && (
+                                                <PrivateAmount className={`text-tiny font-bold tabular-nums shrink-0 ${amountClass}`}>
+                                                    {item.amount > 0 ? '+' : ''}{cad(item.amount)}
+                                                </PrivateAmount>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggle(setOpenWhy, key)}
+                                            aria-expanded={whyOpen}
+                                            className={`mt-1 inline-flex items-center gap-1 text-tiny text-primary/80 hover:text-primary focus-ring rounded ${
+                                                isNarrowViewport ? 'min-h-[44px]' : ''
+                                            }`}
+                                        >
+                                            Pourquoi&nbsp;? <span aria-hidden="true">{whyOpen ? '▾' : '▸'}</span>
+                                        </button>
+                                        {whyOpen && (
+                                            <p className="mt-1 text-tiny text-ink-400 leading-snug">{item.why}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </div>
+
+            {/* Creuser : enfants cliquables. */}
+            {children.length > 0 && (
+                <div>
+                    <div className="text-tiny font-bold text-ink-400 uppercase tracking-wide mb-1.5">
+                        Creuser ({levelName(children[0].level).toLowerCase()})
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {children.map((b) => {
+                            const childNet = b.deposited - b.withdrawn;
+                            return (
+                                <button
+                                    key={b.id}
+                                    type="button"
+                                    onClick={() => b.hasChildren && drillTo(b)}
+                                    disabled={!b.hasChildren}
+                                    className={`text-left bg-white/3 rounded-lg p-2.5 border border-white/5 transition-colors focus-ring ${
+                                        b.hasChildren ? 'hover:bg-white/[0.07] hover:border-primary/30 cursor-pointer' : 'cursor-default opacity-90'
+                                    }`}
+                                    title={b.hasChildren ? `Creuser : ${b.label}` : b.label}
+                                >
+                                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                                        <span className="text-meta font-bold text-white truncate">{b.label}</span>
+                                        <span className="flex items-center gap-1.5 shrink-0">
+                                            {b.isRetired && <span className="text-tiny text-amber-300 bg-warning-500/10 px-1.5 py-0.5 rounded-sm">Retraite</span>}
+                                            <PrivateAmount className={`text-tiny font-mono tabular-nums ${childNet >= 0 ? 'text-success-400' : 'text-orange-300'}`}>
+                                                {childNet >= 0 ? '+' : ''}{cad(childNet)}
+                                            </PrivateAmount>
+                                            {b.hasChildren && <span aria-hidden="true" className="text-ink-500">›</span>}
+                                        </span>
+                                    </div>
+                                    <FlowChips flows={b.flows} />
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};

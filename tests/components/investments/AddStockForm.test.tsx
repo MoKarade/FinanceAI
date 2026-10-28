@@ -1,0 +1,418 @@
+// tests/components/investments/AddStockForm.test.tsx
+//
+// « Rentrer toutes les données à la main, pareil pour les actions » : on prouve qu'on peut ajouter
+// une action/un placement EN ENTIER à la main, sans clé Finnhub ni réseau (mode « À la main »).
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+import { useFinanceStore } from '../../../store/useFinanceStore';
+import { AddStockForm } from '../../../components/investments/AddStockForm';
+import { getQuoteDetaille, getHistoryDetaille, searchSymbolsDetaille, getActiveProviderName } from '../../../services/marketData';
+
+// Aucune dépendance réseau ne doit être requise pour le mode manuel.
+vi.mock('../../../services/marketData', () => ({
+    // [AI-FINNHUB-CAUSE-COLLAPSE] Le faux module suit le contrat RÉEL de la façade : un résultat
+    // DISCRIMINÉ, jamais une exception. L'ancien faux `getQuote` qui REJETAIT décrivait un contrat
+    // que la production n'a jamais eu (mesuré : 401/429/réseau rendaient `null`, sans lever) —
+    // le test de panne réseau passait donc sur un chemin qui n'existe pas.
+    getQuoteDetaille: vi.fn(async () => ({ forme: 'absent' })),
+    getHistoryDetaille: vi.fn(async () => ({ forme: 'ok', points: [] })),
+    getActiveProviderName: vi.fn(() => 'none'), // PH4-INV-1 : pas de clé → mode dégradé, pas d'autocomplétion
+    searchSymbolsDetaille: vi.fn(async () => ({ forme: 'ok', resultats: [] })),
+}));
+
+// Défauts restaurés avant chaque test (les tests manuels exigent provider 'none').
+beforeEach(() => {
+    vi.mocked(getActiveProviderName).mockReturnValue('none');
+    vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'absent' });
+    vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'ok', resultats: [] });
+    vi.mocked(getHistoryDetaille).mockResolvedValue({ forme: 'ok', points: [] });
+});
+
+describe('AddStockForm — saisie 100% manuelle (sans Finnhub)', () => {
+    it('ajoute une action à la main sans validation API', () => {
+        const onAdd = vi.fn();
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={onAdd} />);
+
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'gic-rbc' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText(/152\.30/), { target: { value: '100' } });
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
+        // [ADDSTOCK-DEVISE-A-CHOISIR] Plus de devise par défaut : elle se choisit.
+        fireEvent.change(screen.getByLabelText('Devise'), { target: { value: 'CAD' } });
+        fireEvent.click(screen.getByRole('button', { name: /Ajouter au portefeuille/i }));
+
+        expect(onAdd).toHaveBeenCalledTimes(1);
+        const asset = onAdd.mock.calls[0][0];
+        expect(asset.currency).toBe('CAD');
+        expect(asset.symbol).toBe('GIC-RBC');
+        expect(asset.currentPrice).toBe(100);
+        expect(asset.quantity).toBe(5);
+        expect(asset.buyPrice).toBe(90);
+        expect(asset.purchases).toEqual([{ date: expect.any(String), quantity: 5, price: 90 }]);
+    });
+
+    it('Ajouter reste désactivé tant que le prix actuel manuel n est pas saisi', () => {
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'xyz' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
+        expect(screen.getByRole('button', { name: /Ajouter au portefeuille/i })).toBeDisabled();
+    });
+});
+
+// [ADDSTOCK-DEVISE-A-CHOISIR] Décision de Marc (2026-09-25) : aucune devise par défaut. Le défaut
+// USD enregistrait en silence un titre canadien comme américain en saisie manuelle. Ce test
+// s'INVERSE au même endroit que l'ancien comportement (« USD par défaut ») : il le remplace.
+describe('[ADDSTOCK-DEVISE-A-CHOISIR] en saisie manuelle, la devise se choisit', () => {
+    const remplir = () => {
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'gic-rbc' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText(/152\.30/), { target: { value: '100' } });
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
+    };
+
+    it('sans choix : « Ajouter » désactivé, le champ dit qu\'il est à choisir, rien n\'est ajouté', () => {
+        const onAdd = vi.fn();
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={onAdd} />);
+        remplir();
+        expect((screen.getByLabelText('Devise') as HTMLSelectElement).value).toBe('');
+        expect(screen.getByText(/À choisir : la devise/)).toBeInTheDocument();
+        const ajouter = screen.getByRole('button', { name: /Ajouter au portefeuille/i });
+        expect(ajouter).toBeDisabled();
+        fireEvent.click(ajouter);
+        expect(onAdd).not.toHaveBeenCalled();
+    });
+
+    it('CONTRÔLE : le même formulaire avec EUR choisi s\'ajoute en EUR', () => {
+        const onAdd = vi.fn();
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={onAdd} />);
+        remplir();
+        fireEvent.change(screen.getByLabelText('Devise'), { target: { value: 'EUR' } });
+        expect(screen.queryByText(/À choisir : la devise/)).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: /Ajouter au portefeuille/i }));
+        expect(onAdd.mock.calls[0][0].currency).toBe('EUR');
+    });
+});
+
+describe('AddStockForm — [FINNHUB-MISMATCH] suggestion non cotable → fallback saisie manuelle', () => {
+    it('sélectionner un symbole sans cours Finnhub bascule en mode manuel pré-rempli + notice (pas d erreur sèche)', async () => {
+        // Provider configuré (autocomplétion active), mais /quote ne price pas ce symbole (TSX hors free tier).
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'ok', resultats: [
+            { symbol: 'SHOP.TO', description: 'Shopify Inc (TSX)', displaySymbol: 'SHOP.TO' },
+        ] });
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'absent' }); // mismatch : proposé mais non cotable
+
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'shop' } });
+
+        // débounce 300 ms → la suggestion apparaît, on la sélectionne.
+        const suggestion = await screen.findByText(/Shopify Inc \(TSX\)/i);
+        fireEvent.click(suggestion);
+
+        // Fallback propre : un message INFORMATIF (pas l'erreur rouge « introuvable ») + le champ prix manuel.
+        expect(await screen.findByText(/n.a pas de cours via Finnhub/i)).toBeInTheDocument();
+        expect(screen.getByText(/Prix actuel par action \(manuel\)/i)).toBeInTheDocument();
+        // Le symbole est conservé (pas perdu) → l'utilisateur finit à la main.
+        expect(screen.getByDisplayValue('SHOP.TO')).toBeInTheDocument();
+    });
+
+    it('une PANNE réseau garde l erreur VISIBLE — pas de bascule manuelle silencieuse', async () => {
+        // Distinction money-UX : une panne réseau ≠ un symbole non cotable. On ne doit PAS masquer
+        // une panne derrière « entre le prix à la main ».
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'ok', resultats: [
+            { symbol: 'AAPL', description: 'Apple Inc', displaySymbol: 'AAPL' },
+        ] });
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'echec', echec: { cause: 'NETWORK', provider: 'finnhub' } });
+
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'appl' } });
+        fireEvent.click(await screen.findByText(/Apple Inc/i));
+
+        // L'erreur réseau RESTE affichée ; pas de notice « entre à la main » ni de bascule en mode manuel.
+        expect(await screen.findByText(/Impossible de joindre le service de cours/i)).toBeInTheDocument();
+        expect(screen.queryByText(/n.a pas de cours via Finnhub/i)).toBeNull();
+        expect(screen.queryByText(/Prix actuel par action \(manuel\)/i)).toBeNull();
+    });
+
+    // [AI-FINNHUB-CAUSE-COLLAPSE] Le message doit NOMMER la cause : une panne réseau ne renvoie pas
+    // à la clé API, et une clé refusée ne dit pas « ticker introuvable ». Sans cette paire, les deux
+    // situations restaient indiscernables à l'écran (c'était le défaut).
+    it('la cause de l échec choisit le message : réseau ≠ clé refusée ≠ absence', async () => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        const lire = async (): Promise<string> => {
+            const { unmount } = render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+            fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'aapl' } });
+            fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
+            const texte = (await screen.findByRole('alert')).textContent ?? '';
+            unmount();
+            return texte;
+        };
+
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'echec', echec: { cause: 'NETWORK', provider: 'finnhub' } });
+        const reseau = await lire();
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'echec', echec: { cause: 'AUTH', provider: 'finnhub' } });
+        const auth = await lire();
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'absent' });
+        const absent = await lire();
+
+        // Trois situations, trois phrases : c'est l'inverse exact du défaut corrigé.
+        expect(new Set([reseau, auth, absent]).size).toBe(3);
+        // Et chacune envoie au bon endroit.
+        expect(reseau).not.toMatch(/Clés API|introuvable/i);
+        expect(auth).toMatch(/Réglages/i);
+        expect(absent).toMatch(/introuvable/i);
+    });
+
+    // [MARKETDATA-HISTORY-CAUSE-PERDUE] « Suggérer prix historique » disait « vérifie ta connexion »
+    // quelle que soit la cause. Depuis que la voie historique publie la sienne, il nomme ce qui a
+    // échoué. La contre-épreuve garde le cas VIDE distinct : un titre sans cours à cette date n'est
+    // PAS une panne, et le dire autrement serait le défaut symétrique.
+    const validerPuisSuggerer = async (): Promise<string> => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'ok', quote: { symbol: 'AAPL', price: 200 } } as never);
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'aapl' } });
+        fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
+        const bouton = await screen.findByRole('button', { name: /Suggérer prix historique/i });
+        fireEvent.change(screen.getByLabelText(/Date d'achat/i), { target: { value: '2026-03-02' } });
+        fireEvent.click(bouton);
+        // ⚠️ PAS `findByRole('status')` : depuis [MARKETDATA-SEARCH-CAUSE-COLLAPSE], une région live
+        // VIDE est montée en permanence sous le champ symbole — `findBy` la trouve INSTANTANÉMENT
+        // et rend `''` avant que la notice n'existe. On attend le NŒUD qui porte le message.
+        return (await screen.findByText(/Réglages|Aucun cours trouvé|Impossible de récupérer/i)).textContent ?? '';
+    };
+
+    it('échec de l historique : le message nomme la cause au lieu d accuser la connexion', async () => {
+        vi.mocked(getHistoryDetaille).mockResolvedValue({ forme: 'echec', echec: { cause: 'AUTH', provider: 'finnhub' } });
+        expect(await validerPuisSuggerer()).toMatch(/Réglages/i);
+    });
+
+    it('CONTRE-ÉPREUVE : aucun cours à cette date reste « aucun cours trouvé », pas une panne', async () => {
+        vi.mocked(getHistoryDetaille).mockResolvedValue({ forme: 'ok', points: [] });
+        const texte = await validerPuisSuggerer();
+        expect(texte).toMatch(/Aucun cours trouvé/i);
+        expect(texte).not.toMatch(/Réglages/i);
+    });
+
+    // [MARKETDATA-SEARCH-CAUSE-COLLAPSE] Une autocomplétion qui ne descend pas ne dit RIEN par
+    // elle-même : sans message, une clé refusée et un titre inexistant se ressemblent trait pour
+    // trait. La garde tient les DEUX sens — sans le second, afficher un message en permanence
+    // (donc du bruit à chaque frappe sans résultat) la satisferait.
+    it('un ÉCHEC de recherche nomme sa cause sous le champ', async () => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'echec', echec: { cause: 'AUTH', provider: 'finnhub' } });
+
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'aapl' } });
+
+        expect(await screen.findByText(/Réglages/i)).toBeInTheDocument();
+    });
+
+    it('CONTRE-ÉPREUVE : « aucun résultat » n’affiche aucune cause', async () => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'ok', resultats: [] });
+
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'zzzz' } });
+
+        // La région live existe DÉJÀ (montée en permanence — sinon la première annonce est perdue)…
+        const region = screen.getByRole('status');
+        expect(region).toBeInTheDocument();
+        // …et elle est VIDE : rien n'a échoué, il n'y a rien à dire.
+        await new Promise((r) => setTimeout(r, 350)); // au-delà du débounce de 300 ms
+        expect(region.textContent).toBe('');
+    });
+
+    it('[RECH-ACTION-UX] Escape ferme le dropdown SANS fermer la modale (ni perdre la saisie)', async () => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(searchSymbolsDetaille).mockResolvedValue({ forme: 'ok', resultats: [
+            { symbol: 'AAPL', description: 'Apple Inc', displaySymbol: 'AAPL' },
+        ] });
+        const onClose = vi.fn();
+        render(<AddStockForm isOpen onClose={onClose} onAdd={vi.fn()} />);
+        const input = screen.getByPlaceholderText(/Tape un nom/i);
+        fireEvent.change(input, { target: { value: 'appl' } });
+        await screen.findByText(/Apple Inc/i); // dropdown ouvert
+
+        fireEvent.keyDown(input, { key: 'Escape' });
+
+        // Le dropdown se ferme, mais la MODALE reste ouverte (onClose NON appelé) et la saisie est conservée.
+        expect(screen.queryByText(/Apple Inc/i)).toBeNull();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(screen.getByDisplayValue('APPL')).toBeInTheDocument();
+    });
+});
+
+describe('[ADDSTOCK-CAD-NATIF] le récapitulatif reste en devise NATIVE, jamais formatCAD', () => {
+    it('devise USD (choisie) : quantité × prix affichés en USD, aucun symbole "$ CA"', () => {
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'gic-rbc' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText(/152\.30/), { target: { value: '100' } });
+        fireEvent.change(screen.getByLabelText('Devise'), { target: { value: 'USD' } });
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
+
+        const recap = screen.getByText('Récapitulatif').parentElement as HTMLElement;
+        // quantity × buyPrice EST en devise native (USD ici) — formatCAD y afficherait "$ CA",
+        // qui n'apparaît nulle part. Le code de devise, lui, apparaît deux fois (prix + total).
+        // [FISC-INTEGRITY revue #686] `not.toMatch(/\$\s*CA/)` était VACUEUX : formatCAD ne rend
+        // jamais "$ CA" sous cette version d'ICU (juste "$") — l'assertion ne pouvait pas rougir.
+        // `not.toContain('$')` discrimine vraiment : l'ancien formatCAD rendait un symbole $.
+        expect(recap.textContent).not.toContain('$');
+        expect((recap.textContent!.match(/USD/g) ?? []).length).toBe(2);
+        expect(recap.textContent).toContain('450,00'); // 5 × 90,00 = 450,00 (formatNumber, pas formatCAD)
+    });
+
+    it('devise EUR : le total porte EUR, pas un symbole CAD', () => {
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'lvmh' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText(/152\.30/), { target: { value: '800' } });
+        fireEvent.change(screen.getByLabelText('Devise'), { target: { value: 'EUR' } });
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '2' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '700' } });
+
+        const recap = screen.getByText('Récapitulatif').parentElement as HTMLElement;
+        // [FISC-INTEGRITY revue #686] `not.toMatch(/\$\s*CA/)` était VACUEUX : formatCAD ne rend
+        // jamais "$ CA" sous cette version d'ICU (juste "$") — l'assertion ne pouvait pas rougir.
+        // `not.toContain('$')` discrimine vraiment : l'ancien formatCAD rendait un symbole $.
+        expect(recap.textContent).not.toContain('$');
+        // espace INSÉCABLE (Intl fr-CA), pas une espace normale — normaliser avant de comparer.
+        expect(recap.textContent!.replace(/\s/g, ' ')).toContain('1 400,00'); // 2 × 700,00 EUR
+        expect((recap.textContent!.match(/EUR/g) ?? []).length).toBe(2);
+    });
+
+    // [code-reviewer revue #686, MOYEN] Le chemin « validation Finnhub réussie » (bannière
+    // « Prix actuel : … ») n'avait AUCUN test — un `formatCAD(currentPrice)` oublié y a survécu
+    // 90 lignes sous le premier correctif, sans qu'aucune suite ne rougisse.
+    it('bannière « Prix actuel » (Finnhub validé) : devise NATIVE, pas CAD', async () => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'ok', quote: { symbol: 'AAPL', price: 231.4, currency: 'USD' } } as never);
+
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'aapl' } });
+        fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
+
+        const banner = await screen.findByText(/Prix actuel/i);
+        // devise de la COTATION (USD ici) — jamais un symbole $ CAD.
+        expect(banner.textContent).toContain('USD');
+        expect(banner.textContent).not.toContain('$');
+        expect(banner.textContent).toContain('231,40');
+    });
+});
+
+describe('[A11Y-ADDSTOCKFORM-LABELS] chaque champ du formulaire a un nom accessible (fermé au lot 202, livré au lot 51 #777)', () => {
+    // Le ticket décrivait 7 champs sans association label/contrôle. Recensé au lot 202 : le lot 51
+    // (`[A11Y-LABELS-RESTE-DU-DEPOT]`) les avait TOUS associés (`htmlFor` + `id`) sans cocher ce
+    // ticket-ci — classe PM-STALE-BACKLOG. La garde de dépôt `controlAccessibleNameGuard` interdit déjà
+    // un contrôle anonyme ; ce cas fige le FAIT au niveau du rendu (le nom ACCESSIBLE, pas l'attribut),
+    // pour que la clôture du ticket soit une mesure et non une lecture.
+    it('les 7 champs sont atteignables par leur libellé, en mode manuel', () => {
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'xyz' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        const noms = [
+            /Symbole \/ Ticker/i, /Prix actuel par action/i, /Date d'achat/i, /Quantité/i,
+            /Prix d'achat par action/i, /Compte fiscal/i, /^Devise$/i,
+        ];
+        const controles = noms.map((n) => screen.getByLabelText(n));
+        expect(controles).toHaveLength(7);
+        for (const c of controles) expect(['INPUT', 'SELECT']).toContain(c.tagName);
+        // Le combobox d'autocomplétion EST le champ Symbole : un seul contrôle, nommé par son label.
+        expect(screen.getByRole('combobox', { name: /Symbole/i })).toBe(controles[0]);
+    });
+});
+
+// [ADDSTOCK-DEVISE-USD-PAR-DEFAUT] La devise d'un titre validé vient de sa COTATION, pas du défaut USD.
+describe('[ADDSTOCK-DEVISE-USD-PAR-DEFAUT] la devise suit la cotation', () => {
+    const valider = async (quote: Record<string, unknown>) => {
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'ok', quote: { symbol: 'XEQT.TO', price: 38.12, ...quote } } as never);
+        const onAdd = vi.fn();
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={onAdd} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'xeqt.to' } });
+        fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
+        return onAdd;
+    };
+
+    it('titre de Toronto coté en CAD → sélecteur et actif en CAD, sans toucher au formulaire', async () => {
+        const onAdd = await valider({ currency: 'CAD' });
+        await screen.findByText(/Prix actuel/i);
+        expect((screen.getByLabelText(/Devise/i) as HTMLSelectElement).value).toBe('CAD');
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
+        fireEvent.click(screen.getByRole('button', { name: /Ajouter au portefeuille/i }));
+        expect(onAdd.mock.calls[0][0].currency).toBe('CAD');
+    });
+
+    it('devise que l’app ne porte pas (GBP) → refus nommé, aucun titre validé', async () => {
+        await valider({ currency: 'gbp' });
+        expect(await screen.findByText(/coté en GBP : l'app ne gère que CAD, USD et EUR/)).toBeInTheDocument();
+        expect(screen.queryByText(/Prix actuel/i)).toBeNull();
+    });
+
+    it('devise non indiquée par la source → avertissement, la devise reste à vérifier', async () => {
+        await valider({ currency: '' });
+        await screen.findByText(/Prix actuel/i);
+        expect(screen.getByText(/n'a pas indiqué la devise/)).toBeInTheDocument();
+        // [ADDSTOCK-DEVISE-A-CHOISIR] Aucune devise supposée : elle reste à choisir.
+        expect((screen.getByLabelText(/Devise/i) as HTMLSelectElement).value).toBe('');
+        expect(screen.getByRole('button', { name: /Ajouter au portefeuille/i })).toBeDisabled();
+    });
+});
+
+// [PRIVACY-SCAN-FORMATNUMBER-DIRECT] Le récapitulatif (« 5 × 90,00 CAD = 450,00 CAD investi le… »)
+// affichait en clair, en mode discret, le prix d'achat et le montant investi — alors que le champ de
+// saisie du prix, juste au-dessus, est une `PrivateNumberInput`. Les valeurs sont saisies AVANT
+// d'activer le mode discret (en mode discret, la saisie elle-même est masquée), puis on bascule.
+describe('AddStockForm — récapitulatif en mode discret', () => {
+    afterEach(() => { act(() => { useFinanceStore.setState({ isPrivacyMode: false }); }); });
+
+    it('le prix d’achat et le montant investi du récapitulatif sont masqués', () => {
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/AAPL, TSLA/i), { target: { value: 'gic-rbc' } });
+        fireEvent.click(screen.getByRole('button', { name: /À la main/i }));
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '5' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '90' } });
+        fireEvent.change(screen.getByLabelText('Devise'), { target: { value: 'CAD' } });
+
+        const recap = () => screen.getByText('Récapitulatif').parentElement!.textContent ?? '';
+        // Témoin : hors mode discret, le récapitulatif montre bien les montants.
+        expect(recap()).toMatch(/90,00/);
+        expect(recap()).toMatch(/450,00/);
+
+        act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
+        expect(recap()).not.toMatch(/90,00/);
+        expect(recap()).not.toMatch(/450,00/);
+        // Le récapitulatif reste lisible (devise) : seuls les montants sont masqués.
+        expect(recap()).toMatch(/CAD/);
+    });
+
+    it('la quantité et le gain en % sont masqués aussi (décision de Marc, 2026-09-29)', async () => {
+        // Avec la cotation publique affichée, quantité et gain % redonnaient le prix d'achat et le montant investi.
+        // Le gain % n'existe que pour un titre VALIDÉ par cotation (prix actuel connu).
+        vi.mocked(getActiveProviderName).mockReturnValue('Finnhub');
+        vi.mocked(getQuoteDetaille).mockResolvedValue({ forme: 'ok', quote: { symbol: 'XEQT.TO', price: 100, currency: 'CAD' } } as never);
+        render(<AddStockForm isOpen onClose={() => {}} onAdd={vi.fn()} />);
+        fireEvent.change(screen.getByPlaceholderText(/Tape un nom/i), { target: { value: 'xeqt.to' } });
+        fireEvent.click(screen.getByRole('button', { name: /Valider/i }));
+        await screen.findByText(/Prix actuel/i);
+        fireEvent.change(screen.getByPlaceholderText('10'), { target: { value: '7' } });
+        fireEvent.change(screen.getByPlaceholderText('150.00'), { target: { value: '80' } });
+
+        const recap = () => screen.getByText('Récapitulatif').parentElement!.textContent ?? '';
+        // Témoin : hors mode discret, quantité (7) et gain (+25,00 %) sont visibles.
+        expect(recap()).toMatch(/7\s*×/);
+        expect(recap()).toMatch(/25\.00%|25,00/);
+
+        act(() => { useFinanceStore.setState({ isPrivacyMode: true }); });
+        expect(recap()).not.toMatch(/7\s*×/);
+        expect(recap()).not.toMatch(/25\.00%|25,00/);
+    });
+});

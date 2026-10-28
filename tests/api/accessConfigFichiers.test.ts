@@ -1,0 +1,163 @@
+// [SESSION-HUB] Gardes de FORME (lues comme donnée) : ce qu'aucun test unitaire de handler ne peut voir — routage Vercel,
+// redirection *.vercel.app, middleware, service worker, manifest, et l'absence de tout « contrôle coupé » en code de production.
+import { describe, it, expect } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+
+const ROOT = resolve(__dirname, '../..');
+const lit = (p: string) => readFileSync(resolve(ROOT, p), 'utf8');
+const vercel = JSON.parse(lit('vercel.json'));
+
+function fichiers(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? fichiers(join(dir, e.name)) : [join(dir, e.name)]));
+}
+
+describe('vercel.json', () => {
+    const rewrites = vercel.rewrites as Array<{ source: string; destination: string }>;
+
+    it('AUCUNE réécriture ne mène à un hôte externe : Yahoo et Fintable passent par des fonctions gardées', () => {
+        const externes = rewrites.filter((r) => /^https?:\/\//.test(r.destination));
+        expect(externes).toEqual([]);
+    });
+
+    it.each([
+        ['/api/history/yahoo/:symbol', '/api/yahoo/history'],
+        ['/api/search/yahoo', '/api/yahoo/search'],
+        ['/api/fintable/:path*', '/api/proxy/fintable'],
+    ])('%s → fonction %s (chemin STATIQUE : les attrape-tout ne sont pas routés), avant la réécriture SPA', (source, fonction) => {
+        const i = rewrites.findIndex((r) => r.source === source);
+        expect(i, source).toBeGreaterThanOrEqual(0);
+        expect(rewrites[i].destination.split('?')[0]).toBe(fonction);
+        expect(i).toBeLessThan(rewrites.findIndex((r) => r.source === '/(.*)'));
+        expect(readFileSync(resolve(ROOT, `${fonction.slice(1)}.ts`), 'utf8')).toContain("runtime: 'nodejs'");
+    });
+
+    it('les hôtes *.vercel.app sont redirigés vers finance.hubperso.com (302, réversible)', () => {
+        const r = (vercel.redirects as Array<Record<string, unknown>>).find((x) => JSON.stringify(x.has).includes('vercel'));
+        expect(r).toBeDefined();
+        expect(r!.destination).toBe('https://finance.hubperso.com/$1');
+        expect(r!.permanent).toBe(false);
+        const motif = new RegExp(`^(?:${(r!.has as Array<{ value: string }>)[0].value})$`);
+        // Alias de PRODUCTION seulement (avis pole-securite) : les préversions ne sont PAS redirigées vers la prod
+        // (le mur de l'API — session du hub — les protège déjà). [À vérifier] noms exacts du projet et de l'équipe dans Vercel.
+        expect(motif.test('finance-ai.vercel.app')).toBe(true);
+        expect(motif.test('finance-ai-mokarades-projects.vercel.app')).toBe(true);
+        expect(motif.test('finance-ai-git-agence-x-mokarades-projects.vercel.app')).toBe(false);
+        expect(motif.test('finance-ai-4kx9abc12-mokarades-projects.vercel.app')).toBe(false);
+        expect(motif.test('autre-projet.vercel.app')).toBe(false);
+        expect(motif.test('finance.hubperso.com')).toBe(false);
+        expect(motif.test('finance-ai.vercel.app.example.com')).toBe(false);
+    });
+
+    it('seule la branche main se déploie : toute autre branche (claude/*, agence/*, feature/*, dependabot/*) est coupée', () => {
+        const d = vercel.git.deploymentEnabled as Record<string, boolean>;
+        expect(d.main).toBe(true);
+        for (const motif of ['**', '*', 'claude/*']) expect(d[motif]).toBe(false);
+        // Aucune autre exception : une branche réactivée userait le quota Vercel partagé entre les apps.
+        expect(Object.keys(d).filter((k) => d[k] && k !== 'main')).toEqual([]);
+    });
+});
+
+describe('service worker : jamais de réponse redirigée ou opaque en cache', () => {
+    const sw = lit('public/sw.js');
+    // La fonction est EXÉCUTÉE (pas seulement lue) sur des réponses synthétiques : une regex sur le texte passerait aussi avec un corps cassé.
+    const source = /function cacheable\(res\) \{[\s\S]*?\n\}/.exec(sw)![0];
+    const cacheable = new Function(`${source}; return cacheable;`)() as (r: unknown) => boolean;
+    it('accepte UNIQUEMENT une réponse 200, de type basic, non redirigée', () => {
+        expect(cacheable({ status: 200, type: 'basic', redirected: false })).toBe(true);
+        expect(cacheable({ status: 200, type: 'basic', redirected: true })).toBe(false); // page de connexion Access servie en 200
+        expect(cacheable({ status: 200, type: 'opaque', redirected: false })).toBe(false);
+        expect(cacheable({ status: 200, type: 'opaqueredirect', redirected: false })).toBe(false);
+        expect(cacheable({ status: 200, type: 'cors', redirected: false })).toBe(false);
+        expect(cacheable({ status: 0, type: 'opaqueredirect', redirected: false })).toBe(false);
+        expect(cacheable({ status: 302, type: 'basic', redirected: false })).toBe(false);
+        expect(cacheable({ status: 404, type: 'basic', redirected: false })).toBe(false);
+        expect(cacheable(undefined)).toBe(false);
+    });
+    it('chaque écriture en cache est précédée du contrôle (aucun ancien test « status !== 200 » seul ne subsiste)', () => {
+        expect((sw.match(/cache\.put\(/g) ?? []).length).toBe(3);
+        expect((sw.match(/cacheable\(res\)/g) ?? []).length).toBeGreaterThanOrEqual(4); // définition + 3 usages
+        expect(sw).not.toMatch(/if \(!res \|\| res\.status !== 200\) return res;/);
+    });
+    it('/api/* n\'est jamais servi ni mis en cache par le SW', () => {
+        expect(sw).toMatch(/pathname\.startsWith\('\/api\/'\)\) return;/);
+    });
+    it('le nom du cache a changé (les caches de l\'ancienne version sont purgés à l\'activation)', () => {
+        expect(sw).not.toContain("'financeai-v3'");
+    });
+});
+
+describe('manifest et boot', () => {
+    it('le manifest est demandé AVEC les identifiants (cookie Access), sinon iOS/Chrome le reçoivent en 302', () => {
+        expect(lit('index.html')).toMatch(/<link rel="manifest" href="\/manifest\.json" crossorigin="use-credentials">/);
+    });
+    it('la surveillance de session est branchée au boot, en production seulement', () => {
+        expect(lit('hooks/useAppBootEffects.ts')).toMatch(/import\.meta\.env\.PROD \? surveillerSessionAccess\(\)/);
+    });
+});
+
+describe('le contrôle d\'accès n\'est jamais coupé en code de production', () => {
+    it('`access: null` n\'apparaît que dans les tests et dans le plugin de DEV de vite.config.ts', () => {
+        const prod = fichiers(join(ROOT, 'api')).filter((f) => f.endsWith('.ts'));
+        const fautifs = prod.filter((f) => /access\s*:\s*null/.test(readFileSync(f, 'utf8')) && !/relay\.ts$|proxies\.ts$/.test(f));
+        expect(fautifs).toEqual([]);
+        expect(readFileSync(join(ROOT, 'middleware.ts'), 'utf8')).not.toMatch(/access\s*:\s*null/);
+        // Dans vite.config.ts, la coupure n'existe que DANS `configureServer` (serveur de dev et preview, jamais le build ni Vercel).
+        const vite = lit('vite.config.ts');
+        const plugin = /const claudeRelayDevPlugin[\s\S]*?\n\}\);/.exec(vite)![0];
+        expect(plugin).toMatch(/configureServer/);
+        expect(plugin).toMatch(/access:\s*null/);
+        expect(vite.replace(plugin, '')).not.toMatch(/access\s*:\s*null/);
+    });
+    it('plus aucune trace du mur Cloudflare Access dans le code servi (variables CF_ACCESS_*, jeton, domaine)', () => {
+        const servi = [...fichiers(join(ROOT, 'api')), join(ROOT, 'middleware.ts'), join(ROOT, 'vite.config.ts')].filter((f) => f.endsWith('.ts'));
+        for (const f of servi) expect(readFileSync(f, 'utf8'), f).not.toMatch(/CF_ACCESS|cloudflareaccess|cf-access-jwt/i);
+    });
+    it('les points d\'entrée des fonctions n\'ouvrent aucune option de contournement', () => {
+        const entrees = ['api/claude/v1/messages.ts', 'api/yahoo/history.ts', 'api/yahoo/search.ts', 'api/proxy/fintable.ts'];
+        for (const e of entrees) expect(lit(e), e).not.toMatch(/access|CF_ACCESS/i);
+    });
+    it('chaque point d\'entrée appelle son gestionnaire avec la SEULE requête : aucune option (ni venue de la requête, ni « pour les tests ») ne passe', () => {
+        const appels: Array<[string, RegExp]> = [
+            ['api/claude/v1/messages.ts', /relayClaude\(request\)/],
+            ['api/yahoo/history.ts', /proxyYahooHistorique\(request\)/],
+            ['api/yahoo/search.ts', /proxyYahooRecherche\(request\)/],
+            ['api/proxy/fintable.ts', /proxyFintable\(request\)/],
+        ];
+        for (const [f, motif] of appels) {
+            const src = lit(f);
+            expect(src, f).toMatch(motif);
+            // Un seul appel de gestionnaire par fichier, et aucun objet d'options construit à partir de l'en-tête/de la requête.
+            expect(src.match(/(relayClaude|proxy[A-Z]\w+)\(/g) ?? [], f).toHaveLength(1);
+            expect(src, f).not.toMatch(/headers\.get|searchParams|env\s*:/);
+        }
+    });
+    it('la session et le garde du site ne journalisent jamais : aucun console.* dans accesHub.ts ni gardeSite.ts', () => {
+        for (const f of ['api/_lib/accesHub.ts', 'api/_lib/gardeSite.ts']) expect(lit(f), f).not.toMatch(/console\./);
+    });
+});
+
+describe('middleware.ts : le garde des pages et de /api', () => {
+    const mw = lit('middleware.ts');
+    it('délègue à garderSite et ne continue (next) que si le garde ne refuse pas', () => {
+        expect(mw).toMatch(/import \{ garderSite \} from '\.\/api\/_lib\/gardeSite\.js'/);
+        expect(mw).toMatch(/return refus \?\? next\(\)/);
+    });
+    it('sans `matcher` : aucune route ne peut échapper au garde par une exclusion', () => {
+        expect(mw).not.toMatch(/matcher\s*[:=]/);
+        expect(mw).not.toMatch(/export const config/);
+    });
+    it('la seule exception publique est /api/sante, écrite dans le code du garde', () => {
+        const garde = lit('api/_lib/gardeSite.ts');
+        expect(garde.match(/const CHEMIN_PUBLIC = '([^']+)'/)?.[1]).toBe('/api/sante');
+        expect(garde.match(/CHEMIN_PUBLIC/g)).toHaveLength(2); // définition + un seul usage
+    });
+    it('@vercel/functions est une dépendance (le middleware l\'importe à la construction)', () => {
+        const pkg = JSON.parse(lit('package.json')) as { dependencies: Record<string, string> };
+        expect(pkg.dependencies['@vercel/functions']).toBeDefined();
+    });
+    it('@vercel/cli-config (tiré par @vercel/functions) utilise le zod racine : son zod 4.1.11 porte GHSA-mrhx-c7xc-m3w5 (npm audit)', () => {
+        const pkg = JSON.parse(lit('package.json')) as { overrides: Record<string, Record<string, string>> };
+        expect(pkg.overrides['@vercel/cli-config']).toEqual({ zod: '$zod' });
+    });
+});

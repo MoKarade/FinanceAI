@@ -1,0 +1,31 @@
+{
+    "tabs": {
+        "dashboard": "Home",
+        "transactions": "Transactions",
+        "budget": "Budget",
+        "debt": "Debt",
+        "investments": "Investments",
+        "future": "Future",
+        "real_estate": "Real Estate",
+        "child": "Child",
+        "retirement": "Retirement",
+        "tax": "Tax & Docs",
+        "settings": "Settings",
+        "assistant": "AI Assistant"
+    },
+    "dashboard": {
+        "title": "Overview",
+        "subtitle": "Consolidated net worth and trend",
+        "consolidated": "All accounts",
+        "future_predictor": "Projected net worth",
+        "global_net_worth": "Global Net Worth",
+        "passive_income_month": "Passive Income (Month)",
+        "global_variation": "Global Variation",
+        "take_action": "Take action",
+        "manage_goals": "Manage Goals",
+        "detailed_evolution": "Detailed Evolution of your Accounts",
+        "individual_assets": "Individual Assets (Stock Market)",
+        "cash_savings": "Cash & Savings (Liquidity)",
+        "credit_debts": "Credit & Debts"
+    }
+}

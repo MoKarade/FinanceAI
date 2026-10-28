@@ -1,0 +1,294 @@
+import React from 'react';
+import { RealEstateGoal } from '../../types';
+import { PrivateAmount } from '../ui/PrivateAmount';
+import { PrivateNumberInput } from '../ui/PrivateNumberInput';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import { maskedSliderAria } from '../../utils/privacyAria';
+import { firstDayOfCurrentMonthIso } from '../../services/realEstatePartition';
+import { SelectProprietaire, nomsConjoints } from '../ui/SelectProprietaire';
+
+const fmt = (val: number) =>
+    new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(val);
+
+interface PropertyConfiguratorProps {
+    activeGoal: RealEstateGoal;
+    updateActiveGoal: (updates: Partial<RealEstateGoal>) => void;
+    mode: 'AUTO' | 'MANUAL';
+    setMode: (mode: 'AUTO' | 'MANUAL') => void;
+    taxesYearly: number;
+    setTaxesYearly: (v: number) => void;
+    heatingMonthly: number;
+    setHeatingMonthly: (v: number) => void;
+    condoFees: number;
+    setCondoFees: (v: number) => void;
+}
+
+export const PropertyConfigurator: React.FC<PropertyConfiguratorProps> = ({
+    activeGoal, updateActiveGoal,
+    mode, setMode,
+    taxesYearly, setTaxesYearly,
+    heatingMonthly, setHeatingMonthly,
+    condoFees, setCondoFees,
+}) => {
+    // D6-SR-2 — masque la valeur des sliders monétaires au lecteur d'écran en mode privé (parité blur).
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    // [W5-DOUBLE-SAISIE-LOCATIF] Un immeuble locatif peut être saisi DEUX FOIS, dans deux écrans
+    // sans aucun lien entre eux : ici (`RealEstateGoal.rentalIncomeMonthly` → revenu + `accRentesYear`,
+    // imposé au barème réel en décembre) ET dans Réglages → Patrimoine (`RentalProperty` → NOI,
+    // imposé au forfait W5). Les deux producteurs S'ADDITIONNENT : le loyer compte double, et
+    // l'impôt est calculé deux fois par deux mécanismes distincts.
+    // ⚠️ Le fait est STRUCTUREL (« les deux listes sont non vides »), jamais une comparaison de NOMS :
+    // rapprocher deux immeubles par leur libellé serait une heuristique de texte sur du texte
+    // UTILISATEUR (`TEXT-HEURISTIC-OVER-USER-TEXT`), qui raterait « Plex Papineau » vs « 4-plex »
+    // en silence. On ne prétend donc PAS que c'est le même immeuble — on demande de vérifier.
+    // ⚠️ Aucun filtre ici, contrairement au compte SYMÉTRIQUE de `PatrimoineSection` (qui, lui,
+    // ne retient que les objectifs non-résidence-principale AVEC loyer) : un `RentalProperty` est
+    // locatif PAR NATURE — le type ne porte pas de notion de résidence principale — et il alimente
+    // le NOI même à loyer nul (le NOI devient alors négatif, dépenses seules). Filtrer sur
+    // `monthlyRent > 0` raterait donc un doublon réel dont seules les charges sont saisies.
+    const nbLocatifsW5 = useFinanceStore((s) => (s.rentalProperties ?? []).length);
+    // [FISC-RRSP-RENTAL-EARNED] Référence stable, dérivation en dehors du sélecteur (cf. PatrimoineSection).
+    const users = useFinanceStore((s) => s.config.users);
+    const conjoints = nomsConjoints(users);
+    const price = activeGoal.price || 450000;
+    const downPayment = activeGoal.downPayment || (price * 0.2);
+    const downPaymentPercent = Math.round((downPayment / price) * 100);
+    const rate = activeGoal.mortgageRate || 4.5;
+    const targetDate = activeGoal.purchaseDate || new Date().toISOString().split('T')[0];
+    const propertyGrowthRate = activeGoal.propertyGrowthRate ?? 3.0;
+    const rentalIncomeMonthly = activeGoal.rentalIncomeMonthly || 0;
+    const yearlyRenovations = activeGoal.yearlyRenovations || 0;
+    // Défaut = taux ACTUEL (décision Marc 2026-09-04 : sans saisie, le renouvellement garde le
+    // taux courant — le moteur fait pareil). `||` voulu : le moteur traite un ≤ 0 comme une absence.
+    const renewalRate = activeGoal.renewalRateProjection || rate;
+    const maxValue = activeGoal.maxValue || 0;
+
+    return (
+        // [S5-REFONTE-IMMOBILIER] Réglages FINS du bien, rendus dans « Taux, frais récurrents et plafond
+        // de valeur » (replié, carte Financement). Amortissement et municipalité vivent désormais DANS
+        // la carte Financement (maquettes) ; ici, des groupes à plat plutôt que quatre cartes.
+        <div className="flex flex-col gap-5">
+            <Groupe titre="Type de propriété">
+                <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-3 rounded-lg border border-bordure cursor-pointer hover:bg-surface-douce transition-colors">
+                        <input
+                            type="checkbox"
+                            checked={activeGoal.isPrimaryResidence}
+                            onChange={e => updateActiveGoal({ isPrimaryResidence: e.target.checked })}
+                            className="w-4 h-4 accent-primary"
+                        />
+                        <div className="flex-1">
+                            <div className="text-body font-bold text-texte">Résidence Principale</div>
+                            <div className="text-tiny text-ink-400">Si coché, le loyer actuel sera supprimé.</div>
+                        </div>
+                    </label>
+
+                    {!activeGoal.isPrimaryResidence && (
+                        <label className="flex items-center gap-3 p-3 rounded-lg border border-bordure cursor-pointer hover:bg-surface-douce transition-colors">
+                            <input
+                                type="checkbox"
+                                checked={activeGoal.isRented || false}
+                                onChange={e => {
+                                    if (e.target.checked) {
+                                        updateActiveGoal({ isRented: true, rentalIncomeMonthly: Math.round(price / 23.3 / 12) });
+                                    } else {
+                                        updateActiveGoal({ isRented: false, rentalIncomeMonthly: 0 });
+                                    }
+                                }}
+                                className="w-4 h-4 accent-succes-texte"
+                            />
+                            <div className="flex-1">
+                                <div className="text-body font-bold text-texte">Propriété Locative</div>
+                                <div className="text-tiny text-ink-400">Génère des revenus de location.</div>
+                            </div>
+                        </label>
+                    )}
+
+                    {activeGoal.isRented && !activeGoal.isPrimaryResidence && (
+                        <div className="p-3 bg-succes-fond border border-succes-texte/20 rounded-lg space-y-2 mt-2">
+                            <label htmlFor="prop-rentalIncomeMonthly" className="flex justify-between items-end text-meta text-succes-texte font-bold">
+                                <span>Revenu Locatif ($/mois)</span>
+                                <button
+                                    onClick={() => updateActiveGoal({ rentalIncomeMonthly: Math.round(price / 23.3 / 12) })}
+                                    className="text-tiny bg-succes-fond px-1.5 py-0.5 rounded-sm text-succes-texte hover:bg-surface-douce"
+                                    title="Basé sur le ratio moyen Prix/Loyer au Québec (23.3)"
+                                >
+                                    Auto (Moy. QC)
+                                </button>
+                            </label>
+                            <PrivateNumberInput
+                                id="prop-rentalIncomeMonthly"
+                                type="number"
+                                step="50"
+                                value={rentalIncomeMonthly}
+                                onChange={e => updateActiveGoal({ rentalIncomeMonthly: Number(e.target.value) })}
+                                className="w-full bg-fond/50 border border-succes-texte/30 rounded-sm px-2 py-1.5 text-succes-texte text-body font-bold focus:outline-hidden focus:border-succes-texte"
+                                placeholder="Ex: 1500$"
+                            />
+                            {conjoints && (
+                                <div className="flex items-center justify-between gap-2 text-meta text-ink-300">
+                                    <label htmlFor="prop-owner">Propriétaire (droits REER)</label>
+                                    <SelectProprietaire id="prop-owner" value={activeGoal.owner} noms={conjoints} onChange={owner => updateActiveGoal({ owner })} className="bg-fond/50 border border-succes-texte/30 rounded-sm px-2 py-1 text-texte" />
+                                </div>
+                            )}
+                            {nbLocatifsW5 > 0 && (
+                                <p role="status" className="mt-2 text-tiny text-warning-300">
+                                    ⚠️ {nbLocatifsW5 === 1 ? 'Un immeuble locatif est aussi saisi' : `${nbLocatifsW5} immeubles locatifs sont aussi saisis`}
+                                    {' '}dans Réglages → Patrimoine. Si c’est le <strong>même</strong> immeuble, son loyer
+                                    est compté <strong>deux fois</strong> dans la projection — saisis-le d’un seul côté.
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </Groupe>
+
+            <Groupe titre="Prix, mise de fonds et date">
+                <div className="space-y-4">
+                    <div>
+                        <label className="flex justify-between text-meta text-ink-300 mb-1">
+                            <span>Prix d'achat</span>
+                            <PrivateAmount className="text-texte font-bold">{fmt(price)}</PrivateAmount>
+                        </label>
+                        <input type="range" aria-label="Prix d'achat" min="150000" max="2500000" step="10000" value={price} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateActiveGoal({ price: Number(e.target.value) })}
+                            className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                    </div>
+                    <div>
+                        <label className="flex justify-between text-meta text-ink-300 mb-1">
+                            <span>Mise de fonds</span>
+                            <PrivateAmount className="text-texte font-bold">{fmt(downPayment)} ({downPaymentPercent}%)</PrivateAmount>
+                        </label>
+                        <input type="range" aria-label="Mise de fonds" min={price * 0.05} max={price} step="5000" value={downPayment} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateActiveGoal({ downPayment: Number(e.target.value) })}
+                            className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
+                    </div>
+                        <div>
+                            <label htmlFor="prop-targetDate" className="block text-meta text-ink-300 mb-1">Date cible</label>
+                            <input id="prop-targetDate" type="date" value={targetDate} onChange={e => updateActiveGoal({ purchaseDate: e.target.value })} className="w-full bg-surface-douce border border-border rounded-sm px-2 py-1.5 text-texte text-body" />
+                            {/* [ENG-PAST-OWNED-VS-PLANNED] (A6) : une date passée n'implique plus
+                                l'achat — le fait se DÉCLARE (et se corrige) ici. Seuil au MOIS
+                                (1er du mois courant, LOCAL — même helper que le popup), jamais
+                                `toISOString()` au jour : le moteur raisonne en année-mois, une
+                                granularité jour promettait « compté au mois 0 » sur un créneau où
+                                le moteur ACHÈTE le bien (mesuré : m0 à 34 310 $ sous le badge
+                                « non acheté », revue #684). */}
+                            {targetDate < firstDayOfCurrentMonthIso() && (
+                                <label className="mt-2 touch-target flex items-center gap-2 p-2 -mx-2 rounded-lg hover:bg-surface-douce transition-colors text-meta text-ink-300 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={activeGoal.isOwned !== false}
+                                        onChange={e => updateActiveGoal({ isOwned: e.target.checked })}
+                                        className="w-4 h-4 accent-primary shrink-0"
+                                    />
+                                    <span>Bien déjà acheté (compté au mois 0 : équité et hypothèque)</span>
+                                </label>
+                            )}
+                        </div>
+                </div>
+            </Groupe>
+
+            <Groupe titre="Taux, appréciation et plafond">
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label htmlFor="prop-mortgageRate" className="block text-meta text-repere mb-1 font-bold">Taux Actuel (%)</label>
+                            <input id="prop-mortgageRate" type="number" step="0.1" value={rate} onChange={e => updateActiveGoal({ mortgageRate: Number(e.target.value) })} className="w-full bg-repere-doux border border-repere/30 rounded-sm px-2 py-1.5 text-repere text-body font-bold" />
+                        </div>
+                        <div>
+                            <label htmlFor="prop-renewalRate" className="block text-meta text-danger-400 mb-1 font-bold">Taux Renouvellement</label>
+                            <input id="prop-renewalRate" type="number" step="0.1" value={renewalRate} onChange={e => updateActiveGoal({ renewalRateProjection: Number(e.target.value) })} className="w-full bg-danger-500/10 border border-danger-500/30 rounded-sm px-2 py-1.5 text-danger-400 text-body font-bold" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label htmlFor="prop-propertyGrowthRate" className="block text-meta text-info-400 mb-1 font-bold">Appréciation Immo (%/an)</label>
+                            <input id="prop-propertyGrowthRate" type="number" step="0.5" value={propertyGrowthRate} onChange={e => updateActiveGoal({ propertyGrowthRate: Number(e.target.value) })} className="w-full bg-surface-douce border border-bordure rounded-sm px-2 py-1.5 text-texte text-body" />
+                        </div>
+                        <div>
+                            <label htmlFor="prop-yearlyRenovations" className="block text-meta text-success-400 mb-1 font-bold">Rénos annuelles ($)</label>
+                            <PrivateNumberInput id="prop-yearlyRenovations" type="number" step="500" value={yearlyRenovations} onChange={e => updateActiveGoal({ yearlyRenovations: Number(e.target.value) })} className="w-full bg-success-500/10 border border-success-500/30 rounded-sm px-2 py-1.5 text-success-400 text-body font-bold" />
+                        </div>
+                    </div>
+                    <div>
+                        {/* [A11Y-PRIVACY-PROPERTY-CONFIG] Ce slider affiche un MONTANT et n'était
+                            pas masqué, alors que les deux sliders prix / mise de fonds du MÊME
+                            formulaire le sont depuis #608. Le ticket ne le citait pas — c'est
+                            `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` : le risque était connu, traité
+                            deux fois, et le troisième site oublié. `PrivateAmount` masque à l'œil,
+                            `maskedSliderAria` empêche le lecteur d'écran d'annoncer la valeur réelle
+                            (le flou est purement CSS). »Aucun plafond« reste en clair : ce n'est pas
+                            un montant, et le masquer coûterait de la lisibilité pour rien. */}
+                        <label className="flex justify-between text-meta text-repere mb-1 font-bold">
+                            <span>Plafond Valeur Max</span>
+                            {maxValue > 0
+                                ? <PrivateAmount>{fmt(maxValue)}</PrivateAmount>
+                                : <span>Aucun plafond</span>}
+                        </label>
+                        <input type="range" aria-label="Plafond Valeur Max" min="0" max={price * 4} step={price * 0.1} value={maxValue} {...maskedSliderAria(isPrivacyMode)} onChange={e => updateActiveGoal({ maxValue: Number(e.target.value) })} className="w-full h-1.5 bg-fond/50 rounded-lg appearance-none cursor-pointer accent-repere" />
+                        <p className="text-tiny text-ink-400 mt-1">Limite l'appréciation projetée de la propriété à un maximum réaliste.</p>
+                    </div>
+                </div>
+            </Groupe>
+
+            <Groupe titre="Frais récurrents">
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-meta text-ink-300">Mode de calcul</span>
+                        <button
+                            onClick={() => setMode(mode === 'AUTO' ? 'MANUAL' : 'AUTO')}
+                            className={`text-meta px-3 py-1 rounded-full font-bold border transition-all ${
+                                mode === 'AUTO'
+                                ? 'bg-primary/20 border-primary text-primary'
+                                : 'bg-surface-douce border-bordure text-ink-300 hover:text-texte'
+                            }`}
+                        >
+                            {mode === 'AUTO' ? 'AUTO' : 'MANUEL'}
+                        </button>
+                    </div>
+                    <div>
+                        <label htmlFor="prop-taxesYearly" className="text-meta text-ink-300">Taxes foncières ($/an)</label>
+                        <PrivateNumberInput
+                            id="prop-taxesYearly"
+                            type="number"
+                            step="100"
+                            value={taxesYearly}
+                            onChange={e => { const v = Number(e.target.value); setTaxesYearly(v); updateActiveGoal({ taxesYearly: v }); }}
+                            disabled={mode === 'AUTO'}
+                            className="w-full bg-surface-douce border border-bordure rounded-sm px-2 py-1.5 text-texte text-body mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="prop-heatingMonthly" className="text-meta text-ink-300">Chauffage ($/mois)</label>
+                        <PrivateNumberInput
+                            id="prop-heatingMonthly"
+                            type="number"
+                            step="10"
+                            value={heatingMonthly}
+                            onChange={e => { const v = Number(e.target.value); setHeatingMonthly(v); updateActiveGoal({ heatingMonthly: v }); }}
+                            disabled={mode === 'AUTO'}
+                            className="w-full bg-surface-douce border border-bordure rounded-sm px-2 py-1.5 text-texte text-body mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="prop-condoFees" className="text-meta text-ink-300">Frais de condo ($/mois)</label>
+                        <PrivateNumberInput
+                            id="prop-condoFees"
+                            type="number"
+                            step="50"
+                            value={condoFees}
+                            onChange={e => { const v = Number(e.target.value); setCondoFees(v); updateActiveGoal({ condoFees: v }); }}
+                            disabled={mode === 'AUTO'}
+                            className="w-full bg-surface-douce border border-bordure rounded-sm px-2 py-1.5 text-texte text-body mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                    </div>
+                </div>
+            </Groupe>
+        </div>
+    );
+};
+
+const Groupe: React.FC<{ titre: string; children: React.ReactNode }> = ({ titre, children }) => (
+    <fieldset className="flex flex-col gap-3 min-w-0">
+        <legend className="text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-400 mb-2">{titre}</legend>
+        {children}
+    </fieldset>
+);

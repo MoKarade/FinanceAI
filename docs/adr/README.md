@@ -1,0 +1,44 @@
+# Décisions d'architecture (ADR)
+
+Une décision par fichier, `NNNN-slug.md`, numérotées dans l'ordre chronologique — structure
+commune aux huit dépôts du hub
+([`conventions/STRUCTURE-DEPOT.md`](https://github.com/MoKarade/claude-config/blob/main/conventions/STRUCTURE-DEPOT.md)).
+
+Jusqu'au 2026-08-20, ces décisions vivaient empilées dans un `docs/adr/` unique,
+dans le désordre chronologique (l'ADR-001 arrivait en quatrième position). Le fichier a été
+découpé sans qu'une ligne soit réécrite : chaque bloc `##` est devenu un fichier, son titre est
+passé en `#`, et rien d'autre n'a bougé. Les numéros `ADR-001` et `ADR-002` d'origine sont
+conservés en 0001 et 0002.
+
+| Fichier | Décision |
+|---|---|
+| [`0001-environnement-agents-de-revue.md`](0001-environnement-agents-de-revue.md) | ADR-001 — Environnement d'agents de revue (2026-06-17) |
+| [`0002-app-personnelle-relais-byok.md`](0002-app-personnelle-relais-byok.md) | ADR-002 — App PERSONNELLE (solo) et relais BYOK pour Claude (2026-07-06) |
+| [`0003-batch-decisions-marc-2026-07-06.md`](0003-batch-decisions-marc-2026-07-06.md) | Batch 2026-07-06 — Décisions Marc consolidées (8 items, 2 jeux fiscaux reçus) |
+| [`0004-rafraichissement-serveur-des-prix.md`](0004-rafraichissement-serveur-des-prix.md) | ADR — Rafraîchissement serveur autonome des prix (`HUB-REFRESH-CRON`, 2026-07-22) |
+| [`0005-contexte-decran-du-chat.md`](0005-contexte-decran-du-chat.md) | ADR — Contexte d'écran du chat : injection `system` figée par envoi, PAS un tool (`CHAT-PAGE-CONTEXT`, 2026-07-22) |
+| [`0006-assistant-fusionne-prochaines-actions.md`](0006-assistant-fusionne-prochaines-actions.md) | ADR — Assistant fusionné : un seul moteur de « prochaines actions » (`ASSISTANT-HUB`, 2026-07-23) |
+| [`0007-couverture-du-total-de-la-courbe.md`](0007-couverture-du-total-de-la-courbe.md) | ADR — Couverture du TOTAL de la courbe de portefeuille (`HIST-COVERAGE-TOTAL`, 2026-07-23) |
+| [`0008-quotes-multi-providers.md`](0008-quotes-multi-providers.md) | ADR — Quotes multi-providers : Yahoo en repli + diagnostic actionnable (`HIST-MULTI-PROVIDER`, 2026-07-23) |
+| [`0009-suppressions-via-mcp-delete-item.md`](0009-suppressions-via-mcp-delete-item.md) | ADR — Suppressions via MCP/IA : `delete_item` (actif / dette / objectif), transactions DIFFÉRÉES (`MCP-DIRECT-EDIT` Lots 4-5, 2026-07-29) |
+| [`0010-sync-bancaire-fintable.md`](0010-sync-bancaire-fintable.md) | ADR — Sync bancaire & investissements via Fintable (`FINTABLE`, 2026-07-29) |
+| [`0011-modele-du-divorce-dans-la-projection.md`](0011-modele-du-divorce-dans-la-projection.md) | ADR — Modèle du DIVORCE dans le moteur de projection (2026-08-13) |
+| [`0012-quatre-decisions-de-marc-2026-08-17.md`](0012-quatre-decisions-de-marc-2026-08-17.md) | ADR — Quatre décisions de Marc (2026-08-17) |
+| [`0013-mode-discret-categories-masquees.md`](0013-mode-discret-categories-masquees.md) | ADR — Mode discret : les CATÉGORIES sont masquées aussi (2026-08-18) |
+| [`0014-sept-decisions-de-cadrage-2026-08-20.md`](0014-sept-decisions-de-cadrage-2026-08-20.md) | ADR — Sept décisions de cadrage en lot (Marc, 2026-08-20) |
+| [`0015-prestations-rqap-ae-rrq-hors-assiette.md`](0015-prestations-rqap-ae-rrq-hors-assiette.md) | ADR — Prestations RQAP/AE/RRQ : hors assiette de cotisation, imposables (Marc, 2026-08-20) |
+| [`0016-refonte-futur-mobile.md`](0016-refonte-futur-mobile.md) | ADR — Refonte de l'onglet Futur pour le téléphone : adaptation EN PLACE, direction « courbe d'abord » (Marc, 2026-09-10) |
+| [`0017-endpoint-bail-vehicule-pour-carai.md`](0017-endpoint-bail-vehicule-pour-carai.md) | ADR — `GET /vehicule/bail` : FinanceAI publie le bail du véhicule à CarAI, sous un secret dédié (Marc, 2026-09-15) |
+| [`0018-ia-locale-via-relais.md`](0018-ia-locale-via-relais.md) | ADR — IA locale : le relais BYOK route un maximum d'appels vers la passerelle Ollama de l'Atelier (Marc, 2026-09-23) |
+| [`0019-decisions-refonte-portefeuille.md`](0019-decisions-refonte-portefeuille.md) | ADR — Refonte du portefeuille : les décisions de cadrage du Lot 0 (Marc, 2026-09-24) |
+| [`0020-grand-livre-courtier.md`](0020-grand-livre-courtier.md) | ADR — Grand livre courtier et référentiel d'instruments : forme persistée (Lot 1a, 2026-09-24) |
+| [`0021-relais-sans-jeton-public.md`](0021-relais-sans-jeton-public.md) | ADR — Relais IA : le jeton public est supprimé, remplacé par des freins honnêtes (2026-09-25) |
+| [`0022-cloudflare-access-mur-api.md`](0022-cloudflare-access-mur-api.md) | ADR — Cloudflare Access devant finance.hubperso.com, jeton vérifié par l'API (2026-09-25) |
+| [`0023-confirmation-ecriture-mcp-par-jeton.md`](0023-confirmation-ecriture-mcp-par-jeton.md) | ADR — Écriture MCP : confirmation à deux temps liée côté serveur, jeton à usage unique (2026-09-26) |
+| [`0024-documents-des-agents-proteges.md`](0024-documents-des-agents-proteges.md) | ADR — Les documents relus par les agents (CLAUDE.md, docs/claude, leçons, HANDOVER…) sont protégés contre l'injection persistante (pole-securite, 2026-09-26) |
+| [`0025-verrou-ecriture-mcp-hors-chat.md`](0025-verrou-ecriture-mcp-hors-chat.md) | ADR — Verrou d'écriture MCP : autorisation hors du chat, jamais atteignable par le modèle (pole-securite, 2026-09-29) |
+| [`0026-chiffrement-phase1-memorisation-webauthn.md`](0026-chiffrement-phase1-memorisation-webauthn.md) | ADR — Chiffrement Phase 1 (app web) : création de passphrase + mémorisation par appareil verrouillée WebAuthn (pole-securite, 2026-09-29) |
+| [`0027-session-hub-garde.md`](0027-session-hub-garde.md) | ADR — La session du hub protège finance.hubperso.com, en remplacement de Cloudflare Access (Marc, reco B, 2026-10-28) |
+
+Une nouvelle décision prend le numéro suivant. Elle ne se réécrit pas après coup : une ADR est
+un **récit daté**, et une mise à jour s'y ajoute en section datée (voir 0010, qui en porte cinq).

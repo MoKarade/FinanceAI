@@ -1,0 +1,110 @@
+// [A11Y-TABLIST-NO-PANEL] Un bandeau d'onglets ne se réinvente pas.
+//
+// ⚠️ POURQUOI CETTE GARDE. `components/ui/SubTabs.tsx` est né de TROIS copies divergentes du même
+// balisage, toutes incomplètes de la même façon. La primitive a corrigé les trois — et un quatrième
+// bandeau (`FutureProjection`) est resté à part, parce qu'il avait un habillage différent : ni
+// `aria-controls`, ni panneau déclaré, ni clavier. Le motif se re-perd exactement comme ça : par un
+// écran qui ressemble assez peu aux autres pour qu'on n'y pense pas.
+//
+// La règle n'exige pas d'utiliser `SubTabs` (un bandeau peut légitimement vouloir son propre
+// habillage) : elle exige d'en emprunter le MOTIF — les mêmes fabricants d'`id` et le même clavier.
+// C'est ce qui rend impossible la divergence silencieuse, sans imposer une apparence.
+import { describe, it, expect } from 'vitest';
+import { readdirSync, statSync, readFileSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+import { toPosix, cwdPosix } from '../helpers/toPosix';
+import { stripCommentsJsx, partDeCodeRestante } from '../../utils/stripComments';
+
+const racine = resolve(process.cwd(), 'components');
+/** Le fichier qui DÉFINIT le motif — il ne peut pas l'importer de lui-même. */
+const SOURCE_DU_MOTIF = 'components/ui/SubTabs.tsx';
+
+function fichiersTsx(dir: string): string[] {
+    return readdirSync(dir).flatMap((nom) => {
+        const chemin = toPosix(join(dir, nom));
+        if (statSync(chemin).isDirectory()) return fichiersTsx(chemin);
+        return chemin.endsWith('.tsx') ? [chemin] : [];
+    });
+}
+
+interface Bandeau { chemin: string; code: string }
+
+function bandeaux(): Bandeau[] {
+    const out: Bandeau[] = [];
+    for (const chemin of fichiersTsx(racine)) {
+        const brut = readFileSync(chemin, 'utf8');
+        // ⚠️ Source DÉCOMMENTÉE : trois fichiers PARLENT de `role="tablist"` dans leur en-tête pour
+        // raconter cette histoire. Lue brute, la garde les compterait comme des bandeaux — et le
+        // commentaire qui explique le motif satisferait la règle qu'il explique.
+        const code = stripCommentsJsx(brut);
+        if (brut.trim() !== '' && partDeCodeRestante(brut, code) < 0.05) {
+            throw new Error(`${chemin} : décommentage suspect — la garde lirait un fichier vidé`);
+        }
+        if (!/role="tablist"/.test(code)) continue;
+        out.push({ chemin: chemin.replace(`${cwdPosix()}/`, ''), code });
+    }
+    return out;
+}
+
+describe('[A11Y-TABLIST-NO-PANEL] tout bandeau d\'onglets emprunte le motif partagé', () => {
+    it('le scan voit les bandeaux RÉELS, et pas ceux dont on parle', () => {
+        const vus = bandeaux().map((b) => b.chemin);
+        // Témoin : la primitive elle-même.
+        expect(vus).toContain(SOURCE_DU_MOTIF);
+        // [FUTUR-NAV-TIROIRS] RÉSOLU (2026-09-21) : `FutureProjection.tsx` n'a plus de bandeau à
+        // habillage propre — barre latérale + tiroirs remplacent les sous-onglets. Le seul bandeau
+        // réel restant dans le dépôt est la primitive elle-même ; tout le reste passe par
+        // `<SubTabs>` (donc n'écrit jamais `role="tablist"` en clair). Ancienne assertion inversée,
+        // pas supprimée — un futur bandeau recopié ici doit être détecté, pas oublié.
+        expect(vus, 'un bandeau réel est réapparu hors de la primitive — passer par <SubTabs>')
+            .not.toContain('components/FutureProjection.tsx');
+        // ⚠️ Contre-témoin, et c'est lui qui prouve le décommentage : `Profile.tsx` ÉCRIT
+        // « role="tablist" » dans son en-tête pour expliquer d'où vient la primitive, alors qu'il
+        // n'en rend aucun — il passe par `SubTabs`. Lu brut, il apparaîtrait ici.
+        expect(vus, 'le scan lit les commentaires : il compte un bandeau qui n\'existe pas')
+            .not.toContain('components/Profile.tsx');
+    });
+
+    it('anti-vacuité : le mécanisme (décommentage + regex) détecte un VRAI motif applicatif', () => {
+        // ⚠️ Sans témoin réel restant hors de la primitive, il faut prouver que le mécanisme lui-même
+        // fonctionne sur du code applicatif — pas seulement sur `SOURCE_DU_MOTIF`, qui pourrait par
+        // accident être le seul chemin qui marche. Fixture SYNTHÉTIQUE, jamais un fichier réel :
+        // un `role="tablist"` en dur, entouré d'un commentaire qui EN PARLE (le piège exact que ce
+        // fichier corrige) et d'un commentaire à apostrophe française (`UNE-APOSTROPHE-FRANCAISE-
+        // EST-UN-DELIMITEUR-DE-CHAINE`).
+        const fixtureReelle = `
+            // Ce composant N'utilise PAS role="tablist" — il passe par <SubTabs>.
+            export const Faux: React.FC = () => <div role="tablist">{/* un vrai attribut, pas une mention */}</div>;
+        `;
+        const decommente = stripCommentsJsx(fixtureReelle);
+        expect(/role="tablist"/.test(decommente), 'le scan ne trouve plus un motif applicatif réel').toBe(true);
+
+        const fixtureCommentaireSeul = `// Ce fichier ne rend plus de role="tablist", il passe par <SubTabs>.\nexport const Vide = () => null;`;
+        expect(/role="tablist"/.test(stripCommentsJsx(fixtureCommentaireSeul)), 'le scan compte un bandeau qui n\'existe pas').toBe(false);
+    });
+
+    it('chaque bandeau relie ses onglets à un panneau et se parcourt au clavier', () => {
+        const manquants: string[] = [];
+        for (const b of bandeaux()) {
+            if (b.chemin === SOURCE_DU_MOTIF) continue;
+            const trous: string[] = [];
+            if (!/aria-controls=/.test(b.code)) trous.push('aria-controls');
+            if (!/\bpanelId\s*\(/.test(b.code)) trous.push('panelId (fabricant partagé)');
+            if (!/\btabId\s*\(/.test(b.code)) trous.push('tabId (fabricant partagé)');
+            if (!/\bclavierTablist\s*[<(]/.test(b.code)) trous.push('clavierTablist (flèches / Début / Fin)');
+            if (!/\bTabPanel\b/.test(b.code)) trous.push('TabPanel (role="tabpanel")');
+            if (trous.length > 0) manquants.push(`${b.chemin} → ${trous.join(', ')}`);
+        }
+        expect(manquants, `Bandeau(x) qui réinvente(nt) le motif :\n${manquants.join('\n')}`).toEqual([]);
+    });
+
+    it('le clavier et les fabricants d\'id vivent en UN seul endroit', () => {
+        // Une copie locale de la logique de touches serait invisible au test ci-dessus (il ne vérifie
+        // qu'une PRÉSENCE) : on interdit donc la ré-implémentation, pas seulement l'absence.
+        const copieurs = bandeaux()
+            .filter((b) => b.chemin !== SOURCE_DU_MOTIF)
+            .filter((b) => /['"]ArrowRight['"]/.test(b.code))
+            .map((b) => b.chemin);
+        expect(copieurs, `Logique de flèches recopiée hors de ${SOURCE_DU_MOTIF} :\n${copieurs.join('\n')}`).toEqual([]);
+    });
+});

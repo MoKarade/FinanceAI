@@ -1,0 +1,381 @@
+// services/projection/buildSimulationParams.ts
+//
+// Lot 0 — ADAPTATEUR PUR « AppState → SimulationParams ».
+//
+// Historiquement, l'assemblage des `SimulationParams` (l'entrée du moteur pur
+// `calculateFutureProjection`) vivait DANS React, dans `components/FutureProjection.tsx`
+// (~L123-240) : une cascade de `useMemo` calculant `calculatedStartingCash`,
+// `liveCSVBalances`, `baseGrossAnnual/Net`, `baseMonthlyExpenses`,
+// `currentRentExpense`, `startYear/Month`. Le MOTEUR est pur, mais son ASSEMBLAGE
+// d'entrée ne l'était pas → impossible de répondre « mon patrimoine dans 20 ans »
+// hors du navigateur (connecteur MCP).
+//
+// Ce module extrait cet assemblage en fonctions PURES, testables et réutilisables
+// par l'app web ET le serveur MCP. Le comportement de l'app est strictement
+// préservé : `FutureProjection.tsx` appelle désormais `buildSimulationParams`
+// avec exactement les mêmes valeurs (ses hooks alimentent l'objet `inputs`),
+// et un test de PARITÉ verrouille l'égalité.
+
+import { verifierEntreesMoteur } from './verifierEntreesMoteur';
+import { avecHorizonEsperanceDeVie } from './horizon';
+import { dettesAuSoldeDuJour } from './debtAmortization';
+import { todayIsoLocal } from './dailyRefine';
+import type {
+    BudgetConfig,
+    BudgetCategory,
+    Asset,
+    RealEstateGoal,
+    ChildGoal,
+    TravelGoal,
+    LifeEvent,
+    RetirementGoal,
+    Transaction,
+    Debt,
+    ProjectionConfig,
+    FinancialGoal,
+    User,
+    InsurancePolicy,
+    RentalProperty,
+    PrivateBusiness,
+    VehicleReplacement,
+    MajorRenovation,
+    CharitableGoal,
+    AppState,
+} from '../../types';
+import type { SimulationParams, LiveCSVBalances } from '../projection';
+import { derivePortfolioStartingBalances } from './startingBalancesFromAssets';
+import { TAX_BASE_YEAR, ageOptsForSalaryInversion, calculateGrossFromNet } from '../../utils/tax';
+import { isSavingsNature } from '../../utils/budget';
+import { computeCashLedger, computeCashLedgerDetailed } from '../startingCash';
+import { appliquerAutoriteCourtier } from '../fintable/autoriteCourtier';
+import { tauxCourantsDepuisEtat, reconcileBrokerBalances } from '../fintable/brokerBalances';
+import { holdingsCadByRegime, jumeauxPorteursDepuisActifs } from '../fintable/holdingsByRegime';
+
+/**
+ * Loyer mensuel par défaut quand aucune ligne de budget « loyer / rent /
+ * hypothèque » n'est trouvée. Valeur historique de `FutureProjection.tsx`.
+ */
+const DEFAULT_RENT_EXPENSE = 1600;
+
+/**
+ * Entrée de l'adaptateur pur. Reprend, champ pour champ, ce que
+ * `FutureProjection.tsx` passe au moteur. Les pièces DÉRIVÉES par les hooks du
+ * composant (`liveCSVBalances`, `calculatedStartingCash`) sont fournies telles
+ * quelles pour garantir une parité bit-à-bit avec le chemin React ; un loader
+ * hors-DOM (MCP) les calcule via `deriveSimulationInputsFromState`.
+ */
+export interface BuildSimulationParamsInputs {
+    projection: ProjectionConfig;
+    config: BudgetConfig;
+    /** Soldes de placement de départ (dérivés de l'historique reconstruit). */
+    liveCSVBalances: LiveCSVBalances;
+    /** Cash de départ = Σ initialBalances + Σ transactions (hors transfert/doublon). */
+    calculatedStartingCash: number;
+    /**
+     * [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] Termes que `computeCashLedgerDetailed` a ÉCARTÉS du
+     * total ci-dessus. Optionnel : sans lui, le comportement est celui d'avant.
+     *
+     * ⚠️ Il est indispensable parce que `calculatedStartingCash` seul ne peut RIEN dire : le ledger
+     * écarte les valeurs non finies et rend toujours un total fini, donc « le total est fini » ne
+     * prouve pas « aucune donnée n'a été jetée ». C'est la leçon
+     * `TRACER-AU-LIEU-DE-JETER-DESARME-LA-GARDE-AVAL` : il faut DEUX portes, le total pour lire et
+     * l'inventaire des termes écartés pour refuser. `startingCash.ts` expose déjà la seconde.
+     */
+    termesFautifsCash?: ReadonlyArray<{ origine: string; cle: string; valeur: unknown }>;
+    realEstateGoals: RealEstateGoal[];
+    debts: Debt[];
+    /** [DETTE-VIREMENTS-REELS] Les transactions RÉELLES. **REQUISES** : une dette liée à un marchand
+     *  (`Debt.paymentPayee`) descend sur ses VIREMENTS, et c'est ici, au point de passage UNIQUE
+     *  vers le moteur, que son solde est ramené à aujourd'hui. Optionnel, la projection serait
+     *  repartie d'un solde figé pendant que l'écran affiche celui du jour. */
+    transactions: readonly Transaction[];
+    /** [DETTE-SOLDE-INSTANTANE-FIGE] Le JOUR d'aujourd'hui (ISO). **REQUIS** : c'est ici, au point
+     *  de passage UNIQUE vers le moteur, que les soldes DATÉS sont ramenés à aujourd'hui. Optionnel,
+     *  la projection serait repartie du solde figé pendant que l'écran affiche celui du jour — la
+     *  contradiction exacte que ce lot corrige. `null` = jour inconnu ⇒ aucune correction. */
+    aujourdhuiIso: string | null;
+    childGoals: ChildGoal[];
+    travelGoals: TravelGoal[];
+    lifeEvents: LifeEvent[];
+    retirementGoal: RetirementGoal;
+    financialGoals: FinancialGoal[];
+    budgetItems: BudgetCategory[];
+    /** Épargne mensuelle calculée (net mensuel − dépenses) — pilote baseMonthlyExpenses. */
+    calculatedMonthlySavings: number;
+    startYear: number;
+    startMonth: number;
+    // W5.x — conteneurs étendus (optionnels, comme dans le moteur).
+    insurancePolicies?: InsurancePolicy[];
+    vehicleReplacements?: VehicleReplacement[];
+    majorRenovations?: MajorRenovation[];
+    charitableGoals?: CharitableGoal[];
+    rentalProperties?: RentalProperty[];
+    privateBusinesses?: PrivateBusiness[];
+}
+
+/**
+ * Σ (brut annuel) sur tous les utilisateurs, avec REPLI net→brut.
+ *
+ * ⚠️ [MIGRATE-GROSS-135] — ce site n'avait AUCUN repli : `grossSalary || 0`. Un conjoint sans brut
+ * saisi comptait donc pour ZÉRO ici, pendant que `computeIncomeBaseline` lui déduisait un brut et
+ * l'IMPOSAIT dessus. Or `baseGrossAnnual` alimente exactement deux choses, toutes deux
+ * money-critical : les DROITS REER historiques (`computeHistoricalContributionRoom`) et le ratio
+ * gains/MGA qui détermine la RENTE RRQ (`computeRetirementIncome`).
+ *
+ * Le moteur imposait donc un revenu qu'il refusait de créditer. MESURÉ sur un couple dont le
+ * conjoint a 4 000 $/mois de net sans brut saisi : **−211 532 $ de droits REER** et
+ * **−247 $/mois de rente RRQ** (≈ −2 968 $/an à vie).
+ *
+ * Trois conventions net→brut coexistaient dans le dépôt (`× 1,35`, `calculateGrossFromNet`, et
+ * `|| 0`). Le patron retenu est celui de `components/Retirement.tsx`, réutilisé tel quel.
+ */
+export function computeBaseGrossAnnual(users: readonly User[], year: number = TAX_BASE_YEAR): number {
+    return (users ?? []).reduce((sum, u) => {
+        if (u?.grossSalary) return sum + (u.grossSalary * 12);
+        const netAnnual = ((u?.netSalary || u?.salary || 0) as number) * 12;
+        // [GROSSFROMNET-CREDITS-65] `users` porte déjà `age`/`birthYear` : les crédits d'âge se
+        // construisent PAR UTILISATEUR, jamais au niveau du ménage.
+        return sum + (netAnnual > 0
+            ? calculateGrossFromNet(netAnnual, year, ageOptsForSalaryInversion(u, year, (users ?? []).length))
+            : 0);
+    }, 0);
+}
+
+/**
+ * Σ ((netSalary || salary) × 12) sur tous les utilisateurs. Réplique
+ * `baseNetAnnual` (note : le fallback `salary` est historique).
+ */
+function computeBaseNetAnnual(users: readonly User[]): number {
+    return (users ?? []).reduce((sum, u) => sum + ((u?.netSalary || u?.salary || 0) * 12), 0);
+}
+
+/**
+ * Loyer mensuel courant = 1re ligne de budget contenant « loyer / rent /
+ * hypothèque », normalisée en mensuel (Yearly /12, Weekly ×4.33). Défaut 1600.
+ * Réplique exacte de `currentRentExpense` (FutureProjection.tsx).
+ */
+function computeCurrentRentExpense(budgetItems: readonly BudgetCategory[]): number {
+    const rentItem = (budgetItems ?? []).find(
+        (b) =>
+            b.name.toLowerCase().includes('loyer') ||
+            b.name.toLowerCase().includes('rent') ||
+            b.name.toLowerCase().includes('hypothèque') ||
+            // [BUDGET-TX-CATEGORIES] « Logement » = nom canonique des postes auto-alignés sur les
+            // catégories de transactions — sans lui, un budget auto retomberait sur le défaut 1600 $.
+            b.name.toLowerCase().includes('logement'),
+    );
+    if (rentItem) {
+        let val = rentItem.target;
+        if (rentItem.frequency === 'Yearly') val /= 12;
+        if (rentItem.frequency === 'Weekly') val *= 4.33;
+        return val;
+    }
+    return DEFAULT_RENT_EXPENSE;
+}
+
+/**
+ * Cash de départ = Σ initialBalances + Σ transactions (hors doublon / transfert).
+ * Réplique exacte de `calculatedStartingCash` (FutureProjection.tsx) — exposé
+ * pour le loader MCP (hors-DOM) qui n'a pas les hooks du composant.
+ */
+export function computeStartingCash(
+    initialBalances: Record<string, number>,
+    transactions: readonly Transaction[],
+): number {
+    // [CASH-NAN-SILENT] Délègue à la SOURCE UNIQUE (`services/startingCash.ts`). La formule était
+    // recopiée ici avec des `Number(v) || 0` muets, alors que c'est l'ANCRE de toute la
+    // reconstruction du passé ET le cash de départ du moteur.
+    return computeCashLedger(initialBalances, transactions);
+}
+
+// [FINTABLE-AUTORITE-PARTOUT étape 3] `derivePortfolioStartingBalances` a DÉMÉNAGÉ dans son propre
+// module : la vue d'ensemble (donc l'Accueil) en a désormais besoin, et importer CE fichier aurait
+// tiré `verifierEntreesMoteur` + les barèmes fiscaux dans le bundle de boot. Ré-exportée ici pour
+// qu'aucun appelant ne change et qu'il n'existe toujours qu'UNE définition.
+export { derivePortfolioStartingBalances } from './startingBalancesFromAssets';
+
+/**
+ * ADAPTATEUR PUR — assemble les `SimulationParams` à partir d'`inputs` déjà
+ * normalisés. C'est l'extraction exacte du `useMemo params` de
+ * `FutureProjection.tsx` : aucune nouvelle logique, juste sortie de React.
+ *
+ * `baseMonthlyExpenses = (baseNetAnnual / 12) − calculatedMonthlySavings`,
+ * et les listes immo/enfants sont filtrées de leurs entrées falsy — à
+ * l'identique du composant.
+ */
+export function buildSimulationParams(inputs: BuildSimulationParamsInputs): SimulationParams {
+    const users = (inputs.config?.users ?? []) as unknown as User[];
+    // [GROSSFROMNET-ANNEE-FIGEE] même barème que le moteur, pas celui de 2026 en dur.
+    const baseGrossAnnual = computeBaseGrossAnnual(users, inputs.startYear);
+    const baseNetAnnual = computeBaseNetAnnual(users);
+    const baseMonthlyExpenses = baseNetAnnual / 12 - inputs.calculatedMonthlySavings;
+    const currentRentExpense = computeCurrentRentExpense(inputs.budgetItems);
+
+    // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] La garde d'entrée vit ICI — décision de Marc
+    // (2026-08-29) : c'est le point de passage UNIQUE vers le moteur, donc une seule garde couvre
+    // la saisie, la restauration Drive, l'import et le mode test. Elle REFUSE et NOMME le champ ;
+    // borner fabriquerait un chiffre plausible et faux, tracer en silence laisserait le défaut
+    // invisible — c'est précisément ce qui l'a laissé vivre jusqu'ici.
+    const assembles: SimulationParams = {
+        projection: inputs.projection,
+        calculatedStartingCash: inputs.calculatedStartingCash,
+        liveCSVBalances: inputs.liveCSVBalances,
+        realEstateGoals: (inputs.realEstateGoals ?? []).filter(Boolean),
+        // [DETTE-SOLDE-INSTANTANE-FIGE] Le moteur ne connaît pas `balanceAsOf` : il reçoit des
+        // soldes d'AUJOURD'HUI. Une seule porte, donc une seule vérité côté projection.
+        debts: dettesAuSoldeDuJour(inputs.debts ?? [], inputs.aujourdhuiIso, inputs.transactions),
+        childGoals: (inputs.childGoals ?? []).filter(Boolean),
+        travelGoals: inputs.travelGoals ?? [],
+        lifeEvents: inputs.lifeEvents ?? [],
+        retirementGoal: inputs.retirementGoal,
+        config: inputs.config,
+        baseGrossAnnual,
+        baseNetAnnual,
+        currentRentExpense,
+        baseMonthlyExpenses,
+        startYear: inputs.startYear,
+        startMonth: inputs.startMonth,
+        insurancePolicies: inputs.insurancePolicies ?? [],
+        vehicleReplacements: inputs.vehicleReplacements ?? [],
+        majorRenovations: inputs.majorRenovations ?? [],
+        charitableGoals: inputs.charitableGoals ?? [],
+        rentalProperties: inputs.rentalProperties ?? [],
+        privateBusinesses: inputs.privateBusinesses ?? [],
+        financialGoals: inputs.financialGoals ?? [],
+    };
+
+    // ⚠️ La vérification porte sur les paramètres ASSEMBLÉS, pas sur un objet reconstruit pour elle.
+    //
+    // Le jet précédent passait à la garde un littéral de huit clés — donc son « filet récursif »
+    // ne voyait que ces huit-là, et les DEUX canaux que le commit annonçait fermer
+    // (`liveCSVBalances` et les réglages de `projection`) restaient grands ouverts : mesuré,
+    // `projection.inflationRate = NaN` rendait 0 refus et −98,8 % de patrimoine, `returnRates.celi`
+    // 0 refus et −16,3 % SANS une seule valeur non finie publiée. La liste blanche n'avait pas
+    // disparu, elle avait monté d'un cran — du module vers son site d'appel.
+    // (Ces deux pourcentages sont ceux de `scripts/mesureFrontiereMoteur.ts`, étendu à ces cas ;
+    // le commit les avait d'abord écrits « −93 % » et « −29 % » d'après un rapport d'agent.)
+    //
+    // Scanner l'objet réellement remis au moteur est la seule formulation qui ne puisse pas
+    // re-diverger sur les CLÉS : il n'y a plus de liste de champs à tenir à jour.
+    //
+    // ⚠️ « Plus de liste » tout court serait FAUX, et l'écrire ainsi a été le finding critique de la
+    // 4ᵉ passe. Le filet couvre la FINITUDE de tout l'objet ; le TYPE, lui, n'est vérifié que sur
+    // les champs nommés (`estMontantIllisible`). Une chaîne dans un champ monétaire traverse —
+    // mesuré, un montant de projet immobilier en chaîne fait **−52 %**, zéro refus, zéro valeur non
+    // finie publiée — et le vecteur est le même `JSON.parse` non typé, `BackupPanel` validant ces
+    // conteneurs en `z.unknown()`. Le correctif tient à la SOURCE (typer le schéma de restauration),
+    // pas dans un cinquième ajout ici : `[BACKUP-SCHEMA-NON-TYPE]` au BACKLOG. `SimulationParams` ne contient ni les
+    // transactions ni les actifs, donc le coût reste borné (mesuré : quelques dizaines de µs contre
+    // 300 ms de debounce et ~150 ms de moteur).
+    const entreesRefusees = verifierEntreesMoteur(assembles as unknown as Readonly<Record<string, unknown>>, {
+        budgetItems: inputs.budgetItems,
+        termesFautifsCash: inputs.termesFautifsCash,
+    });
+
+    // Omis quand il n'y a rien à refuser : le champ reste absent sur le chemin nominal, donc la
+    // signature JSON des params (clé de dédup du moteur) ne bouge pas d'un octet.
+    return entreesRefusees.length > 0 ? { ...assembles, entreesRefusees } : assembles;
+}
+
+/**
+ * Calcule l'épargne mensuelle « budget » = net mensuel des utilisateurs moins
+ * les dépenses budgétées (hors nature Épargne), normalisées en mensuel.
+ * Réplique `useDerivedFinancials.calculatedMonthlySavings`, fournie ici pour que
+ * le loader MCP puisse alimenter `calculatedMonthlySavings` sans passer par
+ * React. (L'app web continue de passer SA valeur calculée via les hooks.)
+ */
+export function computeMonthlySavings(
+    config: BudgetConfig,
+    budgetItems: readonly BudgetCategory[],
+): number {
+    const users = (config?.users ?? []) as unknown as User[];
+    const income = users.reduce((acc, u) => acc + (u?.netSalary || u?.salary || 0), 0);
+    const budgetExp = (budgetItems ?? []).reduce((acc, item) => {
+        if (isSavingsNature(item.nature)) return acc; // [HEALTH-SAVINGS-CONSISTENCY] NFD, pas `=== 'Epargne'` (entrée moteur)
+        let amount = item.target;
+        if (item.frequency === 'Yearly') amount /= 12;
+        if (item.frequency === 'Quarterly') amount /= 3;
+        if (item.frequency === 'Weekly') amount *= 4.33;
+        return acc + amount;
+    }, 0);
+    return Math.max(0, income - budgetExp);
+}
+
+/**
+ * Loader hors-DOM (MCP) : construit un `BuildSimulationParamsInputs` complet à
+ * partir d'un AppState, en dérivant PUREMENT toutes les pièces que le composant
+ * obtient via ses hooks. `startYear/startMonth` par défaut = mois courant (le
+ * moteur démarre « aujourd'hui »), surchargeable pour des tests déterministes.
+ */
+export function deriveSimulationInputsFromState(
+    state: AppState,
+    opts?: { startYear?: number; startMonth?: number; now?: Date },
+): BuildSimulationParamsInputs {
+    const now = opts?.now ?? new Date();
+    const startYear = opts?.startYear ?? now.getFullYear();
+    const startMonth = opts?.startMonth ?? now.getMonth();
+
+    return {
+        // [HORIZON-ESPERANCE-DE-VIE] Même règle que useSimulationParams : l'écran et le serveur MCP
+        // projettent sur la même durée. `simulate_what_if` refixe `years` après coup (paramètre).
+        projection: avecHorizonEsperanceDeVie(state.projection, state.config, state.retirementGoal),
+        config: state.config,
+        // ⚠️⚠️ [FINTABLE-AUTORITE-AUJOURDHUI] La MÊME autorité que le chemin React, au MÊME endroit
+        // logique. Sans ça, le serveur MCP (`get_projection`, `simulate_what_if`) répondrait sur un
+        // mois 0 différent de celui de l'écran, pour le même état : deux réponses à une seule
+        // question, ce qui est pire que la question non répondue. Le test de parité hook↔fonction
+        // pure ne l'aurait pas vu — aucun persona ne porte de solde courtier Fintable.
+        liveCSVBalances: appliquerAutoriteCourtier(
+            derivePortfolioStartingBalances(state.assets ?? [], state.fxRates ?? {}),
+            reconcileBrokerBalances(
+                state.fintableBrokerBalances,
+                holdingsCadByRegime(state.assets ?? [], state.fxRates ?? {}),
+                // [FINTABLE-AUTORITE-PARTOUT étape 0] Même reconversion que l'écran : deux réponses
+                // à une seule question seraient pires que la question non répondue.
+                tauxCourantsDepuisEtat(state),
+            ),
+            // [FINTABLE-AUTORITE-PARTOUT étape 3] Même fait, même source que le chemin React.
+            jumeauxPorteursDepuisActifs(state.assets ?? [], state.fxRates ?? {}),
+        ).soldes,
+        // [ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE] ⚠️ Le ledger DÉTAILLÉ, comme dans le hook. Sans lui,
+        // le chemin MCP restait nu sur le canal cash alors que le chemin navigateur était protégé :
+        // mesuré, `initialBalances.CELI = NaN` passait sans refus et rendait 7 082 228 $ au lieu de
+        // 7 270 228 $ (−188 000 $) à un LLM, `isError` à faux. Le correctif précédent affirmait
+        // fermer ce canal pour les deux surfaces ; il n'en fermait qu'une (finding 2e passe, #764).
+        // Un seul parcours des transactions sert les deux besoins (le total et l'inventaire).
+        ...(() => {
+            const ledger = computeCashLedgerDetailed(state.initialBalances ?? {}, (state.transactions ?? []) as Transaction[]);
+            return { calculatedStartingCash: ledger.cash, termesFautifsCash: ledger.termesFautifs };
+        })(),
+        realEstateGoals: state.realEstateGoals ?? [],
+        debts: state.debts ?? [],
+        // [DETTE-VIREMENTS-REELS] Les virements qui remboursent une dette liée à un marchand.
+        transactions: (state.transactions ?? []) as Transaction[],
+        // [DETTE-SOLDE-INSTANTANE-FIGE] L'horloge est déjà lue ici (`now`, cinq lignes plus haut,
+        // pour `startYear`/`startMonth`) : on en dérive le JOUR, au lieu d'en introduire une seconde.
+        aujourdhuiIso: todayIsoLocal(now),
+        childGoals: state.childGoals ?? [],
+        travelGoals: state.travelGoals ?? [],
+        lifeEvents: state.lifeEvents ?? [],
+        retirementGoal: state.retirementGoal,
+        financialGoals: state.financialGoals ?? [],
+        budgetItems: state.budgetItems ?? [],
+        calculatedMonthlySavings: computeMonthlySavings(state.config, state.budgetItems ?? []),
+        startYear,
+        startMonth,
+        insurancePolicies: state.insurancePolicies ?? [],
+        vehicleReplacements: state.vehicleReplacements ?? [],
+        majorRenovations: state.majorRenovations ?? [],
+        charitableGoals: state.charitableGoals ?? [],
+        rentalProperties: state.rentalProperties ?? [],
+        privateBusinesses: state.privateBusinesses ?? [],
+    };
+}
+
+/** Raccourci pratique : AppState → SimulationParams en une étape (pur). */
+export function buildSimulationParamsFromState(
+    state: AppState,
+    opts?: { startYear?: number; startMonth?: number; now?: Date },
+): SimulationParams {
+    return buildSimulationParams(deriveSimulationInputsFromState(state, opts));
+}

@@ -1,0 +1,180 @@
+// tests/services/projection.totalTaxesPaid.test.ts
+//
+// [PROJ-TTP-DOUBLECOUNT] (panel #551 MESURÉ, corrigé 2026-08-01) — « Impôt à vie » = les flux
+// d'impôt réellement DÉBITÉS du liquide, c.-à-d. Σ FluxImpots : avril débite le bucket `.reer`
+// ENTIER (retenues cascade + meltdown + FERR, provisionnées) + le complément `.revenu` de
+// décembre — la retenue « n'est débitée qu'UNE fois, en avril » (contrat FISC-REER-WHT-DOUBLE).
+// L'ancien compteur ajoutait EN PLUS `rrspWithholdingMois` et `taxOnRrif` → les mêmes dollars
+// comptés deux fois : MELTDOWN affichait 321 122 $ pour 131 871 $ réels (+144 %), AUTO
+// 229 338 $ pour 29 806 $. DISCRIMINANT : sur l'ancien code, l'identité du 1er test casse de
+// +189 251 $ (meltdown), +199 532 $ (auto) et +59 131 $ (FERR).
+
+import { describe, it, expect } from 'vitest';
+import { __runScenarioForTests, type SimulationParams } from '../../services/projection';
+import type { ProjectionConfig, BudgetConfig, RetirementGoal } from '../../types';
+import type { AllocationStrategy } from '../../services/projection/types';
+
+const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+const projection: ProjectionConfig = {
+    years: 25, returnRate: 5, inflationRate: 2, savingsMode: 'manual', manualContribution: 0,
+    usePortfolioRate: false, returnRates: { celi: 5, reer: 5, nonReg: 5, crypto: 6, cash: 1 },
+    emergencyFundMonths: 6, salaryGrowth: 2, propertyGrowthRate: 3,
+};
+const config: BudgetConfig = {
+    users: [
+        { name: 'M', grossSalary: 0, netSalary: 0, color: '#fff', age: 62, birthYear: 1964, canadaArrivalYear: 1964, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
+        { name: 'A', grossSalary: 0, netSalary: 0, color: '#fff', age: 62, birthYear: 1964, canadaArrivalYear: 1964, hasOwnedPropertyLast4Years: false, celiContributed: 0, rrspContributed: 0 },
+    ], splitMode: '50/50',
+};
+const base = (over: Partial<SimulationParams> = {}): SimulationParams => ({
+    projection, calculatedStartingCash: 20_000,
+    liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 700_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
+    realEstateGoals: [], debts: [], childGoals: [], travelGoals: [], lifeEvents: [],
+    retirementGoal: { targetAge: 60, targetMonthlyIncome: 4500, governmentPension: 1500, lifeExpectancy: 95 } as RetirementGoal,
+    config, baseGrossAnnual: 0, baseNetAnnual: 0, currentRentExpense: 0, baseMonthlyExpenses: 3_800,
+    startYear: 2026, startMonth: 0, ...over,
+} as SimulationParams);
+
+// Fixture FERR (couple 73 ans, pension couvre les dépenses — les retenues RRIF dominent).
+const ferrParams = base({
+    projection: { ...projection, years: 10, returnRates: { celi: 3, reer: 3, nonReg: 3, crypto: 4, cash: 1 } },
+    liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 400_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
+    retirementGoal: { targetAge: 60, targetMonthlyIncome: 3000, governmentPension: 4500, lifeExpectancy: 95 } as RetirementGoal,
+    baseMonthlyExpenses: 2_800,
+    config: { ...config, users: config.users.map(u => ({ ...u, age: 73, birthYear: 1953 })) as typeof config.users },
+});
+
+const run = (p: SimulationParams, s: string) => __runScenarioForTests(p, s as AllocationStrategy, false, false);
+const sumFlux = (r: ReturnType<typeof run>): number =>
+    (r.chartData as Array<Record<string, unknown>>).reduce((s, d) => s + num(d.FluxImpots), 0);
+
+describe('[PROJ-TTP-DOUBLECOUNT] totalTaxesPaid = Σ FluxImpots (les retenues ne comptent qu\'une fois)', () => {
+    it('IDENTITÉ sur 3 scénarios : meltdown, cascade, FERR — ± 1 $ (échoue de +59 k à +199 k avant)', () => {
+        for (const [p, s, minTax] of [
+            [base(), 'MELTDOWN_REER', 100_000],
+            [base(), 'AUTO_MARGINAL', 20_000],
+            [ferrParams, 'AUTO_MARGINAL', 4_000],
+        ] as const) {
+            const r = run(p, s);
+            expect(r.totalTaxesPaid).toBeGreaterThan(minTax); // non-vacuité : de l'impôt coule vraiment
+            expect(Math.abs(r.totalTaxesPaid - sumFlux(r))).toBeLessThan(1);
+        }
+    });
+
+    it('NEUTRALITÉ NW : le fix du compteur ne touche AUCUN patrimoine (goldens mesurés avant/après)', () => {
+        // Mesuré identique avant/après le fix TTP (compteur d'affichage pur). Re-basé SCIEMMENT
+        // 2026-08-01 ([FISC-BRACKET-REALINDEX], était 3627,79 / 375783,25) : le fix des paliers
+        // réels est un VRAI changement fiscal (impôt tardif ↑ → NW ↓) — la neutralité du COMPTEUR,
+        // elle, reste garantie par l'identité ttp == Σ FluxImpots du 1er test.
+        // Re-basé SCIEMMENT 2026-08-05 ([FISC-STACK-GAINS-DIV] + [FISC-DTC-ABATEMENT-ORDER], était
+        // -7169,52) : vrai changement fiscal (impôt de placement ↑), pas une fuite de compteur.
+        // Re-basé SCIEMMENT 2026-08-20 ([FISC-TAXDEC-INCR], était −7209,82 : −57,98 $) : l'érosion
+        // des crédits d'âge est désormais facturée à la bande de dividendes du non-enregistré que
+        // le meltdown remplit (impôt ↑ → NW ↓). La fixture FERR ne bouge PAS (pension couvrante,
+        // aucune bande de placement) — l'effet est ciblé, c'est la preuve inverse.
+        // Re-basé SCIEMMENT 2026-09-03 ([FISC-DIV-ACB-STEPUP] lot 115, **+751,02 $**) : l'ACB du
+        // non-enregistré monte désormais du dividende réputé, donc le gain latent ne porte plus la
+        // somme déjà imposée. Vrai changement fiscal (NW ↑), pas un double comptage du compteur —
+        // ce que ce fichier DÉFEND, l'identité `ttp == Σ FluxImpots`, est vérifié à part et reste vert.
+        // Re-basé SCIEMMENT 2026-09-05 ([ENG-MELTDOWN-MIMOIS] lot 160, **−155,82 $**, était
+        // −6516,78) : l'arrivée du meltdown ne touche plus qu'un demi-mois de rendement (décision
+        // Marc 2026-09-04) — moins de croissance fantôme → NW ↓. La fixture FERR ne bouge PAS
+        // (aucun meltdown sous AUTO_MARGINAL) — l'effet est ciblé, c'est la preuve inverse.
+        // Re-basé SCIEMMENT 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, **+62,38 $**, était
+        // −6672,60) : récupération du SRG d'un couple à 25 ¢/$ par conjoint au lieu de 50 ¢ → plus
+        // de SRG non imposable pour ce ménage à bas revenu → NW ↑. Vrai changement fiscal sourcé,
+        // pas une fuite de compteur.
+        // Re-basé SCIEMMENT 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−22 457,07 $**, était
+        // −6610,22) : le dépôt fiscal de décembre se fait en FIN de mois, après le meltdown — le retrait
+        // REER de décembre est enfin imposé l'année même (impôt à vie +10 143,55 $ ; le reste de l'écart
+        // est le déficit d'un ménage insolvable qui compose, mesuré non décomposé). Vrai changement
+        // fiscal décidé (Marc 2026-09-05), pas une fuite de compteur : l'identité `ttp == Σ FluxImpots`
+        // du 1er test reste verte sur ce même lot.
+        expect(run(base(), 'MELTDOWN_REER').finalNetWorth).toBeCloseTo(-29067.29, 0);
+        // Re-basé SCIEMMENT 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, **+53 431,96 $**, était
+        // 372 625,14) — un GROS écart, EXPLIQUÉ par la mesure année par année : ce couple de 73 ans
+        // vit d'une pension publique et de retraits FERR modestes ; dès l'an 3 son revenu mensuel
+        // passe de 1 836 à 2 267 $ (+431 $/mois de SRG, non imposable) parce que la récupération
+        // n'est plus 50 ¢ mais 25 ¢ par dollar de revenu combiné pour chaque conjoint. Huit ans de
+        // SRG capitalisé = l'écart. Le retrait FERR forcé de l'an 3 baisse (1 356 → 878 $) — moins
+        // besoin de puiser. `ttp == Σ FluxImpots` reste l'identité défendue ici, verte.
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−117,44 $**, était 426 057,10 ;
+        // impôt à vie 9 185,78 → 9 295,55 $) : effet PETIT ici — le retrait minimum FERR se fait en
+        // janvier, seuls les retraits complémentaires de décembre entrent désormais dans l'assiette.
+        // Le contraste avec la fixture MELTDOWN ci-dessus (−22 457 $) est la signature attendue :
+        // le lot ne mord que là où décembre décaisse du REER.
+        expect(run(ferrParams, 'AUTO_MARGINAL').finalNetWorth).toBeCloseTo(425939.66, 0);
+    });
+
+    it('[ENG-TTP-UNSETTLED-HORIZON] la dette fiscale réconciliée non réglée à l\'horizon est EXPOSÉE', () => {
+        // La dernière année réconciliée par décembre n'a jamais son avril → son débit échappe au
+        // compteur. `unsettledTaxAtHorizon` = EXACTEMENT ce qu'avril aurait débité (les 4 buckets
+        // SIGNÉS — le panel #554 annonçait 5 815 $ sur la fixture FERR en sommant le BRUT ; le NET
+        // réel y est 171,89 $ car la réconciliation contient un remboursement qui compense la
+        // retenue RRIF). Discriminant : le champ n'existe pas sur l'ancien code (undefined).
+        const solvable = base({
+            projection: { ...projection, years: 10, returnRate: 4, returnRates: { celi: 4, reer: 4, nonReg: 4, crypto: 5, cash: 1 } },
+            calculatedStartingCash: 10_000,
+            liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 1_500_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
+            retirementGoal: { targetAge: 60, targetMonthlyIncome: 8000, governmentPension: 800, lifeExpectancy: 95 } as RetirementGoal,
+            baseMonthlyExpenses: 7_000,
+        });
+        const rs = run(solvable, 'AUTO_MARGINAL');
+        // Solvable 10 ans : vraie dette nette au dernier décembre (mesuré 16 404,67 — re-basé
+        // [FISC-BRACKET-REALINDEX] 2026-08-01, était 13 542,07 : impôt réel tardif ↑).
+        // Re-basé 2026-08-21 (+137,31). ⚠️ Ma 1re attribution disait « FSS du dividende » — la
+        // fixture a NON_ENREG: 0, c'était IMPOSSIBLE (revue #683, bissection) : la vraie cause
+        // est la bande GK ([ENG-GK-THRESHOLD-KNIFE]) qui module l'indexation des dépenses → les
+        // retraits du dernier exercice changent → sa dette réconciliée aussi.
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **+3 096,18 $**, était 16 541,98) :
+        // le dernier décembre réconcilie désormais AUSSI les retraits REER de son propre mois — la
+        // dette non réglée à l'horizon grossit d'autant. La fixture FERR ci-dessous ne bouge PAS d'un
+        // cent (942,28 avant comme après : son décembre ne décaisse rien de plus) — preuve inverse.
+        expect(rs.unsettledTaxAtHorizon).toBeCloseTo(19_638.16, 0);
+        // FERR 10 ans : net PETIT (remboursement compense la retenue) — pin de la sémantique NETTE
+        // (re-basé, était 171,89).
+        // Re-basé 2026-09-05 ([FISC-GIS-COUPLE-RATE] lot 169, +34,57 : était 907,71) : le couple de
+        // la fixture FERR touche désormais du SRG (récupération 25 ¢/$ par conjoint), ce qui change
+        // les retraits du dernier exercice, donc sa dette réconciliée.
+        expect(run(ferrParams, 'AUTO_MARGINAL').unsettledTaxAtHorizon).toBeCloseTo(942.28, 0);
+        // Portefeuille épuisé avant la fin : plus d'impôt la dernière année → 0 (jamais un fantôme).
+        expect(Math.abs(run(base(), 'MELTDOWN_REER').unsettledTaxAtHorizon ?? Number.NaN)).toBeLessThan(1);
+
+        // ADDITIVITÉ (contre-vérif #555, la propriété la plus discriminante — exacte au cent) :
+        // l'unsettled du run N == le FluxImpots d'avril du run N+1 ⇒ TTP(N) + unsettled(N) == TTP(N+1)
+        // (le seul flux d'impôt des mois N*12..N*12+11 est cet avril).
+        const solvable11 = { ...solvable, projection: { ...solvable.projection, years: 11 } } as SimulationParams;
+        expect((rs.totalTaxesPaid ?? 0) + (rs.unsettledTaxAtHorizon ?? 0))
+            .toBeCloseTo(run(solvable11, 'AUTO_MARGINAL').totalTaxesPaid, 0); // mesuré : 184 686,88 des deux côtés
+
+        // SIGNE : année finale en REMBOURSEMENT net (salarié PRIO_REER, grosses déductions) →
+        // négatif porté honnêtement, aucun clamp (re-basé [FISC-WHT-92PCT] 2026-08-01, était
+        // −17 159,55 : retenue 100 % → remboursement d'avril plus gros de 8 % de l'impôt employeur).
+        const salarie = base({
+            liveCSVBalances: { CELI: 0, CELIAPP: 0, REER: 100_000, NON_ENREG: 0, CRYPTO: 0, REEE: 0 },
+            projection: { ...projection, years: 10, returnRate: 4, returnRates: { celi: 4, reer: 4, nonReg: 4, crypto: 5, cash: 1 } },
+            calculatedStartingCash: 10_000,
+            retirementGoal: { targetAge: 75, targetMonthlyIncome: 8000, governmentPension: 800, lifeExpectancy: 95 } as RetirementGoal,
+            config: { ...config, users: config.users.map(u => ({ ...u, grossSalary: 10_000, netSalary: 7_000, age: 45, birthYear: 1981 })) as typeof config.users },
+            baseGrossAnnual: 240_000, baseNetAnnual: 168_000, baseMonthlyExpenses: 9_000,
+        });
+        // Re-basé 2026-09-05 ([FISC-DEC-FLUX-ASSIETTE-TIMING] lot 179, **−40,41 $**, était −23 552,86) :
+        // les cotisations REER de décembre de la dernière année sont enfin déduites dans SA
+        // réconciliation → remboursement final un peu plus gros. Le SIGNE négatif et l'absence de
+        // clamp — ce que cette assertion défend — sont intacts.
+        expect(run(salarie, 'PRIO_REER').unsettledTaxAtHorizon).toBeCloseTo(-23_593.27, 0);
+    });
+
+    it('ratio MELT/AUTO borné (~2,8 mesuré post-REALINDEX, était ~4,4) — PAS un pin d\'ordre du ranking complet', () => {
+        // ⚠️ Le validator #554 avait MESURÉ que l'ordre de rankStrategies changeait avec le
+        // compteur corrigé — voulu, l'ancien ordre reposait sur le double-comptage. Ce module et
+        // son pin d'ordre ([ENG-RANKING-ORDER-PIN]) ont été RETIRÉS le 2026-09-05 (décision Marc,
+        // [ENG-RANKING-MODULES-ORPHELINS] : aucun appelant). Ici : la paire MELT/AUTO seulement.
+        const melt = run(base(), 'MELTDOWN_REER');
+        const auto = run(base(), 'AUTO_MARGINAL');
+        const ratio = melt.totalTaxesPaid / auto.totalTaxesPaid;
+        expect(ratio).toBeGreaterThan(2);   // discriminant : ancien code = 1,400 → échoue
+        expect(ratio).toBeLessThan(8);      // borné (un ×20 signalerait une régression d'assiette)
+    });
+});

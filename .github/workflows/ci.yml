@@ -1,0 +1,345 @@
+name: CI
+
+on:
+  # [CI-SANS-PUSH-MAIN] (FinanceAI#1305) Plus de passage au push sur `main` : la file Mergify (`merge_conditions`) a déjà
+  # testé exactement l'arbre qui est fusionné, et un seul robot rejouait ~29 min de CI pour rien. `workflow_dispatch`
+  # reste pour un passage à la main sur `main`.
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+# [S5-CODEQL] Moindre privilège (CodeQL actions/missing-workflow-permissions, 4 alertes) : aucun job de ce
+# workflow n'écrit via le jeton (ni gh, ni commentaire, ni SARIF) — lecture seule pour tous.
+permissions:
+  contents: read
+
+# [S5-CI-ALLEGEE] (décision de Marc, 24/09/2026 : « réduis la CI ») Un nouveau push sur la MÊME branche de
+# PR annule le run devenu inutile. `main` est exclu : on n'annule jamais la validation d'un commit fusionné.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  quality:
+    # Plafond : sans lui, un job fige tourne SIX HEURES avant d'echouer (vecu sur
+    # DriveAI le 19/08/2026). Calibre sur la duree reelle — 10 min 12 s observe.
+    timeout-minutes: 30
+    name: Lint / Typecheck / Tests / Build
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || fromJSON('["self-hosted","pc-marc"]') }} # dépôt public : machines GitHub (gratuites) ; privé : robot du PC
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # [CI-PERSIST-CREDS] `actions/checkout` v2+ écrit le GITHUB_TOKEN dans la config git
+          # du runner POUR TOUT LE RESTE DU RUN : n'importe quelle étape suivante, y compris
+          # une action tierce, peut le lire. Ce job ne pousse rien, donc il n'en a pas besoin.
+          persist-credentials: false
+
+      # La convention de compte-rendu est une COPIE synchronisée de
+      # claude-config/conventions/COMPTE-RENDU.md — un CLAUDE.md ne charge rien hors de son
+      # arbre, donc le renvoi seul ne chargerait rien. Une copie sans contrôle redevient une
+      # variante locale en silence : c'est le mode de panne que ce pas rend bruyant.
+      # Pour la faire évoluer : modifier la SOURCE, propager, mettre à jour cette empreinte.
+      - name: La convention de compte-rendu n'a pas dérivé
+        run: echo "97e36acba8770c9614b6295773267b9690d07bc5bcd130b3bc0d03da996ab62b  docs/COMPTE-RENDU.md" | sha256sum -c -
+
+      # [S5-CI-ALLEGEE] package-lock.json EST commité : cache npm + `npm ci` (installation exacte du
+      # lockfile, plus rapide et reproductible) au lieu de `npm install` (qui re-résolvait les versions).
+      - name: Setup Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+          # Robot du PC (dépôt privé) : ~/.npm y persiste déjà ; restaurer un cache de ~1,4 Go à chaque job coûtait ~80 s (FinanceAI#1305).
+          cache: ${{ (github.event.repository.private == false && 'npm') || '' }}
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      # Bloque sur erreurs ESLint (react-hooks/rules-of-hooks a cassé prod le 2026-05-22)
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # [S5-CI-ALLEGEE] Tests unitaires : exécutés UNE fois, avec couverture, par le job « Qualité » (contrôle
+      # obligatoire lui aussi : un seul test en échec le rend rouge, porte tests.echecs = 0). Les rejouer ici
+      # coûtait ~6 min par run pour le même verdict. Le nom de ce job reste inchangé : c'est un contrôle
+      # obligatoire de la protection de branche.
+      # [S5-CI-ALLEGEE] `npm run build` relançait tout le lint (script prebuild) juste après l'étape Lint :
+      # construction directe par Vite, même commande que le script build, sans le prebuild.
+      - name: Build
+        run: npx --no-install vite build --mode production
+
+  e2e:
+    # Plafond : sans lui, un job fige tourne SIX HEURES avant d'echouer (vecu sur
+    # DriveAI le 19/08/2026). Calibre sur la duree reelle — 4 min 03 s observe - Playwright, variance a l'installation.
+    timeout-minutes: 30
+    name: E2E (Playwright / Chromium)
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || fromJSON('["self-hosted","pc-marc"]') }} # dépôt public : machines GitHub (gratuites) ; privé : robot du PC
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # [CI-PERSIST-CREDS] `actions/checkout` v2+ écrit le GITHUB_TOKEN dans la config git
+          # du runner POUR TOUT LE RESTE DU RUN : n'importe quelle étape suivante, y compris
+          # une action tierce, peut le lire. Ce job ne pousse rien, donc il n'en a pas besoin.
+          persist-credentials: false
+
+      - name: Setup Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: ${{ (github.event.repository.private == false && 'npm') || '' }}
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      - name: Install Playwright Chromium + deps système
+        # [CI-NPX-NO-INSTALL] `--no-install` : sans lui, `npx` TÉLÉCHARGE le paquet depuis le
+        # registre quand il ne le trouve pas localement, puis exécute ses scripts de cycle de vie
+        # — la surface que `--ignore-scripts` ferme à l'étape d'installation, rouverte ici, et sur
+        # une version NON figée (le registre sert la dernière). Avec le drapeau, npx n'utilise que
+        # le binaire de `node_modules/.bin`, donc la version qu'épingle le lockfile, et échoue
+        # franchement s'il manque au lieu d'aller le chercher. Mesuré le 18/09 : `npx --no-install playwright --version` rend « Version 1.60.0 », le binaire local (`@playwright/test` est une devDependency).
+        # ⚠️ Vérifié aussi que l'étape d'installation vit dans le MÊME job — sans elle, le drapeau
+        # transformerait un téléchargement silencieux en échec.
+        # Robot du PC (dépôt privé) : pas de sudo sans mot de passe, donc pas de `--with-deps` ; les bibliothèques système y sont déjà (Lighthouse y lance ce même Chromium, 21/10/2026).
+        run: npx --no-install playwright install ${{ github.event.repository.private && ' ' || '--with-deps ' }}chromium
+
+      # playwright.config.ts démarre automatiquement `npm run dev` (port 3000)
+      # test:e2e:ci exclut les tests @visual (screenshots) : la comparaison
+      # pixel-à-pixel échoue en cross-platform (baselines Windows vs runner Linux).
+      # Les screenshots restent un filet de régression VISUELLE en local.
+      #
+      # ⚠️ `--max-failures=2` EXISTE POUR QUE CE JOB PARLE. Sans lui, une suite qui échoue
+      # LENTEMENT n'échoue pas : elle est COUPÉE au plafond de 30 min ci-dessus, et un job coupé
+      # ressort `cancelled` — ni rouge ni vert — SANS JAMAIS IMPRIMER SON RÉSUMÉ. Mesuré le
+      # 2026-09-21 sur trois runs d'affilée : 18 tests traités, zéro diagnostic lisible, et la
+      # panne avait déjà survécu plusieurs merges pour cette seule raison.
+      # L'arithmétique du plafond : `retries: 2` et les specs du Futur portent
+      # `test.setTimeout(120_000)`, donc un test qui expire coûte jusqu'à 3 × 2 min = 6 min.
+      # Deux échecs = ~12 min, plus les tests qui passent — on reste sous les 30 min AVEC le
+      # rapport. Une suite SAINE n'est pas concernée : le drapeau ne mord qu'au 2ᵉ échec réel
+      # (référence écrite plus haut : 4 min 03 s pour les 54 tests).
+      # ⚠️ Ça ne désactive, ne saute ni ne met en quarantaine AUCUN test — ça borne le temps
+      # qu'on accorde à une suite déjà cassée pour qu'elle dise POURQUOI.
+      - name: Run E2E tests (fonctionnels — sans screenshots)
+        run: npm run test:e2e:ci
+
+      - name: Upload rapport Playwright (si échec)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------------------
+  # Portes qualité de l'Atelier (S6, 23/09/2026) — même dispositif que le pilote BatchChef.
+  # Depuis la fusion automatique, une PR verte part en production sans relecture humaine :
+  # ces jobs sont ce qui garantit qu'elle ne fait RECULER ni la qualité ni la sécurité.
+  # Cliquet : qualite/seuils.json fige l'état au jour de la mise en place ; rien ne recule.
+  #
+  # [CI-QUALITE-EN-PARALLELE] (FinanceAI#1181) Le contrôle « Qualité » durait 10 à 13 min, dont ~9 min de tests
+  # sous couverture exécutés UN fichier à la fois (vitest.config.ts : fileParallelism: false, voulu — des tests
+  # sensibles au timing). Mergify fait passer les PR une à une : chaque PR en file attendait ce temps-là.
+  # Le travail est donc réparti SANS rien retirer :
+  #   - « qualite-tests » : les tests sous couverture en TRANCHES (une machine chacune, toujours en série
+  #     DANS la tranche, donc sans la contention qui rendait les tests instables) ;
+  #   - « qualite-statique » : typage, lint, code mort, architecture, en même temps que les tests ;
+  #   - « qualite » (le contrôle OBLIGATOIRE, nom inchangé) : fusionne les tranches (tests ET couverture) et rend
+  #     le verdict du cliquet sur les mêmes mesures et les mêmes seuils qu'avant. Il échoue si une tranche manque.
+  # Le nombre de tranches (1) figure dans la matrice, dans `--tranche` et dans `--fusion` : en changer un seul
+  # fait échouer la fusion (tranche attendue absente), jamais passer sur des tests en moins.
+  # [CI-UNE-TRANCHE] (FinanceAI#1305) Une seule tranche : le dépôt privé n'a qu'UN robot (le PC), les tranches y passaient
+  # l'une après l'autre, sans gain de temps, et chacune payait son checkout, son installation et son téléversement.
+  # Pour repasser à N tranches (robots en parallèle), changer les trois « 1 » ensemble.
+  qualite-statique:
+    timeout-minutes: 15
+    name: Qualité — contrôles statiques (typage · lint · code mort · architecture)
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || fromJSON('["self-hosted","pc-marc"]') }} # dépôt public : machines GitHub (gratuites) ; privé : robot du PC
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: ${{ (github.event.repository.private == false && 'npm') || '' }}
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+      - name: Mesures statiques
+        run: node qualite/portes.mjs --statique
+      - name: Mesures (pour la fusion)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: qualite-statique
+          path: qualite/mesures-statiques.json
+          if-no-files-found: error
+          retention-days: 1
+
+  qualite-tests:
+    # Plafond large pour la variance ; la durée réelle d'une tranche est mesurée dans la PR FinanceAI#1181.
+    timeout-minutes: 30
+    name: Qualité — tests sous couverture (tranche ${{ matrix.tranche }}/1)
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || fromJSON('["self-hosted","pc-marc"]') }} # dépôt public : machines GitHub (gratuites) ; privé : robot du PC
+    strategy:
+      # Toutes les tranches vont au bout même si l'une est rouge : le rapport de test est complet.
+      fail-fast: false
+      matrix:
+        tranche: [1]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: ${{ (github.event.repository.private == false && 'npm') || '' }}
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+      - name: Tests de la tranche (sous couverture)
+        run: node qualite/portes.mjs --tranche ${{ matrix.tranche }}/1
+      # `always()` : une tranche rouge dépose quand même son rapport, la fusion le compte comme échec.
+      - name: Rapport de la tranche
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: qualite-tranche-${{ matrix.tranche }}
+          path: .vitest-reports/
+          if-no-files-found: error
+          # `.vitest-reports/` est un dossier caché : sans ce drapeau, upload-artifact@v7 l'ignore et ne
+          # trouve « aucun fichier » (vu sur le 1er run de FinanceAI#1182, tests pourtant verts).
+          include-hidden-files: true
+          retention-days: 1
+
+  qualite:
+    timeout-minutes: 15
+    name: Qualité (lint · couverture · code mort · architecture)
+    needs: [qualite-statique, qualite-tests]
+    # Le contrôle obligatoire doit RENDRE un verdict même si un job amont est rouge (il échoue alors lui-même) ;
+    # `!cancelled()` et non `always()` : un run annulé par un nouveau push n'a rien à juger.
+    if: ${{ !cancelled() }}
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || fromJSON('["self-hosted","pc-marc"]') }} # dépôt public : machines GitHub (gratuites) ; privé : robot du PC
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: ${{ (github.event.repository.private == false && 'npm') || '' }}
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+      - name: Rapports des tranches de tests
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: qualite-tranche-*
+          merge-multiple: true
+          path: .vitest-reports
+      - name: Mesures statiques
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: qualite-statique
+          path: qualite-statique
+      - name: Portes qualité (cliquet)
+        run: node qualite/portes.mjs --fusion 1 .vitest-reports qualite-statique/mesures-statiques.json
+      - name: Rapport
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rapport-qualite
+          path: qualite/rapport.json
+          if-no-files-found: ignore
+
+  securite:
+    # Secrets dans tout l'historique qui serait fusionné — main + la PR, via HEAD (gitleaks) — + analyse
+    # statique du code (Semgrep). Les autres branches relèvent de l'audit, pas de la porte : sans
+    # --log-opts, gitleaks lirait `--all` et une vieille branche ferait rougir une PR qui n'y touche pas.
+    # Mesuré le 23/09/2026 : gitleaks 0 fuite sur l'historique complet ; Semgrep 0 résultat sur
+    # le code (les 11 résultats « action épinglée par tag » des workflows sont hors périmètre,
+    # .github exclu — durcissement séparé). Donc bloquant d'emblée (--error).
+    timeout-minutes: 15
+    name: Sécurité (secrets · analyse statique)
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || fromJSON('["self-hosted","pc-marc"]') }} # dépôt public : machines GitHub (gratuites) ; privé : robot du PC
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # gitleaks lit l'historique complet, pas seulement le dernier commit
+          persist-credentials: false
+      # Binaire officiel, version et empreinte figées : un outil de sécurité téléchargé sans
+      # vérification serait lui-même une surface d'attaque. 8.30.1 : corrige CVE-2026-63728 ; empreinte
+      # de l'archive tirée de gitleaks_8.30.1_checksums.txt (release officielle), identique au gabarit
+      # next-ci-jobs.yml du kit 1.13.0 de l'Atelier.
+      - name: Secrets (gitleaks, historique complet)
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSfL -o gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tgz" | sha256sum -c -
+          tar xzf gitleaks.tgz gitleaks
+          ./gitleaks git . --no-banner --redact --log-opts="--full-history HEAD"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Analyse statique (Semgrep)
+        run: |
+          # --only-binary : aucune compilation ni script d'installation, seulement des roues publiées.
+          python -m pip install --quiet --only-binary :all: semgrep==1.177.0
+          semgrep scan --metrics off --error --exclude .github \
+            --config p/typescript --config p/react \
+            --config p/secrets --config p/owasp-top-ten .
+
+  # ---------------------------------------------------------------------------------------
+  # Contrôles COMMUNS aux dix dépôts, écrits une seule fois dans MoKarade/.github (plan de
+  # standardisation du 15/10/2026). Ce fichier ne fait que les appeler ; l'appel d'un workflow
+  # commun reste en `@main` (voulu : un correctif y atteint tous les dépôts sans PR).
+  #
+  # `securite-commune` s'ajoute au job `securite` ci-dessus sans le remplacer : le renommer
+  # changerait le contrôle « Sécurité (secrets · analyse statique) » que .mergify.yml exige.
+  # Il apporte OSV-Scanner (failles connues des dépendances) ; gitleaks y double celui de `securite`.
+  # Dépôt privé : OSV-Scanner tourne en binaire vérifié, sans Docker, que le robot du PC n'a pas (.github#454).
+  securite-commune:
+    name: Sécurité commune
+    if: github.event_name != 'schedule'
+    uses: MoKarade/.github/.github/workflows/securite.yml@main
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+  # Failles connues des dépendances de PRODUCTION (grille de conformité, ligne 6). Séparé du gate :
+  # une faille publiée demain ne doit pas rougir une PR qui n'y touche pas, mais le tableau le dit.
+  audit-npm:
+    name: Audit npm (production)
+    if: github.event_name != 'schedule'
+    timeout-minutes: 10
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || fromJSON('["self-hosted","pc-marc"]') }} # dépôt public : machines GitHub (gratuites) ; privé : robot du PC
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: ${{ (github.event.repository.private == false && 'npm') || '' }}
+      - name: npm audit (production)
+        run: npm audit --omit=dev
+
+  # La grille de conformité : un tableau ligne par ligne dans le résumé du job. `bloquant: false`
+  # tant que les lignes rouges restantes attendent leur tâche (vitest 5, TypeScript strict, contrat
+  # hub v1.5.0, Sentry, protection au push) ; passer à `true` quand toute la grille est verte.
+  conformite:
+    name: Conformité
+    if: github.event_name != 'schedule'
+    uses: MoKarade/.github/.github/workflows/conformite.yml@main
+    with:
+      bloquant: false

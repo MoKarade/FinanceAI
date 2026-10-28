@@ -1,0 +1,94 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# P1.6 — Lighthouse CI artifacts locaux
+.lighthouseci/
+
+# Playwright E2E — artifacts (exclus du commit)
+test-results/
+playwright-report/
+blob-report/
+.playwright-mcp/
+
+# Agent Control Center — état runtime local (dev-only, jamais committé)
+.claude/status.json
+.claude/status.json.tmp
+.claude/agent-events.jsonl
+.claude/agent-transcripts/
+# Captures ad-hoc de tests navigateur à la racine (les vrais assets vivent dans public/).
+/*.png
+# Note : e2e/__snapshots__/ est inclus (baselines committées)
+
+# Env files (secrets) - Phase 0 hardening
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Claude Code — la CONFIG PROJET est committée (voyage avec le repo, partagée
+# entre les 2 PC de Marc + l'exécution cloud) : CLAUDE.md (racine), .claude/agents/,
+# .claude/commands/, .claude/settings.json. On n'ignore que les surcouches LOCALES
+# (machine) et les artefacts de worktrees.
+.claude/settings.local.json
+.claude/worktrees/
+.claude/*.local
+.claude/launch.json
+.claude/scheduled_tasks.lock
+
+# Connecteur MCP — secrets locaux (jamais commités)
+mcp/drive/connector-client.json
+financeai-state*.json
+.financeai-mcp/
+dist-mcp
+
+# [FINTABLE] Fichier local de rôles de comptes (contient des ids de comptes bancaires) — jamais versionné.
+.fintable-roles.json
+
+# Sondes de MESURE écrites par les agents de panel (financial-integrity, projection-validator…).
+# Elles vivent dans tests/ pour pouvoir importer le moteur et tourner sous vitest, mais ce sont des
+# instruments JETABLES : les committer ajouterait de faux tests permanents au dépôt, et les
+# supprimer pendant qu'un agent mesure casserait sa vérification en vol. Les ignorer résout les
+# deux. Convention de nommage à respecter par les agents : préfixe `__probe` ou `ztmp-`.
+tests/**/__probe*.test.ts
+tests/**/ztmp-*.test.ts
+
+# Portes qualité de l'Atelier (S6) — sorties de mesure, jamais committées
+coverage/
+reports/
+.stryker-tmp/
+qualite/rapport.json
+
+# [PTF-L05-GARDE-FUITE] Données RÉELLES du portefeuille (relevés, fichier de vérification, script
+# privé) : jamais dans ce dépôt PUBLIC. `prive/` est le seul endroit prévu pour elles.
+prive/
+**/ancres_verification*.json
+**/*Releve_*.pdf
+
+# Tranches de tests de la CI et mesures statiques (qualite/portes.mjs --tranche / --statique)
+.vitest-reports/
+qualite/mesures-statiques.json
+
+# Graphe de code local (scripts/graphe.sh) : sorties de mesure, jamais committées (commentaires TODO copiés, graph.html charge unpkg)
+graphify-out/
+.graphify_root

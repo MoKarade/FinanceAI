@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "node scripts/hooks/session-brief.mjs", "timeout": 15 } ] },
+      { "hooks": [ { "type": "command", "command": "[ -f \"$CLAUDE_PROJECT_DIR/scripts/graphe.sh\" ] && bash \"$CLAUDE_PROJECT_DIR/scripts/graphe.sh\" session || true", "timeout": 10 } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "node scripts/hooks/orchestrate.mjs", "timeout": 10 } ] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Edit|Write", "hooks": [ { "type": "command", "command": "node scripts/hooks/auto-lint.mjs", "timeout": 120 } ] },
+      { "matcher": "Task|Agent", "hooks": [ { "type": "command", "command": "node scripts/hooks/agent-status.mjs", "timeout": 10 } ] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Task|Agent", "hooks": [ { "type": "command", "command": "node scripts/hooks/agent-status.mjs", "timeout": 10 } ] },
+      { "matcher": "Bash", "hooks": [
+        { "type": "command", "command": "node scripts/hooks/guard.mjs", "timeout": 10 },
+        { "type": "command", "command": "node scripts/hooks/learn-on-push.mjs", "timeout": 10 }
+      ] },
+      { "matcher": "Bash|PowerShell", "hooks": [
+        { "type": "command", "command": "node scripts/hooks/commit-gate.mjs", "timeout": 600 }
+      ] },
+      { "matcher": "Bash|Grep", "hooks": [ { "type": "command", "command": "[ -f \"$CLAUDE_PROJECT_DIR/scripts/graphe.sh\" ] && bash \"$CLAUDE_PROJECT_DIR/scripts/graphe.sh\" hook-guard search || true", "timeout": 10 } ] },
+      { "matcher": "Read|Glob", "hooks": [ { "type": "command", "command": "[ -f \"$CLAUDE_PROJECT_DIR/scripts/graphe.sh\" ] && bash \"$CLAUDE_PROJECT_DIR/scripts/graphe.sh\" hook-guard read || true", "timeout": 10 } ] }
+    ],
+    "SubagentStop": [
+      { "hooks": [ { "type": "command", "command": "node scripts/hooks/agent-status.mjs", "timeout": 15 } ] }
+    ]
+  }
+}

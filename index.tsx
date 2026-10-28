@@ -1,0 +1,59 @@
+// [S5-ZOD4-CSP] Toujours en premier : zod sans eval, compatible avec notre CSP (voir le fichier).
+import './utils/zodSansEval';
+// [S5-PERF] Polices auto-hébergées (24/09/2026) : plus de CSS Google Fonts bloquant le rendu (la 1re
+// opportunité Lighthouse, ~0,5 s) ni de requête vers Google à chaque ouverture. Sous-ensemble latin
+// (français compris), graisses réellement utilisées. Noms de familles inchangés (tailwind.config.js).
+import '@fontsource/outfit/latin-300.css';
+import '@fontsource/outfit/latin-400.css';
+import '@fontsource/outfit/latin-500.css';
+import '@fontsource/outfit/latin-600.css';
+import '@fontsource/outfit/latin-700.css';
+import '@fontsource/outfit/latin-800.css';
+import '@fontsource/jetbrains-mono/latin-400.css';
+import '@fontsource/jetbrains-mono/latin-700.css';
+import React from 'react';
+import './i18n';
+import ReactDOM from 'react-dom/client';
+import { App } from './App';
+import { LoginGate } from './components/auth/LoginGate';
+import { installPreloadErrorReload } from './utils/lazyWithRetry';
+
+// PH1-a — filet anti « Failed to fetch dynamically imported module » : un chunk périmé
+// (deploy pendant la session) ou bloqué (redirect d'auth) déclenche UN reload au lieu
+// de casser l'onglet. Installé avant le render pour couvrir le tout premier preload.
+installPreloadErrorReload();
+
+// [LIA-1253][#1267] LIA, présente tout le temps : montée par `demarrerLia` HORS du rendu (document.body), donc ni le
+// Suspense, ni l'ErrorBoundary, ni le LoginGate ne la retirent. Import dynamique pour la garder hors du chunk d'entrée
+// (le paquet est lourd) ; lancé ici, au chargement du module, sans attendre React. Une panne est écrite, jamais avalée.
+import('./services/lia/demarrage')
+  .then((m) => m.demarrerLiaApp())
+  .catch((e: unknown) => console.error('[LIA] démarrage impossible', e));
+
+// [S5-REFONTE-PERF] Fin du « premier affichage » (voir `.demarrage` dans index.css) : au premier
+// geste — la navigation qui suit retrouve ses fondus — ou après 5 s. Phase de CAPTURE : la classe
+// tombe avant que React traite le clic, donc l'écran qu'il monte s'anime normalement.
+{
+  const finDemarrage = () => {
+    document.documentElement.classList.remove('demarrage');
+    for (const t of ['pointerdown', 'keydown'] as const) window.removeEventListener(t, finDemarrage, true);
+  };
+  for (const t of ['pointerdown', 'keydown'] as const) window.addEventListener(t, finDemarrage, { capture: true, once: true });
+  window.setTimeout(finDemarrage, 5000);
+}
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error("Could not find root element to mount to");
+}
+
+const root = ReactDOM.createRoot(rootElement);
+// R2 — LoginGate enveloppe l'app : INERTE tant que VITE_GOOGLE_GATE n'est pas activé (rend App
+// directement). Une fois activé, il exige un login Google (+ trappe anti-lockout) — cf authGate.ts.
+root.render(
+  <React.StrictMode>
+    <LoginGate>
+      <App />
+    </LoginGate>
+  </React.StrictMode>
+);

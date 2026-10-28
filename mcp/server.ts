@@ -1,0 +1,112 @@
+// Registry des tools MCP exposes par FinanceAI.
+// Construit a partir des services purs (services/tax, services/realEstate, etc.)
+// et de l'adaptateur pur AppState -> SimulationParams (Lot 0).
+// Aucune dependance React, importable depuis stdio (Node local) ou HTTP.
+//
+// Deux familles de tools :
+//   - SANS ETAT (calculatrice) : ping, get_tax_room, calculate_real_estate,
+//     run_projection — prennent tous leurs parametres en entree.
+//   - DATA-AWARE (Lot 1) : get_financial_overview, get_projection,
+//     get_tax_situation, get_retirement_outlook, get_next_best_actions,
+//     search_transactions — lisent l'AppState REEL de l'utilisateur via un
+//     StateProvider injecte (fichier local en stdio ; Drive en Lot 3).
+
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { MCP_SERVER_VERSION } from './bootstrap';
+import { registerPingTool } from './tools/ping.tool';
+import { registerGetTaxRoom } from './tools/getTaxRoom.tool';
+import { registerCalculateRealEstate } from './tools/calculateRealEstate.tool';
+import { registerRunProjection } from './tools/runProjection.tool';
+import { registerGetFinancialOverview } from './tools/getFinancialOverview.tool';
+import { registerGetHoldings } from './tools/getHoldings.tool';
+import { registerGetProjection } from './tools/getProjection.tool';
+import { registerGetTaxSituation } from './tools/getTaxSituation.tool';
+import { registerGetRetirementOutlook } from './tools/getRetirementOutlook.tool';
+import { registerGetNextBestActions } from './tools/getNextBestActions.tool';
+import { registerSearchTransactions } from './tools/searchTransactions.tool';
+import { registerSimulateWhatIf } from './tools/simulateWhatIf.tool';
+import { registerApplyPayslip } from './tools/applyPayslip.tool';
+import { registerApplyBankStatement } from './tools/applyBankStatement.tool';
+import { registerApplyBrokerStatement } from './tools/applyBrokerStatement.tool';
+import { registerApplyTaxSlip } from './tools/applyTaxSlip.tool';
+import { registerApplyDebt } from './tools/applyDebt.tool';
+import { registerSetCash } from './tools/setCash.tool';
+import { registerSetBudgetItem } from './tools/setBudgetItem.tool';
+import { registerDeleteItem } from './tools/deleteItem.tool';
+import { registerConnectDrive } from './tools/connectDrive.tool';
+import type { StateProvider } from './tools/_dataAware';
+import type { StateStore } from './state/stateStore';
+import { MCP_INSTRUCTIONS } from './instructions';
+import { createConfirmVault } from './tools/confirmVault';
+
+export interface CreateServerOptions {
+    /**
+     * Fournit l'AppState reel de l'utilisateur aux tools data-aware. Optionnel :
+     * absent => les tools data-aware repondent une erreur claire (« configure ta
+     * source d'etat »), les tools sans etat restent utilisables.
+     */
+    getState?: StateProvider;
+    /**
+     * Magasin d'etat INSCRIPTIBLE (Lot 2). Si fourni, expose les tools d'ECRITURE
+     * (apply_payslip, …) qui modifient l'etat reel (avec sauvegarde horodatee).
+     * Absent => aucun tool d'ecriture (le connecteur reste en lecture seule).
+     */
+    store?: StateStore;
+    /** [MCP-ACCESS-KEY-MIN] Clé d'accès faible : signalée par `ping` (jamais la clé, ni sa longueur). */
+    cleAccesFaible?: boolean;
+}
+
+export const createServer = (options: CreateServerOptions = {}): McpServer => {
+    const server = new McpServer({
+        name: 'financeai-mcp',
+        version: MCP_SERVER_VERSION,
+    }, {
+        // [MCP-NO-INJECTION-FRAME] cadre anti-injection publié au client dans `initialize.instructions`
+        // — le second rempart que le chat in-app avait (systemPrompt) et que le connecteur n'avait pas.
+        instructions: MCP_INSTRUCTIONS,
+    });
+
+    // Tools sans etat (calculatrice conversationnelle) — conserves tels quels.
+    registerPingTool(server, { cleAccesFaible: options.cleAccesFaible });
+    registerGetTaxRoom(server);
+    registerCalculateRealEstate(server);
+    registerRunProjection(server);
+
+    // Amorçage Drive (bundle .mcpb, sans terminal) : « connecte mes finances » → consentement navigateur.
+    registerConnectDrive(server);
+
+    // Tools data-aware (Lot 1) — branches sur l'etat reel via getState. Si aucun
+    // provider n'est fourni, on installe un provider qui explique comment en
+    // configurer un (plutot que d'omettre les tools, pour qu'ils soient visibles).
+    const getState: StateProvider = options.getState ?? (async () => {
+        throw new Error(
+            "Aucune source d'etat configuree. Lance le serveur avec $FINANCEAI_STATE_FILE pointant " +
+            "vers un export JSON de ton etat FinanceAI.",
+        );
+    });
+    registerGetFinancialOverview(server, getState);
+    registerGetHoldings(server, getState);
+    registerGetProjection(server, getState);
+    registerGetTaxSituation(server, getState);
+    registerGetRetirementOutlook(server, getState);
+    registerGetNextBestActions(server, getState);
+    registerSearchTransactions(server, getState);
+    registerSimulateWhatIf(server, getState);
+
+    // Tools d'ECRITURE (Lot 2) — uniquement si un magasin inscriptible est fourni.
+    // Le tool verifie lui-meme canWrite et renvoie une erreur claire si lecture seule.
+    if (options.store) {
+        // [MCP-CONFIRM-TOKEN] UN coffre de jetons par serveur = par SESSION MCP (createServer est appele par session).
+        const confirmVault = createConfirmVault();
+        registerApplyPayslip(server, options.store, confirmVault);
+        registerApplyBankStatement(server, options.store, confirmVault);
+        registerApplyBrokerStatement(server, options.store, confirmVault);
+        registerApplyTaxSlip(server, options.store, confirmVault);
+        registerApplyDebt(server, options.store, confirmVault);
+        registerSetCash(server, options.store, confirmVault);
+        registerSetBudgetItem(server, options.store, confirmVault);
+        registerDeleteItem(server, options.store, confirmVault);
+    }
+
+    return server;
+};

@@ -1,0 +1,640 @@
+// services/projection/realEstateMonth.ts
+// Cycle 20: extraction du bloc immobilier mensuel (~187 lignes).
+// Inclut: achat (RAP/CELI/NonReg/REER cascade), amortissement avec
+// renouvellement 5 ans, croissance valeur, Smith Manoeuvre + LTV margin call,
+// revenus locatifs, RAP repayment, ajustement loyer post-achat.
+//
+// Pattern: State Object — toutes les variables mutables dans RealEstateState.
+// propertiesState est mutée en place (objets référencés).
+
+import { formatCAD } from '../../utils/format';
+import type { RealEstateGoal, Municipality } from '../../types';
+import { ajouterParProprietaire, type MontantsParProprietaire } from './revenuGagnePartage';
+import { RAP_LIMIT_PER_USER, calculateGrossWithholdingRRSP, withholdingForGrossRRSP } from '../../utils/tax';
+import { calculateB20StressTest, validateMortgageParameters, calculateSchlPremium, calculateNewHomeRebateTotal } from '../realEstate';
+
+type GetMonthOffsetFn = (dateStr: string) => number;
+// FISC-WELCOME-UNIFY — la fonction injectée porte la municipalité du bien (welcome tax MTL vs reste QC).
+type WelcomeTaxFn = (price: number, municipality?: Municipality) => number;
+
+export interface PropertyStateMutable {
+    id: string;
+    isBought: boolean;
+    mortgage: number;
+    currentValue: number;
+    calculatedPmt: number;
+    isSold?: boolean;
+    isPaidOff?: boolean;
+    /** [ENG-RENEWAL-RATE-MISMATCH] Taux CONTRACTUEL courant du prêt, en % annuel (comme
+     *  `goal.mortgageRate`). Écrit à l'achat puis à CHAQUE renouvellement ; l'intérêt mensuel et
+     *  le taux de la marge Smith le lisent (`?? goal.mortgageRate` pour l'état SEMÉ d'un bien déjà
+     *  détenu, qui ne traverse pas le bloc d'achat). Au partage du divorce, il SURVIT tel quel au
+     *  spread — un taux n'est pas un montant, il ne se divise pas. */
+    currentRatePct?: number;
+}
+
+export interface RealEstateState {
+    liquid: number;
+    celi: number;
+    celiapp: number;
+    reer: number;
+    nonReg: number;
+    nonRegACB: number;
+    capitalLossBank: number;
+    monthlyIncome: number;
+    monthlyExpenses: number;
+    accRentesYear: number;
+    accCapitalGainsYear: number;
+    realEstateEquity: number;
+    mortgageBalance: number;
+    hasPurchasedPrimary: boolean;
+    hasUsedRap: boolean;
+    rapBorrowed: number;
+    rapRepaymentDueTotal: number;
+    rapRepaymentStartOffset: number;
+    smithManoeuvreDebt: number;
+    smithInterestDeductibleYear: number;
+    fhsaClosingYear: number | null;
+    taxCurrentYearReer: number;
+    impotReerMois: number;
+    withdrawalLiquid: number;
+    withdrawalCELI: number;
+    withdrawalNonReg: number;
+    withdrawalREER: number;
+    contribLiquid: number;
+    celiWithdrawalsThisYear: number;
+    retraitCeliMois: number;
+    /** [REER-RETRAIT-IMMO-REGISTRE] Registre d'AFFICHAGE des retraits REER du mois (→ `RetraitREER`).
+     *  Le module l'ignorait : 355 639 $ sortis du REER s'affichaient « 0 $ retiré » avec l'impôt
+     *  correspondant juste en face. Alimenté par le RAP **et** par le retrait imposable — les deux
+     *  sont bien des sorties du REER du point de vue du décaissement. */
+    retraitReerMois: number;
+    /** [REER-IMMO-HORS-ASSIETTE] Retenue à la source prélevée ce mois sur les retraits REER
+     *  imposables (registre d'affichage, cf. `cashflowAllocation`). */
+    rrspWithholdingMois: number;
+    /** [REER-IMMO-HORS-ASSIETTE] Brut IMPOSABLE retiré du REER ce mois pour financer l'achat, à
+     *  ajouter par le caller à `accRetraitsReerYear` (l'ASSIETTE que décembre impose) et à sa
+     *  ventilation per-conjoint. ⚠️ EXCLUT le RAP, qui n'est pas imposable.
+     *  Sans ce registre, le module posait une RETENUE que décembre crédite sans jamais inscrire
+     *  le retrait dans l'assiette que décembre débite : un crédit sans sa dette. */
+    accRetraitsReerYearAdd: number;
+    /** [ENG-RAP-MISSED-REPAYMENT-TAX] Versement RAP DÛ mais non effectué ce mois, à ajouter par le
+     *  caller à `accRetraitsReerYear` (l'assiette que décembre impose) et à sa ventilation
+     *  per-conjoint. Règle ARC : la portion non remboursée d'une année est incluse au revenu de
+     *  cette année (ligne 12900) et le solde RAP diminue d'autant — le versement n'est PAS reporté.
+     *  ⚠️ Registre SÉPARÉ de `accRetraitsReerYearAdd` à dessein : ce n'est pas un retrait du REER
+     *  (aucun argent ne sort d'un compte ce mois-ci, et aucune RETENUE à la source n'est prélevée) —
+     *  seulement une inclusion au revenu. Les fusionner ferait mentir la garde
+     *  `accRetraitsReerYearAdd === withdrawalREER − rapBorrowed` (`CLE-QUI-FUSIONNE-DEUX-SENS`). */
+    rapMissedRepaymentAdd: number;
+    immoInterest: number;
+    immoPrincipal: number;
+    immoHypo: number;
+    immoCharges: number;
+    totalRentalIncome: number;
+    /** [FISC-RRSP-RENTAL-EARNED] Loyer du mois par PROPRIÉTAIRE du but (base du revenu gagné, droits
+     *  REER). REQUIS et non optionnel : une porte optionnelle laisserait la production reprendre la
+     *  version muette en silence — le compilateur énumère les sites. */
+    rentalEarnedParProprietaire: MontantsParProprietaire;
+    lifeEventLogs: string[];
+    flowEventLogs: string[];
+}
+
+export interface RealEstateCtx {
+    m: number;
+    loopYear: number;
+    isRetired: boolean;
+    activeUsersCount: number;
+    /** [RAP-DIVORCE-DEUX-TETES] Nombre de DÉCLARANTS vivants (1 après divorce/décès), à ne pas
+     *  confondre avec `activeUsersCount` qui reste nominal. Le plafond RAP est un droit PAR
+     *  PERSONNE : sur `activeUsersCount`, un divorcé recevait le plafond d'un couple.
+     *  Optionnel à défaut neutre (`activeUsersCount`) → rétrocompat bit-identique hors divorce. */
+    taxFilers?: number;
+    simInflation: number;
+    simSalaryGrowth: number;
+    grossMarcBaseAnnual: number;
+    grossAnnaBaseAnnual: number;
+    incomeRetirement: number;
+    useSmithManoeuvre: boolean;
+    currentRentExpense: number;
+    /** [Panel #552] RP DÉJÀ détenue au boot : offset logement = PMT reconstruit + charges
+     *  (constant, aligné sur ce que le moteur AJOUTE), à la place du proxy loyer indexé — le
+     *  budget de base d'un propriétaire contient déjà son versement réel. 0/absent = comportement
+     *  historique (achat FUTUR : loyer indexé retiré à partir de l'achat). Optionnel à défaut
+     *  neutre → rétrocompat bit-identique. */
+    bootPrimaryHousingOffset?: number;
+    /** C3 suite — si true, saute le RAP à l'achat (CELI avant REER non-imposable). */
+    skipRapForPurchase?: boolean;
+    /** PH4-FUT-B-4 — true UNIQUEMENT au mois exact de la retraite si le levier downsizing est actif :
+     *  déclenche la vente+rachat-plus-petit de la résidence principale (cf. DOWNSIZE_RELEASE_PCT). */
+    downsizeThisMonth?: boolean;
+}
+
+// PH4-FUT-B-4 — fraction de l'équité de la résidence principale LIBÉRÉE en placements lors du
+// downsizing (le reste finance un bien plus petit payé cash). HYPOTHÈSE DE MODÈLE (ni fiscale ni
+// sourcée) : ~40 % = vendre une maison et en racheter une à ~60 % de l'équité (ordre de grandeur
+// d'un downsizing réel maison → condo/plus petit). Le gain est EXEMPT d'impôt (résidence principale, ARC).
+const DOWNSIZE_RELEASE_PCT = 0.4;
+
+import { handleNonRegSale } from './portfolioOps';
+import { smithHelocAnnualRate } from './modelAssumptions';
+
+/**
+ * Traite tout l'immobilier pour le mois courant.
+ * Mute state en place. propertiesState[] est mutée par référence.
+ */
+export function processRealEstate(
+    state: RealEstateState,
+    ctx: RealEstateCtx,
+    activeRE: RealEstateGoal[],
+    propertiesState: PropertyStateMutable[],
+    getMonthOffset: GetMonthOffsetFn,
+    welcomeTax: WelcomeTaxFn,
+): void {
+    const {
+        m, loopYear, simInflation,
+        useSmithManoeuvre, currentRentExpense,
+        bootPrimaryHousingOffset = 0,
+        skipRapForPurchase = false,
+        downsizeThisMonth = false,
+        taxFilers = ctx.activeUsersCount,
+    } = ctx;
+
+    // PH4-FUT-B-4 — DOWNSIZING (au mois exact de la retraite) : vendre la résidence principale et
+    // racheter plus petit. Libère DOWNSIZE_RELEASE_PCT de l'équité nette en LIQUIDE (réinvesti par la
+    // cascade des mois suivants) ; le reste reste en immobilier dans un bien payé cash (hypothèque 0,
+    // plus de paiement). Gain EXEMPT d'impôt (résidence principale, ARC) → on ne touche PAS
+    // accCapitalGainsYear. Underwater (hypothèque > valeur) → équité 0 → aucun effet (garde). Locataire
+    // (aucune résidence principale) → findIndex −1 → aucun effet. S'exécute une seule fois (mois unique).
+    if (downsizeThisMonth) {
+        const idx = activeRE.findIndex((g) => g.isPrimaryResidence);
+        const prop = idx >= 0 ? propertiesState[idx] : undefined;
+        if (prop && prop.isBought && !prop.isSold) {
+            const equity = Math.max(0, prop.currentValue - prop.mortgage);
+            if (equity > 0) {
+                const released = equity * DOWNSIZE_RELEASE_PCT;
+                state.liquid += released;                 // exemption résidence principale : zéro impôt
+                prop.currentValue = equity - released;    // bien plus petit, payé cash
+                prop.mortgage = 0;
+                prop.calculatedPmt = 0;                   // plus d'hypothèque à payer
+                state.lifeEventLogs.push(
+                    `🏠 Downsizing retraite : équité libérée +${formatCAD(Math.round(released))} → placements`,
+                );
+            }
+        }
+    }
+
+    let totalImmoHypo = 0;
+    let totalImmoEquity = 0;
+    let totalImmoDebt = 0;
+
+    activeRE.forEach((goal, i) => {
+        const pState = propertiesState[i];
+        if (!pState) return;
+
+        const purchaseOffset = getMonthOffset(goal.purchaseDate);
+        if (!goal.isActive || m < purchaseOffset) return;
+        // [ENG-PAST-OWNED-VS-PLANNED] (A6) 3e registre attrapé par le test bout-en-bout : sans ce
+        // gate, un objectif « pas encore acheté » à date PASSÉE était ACHETÉ d'office au m0
+        // (mise de fonds débitée, équité injectée — l'achat fantôme remplaçait l'équité fantôme).
+        // Un objectif non réalisé n'agit PAS tant que l'utilisateur n'a pas repoussé sa date ou
+        // confirmé l'achat (badge « Date passée — non acheté » à l'écran).
+        if (goal.isOwned === false && purchaseOffset < 0 && !pState.isBought) return;
+
+        // ── ACHAT ──────────────────────────────────────────────────────
+        if (!pState.isBought) {
+            // §6.8 — Validation SCHL : mise de fonds min + amortissement max.
+            // Informatif uniquement (n'empêche pas l'achat) — l'utilisateur peut
+            // tout de même choisir de simuler un scénario non conforme.
+            if (m === purchaseOffset) {
+                const validation = validateMortgageParameters({
+                    price: goal.price,
+                    downPayment: goal.downPayment,
+                    amortization: goal.amortization,
+                    isFirstTimeBuyer: goal.isFirstTimeBuyer ?? false,
+                    isNewConstruction: goal.isNewConstruction ?? false,
+                });
+                if (!validation.valid) {
+                    validation.errors.forEach(err => {
+                        state.lifeEventLogs.push(`⚠️ Assurance prêt hypothécaire (SCHL) : ${err}`);
+                    });
+                }
+            }
+
+            const welcomeFees = welcomeTax(goal.price, goal.municipality);
+            // §6.7 — Remboursement TPS/TVQ pour résidence neuve (réduit le coût net)
+            const newHomeRebate = calculateNewHomeRebateTotal(goal.price, !!goal.isNewConstruction);
+            const totalCashNeeded = Math.max(0, goal.downPayment + goal.totalClosingCosts + welcomeFees - newHomeRebate);
+            if (newHomeRebate > 0) {
+                state.lifeEventLogs.push(
+                    `💰 Rembours. TPS/TVQ neuve §6.7 (${goal.id}): -${formatCAD(Math.round(newHomeRebate))}`,
+                );
+            }
+
+            if (state.celiapp > 0) {
+                state.liquid += state.celiapp;
+                state.flowEventLogs.push(`💰 Retrait CELIAPP (FHSA) pour l'achat : +${formatCAD(Math.round(state.celiapp))}`);
+                state.celiapp = 0;
+                state.fhsaClosingYear = loopYear;
+            }
+
+            if (state.liquid < totalCashNeeded && state.reer > 0) {
+                let remainingShortfall = totalCashNeeded - state.liquid;
+
+                // Phase 1: RAP (si résidence principale, éligible, et non sauté par stratégie)
+                if (!skipRapForPurchase && goal.isPrimaryResidence && (!state.hasUsedRap || state.rapRepaymentDueTotal === 0)) {
+                    // [RAP-DIVORCE-DEUX-TETES] `taxFilers`, PAS `activeUsersCount` : le plafond RAP est
+                    // un droit par PERSONNE. Sur `activeUsersCount` (nominal, toujours 2), un divorcé
+                    // recevait le plafond d'un COUPLE — mesuré 98 080,68 $ pour un plafond légal de
+                    // 60 000 $, soit 38 080,68 $ de retrait non imposable illégitime. Même homonyme
+                    // que celui déjà corrigé dans taxJanuary/taxDecember/meltdown/latentTax : ce
+                    // site-ci avait été sauté (cf. MODULE-ECRIT-HORS-CHECKLIST).
+                    const rapLimit = RAP_LIMIT_PER_USER * Math.max(1, taxFilers);
+                    const rapAvailable = Math.max(0, rapLimit - state.rapBorrowed);
+                    if (rapAvailable > 0) {
+                        const rapAmount = Math.min(state.reer, rapAvailable, remainingShortfall);
+                        if (rapAmount > 0) {
+                            state.reer -= rapAmount;
+                            state.liquid += rapAmount;
+                            state.rapBorrowed += rapAmount;
+                            state.rapRepaymentDueTotal += rapAmount;
+                            state.hasUsedRap = true;
+                            const graceYears = (loopYear >= 2022 && loopYear <= 2025) ? 5 : 2;
+                            state.rapRepaymentStartOffset = m + (graceYears * 12);
+                            state.withdrawalREER += rapAmount;
+                            // [REER-RETRAIT-IMMO-REGISTRE] registre d'AFFICHAGE. Le RAP est bien une
+                            // sortie du REER — il n'entre en revanche PAS dans `accRetraitsReerYearAdd`
+                            // (l'assiette), puisqu'il n'est pas imposable.
+                            state.retraitReerMois += rapAmount;
+                            state.contribLiquid += rapAmount;
+                            remainingShortfall -= rapAmount;
+                            state.flowEventLogs.push(`🏦 ↳ Retrait REER via le RAP, sans impôt : +${formatCAD(Math.round(rapAmount))}`);
+                        }
+                    }
+                }
+
+                // Phase 2: CELI (sans impôt)
+                if (remainingShortfall > 0 && state.celi > 0) {
+                    const celiAmount = Math.min(state.celi, remainingShortfall);
+                    state.celi -= celiAmount;
+                    state.liquid += celiAmount;
+                    state.withdrawalCELI += celiAmount;
+                    state.celiWithdrawalsThisYear += celiAmount;
+                    state.retraitCeliMois += celiAmount;
+                    state.contribLiquid += celiAmount;
+                    remainingShortfall -= celiAmount;
+                    state.flowEventLogs.push(`🏦 ↳ Retrait CELI pour l'achat : +${formatCAD(Math.round(celiAmount))}`);
+                }
+
+                // Phase 3: NonReg
+                if (remainingShortfall > 0 && state.nonReg > 0) {
+                    const nonRegAmount = handleNonRegSale(state, remainingShortfall);
+                    state.liquid += nonRegAmount;
+                    state.withdrawalNonReg += nonRegAmount;
+                    state.contribLiquid += nonRegAmount;
+                    remainingShortfall -= nonRegAmount;
+                    state.flowEventLogs.push(`🏦 ↳ Retrait du compte non-enregistré pour l'achat : +${formatCAD(Math.round(nonRegAmount))}`);
+                }
+
+                // Phase 4: REER imposable (dernier recours)
+                //
+                // [REER-IMMO-HORS-ASSIETTE] + [EMPILEMENT-REER-ACHAT-IMMO] — audit 2026-08-19.
+                // AVANT : le retrait posait `taxCurrentYearReer += drawn * margRate` (marginal PLAT,
+                // évalué sur le revenu d'AVANT le retrait) sans jamais alimenter `accRetraitsReerYear`.
+                // Or décembre CRÉDITE le bucket `.reer` comme une retenue déjà prise
+                // (`withholdingAlreadyTaken`) et DÉBITE l'impôt calculé sur `accRetraitsReerYear` :
+                // un crédit sans sa dette. Le retrait finissait donc NON IMPOSÉ — mesuré 94 599,60 $
+                // d'impôt éludé sur un achat de condo 400 k$ financé par 207 758 $ de REER (6 679,78 $
+                // payés en avril au lieu de 101 279,37 $). Le marginal plat sous-estimait en plus de
+                // 22 110 $ sur un retrait de 235 639 $ (36,12 % plat contre 45,5 % incrémental).
+                //
+                // MAINTENANT : on suit le patron des 4 autres producteurs de retrait REER
+                // (`cashflowAllocation`, `meltdownReer`, FERR de janvier, drawdown) —
+                //   1. le brut est dimensionné par le BARÈME DE RETENUE (19/24/29 % combiné QC),
+                //      pas par un marginal deviné ;
+                //   2. la retenue va au bucket `.reer` (acompte, cf. FISC-REER-WHT-DOUBLE : elle
+                //      reste au liquide jusqu'au règlement d'avril, donc `liquid += drawn` brut) ;
+                //   3. le brut entre dans `accRetraitsReerYearAdd` → décembre l'impose au taux
+                //      marginal RÉEL et réconcilie contre la retenue. C'est la réconciliation qui
+                //      corrige l'écart, pas une meilleure estimation du taux.
+                if (remainingShortfall > 0 && state.reer > 0) {
+                    const { gross: grossNeeded } = calculateGrossWithholdingRRSP(remainingShortfall);
+                    const drawn = Math.min(state.reer, grossNeeded);
+                    if (drawn > 0) {
+                        const withholding = withholdingForGrossRRSP(drawn).withholding;
+                        state.reer -= drawn;
+                        state.liquid += drawn;
+                        state.withdrawalREER += drawn;
+                        state.retraitReerMois += drawn;
+                        state.contribLiquid += drawn;
+                        state.accRetraitsReerYearAdd += drawn;
+                        state.taxCurrentYearReer += withholding;
+                        state.rrspWithholdingMois += withholding;
+                        state.impotReerMois += withholding;
+                        state.flowEventLogs.push(`🚨 ↳ Retrait REER imposable pour l'achat : -${formatCAD(Math.round(drawn))} brut (retenue ${formatCAD(Math.round(withholding))}, solde réglé en avril)`);
+                    }
+                }
+            }
+
+            if (state.liquid >= totalCashNeeded) {
+                state.liquid -= totalCashNeeded;
+                state.withdrawalLiquid += totalCashNeeded;
+                pState.isBought = true;
+
+                // §6.5 — Prime SCHL si MDP < 20% (LTV > 80%). Ajoutée au principal
+                // du prêt avant calcul du PMT.
+                const schl = calculateSchlPremium({
+                    price: goal.price,
+                    downPayment: goal.downPayment,
+                });
+                if (schl.required) {
+                    pState.mortgage += schl.premium;
+                    state.lifeEventLogs.push(
+                        `🏦 Prime SCHL §6.5 (${goal.id}): +${formatCAD(Math.round(schl.premium))} ` +
+                        `(${(schl.rate * 100).toFixed(2)}% sur LTV ${(schl.ltv * 100).toFixed(1)}%)`,
+                    );
+                }
+
+                const r = (goal.mortgageRate / 100) / 12;
+                const n = goal.amortization * 12;
+                const p = pState.mortgage;
+                pState.calculatedPmt = r > 0 ? p * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1) : p / n;
+                // [ENG-RENEWAL-RATE-MISMATCH] Le taux courant du prêt vit dans l'ÉTAT dès l'achat :
+                // c'est lui (jamais `goal.mortgageRate` directement) que l'intérêt mensuel consomme,
+                // sinon un renouvellement à taux différent affame le capital en silence.
+                pState.currentRatePct = goal.mortgageRate;
+                state.lifeEventLogs.push(`🏠 Achat ${goal.name || 'de la propriété'} : -${formatCAD(Math.round(totalCashNeeded))} (argent sorti de tes comptes)`);
+                state.flowEventLogs.push(`📌 Mise de fonds : -${formatCAD(goal.downPayment)} · Frais de notaire + taxe de bienvenue : -${formatCAD(Math.round(goal.totalClosingCosts + welcomeFees))}`);
+                if (goal.isPrimaryResidence) state.hasPurchasedPrimary = true;
+
+                // §6.6 — Stress test OSFI B-20 (qualifying rate + GDS/TDS).
+                // Informatif uniquement : on logue un warning si l'achat ne passerait
+                // pas une qualification réelle. L'achat est tout de même autorisé
+                // dans la simulation (la décision finale appartient à l'utilisateur).
+                //
+                // Limitations connues (à améliorer dans futures PRs) :
+                //  - `otherDebtMonthly = 0` : on n'a pas accès aux dettes (ctx.debts).
+                //    Sous-estime TDS — un user avec dette auto/cartes pourrait échouer
+                //    en réalité alors qu'on logue "passes" ici.
+                //  - Composition mensuelle simple (`rate / 12`) vs semi-annuelle
+                //    canadienne légale : biais conservateur léger (~0.05% sur PMT),
+                //    cohérent avec le reste du moteur.
+                if (Number.isFinite(goal.mortgageRate) && goal.mortgageRate > 0) {
+                    const monthlyGross = ctx.isRetired
+                        ? ctx.incomeRetirement
+                        : ((ctx.grossMarcBaseAnnual + ctx.grossAnnaBaseAnnual)
+                            * Math.pow(1 + ctx.simSalaryGrowth / 100, Math.floor(ctx.m / 12))) / 12;
+                    // §6.6 MEDIUM-6 — indexer les charges logement par inflation pour
+                    // cohérence avec le revenu nominal (sinon GDS s'améliore artificiellement
+                    // sur achats futurs).
+                    const inflFactor = Math.pow(1 + ctx.simInflation / 100, Math.floor(ctx.m / 12));
+                    const monthlyHousingExcl = (
+                        ((goal.taxesYearly || 0) / 12)
+                        + (goal.heatingMonthly || 0)
+                        + ((goal.condoFees || 0) * 0.5)
+                    ) * inflFactor;
+                    const stress = calculateB20StressTest({
+                        contractRate: goal.mortgageRate,
+                        loanAmount: pState.mortgage,
+                        amortization: goal.amortization,
+                        monthlyHousingChargesExclMortgage: monthlyHousingExcl,
+                        monthlyGrossIncome: monthlyGross,
+                        otherDebtMonthly: 0,
+                    });
+                    if (!stress.passes) {
+                        state.lifeEventLogs.push(
+                            `⚠️ Hypothèque risquée : tes paiements seraient trop élevés par rapport à ton revenu — une banque pourrait refuser ce prêt.`,
+                        );
+                    }
+                } else {
+                    state.flowEventLogs.push(
+                        `ℹ️ Vérification d'emprunt ignorée (taux d'hypothèque non renseigné).`,
+                    );
+                }
+            } else if (m === purchaseOffset) {
+                state.flowEventLogs.push(`⚠️ Achat reporté : pas assez de liquidités pour la mise de fonds.`);
+            }
+        }
+
+        // ── PROPRIÉTÉ DÉTENUE ──────────────────────────────────────────
+        if (pState.isBought && !pState.isSold) {
+            const monthsSincePurchase = m - purchaseOffset;
+            // Renouvellement 5 ans
+            if (monthsSincePurchase > 0 && monthsSincePurchase % 60 === 0) {
+                const remainingMonths = goal.amortization * 12 - monthsSincePurchase;
+                if (remainingMonths > 60 && pState.mortgage > 0) {
+                    // [ENG-RENEWAL-CHOC-MORT → SAISIE] (décision Marc 2026-09-04) Le taux au
+                    // renouvellement vient d'une SAISIE (`goal.renewalRateProjection`, le champ que
+                    // le Studio immobilier écrivait déjà et que ce moteur IGNORAIT), jamais plus du
+                    // hachage d'un identifiant technique — l'ancien « choc » `charCodeAt(0) % 3`
+                    // valait ZÉRO pour tout identifiant atteignable (mesuré : `prop_<ts>`, `p1`,
+                    // `jc-re1` → tous nuls). Défaut = taux courant ⇒ comportement inchangé sans
+                    // saisie. Un taux saisi ≤ 0 ou non fini est traité comme absent : 0 % n'est pas
+                    // un taux de renouvellement, c'est une absence de saisie plausible (champ vidé
+                    // → `Number('')` = 0 côté formulaire).
+                    const tauxCourantPct = pState.currentRatePct ?? goal.mortgageRate;
+                    const saisie = goal.renewalRateProjection;
+                    const newRatePct = (Number.isFinite(saisie) && (saisie as number) > 0) ? (saisie as number) : tauxCourantPct;
+                    const nr = (newRatePct / 100) / 12;
+                    pState.calculatedPmt = nr > 0
+                        ? pState.mortgage * nr * Math.pow(1 + nr, remainingMonths) / (Math.pow(1 + nr, remainingMonths) - 1)
+                        : pState.mortgage / remainingMonths;
+                    // [ENG-RENEWAL-RATE-MISMATCH] Le taux COURANT suit : l'intérêt mensuel et la
+                    // marge Smith lisent `currentRatePct`, donc PMT et intérêt restent calculés au
+                    // MÊME taux. Avant, seul le PMT bougeait — capital affamé (mesuré au panel
+                    // #552 : renouvellement 4,5 % → 3 %, solde encore 211 569 $ après 10 ans sur un
+                    // prêt censé s'éteindre à 240 mois).
+                    pState.currentRatePct = newRatePct;
+                    // ⚠️ NO-FAKE-DATA : annoncer « nouveau taux » quand le taux n'a pas bougé
+                    // affirmerait un changement qui n'a pas eu lieu — la comparaison se fait au
+                    // taux d'AVANT ce renouvellement (les renouvellements suivants au même taux
+                    // saisi disent « taux inchangé »).
+                    const tauxChange = Math.abs(newRatePct - tauxCourantPct) > 1e-9;
+                    state.lifeEventLogs.push(tauxChange
+                        ? `🏦 Renouvellement hypothécaire ${goal.name || ''} : nouveau taux ${newRatePct.toFixed(2)} %`
+                        : `🏦 Renouvellement hypothécaire ${goal.name || ''} : taux inchangé à ${newRatePct.toFixed(2)} %`);
+                }
+            }
+            pState.currentValue *= Math.pow(1 + (goal.propertyGrowthRate ?? 3) / 100, 1 / 12);
+            if (goal.maxValue && pState.currentValue > goal.maxValue) pState.currentValue = goal.maxValue;
+
+            // [ENG-RENEWAL-RATE-MISMATCH] L'intérêt se calcule au taux COURANT du prêt (écrit à
+            // l'achat, mis à jour au renouvellement) — `?? goal.mortgageRate` couvre l'état SEMÉ
+            // d'un bien déjà détenu au départ de la simulation, qui n'a pas traversé le bloc d'achat.
+            const monthlyRate = ((pState.currentRatePct ?? goal.mortgageRate) / 100) / 12;
+            const interestPaid = pState.mortgage * monthlyRate;
+            const principalPaid = Math.max(0, pState.calculatedPmt - interestPaid);
+            const prevMortgage = pState.mortgage;
+            pState.mortgage = Math.max(0, pState.mortgage - principalPaid);
+            if (prevMortgage > 0 && pState.mortgage <= 0 && !pState.isPaidOff) {
+                pState.isPaidOff = true;
+                pState.calculatedPmt = 0;
+                state.lifeEventLogs.push(`🏠 Hypothèque remboursée à 100 % ! ${goal.name || 'Propriété'} t'appartient pleinement.`);
+            }
+            totalImmoHypo += pState.calculatedPmt;
+            totalImmoEquity += pState.currentValue - pState.mortgage;
+            totalImmoDebt += pState.mortgage;
+            state.immoInterest += interestPaid;
+            state.immoPrincipal += principalPaid;
+
+            // Smith Manoeuvre (intérêts capitalisés)
+            if (useSmithManoeuvre && goal.isPrimaryResidence && principalPaid > 0) {
+                state.smithManoeuvreDebt += principalPaid;
+                state.nonReg += principalPaid;
+                state.nonRegACB += principalPaid;
+                // [SMITH-HELOC-TAUX-FIGE] Le taux de la marge SUIT désormais celui du prêt du bien
+                // (décision Marc 2026-08-24). Avant : 5 % figé, indépendant du dossier — donc une
+                // marge moins chère que l'hypothèque dès que celle-ci dépassait 5 %, ce qui rendait
+                // le levier flatteur exactement quand il devient dangereux.
+                // [ENG-RENEWAL-RATE-MISMATCH] « Le taux du prêt » = le taux COURANT : après un
+                // renouvellement, c'est lui que la marge suit, pas le taux d'origine du dossier.
+                const smithInterest = state.smithManoeuvreDebt * (smithHelocAnnualRate(pState.currentRatePct ?? goal.mortgageRate) / 12);
+                state.smithManoeuvreDebt += smithInterest;
+                state.smithInterestDeductibleYear += smithInterest;
+            }
+
+            // LTV margin call (Smith Manoeuvre)
+            //
+            // ⚠️⚠️ [SMITH-MARGE-SANS-DETTE] Signalé par Marc le 2026-09-18 : « la dette ne s'arrête
+            // pas, ça me met 112k à 44 ans ». Sa seule dette est un bail auto éteint en ~46 mois.
+            //
+            // LE DÉFAUT : ce bloc vivait HORS du `if (useSmithManoeuvre)` juste au-dessus, donc il
+            // s'exécutait pour TOUTE propriété. Or une hypothèque ordinaire dépasse 65 % de la valeur
+            // du bien dès le premier jour (il faudrait 35 % de mise de fonds pour y échapper) : la
+            // condition était vraie À L'ACHAT, **sans le moindre levier Smith**. Le montant vendu
+            // était alors soustrait d'un `smithManoeuvreDebt` à ZÉRO, qui passait négatif d'autant —
+            // et comme `DettesNonImmo = activeDebts + liquidDebt + smithManoeuvreDebt`, la dette
+            // PUBLIÉE devenait négative, donc le patrimoine net FAUX À LA HAUSSE du même montant.
+            //
+            // LE CORRECTIF est « on ne rembourse jamais plus que ce que la marge PORTE », et il est
+            // écrit DEUX fois : `Math.min(…, smithManoeuvreDebt)` en entrée, `Math.max(0, …)` en
+            // sortie.
+            // ⚠️⚠️ AUCUNE des deux n'est SEULE discriminante, et c'est MESURÉ par TROIS perturbations
+            // séparées sur `tests/services/smithMargeSansDette.test.ts` (2026-09-18) :
+            //   • `Math.min` seul retiré  → **4 verts** (le `Math.max` rabat déjà)
+            //   • `Math.max` seul retiré  → **4 verts** (le `Math.min` a déjà borné)
+            //   • les DEUX retirées       → **2 rouges** (= le comportement d'avant)
+            //   • garde d'entrée `smithManoeuvreDebt > 0` retirée → **4 verts**
+            // Les trois écritures sont donc MUTUELLEMENT REDONDANTES : n'importe laquelle suffit.
+            // ⚠️ Le 1er message de commit de ce lot affirmait « LE correctif qui discrimine est le
+            // plafond `Math.min` » — c'était FAUX au grain près, et personne ne l'aurait su sans
+            // perturber CHAQUE écriture séparément. Une perturbation muette mesure d'abord la
+            // REDONDANCE ; quand trois gestes protègent le même fait, aucun ne « discrimine » et
+            // l'écrire au singulier fait croire à une chaîne de sécurité qui n'existe pas.
+            // Elles sont TOUTES gardées : elles ÉNONCENT l'intention à trois endroits où un lot futur
+            // pourrait toucher (la condition, l'entrée, la sortie).
+            //
+            // MESURÉ sur la projection réelle de Marc (MCP, 20 ans) AVANT correctif : `dettesNonImmo`
+            // tombe à **−88 234 $** l'année de l'achat, plafonne à **−98 560 $** pendant cinq ans,
+            // puis remonte jusqu'à **+159 370 $** — une « dette » négative pendant douze ans. Et la
+            // vente forcée qui la creuse est visible dans la même série : le non-enregistré passe de
+            // **194 681 $ à 91 922 $**.
+            // ⚠️ La 1re version de ce commentaire rangeait sous le même « ce que ça faussait » une
+            // chute du CELI (48 656 → 1 991 $). RE-MESURÉ sur la fixture, avant → après : le CELI est
+            // **identique au dollar sur les deux chemins du moteur** — le mécanisme qui le vide est
+            // la CASCADE DE MISE DE FONDS (`remainingShortfall > 0 && state.celi > 0`, plus haut dans
+            // ce fichier), que ce lot ne touche pas. Co-occurrence dans la même année, pas
+            // attribution : un chiffre vrai rangé sous la mauvaise cause reste un chiffre faux.
+            //
+            // MESURÉ sur la fixture de la garde (maison 480 000 $, 20 % de mise), avant → après.
+            // ⚠️⚠️ LE 3ᵉ ARGUMENT DE `runScenario` EST `enableMonteCarlo`, ET SON DÉFAUT EST `false` —
+            // donc `calculateFutureProjection`, ce que Marc VOIT, emprunte le chemin DÉTERMINISTE.
+            // Les deux chemins sont publiés ici parce que le SIGNE de l'écart n'est pas le même :
+            //   |                | sans levier Smith        | avec levier Smith        |
+            //   | Monte-Carlo    | 1 832 835 → 1 839 046 $  | 1 816 056 → 1 776 477 $  |
+            //   |                | **+6 211 $**             | **−39 579 $**            |
+            //   | DÉTERMINISTE   | 2 685 446 → 2 770 425 $  | 2 772 237 → 2 780 254 $  |
+            //   |                | **+84 979 $**            | **+8 017 $**             |
+            // Communs aux deux chemins, et c'est ça le FAIT du lot : `DettesNonImmo` min
+            // **−51 776,75 $ → 0**, négative sur **227 des 241 points → 0** sans levier (**94 → 0**
+            // avec), et le non-enregistré cesse d'être LIQUIDÉ (il était à **0 $ sur toute la fenêtre
+            // de l'achat**).
+            // ⚠️ Le 1er message de ce lot expliquait le signe NÉGATIF comme une propriété de la
+            // branche Smith (« on cesse d'effacer une dette de levier par un remboursement
+            // fantôme ») : l'explication est plausible et la généralisation est FAUSSE — sur le
+            // chemin que l'app publie, la même branche MONTE de 8 017 $. Un signe qui dépend du
+            // chemin ne dit rien de la justesse du correctif (`LE-SIGNE-D-UN-CORRECTIF-PEUT-DEPENDRE-
+            // D-UN-ECART-DE-TAUX`, ici appliqué au chemin plutôt qu'au taux) : ce qui tranche est
+            // l'ABSENCE de dette négative, identique partout.
+            //
+            // ⚠️ Ce qui n'est PAS corrigé ici et qui reste une question de MODÈLE : le seuil de 65 %
+            // compare `marge + hypothèque` à la valeur du bien. Au Canada, le 65 % borne la portion
+            // MARGE d'un prêt ré-avançable (le total marge + hypothèque étant plutôt borné à 80 %) —
+            // les deux ne se confondent pas. Changer ce seuil déplace de l'argent : c'est une
+            // décision, elle est routée, pas prise ici.
+            if (state.smithManoeuvreDebt > 0
+                && state.smithManoeuvreDebt + pState.mortgage > pState.currentValue * 0.65) {
+                const surplusMarginCall = (state.smithManoeuvreDebt + pState.mortgage) - (pState.currentValue * 0.65);
+                const aRembourser = Math.min(surplusMarginCall, state.smithManoeuvreDebt);
+                if (aRembourser > 0 && state.nonReg > 0) {
+                    const call = handleNonRegSale(state, aRembourser);
+                    state.smithManoeuvreDebt = Math.max(0, state.smithManoeuvreDebt - call);
+                    state.flowEventLogs.push(`🚨 Appel de marge : vente forcée de ${formatCAD(Math.round(call))} (compte non-enregistré)`);
+                }
+            }
+
+            // Revenus locatifs
+            if (!goal.isPrimaryResidence && goal.rentalIncomeMonthly) {
+                const rentalIncome = goal.rentalIncomeMonthly * Math.pow(1 + simInflation / 100, m / 12);
+                state.monthlyIncome += rentalIncome;
+                state.accRentesYear += rentalIncome;
+                state.totalRentalIncome += rentalIncome;
+                // [FISC-RRSP-RENTAL-EARNED] Même montant, même porte : ce loyer est imposé (accRentesYear),
+                // il est donc du revenu GAGNÉ pour les droits REER de son propriétaire.
+                ajouterParProprietaire(state.rentalEarnedParProprietaire, goal.owner, rentalIncome);
+            }
+
+            const monthlyCharges = goal.unrecoverableMonthly || 0;
+            state.monthlyExpenses += pState.calculatedPmt + monthlyCharges;
+            state.immoHypo += pState.calculatedPmt;
+            state.immoCharges += monthlyCharges;
+        }
+    });
+
+    // Si résidence principale achetée, ne plus payer le loyer. Pour une RP DÉJÀ détenue au boot
+    // (achat passé), l'offset est le PMT+charges reconstruits (constant) — le proxy loyer indexé
+    // sur-chargeait jusqu'à 20 084 $/an mesurés quand `currentRentExpense` retombait sur le défaut
+    // 1 600 $ (panel #552, financial-integrity ÉLEVÉ-1).
+    if (state.hasPurchasedPrimary) {
+        state.monthlyExpenses -= bootPrimaryHousingOffset > 0
+            ? bootPrimaryHousingOffset
+            : currentRentExpense * Math.pow(1 + simInflation / 100, m / 12);
+    }
+
+    // RAP repayment
+    if (state.hasUsedRap && state.rapRepaymentDueTotal > 0 && m >= state.rapRepaymentStartOffset) {
+        const monthlyRepayment = (state.rapBorrowed / 15) / 12;
+        const amnt = Math.min(state.rapRepaymentDueTotal, monthlyRepayment);
+        if (state.liquid >= amnt) {
+            state.liquid -= amnt;
+            state.reer += amnt;
+            state.rapRepaymentDueTotal -= amnt;
+        } else {
+            // [ENG-RAP-MISSED-REPAYMENT-TAX] Versement DÛ et non payé. Avant ce lot, ce chemin ne
+            // faisait RIEN : le versement était reporté en silence, l'argent n'était jamais imposé,
+            // et le solde restait dû indéfiniment (mesuré : 205 mois dus pour une obligation de 180,
+            // et jusqu'à 68 333 $ jamais portés au revenu sur un ménage à 60 k$ — la limite était
+            // documentée « LOW / impact borné », elle ne l'était pas).
+            //
+            // Règle ARC (ligne 12900) : la portion NON remboursée d'une année s'ajoute au revenu de
+            // cette année, et le solde du RAP diminue du même montant. Ce n'est donc ni un report
+            // ni une dette qui s'accumule.
+            //
+            // ⚠️ Pourquoi un traitement MENSUEL est ici exactement équivalent au traitement ANNUEL
+            // de l'ARC : le versement du mois est PLAFONNÉ à `monthlyRepayment` (jamais davantage),
+            // donc un mois riche ne peut pas rattraper un mois creux de la même année. La somme des
+            // manques mensuels d'une année EST le manque annuel. Et le canal choisi
+            // (`accRetraitsReerYear`) est une assiette ANNUELLE que décembre impose : le timing
+            // fiscal est déjà celui de la règle, pas celui du mois.
+            state.rapRepaymentDueTotal -= amnt;
+            state.rapMissedRepaymentAdd += amnt;
+            state.flowEventLogs.push(
+                `⚠️ Versement RAP non fait, ajouté à ton revenu imposable : ${formatCAD(Math.round(amnt))}`,
+            );
+        }
+    }
+
+    state.realEstateEquity = totalImmoEquity;
+    state.mortgageBalance = totalImmoDebt;
+    state.immoHypo = totalImmoHypo;
+}

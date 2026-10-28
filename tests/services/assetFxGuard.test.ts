@@ -1,0 +1,87 @@
+// tests/services/assetFxGuard.test.ts
+//
+// [ASSET-FX-DISPLAY] Garde-fou ANTI-RÉCIDIVE : les prix des actifs (`Asset.currentPrice`) sont
+// stockés en devise NATIVE (USD/EUR/CAD, cf AddStockForm) — toute somme `quantity × currentPrice`
+// SANS conversion FX mélange les devises et fausse le patrimoine affiché (incident Marc 2026-07-14 :
+// une somme brute USD + EUR + CAD affichée, bien sous la valeur réelle en CAD — 6 surfaces
+// touchées : NetWorthByOwnerCard, Investments, Dashboard, HealthIndicator, AssetLocationCard, CSV).
+//
+// Ce test SCANNE le code source : tout `quantity` et `currentPrice` multipliés sur la MÊME ligne
+// doivent passer par la SOURCE UNIQUE (`assetValueCad` ou `toCurrencyFactor`) — sinon échec avec le
+// fichier:ligne fautif. [DETTE-PDF-FX-BYPASS] un `fx`/`factor` NU (`fxRates[cur] || 1`) ne suffit
+// PLUS : c'était le trou qui laissait passer pdfReport.ts:123 et useDerivedFinancials. Leçon
+// FISC-CONST-LINT : un scan doit PROUVER son volume (un scan qui ne trouve aucun fichier/aucun motif
+// passe à vide = protection nulle silencieuse).
+//
+// ⚠️ LIMITE ASSUMÉE (défense-en-profondeur, pas garantie structurelle) : le scan exige les
+// identifiants LITTÉRAUX sur la ligne de multiplication — un alias (`const {quantity: q} = a; q*p`)
+// ou une multiplication étalée sur 2 lignes lui échappent. Le style du repo n'alias jamais ces
+// champs ; la garantie primaire reste la revue + la source unique `assetValueCad`.
+
+import { describe, it, expect } from 'vitest';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+import { stripComments } from '../../utils/stripComments';
+
+const ROOT = resolve(process.cwd());
+const SCAN_DIRS = ['components', 'services', 'utils', 'hooks', 'mcp'];
+
+/** Fichier:ligne autorisés à multiplier qty×prix SANS mention fx sur la ligne (justifiés). */
+const ALLOWLIST: Array<{ file: string; reason: string }> = [
+    // La source unique elle-même (le factor est appliqué dans la fonction).
+    { file: 'services/portfolio.ts', reason: 'assetValueCad = la source unique (factor appliqué)' },
+    // Export CSV : valeur volontairement NATIVE par ligne (colonne Currency à côté la qualifie).
+    { file: 'utils/csvExport.ts', reason: 'Value par-ligne en devise native, documenté' },
+    // Reconstruction d'historique : convertit via fx[currency] à part (ligne dédiée, testée).
+    { file: 'services/history/reconstructPortfolioHistory.ts', reason: 'fx appliqué séparément (ligne 55)' },
+];
+
+function listSourceFiles(dir: string): string[] {
+    const out: string[] = [];
+    for (const entry of readdirSync(dir)) {
+        const p = join(dir, entry);
+        const st = statSync(p);
+        if (st.isDirectory()) {
+            if (entry === 'node_modules' || entry === 'dist' || entry === 'dist-mcp') continue;
+            out.push(...listSourceFiles(p));
+        } else if (/\.(ts|tsx)$/.test(entry) && !/\.test\./.test(entry) && !/\.d\.ts$/.test(entry)) {
+            out.push(p);
+        }
+    }
+    return out;
+}
+
+describe('[ASSET-FX-DISPLAY] garde anti quantity×currentPrice sans FX', () => {
+    const files = SCAN_DIRS.flatMap((d) => listSourceFiles(resolve(ROOT, d)));
+
+    it('le scan a du VOLUME (sinon protection nulle silencieuse)', () => {
+        expect(files.length).toBeGreaterThan(150); // components+services+utils+hooks+mcp
+        // Le motif existe bien quelque part (la source unique) — le scan lit du vrai code.
+        const portfolio = readFileSync(resolve(ROOT, 'services/portfolio.ts'), 'utf8');
+        expect(portfolio).toMatch(/quantity.*currentPrice|currentPrice.*quantity/);
+    });
+
+    it('toute multiplication quantity×currentPrice hors allowlist passe par assetValueCad/toCurrencyFactor sur la ligne', () => {
+        const offenders: string[] = [];
+        for (const f of files) {
+            const rel = f.slice(ROOT.length + 1).replace(/\\/g, '/');
+            if (ALLOWLIST.some((a) => rel === a.file)) continue;
+            const lines = stripComments(readFileSync(f, 'utf8')).split('\n');
+            lines.forEach((line, i) => {
+                // Multiplication des deux champs sur la même ligne…
+                const multiplies =
+                    /quantity[^\n]*\*[^\n]*currentPrice|currentPrice[^\n]*\*[^\n]*quantity/.test(line);
+                if (!multiplies) return;
+                // …sans passage par la SOURCE UNIQUE. [DETTE-PDF-FX-BYPASS] resserré : un `fx`/`factor`
+                // NU sur la ligne (ex. `quantity × currentPrice × (fxRates[cur] || 1)`) ne suffit PLUS —
+                // c'était précisément le trou qui laissait passer pdfReport.ts:123 et useDerivedFinancials
+                // (repli 1:1 muet = le bug ASSET-FX-DISPLAY). Seuls les helpers sanctionnés comptent :
+                // `assetValueCad` (valorisation complète) ou `toCurrencyFactor` (facteur explicite, ex.
+                // calcul de gain (px−buyPx)×qty×toCurrencyFactor dans Dashboard).
+                const converted = /assetValueCad|toCurrencyFactor/.test(line);
+                if (!converted) offenders.push(`${rel}:${i + 1} → ${line.trim().slice(0, 120)}`);
+            });
+        }
+        expect(offenders, `Somme d'actifs SANS conversion FX (utiliser assetValueCad de services/portfolio) :\n${offenders.join('\n')}`).toEqual([]);
+    });
+});

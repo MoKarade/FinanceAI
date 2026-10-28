@@ -1,0 +1,1398 @@
+export interface Transaction {
+  id: number;
+  date: string;
+  payee: string;
+  amount: number;
+  category: string;
+  originalCategory?: string;
+  accountId?: number;
+  accountName?: string;
+  status: 'pending' | 'processed' | 'manual' | 'error';
+  isTransfer?: boolean;
+  isDuplicate?: boolean;
+  confidence?: number;
+  isAiProcessed?: boolean;
+  isVerified?: boolean;
+  /** [PH4-E] Conjoint propriétaire de la dépense en mode couple : 0 = user[0], 1 = user[1].
+   *  Optionnel (additif) — `undefined` = attribution AUTO par le type du poste budget (`Perso 1`→0,
+   *  `Perso 2`→1, `Commun`→aucun). Une valeur explicite est un OVERRIDE manuel. Voir `resolveTransactionOwner`. */
+  ownerId?: 0 | 1;
+}
+
+// Phase E.8 — DCA multi-achat : un seul achat (dateBought + buyPrice) ne suffit
+// plus pour calculer le gain réel sur plusieurs entrées étalées dans le temps.
+// `purchases` capture chaque entrée individuellement.
+export interface AssetPurchase {
+  /** ISO date YYYY-MM-DD */
+  date: string;
+  /** quantité achetée à cette date */
+  quantity: number;
+  /** prix unitaire à l'achat (devise = Asset.currency) */
+  price: number;
+}
+
+/**
+ * CI-1000x B1 — propriétaire d'un actif/compte dans un couple. Les comptes
+ * enregistrés (CELI/REER/CELIAPP/REEE) sont individuels par la loi ; le
+ * non-enregistré, le cash et la crypto peuvent être conjoints. `owner` absent
+ * ⇒ défaut heuristique appliqué par `services/couple/netWorthByOwner.ts`.
+ */
+export type AssetOwner = 'user1' | 'user2' | 'joint';
+
+export interface Asset {
+  symbol: string;
+  quantity: number;
+  currency: 'USD' | 'CAD' | 'EUR';
+  currentPrice: number;
+  name: string;
+  performance: number;
+  /** @deprecated Phase E.8 — utiliser purchases[]. Conservé pour rétrocompat. */
+  dateBought: string;
+  /** @deprecated Phase E.8 — utiliser purchases[]. Conservé pour rétrocompat. */
+  buyPrice?: number;
+  /** Phase E.8 — historique des achats (DCA support). */
+  purchases?: AssetPurchase[];
+  priceHistory?: Array<{ date: string; price: number; rawPrice?: number; fxRate?: number }>;
+  lastHistorySync?: number;
+  /** [HIST-COVERAGE-TOTAL] Symbole RÉSOLU pour l'historique de cours quand le symbole saisi ne rend
+   *  rien chez les providers (ex. ticker Euronext sans suffixe : « ABC » → « ABC.PA »). Alimenté par
+   *  hydrateAssetHistories (variante validée par plausibilité de prix). Champ ADDITIF optionnel. */
+  historySymbol?: string;
+  /** [INVEST-ALLOC-GEO-SECTOR] Secteur/région pour les répartitions (donuts Investissements).
+   *  Priorité : ces champs (édités inline ou auto-remplis via le profil provider) > seed statique
+   *  normalisé > déduction crypto > « Autre ». Champs ADDITIFS optionnels (zéro migration). */
+  sector?: string;
+  region?: string;
+  /** [PRICE-REFRESH-LIVE] Epoch ms de la dernière mise à jour de `currentPrice` par un quote live.
+   *  Absent = prix jamais rafraîchi (figé à l'ajout/saisie manuelle). Champ ADDITIF optionnel. */
+  priceUpdatedAt?: number;
+  accountType?: RegisteredAccountType;
+  /** CI-1000x B1 — propriétaire (user1 | user2 | joint). Absent ⇒ défaut heuristique. */
+  owner?: AssetOwner;
+  dividendYield?: number;
+  dividendFreq?: 'Monthly' | 'Quarterly' | 'Yearly';
+  nextDividendDate?: string;
+  description?: string;
+}
+
+export interface InvestmentAccount {
+  id: string;
+  userId: number;
+  name: string;
+  type: RegisteredAccountType; // (cycle 3 TS agent: unifié sur le type partagé — exclut REEE qui n'est pas un compte d'investissement direct, mais le union l'inclut pour compat)
+}
+
+export interface InvestmentTransaction {
+  id: string;
+  date: string;
+  type: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAW';
+  symbol?: string;
+  name?: string;
+  quantity?: number;
+  price?: number;
+  amount: number;
+  currency: 'USD' | 'CAD' | 'EUR';
+  accountId: string;
+  fees?: number;
+}
+
+export interface BudgetConfig {
+  users: [User, User];
+  splitMode: '50/50' | 'prorata' | 'custom';
+  customSplit?: number;
+}
+
+// Phase G.1 — onglet Documents global (PDF/Image avec IA extraction)
+type DocumentCategory =
+  | 'PAYSLIP'        // fiche de paie
+  | 'T4'             // relevé fiscal T4 / Relevé 1
+  | 'BANK_STATEMENT' // relevé bancaire / brokerage
+  | 'CONTRACT'       // contrat hypothécaire, bail, assurance
+  | 'INVOICE'        // facture importante
+  | 'OTHER';         // divers
+
+export interface DocumentMeta {
+  id: string;
+  name: string;             // nom du fichier original
+  category: DocumentCategory;
+  uploadedAt: string;       // ISO date
+  sizeBytes: number;
+  mimeType: string;         // 'image/png', 'application/pdf', etc.
+  /** Données extraites par IA (Vision Claude), si applicable */
+  extractedData?: Record<string, unknown>;
+  /** Notes utilisateur */
+  notes?: string;
+}
+
+// PH3-c (2026-06-11) — types compagnons du « profil détaillé » W5.1 purgés avec leurs champs User
+// (zéro consommateur) : HealthRating, Gender, EmploymentType, PensionPlan, MaritalStatus.
+// Union partagée pour les comptes enregistrés canadiens (élimine 3 unions divergentes
+// dans Asset, InvestmentAccount, assetLocation).
+export type RegisteredAccountType = 'CELI' | 'CELIAPP' | 'REER' | 'NON-ENREG' | 'CRYPTO' | 'REEE' | 'MARGE' | 'AUTRE';
+
+// Note: DbPlanDetails était une interface orpheline (jamais consommée).
+// Les champs DB sont centralisés dans RetirementGoal (dbPensionMonthly, etc.).
+// Retiré par cycle 2 cleanup type-design agent.
+
+export interface User {
+  name: string;
+  grossSalary: number;
+  netSalary: number;
+  salary?: number;
+  color: string;
+  age?: number;
+  birthYear?: number;
+  birthMonth?: number;                   // W5.1 (1-12)
+  birthDay?: number;                     // W5.1 (1-31)
+  canadaArrivalYear?: number;
+  isImmigrant?: boolean;                 // immigré au Canada → droits CELI/REER + résidence PSV calculés depuis canadaArrivalYear (sinon depuis la naissance)
+  hasOwnedPropertyLast4Years?: boolean;
+  /** [ENG-RAMQ-FIELDS] Couverture PRIVÉE d'assurance médicaments (régime employeur/association).
+   *  Annexe K (ligne 447) : la prime RAMQ se calcule PAR ADULTE sur le revenu familial — un adulte
+   *  couvert au privé toute l'année en est exempté, l'autre conjoint resté au public paie la
+   *  sienne. Champ additif optionnel (aucune migration) ; absent/false = paie au régime public,
+   *  le défaut CONSERVATEUR historique du moteur. Réf docs/FISCAL_REFERENCE.md §6.4. */
+  hasPrivateDrugInsurance?: boolean;
+  hasChildren?: boolean;
+  childCount?: number;
+  fhsaBalance?: number;
+  celiContributed?: number;
+  rrspContributed?: number;
+  facteurEquivalence?: number;
+  /** [MIGRATE-GROSS-PROPOSER] L'utilisateur a confirmé que son brut est bien le sien (ou a
+   *  accepté le brut recalculé). Éteint l'avis « brut fabriqué par l'ancienne version » du Profil
+   *  — un avertissement permanent est un avertissement mort. Champ additif optionnel. */
+  grossSalaryConfirmed?: boolean;
+  /** [INCOME-PROVENANCE] Provenance du salaire (source UNIQUE = fiche de paie, demande Marc
+   *  2026-07-15) : estampillé par TaxCenter (scan de paie) et par le MCP (apply_payslip).
+   *  Absent = saisie manuelle/inconnue (l'onglet Impôt l'affiche). Champ additif optionnel. */
+  salarySource?: {
+    kind: 'payslip' | 'mcp' | 'manual';
+    label?: string;
+    appliedAt?: number;
+  };
+  // ── PH3-c (2026-06-11) — champs « profil détaillé » historiques PURGÉS (contre-audit repo
+  // complet : aucun consommateur) : gender, healthRating, isSmoker, bmiCategory, chronicConditions,
+  // parentAgeAtDeath, activityLevel, yearsOfExperience, employmentType, promotionLikelihood5Y,
+  // pensionPlan, province, citizenship, maritalStatus, bonusVolatilityPct, stockOptionsValue,
+  // commissionPctOfGross, cryptoStakingAnnual, payFrequency, industry (purgé 2026-06-19, décision Marc :
+  // zéro consommateur services/, seul l'éditeur UserConfigFields le settait).
+  // Données résiduelles persistées (localStorage/IndexedDB) = INERTES, ignorées — ZÉRO migration.
+  // W5.2 — Rémunération variable (consommée par le moteur)
+  bonusPctOfGross?: number;              // 0-100, bonus annuel attendu — services/projection/activeIncome.ts
+  rsuVestingPerYear?: number;            // $ RSU vesting annuel attendu — services/projection/activeIncome.ts (lissé /12)
+  rsuYearsRemaining?: number;            // années restantes de vesting — services/projection/activeIncome.ts (expiration RSU)
+  // W5.2 — Side income
+  sideIncomeAnnual?: number;             // freelance, royalties, etc. — services/projection/activeIncome.ts
+}
+
+export interface BudgetCategory {
+  id?: string;
+  name: string;
+  target: number;
+  frequency: 'Monthly' | 'Yearly' | 'Weekly' | 'Quarterly';
+  type: 'Commun' | 'Perso 1' | 'Perso 2';
+  nature: 'Besoin' | 'Envie' | 'Epargne';
+  /** [BUDGET-TX-CATEGORIES] true = cible AUTO-gérée (moyenne mensuelle de tout le passé,
+   *  recalculée à chaque chargement) ; une édition MANUELLE de la cible décroche (false).
+   *  Champ additif optionnel — aucun bump de version persist requis. */
+  autoTarget?: boolean;
+}
+
+export interface ProjectionConfig {
+  years: number;
+  returnRate: number;
+  inflationRate: number;
+  savingsMode: 'manual' | 'budget' | 'real';
+  manualContribution: number;
+  usePortfolioRate: boolean;
+  returnRates?: {
+    celi: number;
+    reer: number;
+    nonReg: number;
+    crypto: number;
+    cash: number;
+  };
+  emergencyFundMonths?: number;
+  salaryGrowth?: number;
+  /** @deprecated [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] ignoré par le moteur, gardé pour les dossiers persistés (pas de migration). */
+  theoreticalIncome?: number;
+  /** @deprecated [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] ignoré par le moteur, gardé pour les dossiers persistés (pas de migration). */
+  theoreticalExpenses?: number;
+  /** @deprecated [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] ignoré par le moteur (interface retirée), gardé pour les dossiers persistés. */
+  useTheoretical?: boolean;
+  stressTestEnabled?: boolean;
+  stressTestYear?: number;
+  stressTestDrop?: number;
+  stressTestRecoveryMonths?: number;
+  stressTestInflationShock?: number;
+  propertyGrowthRate?: number;
+  useManualBalances?: boolean;
+  manualCELI?: number;
+  manualREER?: number;
+  manualNonReg?: number;
+  manualCash?: number;
+  manualCrypto?: number;
+  manualCELIRoom?: number;
+  manualREERRoom?: number;
+  vehicleReplacementEnabled?: boolean;
+  useSmithManoeuvre?: boolean;
+  /** @deprecated [ENG-T1213-NET-MONTHLY] Plus AUCUN effet depuis le 2026-09-03 : le moteur le force
+   *  à `false` et son bouton a été retiré de l'interface. Conservé pour que les configurations déjà
+   *  enregistrées restent lisibles sans migration. Ne pas re-brancher sans modéliser d'abord la
+   *  hausse du net mensuel encaissé, sinon le réglage re-devient une perte sèche (−45,7 % à 30 ans). */
+  optimizeSourceDeductions?: boolean;
+  investmentTargetPcts?: Record<string, number>;
+  // D2.5: Smile Curve — courbe en U des dépenses de retraite (étude CIBC).
+  // Go-go (jusqu'à 74): +15% sur le besoin. Slow-go (75-84): base.
+  // No-go (85+): -10% lifestyle, mais santé compense (déjà modélisé).
+  useSmileCurve?: boolean;
+  // D2.7: Withholding tax US 15% sur dividendes US détenus dans CELI/FHSA.
+  // La convention fiscale Canada-US exempte le REER mais PAS le CELI.
+  // - usEquityShareCeli: fraction CELI investie en actions US (0-100).
+  // - usEquityDividendYield: rendement dividende moyen des actions US (1.5% par défaut).
+  // Drag annuel sur CELI = share * yield * 15% (en points de pourcentage).
+  usEquityShareCeli?: number;
+  usEquityDividendYield?: number;
+  // D2.8: Soins de longue durée (LTC) — coût mensuel ajouté en plus
+  // des dépenses normales avec probabilité croissante après 80 ans.
+  // - ltcMonthlyCost: coût mensuel quand l'événement se déclenche (5000$ par défaut).
+  // - ltcEnabled: active la simulation.
+  ltcEnabled?: boolean;
+  ltcMonthlyCost?: number;
+  // D2.8: Mortalité stochastique en Monte Carlo.
+  // Active des tirages aléatoires de date de décès basés sur les tables
+  // canadiennes 2020-2022. La simulation s'arrête à la mort de l'utilisateur
+  // (l'estateNetWorth devient le patrimoine au décès et non en fin d'horizon).
+  useStochasticMortality?: boolean;
+  // D2.9: Inflation différenciée par poste (CPI panier composite).
+  // Pondérations Statistique Canada (CPI-WEIGHTS 2023):
+  //   Logement 30%, Alimentation 17%, Transport 15%, Santé 5%,
+  //   Loisirs 6%, Autres 27%.
+  // Chaque poste a son propre taux d'inflation moyen. Le multiplicateur
+  // global devient une moyenne pondérée. Bonus santé après 75 ans appliqué
+  // sur la part Santé uniquement.
+  usePerCategoryInflation?: boolean;
+  inflationHousing?: number;     // défaut 4.0
+  inflationFood?: number;        // défaut 3.5
+  inflationTransport?: number;   // défaut 2.5
+  inflationHealth?: number;      // défaut 4.5
+  inflationLeisure?: number;     // défaut 1.5
+  inflationOther?: number;       // défaut 2.0
+  // D2.10: Perte d'emploi stochastique. Probabilité annuelle ~3% (Stats Can).
+  // Durée moyenne sans emploi: 6 mois (5-10 selon âge / industrie).
+  // Pendant la période: salaire = 55% du brut (assurance-emploi), capé à 668$/sem 2026.
+  jobLossEnabled?: boolean;
+  jobLossAnnualProbability?: number; // défaut 0.03
+  jobLossDurationMonths?: number;    // défaut 6
+
+  // ────────────────────────────────────────────────────────────────────
+  // W1.x — Précision avancée
+  // ────────────────────────────────────────────────────────────────────
+  // W1.1 — Perf: déléguer Monte Carlo au Web Worker
+  useWebWorker?: boolean;
+  monteCarloIterations?: number;      // défaut 100, borné 50-1000 (MC_ITERATIONS_MIN/MAX — source unique services/projection/monteCarlo.ts)
+
+  // W1.2 — Bootstrap historique (rendements réels 1928-2024 S&P 500)
+  // Au lieu de tirages gaussiens, on rééchantillonne des blocs de l'historique.
+  useHistoricalBootstrap?: boolean;
+  bootstrapBlockSize?: number;        // mois, défaut 24
+
+  // W1.3 — RRQ et PSV séparés (corrige L1: governmentPension × 0.65/0.35)
+  rrqMonthly?: number;                // estimation rente RRQ mensuelle individuelle
+  psvMonthly?: number;                // estimation PSV mensuelle (max 2025: ~734$)
+  rrqMonthlySpouse?: number;
+  psvMonthlySpouse?: number;
+
+  // W1.4 — Scénario survivant
+  modelSurvivor?: boolean;            // active la simulation après décès conjoint
+  spouseDbSurvivorPct?: number;       // % rente DB conservée par survivant (0-100)
+  rrqSurvivorPct?: number;            // défaut 60%
+
+  // W2.6 — Drawdown order optimizer (note: l'optimizer est appelé directement
+  // depuis l'UI Retirement; pas de flag global nécessaire — laissé pour future
+  // intégration dans la projection si besoin)
+
+  // W4.1 — Tax bracket visualization
+  showTaxBracketBreakdown?: boolean;
+
+  // W3.1 — Divorce probabiliste
+  divorceEnabled?: boolean;
+  divorceAnnualProbability?: number;  // défaut 0.015 (1.5%/an pendant 30 ans → ~36%)
+  divorceSplitPct?: number;           // % patrimoine perdu (défaut 50)
+  divorceAlimonyMonthly?: number;     // pension alimentaire mensuelle versée
+
+  // W3.2 — Invalidité longue durée
+  ltdEnabled?: boolean;
+  ltdAnnualProbability?: number;      // défaut 0.005
+  ltdIncomeReplacementPct?: number;   // % salaire couvert par assurance (défaut 60)
+  ltdDurationMonths?: number;         // défaut 24
+
+  // W3.3 — Maladie grave
+  criticalIllnessEnabled?: boolean;
+  ciAnnualProbability?: number;       // défaut 0.003
+  ciPayoutAmount?: number;            // forfait reçu (assurance maladies graves)
+  ciExtraMonthlyExpense?: number;     // dépenses additionnelles
+
+  // W3.4 — Héritage probabilisé
+  inheritanceEnabled?: boolean;
+  inheritanceExpectedAmount?: number;
+  inheritanceExpectedAtAge?: number;
+  inheritanceUncertaintyYears?: number; // étalement ±N ans
+  inheritanceProbability?: number;      // 0-1
+
+  // W3.5 — Boomerang kids / sandwich generation
+  boomerangSupportMonthly?: number;
+  boomerangStartAge?: number;
+  boomerangDurationMonths?: number;
+  caregivingMonthly?: number;
+  caregivingStartAge?: number;
+  caregivingDurationMonths?: number;
+
+  // W3.7 — Severance / mise à pied avec prime
+  severanceWeeksPerYear?: number;     // défaut 2 semaines / année d'ancienneté
+  severanceCapWeeks?: number;         // plafond
+
+  // W2.7 — Geographic arbitrage
+
+  // W4.3 — Sensitivity analysis
+  enableSensitivityAnalysis?: boolean;
+
+  // W4.5 — Replay historique
+  replayHistoricalYear?: number;      // 1929 | 1973 | 2000 | 2008 | 2020 | undefined
+
+  // W4.6 — Semi-retraite
+  phasedRetirementEnabled?: boolean;
+  phasedRetirementStartAge?: number;
+  phasedRetirementHoursPct?: number;  // ex: 50% = mi-temps
+
+  // W4.7 — Snowbird (4-6 mois US/Mexique)
+  snowbirdEnabled?: boolean;
+  snowbirdMonthsPerYear?: number;     // défaut 5
+  snowbirdExtraMonthlyCost?: number;  // surcoût mensuel
+
+  // W2.1 — Roth-equivalent ladder (REER→CELI via brackets)
+  enableRothLadder?: boolean;
+
+  // G21 C5 — Leviers de stratégie « appliqués » depuis l'optimiseur. Ces leviers
+  // sont orthogonaux à l'axe scénario (ordre de retrait / rentes) : ils s'appliquent
+  // à TOUTES les simulations de calculateFutureProjection via EngineOverrides + un
+  // bonus de rendement NonReg pour l'asset location. Absents ⇒ comportement
+  // historique inchangé. (withdrawalOrder + delayPensions sont appliqués en
+  // sélectionnant le scénario correspondant, pas ici.)
+  appliedContributionOrder?: 'REER_FIRST' | 'CELI_FIRST';
+  appliedDebtFirst?: boolean;
+  appliedSkipRap?: boolean;
+  appliedAssetLocation?: boolean;
+  appliedGainHarvesting?: boolean;
+  /** PH4-FUT-B — profil de rendement appliqué (levier). Absent / 'balanced' = taux returnRates
+   *  inchangés (non-régression) ; 'conservative'/'aggressive' = preset (RETURN_RATE_PRESETS). */
+  appliedReturnProfile?: 'conservative' | 'balanced' | 'aggressive';
+  /** PH4-FUT-B — fractionnement de pension 65+ (levier). Absent / true = actif (comportement
+   *  historique, non-régression) ; false = désactivé (saute la Phase 3 d'optimisation de décembre). */
+  appliedPensionSplitting?: boolean;
+  /** PH4-FUT-B — multiplicateur du taux d'épargne (levier). Absent / 1 = inchangé (non-régression) ;
+   *  1.2 = épargner 20 % de plus (dépenses réduites d'autant). Mode réel + épargne positive seulement. */
+  appliedSavingsMultiplier?: number;
+  /** PH4-FUT-B — downsizing immo à la retraite (levier). Absent / false = aucun (non-régression) ;
+   *  true = à l'âge de retraite, vendre la résidence principale et racheter plus petit : libère une
+   *  fraction de l'équité en placements (exemption gain résidence principale ARC). */
+  appliedDownsize?: boolean;
+
+  // [UI-SCEN] (2026-06-09, demande Marc « enlève les plans de base ») — la stratégie de
+  // retrait/gestion est un PARAMÈTRE : le moteur ne calcule que CE scénario réaliste
+  // (au lieu des 11 scénarios à chaque recalcul — ÷11 en déterministe ; en mode Monte
+  // Carlo, le gain porte sur la part déterministe seulement). Les
+  // stress-tests sont calculés À LA DEMANDE dans l'onglet Optimisation.
+  // Union littérale = sous-ensemble d'AllocationStrategy ayant une ScenarioDefinition
+  // (cf services/projection/scenarios.ts). Défaut : AUTO_MARGINAL (« Le Plan de Base »).
+  withdrawalStrategy?: 'AUTO_MARGINAL' | 'PRIO_REER' | 'PRIO_CELI' | 'MELTDOWN_REER' | 'PRIO_CELI_NO_RAP';
+}
+
+// ────────────────────────────────────────────────────────────────────
+// W5.3 — Dettes étendues (HELOC, cartes, étudiants, auto, perso, marge)
+// ────────────────────────────────────────────────────────────────────
+/** ⚠️ `auto-lease` (BAIL) n'est PAS `auto` (prêt) : un bail ne rembourse pas un CAPITAL avec des
+ *  intérêts, c'est un loyer sur un terme fixe puis on rend le véhicule (ou on le rachète). Le
+ *  distinguer permet de dire la vérité dans l'UI (demande Marc 2026-08-19).
+ *  ⚠️ Corrigé le 2026-09-17 : ce commentaire disait « un bail ne s'amortit pas », ce qui est devenu
+ *  FAUX le jour où le solde d'un bail est devenu la SOMME DES VERSEMENTS RESTANTS à taux 0 — chaque
+ *  versement en retire alors exactement son montant. Il ne s'amortit pas par INTÉRÊT ; il décroît
+ *  linéairement, et c'est `KIND_VERSEMENTS_FIXES` qui le dit. */
+/** [DEBT-MCP-PARITE] Source UNIQUE des valeurs de `DebtKind` (tableau `as const`, le type est
+ *  DÉRIVÉ dessous) — un `kind` MCP/import re-codé en dur ailleurs dérive en silence (piège
+ *  indexé au CLAUDE.md) ; ce tableau se réutilise tel quel côté runtime (Zod `z.enum`, garde
+ *  `applyDebt`) au lieu d'être retapé. */
+export const DEBT_KINDS = ['mortgage', 'heloc', 'auto', 'auto-lease', 'student-federal', 'student-quebec', 'credit-card', 'personal', 'margin', 'spouse-loan', 'other'] as const;
+export type DebtKind = typeof DEBT_KINDS[number];
+
+/** [DEBT-CADENCE-REELLE] CADENCE réelle des prélèvements d'une dette à versements FIXES.
+ *
+ * ⚠️ Elle ne change PAS ce qui est dû : `minimumPayment` reste MENSUEL partout (contrat du store et
+ * du moteur), et le versement de la période s'en DÉRIVE (`minimumPayment × 12 / périodes par an`).
+ * Une seule saisie, une seule source — deux montants indépendants auraient divergé.
+ *
+ * Ce qu'elle change, c'est QUAND le solde descend dans le passé reconstruit : un bail est payé
+ * TOUTES LES SEMAINES et voyait une marche mensuelle (« ça devrait descendre à chaque paiement à
+ * le prêteur, pas une fois par mois »). Absente ⇒ mensuelle, donc rétrocompatible bit-à-bit : aucune
+ * dette existante ne change de courbe. Champ ADDITIF optionnel, aucune migration de schéma. */
+export const PAYMENT_FREQUENCIES = ['weekly', 'biweekly', 'monthly'] as const;
+export type PaymentFrequency = typeof PAYMENT_FREQUENCIES[number];
+/** Nombre de JOURS entre deux prélèvements, pour les cadences sous-mensuelles. Le mensuel n'y
+ *  figure pas : il n'a pas de pas en jours (les mois n'ont pas la même longueur), il garde la
+ *  forme par MOIS ABSOLU qui existait avant ce lot. */
+export const JOURS_PAR_CADENCE: Readonly<Record<'weekly' | 'biweekly', number>> = { weekly: 7, biweekly: 14 };
+
+// ────────────────────────────────────────────────────────────────────
+// W5.4 — Assurances
+// ────────────────────────────────────────────────────────────────────
+export type InsuranceKind = 'life-term' | 'life-whole' | 'life-universal' | 'disability-st' | 'disability-lt' | 'critical-illness' | 'long-term-care' | 'travel' | 'auto' | 'home' | 'liability';
+
+export interface InsurancePolicy {
+  id: string;
+  kind: InsuranceKind;
+  insurer?: string;
+  faceAmount?: number;          // capital décès / capital invalidité
+  monthlyPremium: number;
+  expiryDate?: string;          // pour temporaire (T10/T20/T30)
+  cashValue?: number;           // pour vie entière / universelle
+  beneficiary?: string;
+  notes?: string;
+}
+
+// ────────────────────────────────────────────────────────────────────
+// W5.6 — Immeuble locatif (cap rate, vacancy, NOI)
+// ────────────────────────────────────────────────────────────────────
+export interface RentalProperty {
+  id: string;
+  name: string;
+  purchasePrice: number;
+  currentValue: number;
+  mortgageBalance: number;
+  mortgageRate: number;
+  monthlyRent: number;
+  vacancyPct: number;           // 0-100
+  monthlyExpenses: number;      // taxes, entretien, assurance, gestion
+  capRate?: number;             // calculé: NOI / valeur
+  acquisitionDate?: string;
+  amortizationYears?: number;
+  ccaTaken?: number;            // DPA cumulée (recapture à la vente)
+  /** [ENG-PROPGROWTH-PAR-IMMEUBLE] Croissance annuelle de la valeur (% — décision Marc 2026-09-04 :
+   *  taux PAR immeuble, comme les buts immobiliers). Absent = défaut documenté du moteur (3 %) ;
+   *  un 0 EXPLICITE reste 0 (« je ne parie pas sur l'appréciation » est une saisie légitime). */
+  propertyGrowthRate?: number;
+  /** [FISC-RRSP-RENTAL-EARNED] Propriétaire de l'immeuble (décision Marc 2026-09-05 : champ optionnel,
+   *  défaut 50/50). Pilote l'attribution du loyer NET comme revenu GAGNÉ pour les droits REER de ce
+   *  conjoint (`services/projection/revenuGagnePartage.ts`). Absent = `joint`. Additif : aucun bump
+   *  de version du store. */
+  owner?: AssetOwner;
+}
+
+// ────────────────────────────────────────────────────────────────────
+// W5.7 — Entreprise privée (CCPC)
+// ────────────────────────────────────────────────────────────────────
+export interface PrivateBusiness {
+  id: string;
+  name: string;
+  ownershipPct: number;          // % détenu
+  estimatedValue: number;        // valeur juste marchande
+  annualDividend?: number;       // dividende reçu
+  retainedEarnings?: number;     // BNR
+  ccpcSmallBizDeduction?: boolean; // accès DPE
+  industry?: string;
+}
+
+// ────────────────────────────────────────────────────────────────────
+// W5.x — Goals supplémentaires
+// ────────────────────────────────────────────────────────────────────
+export interface WeddingGoal {
+  id: string;
+  isActive: boolean;
+  date: string;
+  budget: number;
+  contributionFromParents?: number;
+}
+
+export interface VehicleReplacement {
+  id: string;
+  cyclYears: number;             // ex: 8 ans
+  costEstimate: number;
+  isElectric?: boolean;
+}
+
+export interface MajorRenovation {
+  id: string;
+  date: string;
+  cost: number;
+  description?: string;
+}
+
+export interface CharitableGoal {
+  id: string;
+  annualAmount: number;
+  donateAppreciatedSecurities?: boolean; // optimisation fiscale
+  startYear?: number;
+  endYear?: number;
+}
+
+/** Municipalité pour la taxe de bienvenue (droits de mutation) : Montréal a sa propre surtaxe. */
+export type Municipality = 'montreal' | 'reste_qc';
+
+export interface RealEstateGoal {
+  id: string;
+  name?: string;
+  isActive: boolean;
+  /** [ENG-PAST-OWNED-VS-PLANNED] Décision A6 (ADR 0014) : discrimine un bien DÉJÀ DÉTENU
+   *  (true → le moteur initialise équité+dette passées) d'un objectif PLANIFIÉ dont la date est
+   *  passée sans achat (false → RIEN n'est injecté au m0 — fin des centaines de milliers de $ d'équité et de dette
+   *  fantômes du panel #552). undefined = legacy : comportement historique
+   *  (traité comme détenu) + l'UI pose la question (popup « est-ce acheté ? »). Champ ADDITIF
+   *  optionnel — aucun bump de version de store. */
+  isOwned?: boolean;
+  purchaseDate: string;
+  price: number;
+  downPayment: number;
+  mortgageRate: number;
+  amortization: number;
+  totalClosingCosts: number;
+  monthlyPayment: number;
+  unrecoverableMonthly: number;
+  isPrimaryResidence: boolean;
+  isRented?: boolean;
+  maxValue?: number;
+  propertyGrowthRate?: number;
+  rentalIncomeMonthly?: number;
+  /** [FISC-RRSP-RENTAL-EARNED] Propriétaire du bien (décision Marc 2026-09-05, même convention que
+   *  `RentalProperty.owner`) : le loyer d'un bien LOCATIF est du revenu gagné pour les droits REER
+   *  de ce conjoint. Absent = `joint` (50/50). Sans effet sur une résidence principale. */
+  owner?: AssetOwner;
+  initialRenovations?: number;
+  /** Taux attendu au renouvellement hypothécaire (% annuel), CONSOMMÉ par le moteur depuis
+   *  [ENG-RENEWAL-SAISIE] (décision Marc 2026-09-04) : appliqué à chaque renouvellement de terme
+   *  (60 mois), PMT et intérêt recalculés ensemble. Absent ou ≤ 0 = le taux courant est conservé
+   *  (comportement historique). */
+  renewalRateProjection?: number;
+  yearlyRenovations?: number;
+  maintenanceYearly?: number;
+  currentValue?: number;
+  mortgageBalance?: number;
+  taxesYearly?: number;
+  heatingMonthly?: number;
+  condoFees?: number;
+  /** §6.8 SCHL — Premier acheteur : permet amortissement 30 ans même en assuré (depuis août 2024). */
+  isFirstTimeBuyer?: boolean;
+  /** §6.8 SCHL — Résidence neuve : idem, permet 30 ans en assuré. */
+  isNewConstruction?: boolean;
+  /** FISC-WELCOME-UNIFY — municipalité pour la taxe de bienvenue. Requis à la saisie (UI), pas de
+   * défaut stocké ; non défini ⇒ repli conservateur Montréal côté moteur (état transitoire). */
+  municipality?: Municipality;
+}
+
+export interface ChildGoal {
+  id: string;
+  name: string;
+  isActive: boolean;
+  birthDate: string;
+  initialCost: number;
+  monthlyDiapers: number;
+  monthlyFood: number;
+  monthlyClothing: number;
+  monthlyDaycare: number;
+  governmentBenefits: number;
+  parentalLeaveIncomeDrop: number;
+  daycareType?: string;
+  schoolType?: string;
+  activitiesLevel?: string;
+  universityType?: string;
+  carGift?: string;
+  respContribution?: number;
+}
+
+/** [PH4D-WEIGHTS-STORE] Pondérations des ratios de l'indicateur de santé financière (`HealthIndicator`).
+ *  [PH4D-BUDGET-RATIOS] étendu de 4 à 6 : ajout de `budgetParity` (adhérence au budget) et `subscriptionLoad`
+ *  (poids des abonnements). Rétrocompat : un état persisté à 4 champs est complété par les défauts à la lecture. */
+export interface HealthWeights {
+  savingsRate: number;
+  emergencyFund: number;
+  debtRatio: number;
+  fireProgress: number;
+  budgetParity: number;
+  subscriptionLoad: number;
+}
+
+export interface Debt {
+  id: string;
+  name: string;
+  balance: number;
+  interestRate: number;
+  minimumPayment: number;
+  category: 'CreditCard' | 'Car' | 'Student' | 'Personal' | 'Other';
+  // W5.3 — Champs étendus
+  kind?: DebtKind;
+  isVariableRate?: boolean;
+  limit?: number;                  // pour HELOC, carte de crédit
+  amortizationYears?: number;      // pour auto, hypothécaire
+  /** [DETTE-DATES] Début du prêt / du bail (YYYY-MM-DD). Avant cette date, le moteur ne sert PAS la
+   *  dette : ni paiement, ni intérêt, ni présence au bilan. Absent ⇒ elle a toujours couru
+   *  (rétrocompatible bit-à-bit). Champ ADDITIF optionnel : aucune migration de schéma. */
+  startDate?: string;
+  /** [DEBT-AMORTIZATION] Solde d'ORIGINE du prêt (montant emprunté), pour reconstruire la
+   *  décroissance du passé — « chaque semaine je dois un peu moins » (Marc). Absent ⇒ la dette
+   *  reste au niveau figé d'aujourd'hui, comportement d'avant. Champ ADDITIF optionnel : aucune
+   *  migration de schéma, donc aucun bug de migration.
+   *  ⚠️ Un `originalBalance` INFÉRIEUR au solde actuel décrit une dette qui a grossi : ce n'est pas
+   *  un profil d'amortissement et `amortirDettePassee` le refuse plutôt que de tracer une courbe
+   *  croissante présentée comme un remboursement. */
+  originalBalance?: number;
+  /** [DETTE-DATES] Fin du TERME : échéance d'un bail, fin d'un prêt, renouvellement hypothécaire
+   *  (YYYY-MM-DD). Le mois de cette date est INCLUS (dernier paiement). Après, le moteur cesse de
+   *  payer — et si le solde n'est pas nul, il le LAISSE au bilan avec une alerte plutôt que de
+   *  l'effacer (décision Marc 2026-08-19). Absent ⇒ on paie jusqu'à extinction. */
+  termEndDate?: string;
+  /** [DEBT-CADENCE-REELLE] Cadence RÉELLE des prélèvements (bail, prêt à versements fixes). Absente
+   *  ⇒ mensuelle (comportement d'avant, bit-à-bit). N'a d'effet QUE sur les dettes à versements
+   *  fixes : une dette qui amortit de l'intérêt n'a pas de grille en jours dans ce modèle. */
+  paymentFrequency?: PaymentFrequency;
+  /** [DETTE-SOLDE-INSTANTANE-FIGE] DATE à laquelle `balance` était vrai (YYYY-MM-DD).
+   *
+   *  ⚠️ **Sans elle, `balance` est un instantané SANS DATE, et rien ne l'avance.** Mesuré le
+   *  2026-09-17 sur un bail : le solde stocké valait après PLUSIEURS prélèvements
+   *  alors qu'il en avait fait davantage — un versement hebdomadaire de trop, et l'écart grandissait d'un versement par
+   *  SEMAINE. Il payait, l'écran ne bougeait pas.
+   *
+   *  Ce champ n'a d'effet que là où le solde d'aujourd'hui est DÉDUCTIBLE sans rien inventer :
+   *  dette à versements fixes, taux NUL, cadence sous-mensuelle connue (cf.
+   *  `soldeDetteAujourdhui`). Partout ailleurs il est inerte — un solde de carte de crédit ou
+   *  d'hypothèque ne se devine pas à partir d'une date.
+   *
+   *  ⚠️ Champ ADDITIF optionnel : **absent ⇒ comportement d'avant, bit-à-bit**. Il doit le rester —
+   *  lui donner une valeur par DÉFAUT le rendrait non additif et un blob persisté ANTÉRIEUR ne
+   *  pourrait plus la contredire (`UNE-VALEUR-PAR-DEFAUT-NE-PEUT-PAS-ETRE-CONTREDITE-PAR-UN-ETAT-ANCIEN`).
+   *  Il est ESTAMPILLÉ automatiquement à chaque écriture du solde (mutateur du store, `apply_debt`) :
+   *  demander une date à l'utilisateur serait lui demander de se souvenir du jour où il a tapé un
+   *  chiffre.
+   *
+   *  ⚠️ C'est un champ TEXTUEL : il DOIT figurer dans `CHAMPS_TEXTE`
+   *  (`services/verifierTypesRestaures.ts`), sans quoi l'app se réhydrate VIDE — trois vagues déjà
+   *  payées, dont une sur `paymentFrequency`, la ligne juste au-dessus. */
+  balanceAsOf?: string;
+  /** [DETTE-VIREMENTS-REELS] Libellé EXACT du marchand dont les VIREMENTS font baisser cette dette.
+   *
+   *  Demande de Marc, 2026-09-18 : « je veux que chaque fois que je paie le prêteur ça enlève ça de la
+   *  dette, faut que ma dette soit liée à chaque fois que je fais un virement du bon montant à
+   *  le prêteur ». Sémantique qu'il a CHOISIE (« suivre les vrais virements, point ») : la dette ne
+   *  descend QUE sur un virement RÉELLEMENT importé, du montant RÉELLEMENT prélevé. Aucune marche
+   *  modélisée, jamais — là où aucun virement n'est connu, la dette reste au même niveau.
+   *
+   *  ⚠️ Ce champ REMPLACE la grille modélisée (`GrilleVersements`, dérivée de `startDate` +
+   *  `paymentFrequency`) : les deux ne coexistent pas sur une même dette, sinon le même solde aurait
+   *  deux histoires. Renseigné ⇒ les virements gagnent ; absent ⇒ comportement d'avant ce lot.
+   *
+   *  ⚠️ Il n'a d'effet que là où un versement retire EXACTEMENT son montant : dette à versements
+   *  fixes (`KIND_VERSEMENTS_FIXES`) à taux NUL. Sur un prêt qui porte de l'intérêt, une partie du
+   *  versement paie l'intérêt et la déduction serait fausse — le module refuse plutôt que de deviner.
+   *
+   *  ⚠️ C'est un champ TEXTUEL : il DOIT figurer dans `CHAMPS_TEXTE`
+   *  (`services/verifierTypesRestaures.ts`), sinon l'app se réhydrate VIDE. Et il est choisi dans une
+   *  LISTE de marchands existants, jamais retapé : un nom « exact » à saisir à la main est un
+   *  appariement déguisé en formulaire
+   *  (`UNE-BASCULE-GLOBALE-SUR-DES-SOURCES-QUI-NE-POSTENT-PAS-A-LA-MEME-VITESSE…`, corollaire). */
+  paymentPayee?: string;
+  rateProvider?: string;           // institution prêteuse
+  isInterestDeductible?: boolean;  // intérêt sur prêt placement / Smith Manoeuvre
+}
+
+export interface TravelGoal {
+  id: string;
+  destination: string;
+  date: string;
+  totalCost: number;
+  image?: string;
+  notes?: string;
+}
+
+export type LifeEventType =
+  'KRACH' | 'ACCIDENT' | 'GROS_ACHAT' | 'HERITAGE' | 'PERTE_EMPLOI' |
+  'MARIAGE' | 'RENOVATION' | 'AUTO' | 'SABBATIQUE' | 'BUSINESS';
+
+export interface LifeEvent {
+  id: string;
+  type: LifeEventType;
+  name: string;
+  date: string;
+  impactAmount?: number;
+  impactPercent?: number;
+  durationMonths?: number;
+  incomeLossPercent?: number;
+  icon?: string;
+  /** DETTE-RE-SALE — pour un événement de VENTE immobilière (`name` contient « vente »), désigne le
+   *  bien à vendre par son `RealEstateGoal.id`. Absent ⇒ fallback historique (premier bien à équité
+   *  positive). Champ additif optionnel ⇒ aucun bump de schéma persist (v7 conservé). */
+  propertyId?: string;
+  /** [ENG-LIFEEVENT-VENTE-SUBSTRING] Sémantique EXPLICITE de l'événement, pour les producteurs
+   *  PROGRAMMATIQUES (MCP/IA) : `'VENTE_IMMO'` déclenche la vente immobilière SANS dépendre du mot
+   *  réservé « vente » dans le nom ; `'NONE'` désarme la détection par sous-chaîne (un GROS_ACHAT
+   *  nommé « … après vente de l'ancienne » n'est PLUS avalé en vente). Absent ⇒ comportement
+   *  historique exact (détection par sous-chaîne). Champ additif optionnel ⇒ zéro bump persist. */
+  eventKind?: 'VENTE_IMMO' | 'NONE';
+}
+
+export interface RetirementGoal {
+  targetAge: number;
+  // Phase C.3 — paramètre migré du state local Retirement.tsx vers le store
+  // pour que le Hub Configuration le centralise (refonte UI v3.0 §13).
+  lifeExpectancy?: number; // défaut 90 ans, range typique 80-100
+  targetMonthlyIncome: number;
+  governmentPension: number;
+  // D2.4: Rente mensuelle de régime à prestations déterminées (DB) cumulée
+  // pour le couple (ex: RREGOP, fonction publique fédérale, certaines profs).
+  // Optionnelle. Indexation gérée par `dbPensionIndexationPct` (défaut 100%).
+  dbPensionMonthly?: number;
+  dbPensionIndexationPct?: number; // 0-100, fraction de l'IPC répercutée
+  dbPensionStartAge?: number;      // par défaut targetAge
+  // W5.5 — Option de pension survivant (joint-life vs single-life)
+  dbElectionType?: 'single' | 'joint60' | 'joint66' | 'joint100';
+  dbSurvivorPct?: number;          // % rente au conjoint survivant (60/66/100)
+  // W1.3 — Plages personnalisées RRQ/PSV (override de governmentPension)
+  rrqEstimateMonthly?: number;     // rente RRQ projetée individuelle
+  psvEstimateMonthly?: number;     // rente PSV projetée
+  // Âge de DÉBUT des rentes — indépendant de l'âge d'arrêt de travail (targetAge).
+  // Défaut : min(targetAge, 65). Bornes légales : RRQ 60-72 (report étendu à 72 depuis 2024),
+  // PSV 65-70 (0 avant 65). Cf docs/FISCAL_REFERENCE.md §6.
+  rrqStartAge?: number;            // 60-72, défaut min(targetAge, 65)
+  psvStartAge?: number;            // 65-70, défaut min(targetAge, 65) (→ borné à 65)
+  // W4.6 — Semi-retraite
+  isPhasedRetirement?: boolean;
+  phasedStartAge?: number;
+  phasedIncomePct?: number;        // % de salaire conservé pendant phased
+  // W2.3 — Spousal RRSP
+  useSpousalRrsp?: boolean;
+  // W2.1 — Roth ladder
+  useReerToCeliLadder?: boolean;
+  // Préférences décaissement
+  // drawdownPreference retiré: orphelin (jamais consommé). Le moteur utilise
+  // déjà AllocationStrategy en interne, et l'optimizer côté UI compare les 5 avenirs.
+}
+
+export type GoalType = 'NET_WORTH' | 'CELI' | 'REER' | 'LIQUIDITY' | 'CUSTOM' | 'EXPENSE_OPTIMIZATION' | 'REBALANCING';
+
+export interface FinancialGoal {
+  id: string;
+  name: string;
+  type: GoalType;
+  targetAmount: number;
+  deadline: string;
+  manualCurrentAmount?: number;
+  completed?: boolean;
+  status?: 'active' | 'suggestion' | 'archived';
+  rationale?: string;
+  actionPlan?: string[];
+  monthlyContributionReq?: number;
+  targetAccount?: 'CELI' | 'REER' | 'NON-ENREG' | 'CRYPTO';
+  estimatedYield?: number;
+  complexityScore?: number;
+}
+
+export enum Tab {
+  DASHBOARD = 'DASHBOARD',
+  TRANSACTIONS = 'TRANSACTIONS',
+  BUDGET = 'BUDGET',
+  DEBT = 'DEBT',
+  INVESTMENTS = 'INVESTMENTS',
+  FUTURE = 'FUTURE',
+  // NBA-PAGE — « Prochaine action » (ex-widget sidebar) devient un onglet à part.
+  // [ASSISTANT-HUB 2026-07-23] ACTIONS retiré : fusionné dans ASSISTANT (deep-link #ACTIONS redirigé, App.tsx).
+  REAL_ESTATE = 'REAL_ESTATE',
+  // [REFONTE-NAV-L3] Split immo : REAL_ESTATE = biens ACTUELS (Config), REAL_ESTATE_PROJECTS =
+  // projets d'achat FUTURS (Vie). Même tranche de store `realEstateGoals`, partition UI pure.
+  REAL_ESTATE_PROJECTS = 'REAL_ESTATE_PROJECTS',
+  CHILD = 'CHILD',
+  TRAVEL = 'TRAVEL',
+  LIFE_EVENTS = 'LIFE_EVENTS',
+  // Phase F.12 — onglet unifié "Projets de vie" (fusion Travel + LifeEvents)
+  LIFE_PROJECTS = 'LIFE_PROJECTS',
+  RETIREMENT = 'RETIREMENT',
+  TAX = 'TAX',
+  SETTINGS = 'SETTINGS',
+  // G22-N5 — SYSTEM retiré : fusionné dans Configuration (sous-onglet « Système & diagnostics »).
+  // PH3 — onglet PROFIL unifié (regroupe tout le setup utilisateur, ex-« Profil de Configuration »).
+  PROFILE = 'PROFILE',
+  ASSISTANT = 'ASSISTANT',
+}
+
+export interface CategorizationRule {
+  id: string;
+  pattern: string;
+  category: string;
+  createdAt: string;
+}
+
+export interface AiMessage {
+  role: 'user' | 'model';
+  text: string;
+  /** ISO 8601 string (sérialisable JSON, contrairement à Date qui devient string après reload) */
+  timestamp: string;
+  /** [AITOOLS-C] Identité STABLE du message — les mises à jour de stream ciblent CET id, jamais
+   *  « le dernier de la liste » (finding panel : un Effacer/chevauchement corrompait la mauvaise
+   *  bulle). ADDITIF optionnel (les anciens messages persistés n'en ont pas — jamais mis à jour). */
+  id?: string;
+  /** [AITOOLS-C] Libellés des tools consultés pour CE message (chips de transparence « a consulté :
+   *  Situation fiscale »). ADDITIF optionnel (zéro migration) — libellés seulement, JAMAIS les
+   *  payloads (ADR-4 : le transcript persisté/synchronisé reste léger). */
+  toolsUsed?: string[];
+  /** [AITOOLS-B1] MÉTADONNÉES des pièces jointes du message (nom/type/taille) — ADDITIF optionnel.
+   *  ⚠️ JAMAIS les octets ici (ADR-4 : transcript léger, synchronisé Drive) : le contenu vit dans
+   *  le cache mémoire de session (services/aiChat/attachments), B2 le déplacera en fichiers Drive
+   *  appdata séparés. */
+  attachments?: Array<{ name: string; kind: 'image' | 'pdf' | 'text'; mimeType: string; size: number }>;
+  /** [B4-CHAT-COST] Coût API RÉEL de CETTE réponse en USD (tokens usage × tarif du modèle,
+   *  services/aiChat/pricing). Messages modèle seulement ; ADDITIF optionnel (zéro migration).
+   *  Jamais fabriqué : absent si l'usage n'a pas pu être mesuré (no-fake-data). */
+  costUsd?: number;
+}
+
+/** [B3-CHAT-MODEL] Clés des modèles offerts dans le chat (mapping id complet : services/aiChat/models). */
+export type AiChatModelKey = 'haiku' | 'sonnet' | 'opus';
+
+/** [TX-REVIEW] État d'une revue d'échantillon en cours (persisté, device-agnostique). */
+export interface CategoryReviewState {
+  /** Graine du tirage — fige l'échantillon d'une session à l'autre. */
+  seed: number;
+  /** Taille demandée au moment du tirage. */
+  size: number;
+  /** Ids jugés CORRECTS ou mal classés (le dénominateur). */
+  reviewedIds: number[];
+  /** Ids jugés MAL CLASSÉS (le numérateur). Toujours inclus dans `reviewedIds`. */
+  errorIds: number[];
+  /** Epoch ms du début de la revue (traçabilité : un taux vieux de 6 mois ne dit plus rien). */
+  startedAt: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// [PTF-L1A] Grand livre courtier + référentiel d'instruments.
+// Deux champs ADDITIFS et OPTIONNELS d'AppState. Aucun palier de migration, aucun bump (v7 reste v7).
+// ⚠️ TEXTUELS ET PERSISTÉS. Trois clés feuilles textuelles NEUVES (isin, exchange, controlSymbol)
+// entrent dans CHAMPS_TEXTE dans le MÊME commit. Même geste pour les trois du 2026-09-24
+// (cancelsId, toIsin, toAccountId). Toutes les autres feuilles textuelles de ce bloc
+// (id, date, accountId, kind, currency, symbol, name) y figurent déjà.
+// ⚠️ Formes imposées par la garde de dérivation (tests/services/verifierTypesRestaures.test.ts:187-255),
+// qui lit des FORMES et pas des sens :
+//   - un alias textuel s'écrit en union DIRECTE de littéraux (`type X = 'a' | 'b'`), jamais ouverte
+//     par un `|` en tête (non résolue). Pas de tableau `as const` : utilisé seulement comme type, il
+//     coûterait un avertissement de lint (valeur inutilisée) ou, exporté, une entrée « code mort »
+//   - `export` seulement quand un autre fichier importe l'alias (la porte « code mort » refuse
+//     un export inutilisé) — la garde lit aussi les alias non exportés
+//   - les littéraux restent en ASCII SANS ACCENT (identifiants stables, et le contrôle des tableaux
+//     `as const` de la garde est `\w` si l'un d'eux devient un jour un tableau)
+//   - un sous-objet se déclare par une interface NOMMÉE (le premier champ d'un littéral objet
+//     en ligne est avalé par la capture du champ parent)
+//   - AUCUN point-virgule dans les commentaires de ce bloc (la regex repart après chaque `;`)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Comptes du grand livre : deux comptes du courtier (règlement CAD, règlement USD) et un compte
+ *  hors courtier. Identifiants PROPRES à l'app. Jamais un numéro de compte (dépôt public), jamais
+ *  l'id Fintable (un lien de réconciliation s'ajoutera plus tard, en additif). */
+export type BrokerLedgerAccountId = 'courtier-cad' | 'courtier-usd' | 'hors-courtier';
+
+/** Devises admises. EUR = devise de COTATION de titres européens. Un compte du courtier règle en
+ *  CAD ou en USD, jamais en EUR (invariant du validateur du lot 1b). Élargissement additif possible. */
+export type BrokerLedgerCurrency = 'CAD' | 'USD' | 'EUR';
+
+/** Types d'événements. Les onze de départ, plus quatre tranchés par Marc le 2026-09-24
+ *  (`[PTF-L1A-SORTES-A-TRANCHER]`, `[PTF-L1B-CONVERSION-VIREMENT]`) : annulation, échange,
+ *  conversion de devises et virement interne. */
+type BrokerLedgerEventKind =
+  'acquisition' | 'transfert-entrant' | 'transfert-sortant' | 'achat' | 'vente' | 'fractionnement' |
+  'dividende' | 'retenue-etrangere' | 'depot-especes' | 'retrait-especes' | 'frais' |
+  'annulation' | 'echange' | 'conversion' | 'virement-interne';
+
+/** Provenance : import d'un relevé daté, ou saisie manuelle (compte hors courtier). */
+type BrokerLedgerSourceKind = 'releve-courtier' | 'saisie-manuelle';
+
+/** Un montant n'existe JAMAIS sans sa devise. `value` est la valeur TELLE QU'IMPRIMÉE sur le relevé,
+ *  toujours POSITIVE (le sens est porté par `kind`, traduit une seule fois à l'import, sans Math.abs).
+ *  Jamais une grandeur dérivée (ni quantité × prix, ni équivalent CAD). */
+export interface BrokerLedgerMoney {
+  value: number;
+  currency: BrokerLedgerCurrency;
+}
+
+/** Provenance d'un événement. `date` = date d'arrêté du relevé (YYYY-MM-DD locale), PAS celle de l'opération. */
+interface BrokerLedgerSource {
+  kind: BrokerLedgerSourceKind;
+  date: string;
+}
+
+/** Champs communs. `id` STABLE, dérivé de la ligne source par l'importeur (réimport identique = mêmes id,
+ *  import idempotent), jamais un horodatage d'import. `date` = date de TRANSACTION imprimée (YYYY-MM-DD
+ *  locale, jamais passée à `new Date(iso)` qui lit minuit UTC) — pas la date de règlement ; laquelle
+ *  des deux fixe l'année d'imposition reste à trancher par le fiscaliste (ADR 0019 §4), pas à supposer.
+ *  ⚠️ Toute `quantity`, comme tout montant, est POSITIVE : le sens est porté par `kind`, jamais par un
+ *  signe (le lot 1b refuse une valeur nulle ou négative). */
+interface BrokerLedgerEventBase {
+  id: string;
+  date: string;
+  accountId: BrokerLedgerAccountId;
+  kind: BrokerLedgerEventKind;
+  source: BrokerLedgerSource;
+}
+
+/** Titres reçus ou transférés SANS mouvement d'espèces. `price` = coût unitaire imprimé, devise de
+ *  cotation. `cost` = coût TOTAL de la ligne, tel qu'imprimé (décision Marc 2026-09-24 : on garde le
+ *  total, le coût unitaire se calcule à la lecture, jamais une division à l'import qui perdrait des
+ *  cents à la re-multiplication). L'un OU l'autre, jamais les deux (le lot 1b refuse la paire).
+ *  Absents = INCONNU, jamais 0 (un coût nul rendrait toute la vente imposable). */
+interface BrokerLedgerTitresEvent extends BrokerLedgerEventBase {
+  kind: 'acquisition' | 'transfert-entrant' | 'transfert-sortant';
+  isin: string;
+  quantity: number;
+  price?: BrokerLedgerMoney;
+  cost?: BrokerLedgerMoney;
+  amount?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+/** Achat ou vente. `price` = prix unitaire imprimé, devise de COTATION. `amount` = montant RÉGLÉ au
+ *  compte, NET, commission INCLUSE, devise du COMPTE. C'est l'autorité, jamais recalculé.
+ *  Une commission n'est jamais un événement `frais` de plus. */
+interface BrokerLedgerTradeEvent extends BrokerLedgerEventBase {
+  kind: 'achat' | 'vente';
+  isin: string;
+  quantity: number;
+  price: BrokerLedgerMoney;
+  amount: BrokerLedgerMoney;
+  cost?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+/** Fractionnement ou regroupement : `splitFrom` anciens titres deviennent `splitTo` nouveaux.
+ *  Deux NOMBRES, jamais la chaîne « 2:1 ». Ni quantité, ni prix, ni montant (pas un achat à prix nul). */
+interface BrokerLedgerSplitEvent extends BrokerLedgerEventBase {
+  kind: 'fractionnement';
+  isin: string;
+  splitFrom: number;
+  splitTo: number;
+  quantity?: never;
+  price?: never;
+  amount?: never;
+}
+
+/** Dividende (montant BRUT, devise du compte) ou retenue d'impôt étranger (événement DISTINCT). */
+interface BrokerLedgerRevenuEvent extends BrokerLedgerEventBase {
+  kind: 'dividende' | 'retenue-etrangere';
+  isin: string;
+  amount: BrokerLedgerMoney;
+  quantity?: never;
+  price?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+/** Dépôt ou retrait d'espèces depuis ou vers l'EXTÉRIEUR du grand livre, ou frais de COMPTE.
+ *  `isin` facultatif pour des frais rattachés à un titre. */
+interface BrokerLedgerEspecesEvent extends BrokerLedgerEventBase {
+  kind: 'depot-especes' | 'retrait-especes' | 'frais';
+  amount: BrokerLedgerMoney;
+  isin?: string;
+  quantity?: never;
+  price?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+/** Annulation d'une ligne du courtier (décision Marc 2026-09-24 : garder la trace). `cancelsId` =
+ *  identifiant de la ligne annulée, qui RESTE dans le livre. À partir de la date de l'annulation, la
+ *  ligne annulée n'a plus d'effet, avant elle en a (c'est ce que disait le relevé de l'époque).
+ *  Une CORRECTION s'écrit comme une annulation suivie de la ligne juste, jamais comme une retouche.
+ *  Même compte que la ligne annulée. Une annulation ne s'annule pas. */
+interface BrokerLedgerAnnulationEvent extends BrokerLedgerEventBase {
+  kind: 'annulation';
+  cancelsId: string;
+  isin?: never;
+  quantity?: never;
+  price?: never;
+  amount?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+/** Échange de titres (décision Marc 2026-09-24) : regroupement ou fusion qui CHANGE d'ISIN.
+ *  Toute la position `isin` du compte devient `toIsin`, à raison de `splitFrom` anciens pour
+ *  `splitTo` nouveaux (deux NOMBRES, comme le fractionnement). Le coût d'achat suit la position.
+ *  Aucune espèce : un versement pour une fraction s'écrit comme la VENTE de cette fraction. */
+interface BrokerLedgerEchangeEvent extends BrokerLedgerEventBase {
+  kind: 'echange';
+  isin: string;
+  toIsin: string;
+  splitFrom: number;
+  splitTo: number;
+  quantity?: never;
+  price?: never;
+  amount?: never;
+}
+
+/** Conversion de devises entre deux comptes du livre, en UN SEUL événement (décision Marc
+ *  2026-09-24 : une moitié seule ne peut pas exister). `amount` sort de `accountId` dans sa devise,
+ *  `toAmount` entre dans `toAccountId` dans la sienne, les deux tels qu'imprimés. `rate` = taux
+ *  imprimé par le courtier, gardé pour la trace, jamais recalculé ni utilisé pour déduire un montant. */
+interface BrokerLedgerConversionEvent extends BrokerLedgerEventBase {
+  kind: 'conversion';
+  toAccountId: BrokerLedgerAccountId;
+  amount: BrokerLedgerMoney;
+  toAmount: BrokerLedgerMoney;
+  rate?: number;
+  isin?: never;
+  quantity?: never;
+  price?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+/** Virement d'espèces entre deux comptes du livre, sans conversion : même montant, même devise,
+ *  qui doit être admise par les DEUX comptes. */
+interface BrokerLedgerVirementEvent extends BrokerLedgerEventBase {
+  kind: 'virement-interne';
+  toAccountId: BrokerLedgerAccountId;
+  amount: BrokerLedgerMoney;
+  toAmount?: never;
+  rate?: never;
+  isin?: never;
+  quantity?: never;
+  price?: never;
+  splitFrom?: never;
+  splitTo?: never;
+}
+
+export type BrokerLedgerEvent =
+  BrokerLedgerTitresEvent | BrokerLedgerTradeEvent | BrokerLedgerSplitEvent | BrokerLedgerRevenuEvent | BrokerLedgerEspecesEvent |
+  BrokerLedgerAnnulationEvent | BrokerLedgerEchangeEvent | BrokerLedgerConversionEvent | BrokerLedgerVirementEvent;
+
+/** Référentiel d'instruments. TABLEAU d'objets, jamais un Record indexé par ISIN (ses valeurs
+ *  seraient jugées sous une clé DYNAMIQUE, refus garanti, app vide). Identité = `isin` (unique,
+ *  invariant de test du lot 1b). Pas de champ `id`, donc le nettoyeur de persona ne peut pas filtrer
+ *  ce tableau et AUCUN persona ne doit en planter. */
+export interface BrokerInstrument {
+  // Identité ISO 6166, clé de jointure du grand livre.
+  isin: string;
+  // Symbole de la cotation PRINCIPALE, sous la forme attendue par le fournisseur de cours.
+  symbol: string;
+  // Place de la cotation principale (code MIC). Texte LIBRE, délibérément : une union fermée des
+  // places publierait dans un dépôt PUBLIC où le portefeuille est coté.
+  exchange: string;
+  // Devise de COTATION (celle de `price` sur un achat ou une vente, pas celle du règlement).
+  currency: BrokerLedgerCurrency;
+  // Cotation de CONTRÔLE éventuelle (recoupement de cours, jamais une source).
+  controlSymbol?: string;
+  name: string;
+}
+
+/** [PTF-L1E-PASSERELLE] Régime fiscal d'un compte du grand livre, DÉCLARÉ par Marc (décision du
+ *  2026-09-24 : un régime par compte, jamais deviné). Crypto et « autre » en sont exclus, un compte
+ *  de courtier n'a ni l'un ni l'autre. Le compte `hors-courtier` y est soumis comme les deux autres
+ *  dès qu'il porte un événement (garantie E de services/portefeuille/passerelle.ts). */
+export type BrokerAccountRegimeType = Exclude<RegisteredAccountType, 'CRYPTO' | 'AUTRE'>;
+
+export interface BrokerAccountRegime {
+  accountId: BrokerLedgerAccountId;
+  regime: BrokerAccountRegimeType;
+}
+
+export interface AppState {
+  transactions: Transaction[];
+  assets: Asset[];
+  investmentTransactions: InvestmentTransaction[];
+  investmentAccounts: InvestmentAccount[];
+  budgetItems: BudgetCategory[];
+  config: BudgetConfig;
+  projection: ProjectionConfig;
+  realEstateGoals: RealEstateGoal[];
+  childGoal?: ChildGoal;
+  childGoals: ChildGoal[];
+  /** [PH4D-WEIGHTS-STORE] Pondérations de l'indicateur de santé financière (somme libre, normalisée à l'affichage).
+   *  Migré de l'ancienne clé localStorage `healthIndicator:weights:v1` vers le store persisté. Optionnel (additif) :
+   *  le store l'initialise toujours (`loadLegacyHealthWeights`), mais un vieil état persisté peut ne pas l'avoir → fallback. */
+  healthWeights?: HealthWeights;
+  /** [PH4-F] Abonnements / charges fixes ÉPINGLÉS (persistés). Avant : les abos n'étaient que DÉTECTÉS à la volée
+   *  (IA/heuristique) et reperdus au reload. L'utilisateur en épingle un détecté → il rejoint cette liste persistée.
+   *  Optionnel (additif, PAS de bump v7→v8 : rien à migrer, le store l'initialise à `[]`). Réutilise `RecurringItem`. */
+  subscriptions?: RecurringItem[];
+  /** [SUBS-TAB] Marchands normalisés explicitement écartés (« pas un abonnement »).
+   *  Champ ADDITIF optionnel → aucun bump de schéma, aucun code de migration. */
+  dismissedSubscriptions?: string[];
+  debts: Debt[];
+  travelGoals: TravelGoal[];
+  lifeEvents: LifeEvent[];
+  retirementGoal: RetirementGoal;
+  financialGoals: FinancialGoal[];
+  // Setup-first : pages où l'utilisateur a explicitement choisi « pas concerné »
+  // (ex. immobilier, enfant). Clé = id d'opt-out. Optionnel → migration-safe
+  // (persisté via la denylist partialize ; défaut absent = non opté).
+  setupOptOut?: Record<string, boolean>;
+  initialBalances: Record<string, number>;
+  apiKeys: {
+    anthropic: string; // Phase 4 A5 — Claude API key (Anthropic) — remplace Gemini
+    finnhub: string;   // §7.F.5 — marketData (quotes/history/profile) — optionnel
+    /** [FINTABLE-7] Jeton Fintable LECTURE SEULE — sync bancaire depuis le navigateur. Optionnel
+     *  (absent = la sync in-app est simplement inactive). Comme les autres clés : jamais persisté
+     *  en clair, exclu des sauvegardes et du push Drive. */
+    fintable?: string;
+  };
+  fxRates: {
+    USD: number;
+    EUR: number;
+    CAD: number;
+    lastFetched?: number;
+  };
+  /** [FX-FALLBACK-SILENCIEUX] `true` si AU MOINS un taux de `fxRates` vient du repli en dur
+   *  (jamais récupéré, OU la BdC a répondu mais une série était absente/corrompue — un succès
+   *  GLOBAL de fetch peut cacher un repli PAR TAUX que `fxRates.lastFetched > 0` seul ne voit
+   *  pas). Champ SIBLING de `fxRates` (pas un champ dedans) : `fxRates` reste un
+   *  `Record<string, number>` compatible avec ses ~13 consommateurs (`toCurrencyFactor`,
+   *  `assetValueCad`…), qu'un champ booléen aurait cassés. ADDITIF optionnel, persisté via
+   *  partialize allow-all — absent (état antérieur) → `isFxRatesEstimated` retombe sur
+   *  `fxRates.lastFetched === 0`, rétrocompat bit-identique. */
+  fxRatesEstimated?: boolean;
+  /** [FX-TAUX-JAMAIS-ARRIVES] D'OÙ vient le taux appliqué : `'api'` | `'manuel'` | `'repli'`.
+   *  Remplace la LECTURE de `fxRatesEstimated`, qui reste écrit pour les états anciens et pour
+   *  les consommateurs qui ne posent qu'une question binaire. Trois valeurs parce que Marc a
+   *  demandé un recours SAISI À LA MAIN : un booléen ne peut pas le distinguer d'un repli en dur
+   *  sans soit lui refuser la conversion, soit le faire passer pour une lecture de marché.
+   *  ADDITIF optionnel — absent ⇒ `fxSourceEffective` retombe sur l'ancienne lecture, à l'octet
+   *  près (`services/fx/provenance.ts`). ⚠️ TEXTUEL ET PERSISTÉ : toute clé de cette nature doit
+   *  figurer dans `CHAMPS_TEXTE` (`services/verifierTypesRestaures.ts`), sinon la réhydratation
+   *  échoue et l'app se VIDE au lancement — incident du 2026-09-01, trois vagues. */
+  fxRatesSource?: 'api' | 'manuel' | 'repli';
+  /** Epoch ms de la DERNIÈRE tentative de lecture (réussie ou non). Distinct de
+   *  `fxRates.lastFetched`, qui ne date que les SUCCÈS : sans ce champ, « on a essayé et ça a
+   *  échoué » est indiscernable de « on n'a jamais essayé », et le diagnostic ne peut rien dire. */
+  fxLastAttemptAt?: number;
+  /** Résultat de cette tentative (`FxCause`). ⚠️ TEXTUEL ET PERSISTÉ — cf. `fxRatesSource`. */
+  fxLastAttemptCause?: string;
+  /** [FX-OBSERVATION-COHORTE] Date (`YYYY-MM-DD`) de l'observation de la Banque du Canada d'où
+   *  viennent les DEUX taux en vigueur. Publiée UNIQUEMENT quand `fxRatesSource === 'api'` : c'est
+   *  le seul cas où une date unique décrit les deux chiffres. Sans elle, une observation de 2019
+   *  est indiscernable de celle du jour — le défaut qui a fait servir le littéral du dépôt pendant
+   *  des mois. ADDITIF optionnel, donc ABSENT des défauts (un blob ancien ne le porte pas et
+   *  `merge` superpose clé par clé). ⚠️ TEXTUEL ET PERSISTÉ — cf. `fxRatesSource`. */
+  fxObservationDate?: string;
+  lastUpdate: number;
+  categorizationRules: CategorizationRule[];
+  aiConversation: AiMessage[];
+  // [B2-CHAT-HISTORY] Multi-conversations : `aiConversation` reste la conversation ACTIVE (source
+  // unique — tous les consommateurs existants inchangés) ; les conversations ARCHIVÉES vivent ici.
+  // ADDITIF optionnel (zéro migration) ; synchronisé Drive (texte + métadonnées de pièces jointes
+  // seulement — jamais d'octets, ADR-4).
+  aiConversations?: AiConversation[];
+  /** Id de la conversation ACTIVE (celle d'`aiConversation`) — null tant qu'aucune n'a été archivée. */
+  activeAiConversationId?: string | null;
+  /** [B3-CHAT-MODEL] Modèle Claude de la conversation ACTIVE (choix par conversation — porté dans
+   *  `AiConversation.model` à l'archivage/bascule). ADDITIF optionnel (absent = 'sonnet', le
+   *  comportement historique). */
+  aiChatModel?: AiChatModelKey;
+  /** [B4-CHAT-COST] Coût API CUMULÉ À VIE du chat en USD (survit à la suppression des conversations —
+   *  affiché en CAD via fxRates.USD au rendu). ADDITIF optionnel (absent = 0). */
+  aiChatCostUsdTotal?: number;
+  // W5.x — Nouveaux containers
+  insurancePolicies?: InsurancePolicy[];
+  rentalProperties?: RentalProperty[];
+  privateBusinesses?: PrivateBusiness[];
+  weddingGoal?: WeddingGoal;
+  vehicleReplacements?: VehicleReplacement[];
+  majorRenovations?: MajorRenovation[];
+  charitableGoals?: CharitableGoal[];
+  // Phase G.1 — métadonnées des documents uploadés (blobs stockés séparément)
+  documents?: DocumentMeta[];
+  /** [TX-REVIEW] Revue d'échantillon de la catégorisation : mesure le taux réel de transactions mal
+   *  classées (critère d'arrêt de Marc). ADDITIF optionnel (absent = jamais lancée). La GRAINE est
+   *  persistée : rouvrir l'écran doit re-tirer le MÊME échantillon, sinon les jugements déjà faits ne
+   *  portent plus sur le même dénominateur. */
+  categoryReview?: CategoryReviewState;
+  /** [FINTABLE-3] Rapport de la dernière passe de sync serveur (cron Cloud Run). ADDITIF optionnel
+   *  (absent = jamais synchronisé). Écrit par le cron à CHAQUE passe (succès ou échec) pour que
+   *  l'état de la sync soit visible dans l'app sans notification proactive (choix Marc). */
+  fintableSyncReport?: FintableSyncReport;
+  /** [FINTABLE-6] Soldes RÉELS des comptes de placement lus chez le courtier (via Fintable), qui font
+   *  AUTORITÉ sur le total de chaque compte (choix Marc 2026-07-30). ADDITIF optionnel (absent = jamais
+   *  synchronisé → l'app retombe sur la somme des titres saisis, comportement d'avant). */
+  fintableBrokerBalances?: FintableBrokerBalance[];
+  /** [FINTABLE-HISTORIQUE-COURTIER] Les lectures PASSÉES du courtier, une par compte et par jour.
+   *  `fintableBrokerBalances` ci-dessus est un INSTANTANÉ écrasé à chaque passe : sans ce champ,
+   *  « ce que Fintable disait le 3 mars » n'existe nulle part et ne peut pas être reconstruit.
+   *  ⚠️ Ce champ ne change RIEN aujourd'hui — il se remplit à partir de maintenant, et il faudra
+   *  de la profondeur avant qu'un écran puisse s'en servir. Rétention et plafond :
+   *  `services/fintable/brokerHistory.ts`. ADDITIF optionnel — aucun bump de schéma (rien à
+   *  restructurer dans l'existant). */
+  fintableBrokerHistory?: FintableBrokerBalance[];
+  /** [FINTABLE-7] Rôle de chaque compte Fintable, assigné DANS L'APP (Réglages) — remplace le
+   *  fichier `.fintable-roles.json` que Marc devait écrire à la main puis pousser en secret GCP.
+   *  Clé = id de compte Fintable (stable). Un compte absent d'ici est SIGNALÉ, jamais deviné. */
+  fintableRoles?: Record<string, FintableAccountRoleConfig>;
+  /** [PTF-L1A] Grand livre courtier, tableau PLAT d'événements portant chacun son `accountId`.
+   *  ADDITIF optionnel, aucun bump. Sémantique TRI-ÉTAT que tout lecteur respecte :
+   *  `undefined` = jamais importé (on retombe sur les `assets` saisis), `[]` = importé et vide.
+   *  Un lecteur teste `=== undefined`, JAMAIS `.length`.
+   *  Défaut : `undefined` EXPLICITE dans DEFAULT_APP_STATE ET dans buildDefaultAppState (PERSONA-PURGE),
+   *  jamais `[]`. ⚠️ TEXTUEL ET PERSISTÉ, voir CHAMPS_TEXTE. */
+  brokerLedger?: BrokerLedgerEvent[];
+  /** [PTF-L1A] Référentiel des instruments cités par `brokerLedger`. Même contrat tri-état, même défaut. */
+  instruments?: BrokerInstrument[];
+  /** [PTF-L1E-PASSERELLE] Régime fiscal de chaque compte du grand livre. Même contrat TRI-ÉTAT, même
+   *  défaut `undefined` : tant qu'un compte porteur n'a pas de régime, la passerelle REFUSE le livre
+   *  entier et les écrans gardent les placements saisis. ⚠️ TEXTUEL ET PERSISTÉ, voir CHAMPS_TEXTE. */
+  brokerAccountRegimes?: BrokerAccountRegime[];
+}
+
+/**
+ * [FINTABLE-7] Forme PERSISTÉE d'un rôle de compte. Structurellement identique à
+ * `FintableAccountRole` (`services/fintable/mapSnapshot.ts`) mais redéclarée ici pour que le mapper
+ * reste SANS dépendance (fonction pure) et que `types.ts` ne dépende pas de `services/`. La parité
+ * des deux formes est verrouillée par test (assignation croisée) — pas laissée à la vigilance.
+ */
+export type FintableAccountRoleConfig =
+  | { kind: 'cash' }
+  | { kind: 'debt'; debtName: string }
+  | { kind: 'investment'; taxRegime?: Extract<RegisteredAccountType, 'CELI' | 'REER' | 'NON-ENREG'> }
+  | { kind: 'ignore' };
+
+/**
+ * [FINTABLE-6] Solde d'UN compte de placement tel que le courtier le voit. C'est la « vérité terrain »
+ * de l'incident [[ASSET-FX-DISPLAY]] (« l'arbitre est le COURTIER »), désormais lue automatiquement.
+ *
+ * ⚠️ Fintable ne rend JAMAIS les positions de ce compte (FINTABLE-POSITIONS : Disnat hors SnapTrade,
+ * limite produit mesurée) — donc ce solde est un TOTAL sans ventilation. L'écart avec la somme des
+ * titres saisis est matérialisé en ligne explicite plutôt que laissé inexpliqué (choix assumé : le
+ * patrimoine doit rester reconstructible, cf. checklist VALIDATION FINANCIÈRE).
+ */
+export interface FintableBrokerBalance {
+  /** Id de compte Fintable — clé STABLE d'appariement. Ne JAMAIS apparier sur `label` (renommable). */
+  accountId: string;
+  /** Libellé lisible, AFFICHAGE seulement (peut changer côté banque sans rien casser). */
+  label: string;
+  /**
+   * Solde en CAD. Toujours fini.
+   * ⚠️ [FINTABLE-DISNAT-USD-SOLDE-IGNORE] Depuis le 2026-09-16, un compte en devise étrangère EST
+   * émis quand son taux de change est connu : le solde est alors converti à l'écriture, au taux du
+   * moment, et c'est un vrai CAD. Quand le taux MANQUE, l'entrée est quand même émise mais porte
+   * `missingRate` — c'est le seul cas où `balanceCad` vaut `0` sans rien signifier, et
+   * `reconcileBrokerBalances` détourne ces entrées AVANT toute somme. Le `0` n'est donc jamais lu ;
+   * l'entrée existe uniquement pour que le compte soit NOMMÉ là où Marc regarde ses placements.
+   */
+  balanceCad: number;
+  /**
+   * Devise dont le taux manquait à l'écriture — l'entrée est un SIGNAL, pas une valeur.
+   * Sa présence est testée avant toute autre garde : sans ça, le `balanceCad: 0` qui l'accompagne
+   * serait lu comme un solde réel, ou son absence classerait le compte « illisible » — un
+   * diagnostic faux qui enverrait corriger la mauvaise chose.
+   */
+  missingRate?: string;
+  /** Régime fiscal DÉCLARÉ par Marc. Absent = écart non ventilable → affiché mais hors projection.
+   *  Valeurs = sous-ensemble EXACT de `RegisteredAccountType` (aucune graphie parallèle). */
+  taxRegime?: Extract<RegisteredAccountType, 'CELI' | 'REER' | 'NON-ENREG'>;
+  /**
+   * [FINTABLE-AUTORITE-PARTOUT étape 0] Montant dans la devise NATIVE du compte, tel que lu chez le
+   * courtier — le FAIT, dont `balanceCad` n'est qu'un reflet daté.
+   *
+   * ⚠️ POURQUOI IL EXISTE. `balanceCad` est converti À L'ÉCRITURE, au taux du moment, et persisté.
+   * Un compte en devise étrangère synchronisé pendant que les taux étaient au repli restait donc
+   * faux — ou ÉCARTÉ (`missingRate`) — jusqu'à la synchro SUIVANTE, même une fois les vrais taux
+   * obtenus. Mesuré : un compte courtier en USD était écarté, donc le
+   * panier NON-ENREG amputé d'une part importante, donc l'autorité courtier refusée en entier.
+   * Garder le montant natif permet de reconvertir À LA LECTURE, au taux du jour.
+   *
+   * ⚠️ OPTIONNEL, et il doit le rester : champ ADDITIF, donc aucune migration de schéma (règle du
+   * dépôt). Une entrée écrite avant ce lot ne le porte pas — le lecteur retombe alors sur
+   * `balanceCad` et le dit, plutôt que de traiter l'absence comme un zéro.
+   */
+  amountNative?: number;
+  /** Devise de `amountNative` (ISO, majuscules). Sans elle, le montant natif n'est pas convertible. */
+  currency?: string;
+  /** Epoch ms de la lecture — permet d'afficher honnêtement la fraîcheur (« vu il y a 3 jours »). */
+  at: number;
+}
+
+/** [FINTABLE-3] Résultat d'une passe de synchronisation Fintable, PERSISTÉ dans l'état pour
+ *  affichage (Réglages → Système). `error` non-null = la passe a échoué ; les compteurs restent
+ *  alors à 0 (aucune donnée fabriquée sur un échec). */
+export interface FintableSyncReport {
+  /** Epoch ms de la fin de la passe. */
+  at: number;
+  /**
+   * [FINTABLE-SOURCE-TAG] Epoch ms de la dernière passe PRODUCTIVE (`transactionsAdded > 0`),
+   * REPORTÉE de rapport en rapport (une passe à 0 ajout ou en échec la conserve telle quelle —
+   * source unique du report : `lastProductiveAtSuivant`, `services/fintable/syncHealth.ts`).
+   * C'est la fraîcheur du CONNECTEUR, immunisée contre un import CSV/manuel récent qui rendait
+   * un flux Fintable mort « frais » (le vert trompeur de l'incident 2026-08-05, par une autre
+   * porte). ADDITIF optionnel : absent = rapports d'avant ce lot → la détection de gel retombe
+   * sur la date de la dernière transaction, toutes sources confondues (comportement historique).
+   */
+  lastProductiveAt?: number;
+  /**
+   * [FINTABLE-RATTRAPAGE] Transactions ÉCARTÉES parce qu'antérieures ou égales à la bascule.
+   *
+   * ⚠️ Ce compteur EXISTAIT déjà dans le rapport du mapper, mais n'était affiché QUE dans le script
+   * de dry-run — jamais dans l'app. Marc voyait donc « 0 transactions en plus » sans savoir que la
+   * passe venait d'en ignorer des centaines : il en a conclu, à raison, que l'import était cassé
+   * (2026-08-18). C'est `SILENCE-READS-AS-BROKEN` — l'écran se tait au moment où il doit parler.
+   * ADDITIF optionnel : absent = rapport d'avant, aucune migration.
+   */
+  skippedBeforeCutover?: number;
+  /** [FINTABLE-RATTRAPAGE] Vrai si la passe était un RATTRAPAGE (bascule volontairement ignorée). */
+  wasBackfill?: boolean;
+  /** Date de bascule (dérivée automatiquement) utilisée pour cette passe, ou `null` si vierge. */
+  cutoverDateUsed: string | null;
+  accountsSeen: number;
+  accountsWithoutRole: number;
+  transactionsAdded: number;
+  transfersDetected: number;
+  cashUpdated: boolean;
+  /** [FINTABLE-ANCRE-LIQUIDITE-GONFLEE] Déplacement de l'ancre `initialBalances.LIQUIDITE` pendant la
+   *  passe ($). Champ ADDITIF : absent des rapports d'avant ce lot — l'UI doit donc traiter
+   *  `undefined` comme « inconnu », jamais comme 0 (no-fake-data). */
+  cashAnchorDelta?: number;
+  debtsUpdated: string[];
+  investmentReferenceCount: number;
+  warnings: string[];
+  /**
+   * [FINTABLE-INVESTMENTS-MUET] Comptes dont les POSITIONS n'ont pas pu être lues, avec leur cause.
+   *
+   * ⚠️ Demande Marc 2026-08-17 : « les placements s'affichent vides sans dire pourquoi ». La raison
+   * était DÉJÀ mesurée par `readFintableSnapshot` (`holdingsSkipped`), mais son seul consommateur
+   * était un script CLI de développement — classée puis JETÉE avant l'écran
+   * (`UNE-CAUSE-CLASSEE-PUIS-JETEE-EST-UNE-CAUSE-ABSENTE`, recensement du lot 98).
+   *
+   * ⚠️ Champ DÉDIÉ et non un `warnings: string[]` de plus, pour deux raisons mesurées : `warnings`
+   * n'est rendu qu'en COMPTE à l'écran (« · 3 avertissement(s) »), et une chaîne aplatie ne permet
+   * pas de distinguer « aucune position » de « ce compte ne FOURNIT pas les positions » — c'est
+   * exactement la distinction que le ticket demande. Le `label` voyage avec l'`accountId` parce
+   * qu'un identifiant seul ne dit rien à un humain.
+   *
+   * Additif OPTIONNEL : absent = rapport d'avant ce lot, aucune migration.
+   */
+  comptesSansPositions?: Array<{ accountId: string; label: string; reason: string }>;
+  /** Raison de l'échec, ou `null` si la passe a réussi. */
+  error: string | null;
+}
+
+/** [B2-CHAT-HISTORY] Une conversation ARCHIVÉE du chat Assistant (l'active vit dans `aiConversation`). */
+export interface AiConversation {
+  id: string;
+  /** Titre auto (première question tronquée) — peut porter un montant → zone masquée en mode discret. */
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: AiMessage[];
+  /** [B3-CHAT-MODEL] Modèle de CETTE conversation (restauré à la bascule). ADDITIF optionnel :
+   *  une archive pré-B3 n'en a pas → 'sonnet' (le seul modèle qui existait alors). */
+  model?: AiChatModelKey;
+}
+
+export interface RecurringItem {
+  payee: string;
+  averageAmount: number;
+  dayOfMonth: number;
+  category: string;
+  lastDate: string;
+  yearlyCost: number;
+}

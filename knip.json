@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "index.tsx",
+    "mcp/stdio.ts",
+    "mcp/server.ts",
+    "scripts/*.{ts,cjs}",
+    "middleware.ts",
+    "public/sw.js",
+    "api/**/*.ts",
+    "vitest.mutation.config.ts"
+  ],
+  "project": [
+    "**/*.{ts,tsx,js,cjs}"
+  ]
+}

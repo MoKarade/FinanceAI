@@ -1,0 +1,293 @@
+// [FINTABLE Lot 2] Mapper pur : les garde-fous money-critical du passage Fintable → applyDocument.
+
+import { describe, it, expect } from 'vitest';
+import { mapFintableSnapshot, type FintableMappingConfig } from '../../../services/fintable/mapSnapshot';
+import type { FintableAccount, FintableSnapshot, FintableTransaction } from '../../../services/fintable/types';
+
+function account(over: Partial<FintableAccount> = {}): FintableAccount {
+    return {
+        id: 'acc_cash', connectionId: 'conn_1', label: 'Compte chèque', rawType: 'depository / checking',
+        currency: 'CAD', balance: 6412.37, balanceAvailable: null, lastTxDate: '2026-07-28', enabled: true,
+        ...over,
+    };
+}
+
+function tx(over: Partial<FintableTransaction> = {}): FintableTransaction {
+    return {
+        id: 'tx_1', accountId: 'acc_cash', date: '2026-07-28', amount: -4.5, currency: 'CAD',
+        description: 'BLUE BOTTLE COFFEE', merchant: 'Blue Bottle Coffee', categoryName: null,
+        updatedAt: null, ...over,
+    };
+}
+
+function snap(over: Partial<FintableSnapshot> = {}): FintableSnapshot {
+    return {
+        readAt: 0, accounts: [account()], holdings: [], transactions: [tx()], holdingsSkipped: [],
+        unknownTransactionKeys: [], unknownTransactionSamples: [], ...over,
+    };
+}
+
+const CASH_ONLY: FintableMappingConfig = {
+    roles: { acc_cash: { kind: 'cash' } },
+    transactionsAfter: '2026-07-01',
+};
+
+describe('date de bascule — la vraie protection contre les doublons', () => {
+    it('n\'émet QUE les transactions strictement postérieures à la bascule', () => {
+        // La dédup d'applyDocument porte sur date|montant|PAYEE. Le payee de Fintable
+        // (« Blue Bottle Coffee ») ne sera pas celui extrait d'un relevé PDF → même dépense, clé
+        // différente, doublon accepté en silence. La date de bascule évite le recouvrement.
+        const r = mapFintableSnapshot(snap({
+            transactions: [
+                tx({ id: 'a', date: '2026-06-15' }), // avant la bascule
+                tx({ id: 'b', date: '2026-07-01' }), // PILE la bascule → exclue (strictement après)
+                tx({ id: 'c', date: '2026-07-02' }), // après → retenue
+            ],
+        }), CASH_ONLY);
+
+        expect(r.report.transactions.mapped).toBe(1);
+        expect(r.report.transactions.skippedBeforeCutover).toBe(2);
+        const bank = r.payloads.find((p) => p.kind === 'bank_statement');
+        expect(bank && 'transactions' in bank && bank.transactions[0].date).toBe('2026-07-02');
+    });
+
+    it('sans bascule, tout passe MAIS le rapport avertit du risque', () => {
+        const r = mapFintableSnapshot(snap(), { ...CASH_ONLY, transactionsAfter: null });
+        expect(r.report.transactions.mapped).toBe(1);
+        expect(r.report.warnings.some((w) => w.includes('date de bascule'))).toBe(true);
+    });
+});
+
+describe('rôles de compte — jamais devinés', () => {
+    it('un compte sans rôle est SIGNALÉ et ses transactions écartées', () => {
+        // `Account.type` est du texte libre (« display it, don't switch on it ») : ranger une carte
+        // de crédit dans les liquidités gonflerait le patrimoine du montant dû.
+        const r = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'acc_inconnu', label: 'Compte mystère' })],
+            transactions: [tx({ accountId: 'acc_inconnu', date: '2026-07-20' })],
+        }), { roles: {}, transactionsAfter: '2026-07-01' });
+
+        expect(r.report.accountsWithoutRole).toEqual([
+            { id: 'acc_inconnu', label: 'Compte mystère', rawType: 'depository / checking' },
+        ]);
+        expect(r.report.transactions.skippedUnroutedAccount).toBe(1);
+        expect(r.report.transactions.mapped).toBe(0);
+        expect(r.payloads).toHaveLength(0);
+    });
+
+    it('les transactions d\'un compte de placement sont écartées', () => {
+        const r = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'acc_disnat', label: 'Courtier (0002)', rawType: 'investment / brokerage', balance: 118520.64 })],
+            transactions: [tx({ accountId: 'acc_disnat', date: '2026-07-20' })],
+        }), { roles: { acc_disnat: { kind: 'investment' } }, transactionsAfter: '2026-07-01' });
+
+        expect(r.report.transactions.skippedInvestmentAccount).toBe(1);
+        // [FINTABLE-6] Le solde du courtier fait AUTORITÉ (ex-« référence »), et porte désormais
+        // `accountId` — clé STABLE d'appariement (un compte renommé côté banque ne doit rien casser).
+        expect(r.report.investmentBalances).toEqual([
+            { accountId: 'acc_disnat', label: 'Courtier (0002)', currency: 'CAD', balance: 118520.64 },
+        ]);
+        // …mais n'entre JAMAIS dans les liquidités.
+        expect(r.report.cashTargetCad).toBeNull();
+    });
+
+    it('[FINTABLE-6] régime fiscal DÉCLARÉ → propagé ; ABSENT → signalé, jamais deviné', () => {
+        const declare = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'acc_celi', label: 'CELI courtier', rawType: 'brokerage', balance: 40_000 })],
+        }), { roles: { acc_celi: { kind: 'investment', taxRegime: 'CELI' } }, transactionsAfter: '2026-07-01' });
+        expect(declare.report.investmentBalances[0].taxRegime).toBe('CELI');
+        expect(declare.report.warnings.some((w) => w.includes('régime fiscal'))).toBe(false);
+
+        const silent = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'acc_x', label: 'Compte mystère', rawType: 'brokerage', balance: 40_000 })],
+        }), { roles: { acc_x: { kind: 'investment' } }, transactionsAfter: '2026-07-01' });
+        expect(silent.report.investmentBalances[0].taxRegime).toBeUndefined();
+        // Le solde reste AFFICHABLE, mais l'absence de régime est dite — jamais rangée au hasard.
+        expect(silent.report.warnings.some((w) => w.includes('régime fiscal non déclaré'))).toBe(true);
+    });
+
+    it('[FINTABLE-6] un placement en devise ≠ CAD ou sans solde est signalé (jamais 0 $ silencieux)', () => {
+        const usd = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'a', label: 'Compte USD', rawType: 'brokerage', balance: 10_000, currency: 'USD' })],
+        }), { roles: { a: { kind: 'investment', taxRegime: 'NON-ENREG' } }, transactionsAfter: '2026-07-01' });
+        // ⚠️ Le TEXTE a changé le 2026-09-16 : « conversion non implémentée → IGNORÉ » est devenu
+        // faux le jour où la conversion est devenue possible. Le test vise donc le FAIT qu'il
+        // défend — le compte en devise est SIGNALÉ, nommément — et non la formulation d'alors
+        // (`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`).
+        expect(usd.report.warnings.some((w) => w.includes('Compte USD') && w.includes('USD'))).toBe(true);
+        // …et il ne PROMET plus une issue qu'il ne connaît pas : le mapper est pur, il ne voit ni
+        // les taux ni `fxRatesEstimated`, donc il ne peut pas dire « ignoré » ni « converti ».
+        const msg = usd.report.warnings.find((w) => w.includes('Compte USD')) ?? '';
+        expect(msg).not.toContain('IGNORÉ');
+
+        const noBal = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'b', label: 'Compte muet', rawType: 'brokerage', balance: null })],
+        }), { roles: { b: { kind: 'investment', taxRegime: 'CELI' } }, transactionsAfter: '2026-07-01' });
+        expect(noBal.report.warnings.some((w) => w.includes('solde absent') && w.includes('Compte muet'))).toBe(true);
+    });
+});
+
+describe('liquidités — tout ou rien', () => {
+    it('somme les comptes cash et émet cash_balance', () => {
+        const r = mapFintableSnapshot(snap({
+            accounts: [
+                account({ id: 'a1', balance: 6412.37 }),
+                account({ id: 'a2', label: 'Compte épargne', rawType: 'depository / savings', balance: 25000 }),
+            ],
+            transactions: [],
+        }), { roles: { a1: { kind: 'cash' }, a2: { kind: 'cash' } }, transactionsAfter: null });
+
+        expect(r.report.cashTargetCad).toBeCloseTo(31412.37, 2);
+        const cash = r.payloads.find((p) => p.kind === 'cash_balance');
+        expect(cash && 'targetCad' in cash && cash.targetCad).toBeCloseTo(31412.37, 2);
+    });
+
+    it('un seul solde manquant SUSPEND toute la mise à jour du cash', () => {
+        // `cash_balance` écrit un DELTA sur initialBalances pour atteindre la cible : une cible
+        // partielle déplacerait durablement le cash de l'écart, en silence.
+        const r = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'a1', balance: 6412.37 }), account({ id: 'a2', balance: null })],
+            transactions: [],
+        }), { roles: { a1: { kind: 'cash' }, a2: { kind: 'cash' } }, transactionsAfter: null });
+
+        expect(r.report.cashTargetCad).toBeNull();
+        expect(r.payloads.find((p) => p.kind === 'cash_balance')).toBeUndefined();
+        expect(r.report.warnings.some((w) => w.includes('NON mis à jour'))).toBe(true);
+    });
+
+    it('un compte cash en devise étrangère est EXCLU et signalé, jamais additionné brut', () => {
+        const r = mapFintableSnapshot(snap({
+            accounts: [account({ id: 'a1', balance: 100, currency: 'USD' })],
+            transactions: [],
+        }), { roles: { a1: { kind: 'cash' } }, transactionsAfter: null });
+
+        expect(r.report.cashTargetCad).toBeNull();
+        expect(r.report.warnings.some((w) => w.includes('USD'))).toBe(true);
+    });
+});
+
+describe('dette carte de crédit', () => {
+    const cardCfg: FintableMappingConfig = {
+        roles: { acc_mc: { kind: 'debt', debtName: 'Mastercard remises' } },
+        transactionsAfter: '2026-07-01',
+    };
+    // ⚠️ [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] Le SIGNE de cette fixture a changé le 2026-09-16, et
+    // ce n'est pas une re-base : il encodait une HYPOTHÈSE (« positif = montant dû »), jamais
+    // mesurée, que la première passe réelle a RÉFUTÉE. Rapport : « → positif » ; Marc : « c'est en
+    // ma faveur ». Devoir 250 $ arrive donc en **−250** chez Fintable.
+    // La valeur absolue est inchangée : ce qui bouge est la convention, pas le montant observé.
+    const card = account({ id: 'acc_mc', label: 'Mastercard remises', rawType: 'credit / credit card', balance: -287.43 });
+
+    it('émet une mise à jour de SOLDE seulement (ni taux ni paiement minimum inventés)', () => {
+        const r = mapFintableSnapshot(snap({ accounts: [card], transactions: [] }), cardCfg);
+        const debt = r.payloads.find((p) => p.kind === 'debt');
+        expect(debt).toEqual({ kind: 'debt', name: 'Mastercard remises', balance: 287.43 });
+        // Aucun taux fabriqué : la dette doit préexister, et le rapport le dit.
+        expect(debt && 'interestRate' in debt).toBe(false);
+        expect(r.report.warnings.some((w) => w.includes('doivent déjà exister'))).toBe(true);
+    });
+
+    it('un solde de carte POSITIF (crédit en ta faveur) ne devient AUCUNE dette', () => {
+        // ⚠️ TEST DE LIMITE **INVERSÉ** le 2026-09-16, pas supprimé — `UN-TEST-DE-LIMITE-S-INVERSE`.
+        // Il affirmait « un solde NÉGATIF est un crédit en ta faveur » et acceptait qu'il devienne
+        // une dette de 50 $ via `Math.abs`. La mesure a retourné la convention : c'est le solde
+        // POSITIF qui est le crédit, et `Math.abs` en faisait une **dette fantôme** du même montant.
+        // Le fait défendu à l'origine reste entier — « une dette négative gonflerait le patrimoine
+        // au lieu de le réduire » — mais la valeur qui l'exerce a changé de côté.
+        const r = mapFintableSnapshot(snap({ accounts: [account({ ...card, balance: 50 })], transactions: [] }), cardCfg);
+        expect(r.report.debts).toEqual([]);
+        const credWarning = r.report.warnings.find((w) => w.includes('EN TA FAVEUR'));
+        expect(credWarning).toBeDefined();
+        // ⚠️ [finding panel, PR #531] ce warning finit dans FintableSyncReport.warnings, rendu SANS gate
+        // mode discret dans SystemView.tsx ET dumpé en clair dans les logs GitHub Actions (fintable-sync.yml)
+        // — le montant ($50) ne doit JAMAIS y être interpolé. Règle inchangée, message différent.
+        expect(credWarning).not.toMatch(/\b50\b/);
+    });
+
+    it('les transactions de la carte SONT importées (ce sont des dépenses)', () => {
+        const r = mapFintableSnapshot(snap({
+            accounts: [card],
+            transactions: [tx({ accountId: 'acc_mc', date: '2026-07-20', amount: -42.5 })],
+        }), cardCfg);
+        expect(r.report.transactions.mapped).toBe(1);
+    });
+});
+
+describe('forme des transactions émises', () => {
+    it('garde le signe (négatif = sortant) et préfère le marchand au libellé brut', () => {
+        const r = mapFintableSnapshot(snap({
+            transactions: [tx({ date: '2026-07-20', amount: -4.5 })],
+        }), CASH_ONLY);
+        const bank = r.payloads.find((p) => p.kind === 'bank_statement');
+        // [TX-TRANSFERS] `accountName` est émis par transaction : c'est la seule preuve de « deux
+        // poches différentes » côté app, sans laquelle l'appariement des virements internes ne peut
+        // que SUGGÉRER. Un lot Fintable couvre plusieurs comptes → le nom vit sur la LIGNE.
+        expect(bank && 'transactions' in bank && bank.transactions[0]).toEqual({
+            date: '2026-07-20', payee: 'Blue Bottle Coffee', amount: -4.5, accountName: 'Compte chèque',
+        });
+    });
+
+    it('retombe sur la description quand le marchand est absent', () => {
+        const r = mapFintableSnapshot(snap({
+            transactions: [tx({ date: '2026-07-20', merchant: null })],
+        }), CASH_ONLY);
+        const bank = r.payloads.find((p) => p.kind === 'bank_statement');
+        expect(bank && 'transactions' in bank && bank.transactions[0].payee).toBe('BLUE BOTTLE COFFEE');
+    });
+
+    it('un revenu reste POSITIF (aucune inversion de signe)', () => {
+        const r = mapFintableSnapshot(snap({
+            transactions: [tx({ date: '2026-07-20', amount: 2500, merchant: 'Paie' })],
+        }), CASH_ONLY);
+        const bank = r.payloads.find((p) => p.kind === 'bank_statement');
+        expect(bank && 'transactions' in bank && bank.transactions[0].amount).toBe(2500);
+    });
+
+    it('omet la catégorie quand Fintable n\'en fournit pas (ruleCategorize prendra le relais)', () => {
+        const r = mapFintableSnapshot(snap({ transactions: [tx({ date: '2026-07-20' })] }), CASH_ONLY);
+        const bank = r.payloads.find((p) => p.kind === 'bank_statement');
+        expect(bank && 'transactions' in bank && 'category' in bank.transactions[0]).toBe(false);
+    });
+
+    it('une transaction en devise étrangère est écartée et signalée', () => {
+        const r = mapFintableSnapshot(snap({
+            transactions: [tx({ date: '2026-07-20', currency: 'USD' })],
+        }), CASH_ONLY);
+        expect(r.report.transactions.mapped).toBe(0);
+        expect(r.report.transactions.skippedForeignCurrency).toBe(1);
+        expect(r.report.warnings.some((w) => w.includes('devise'))).toBe(true);
+    });
+});
+
+describe('scénario type (6 comptes)', () => {
+    it('route chaque compte selon les décisions prises, sans rien deviner', () => {
+        const accounts = [
+            account({ id: 'd1', label: 'Courtier (0001)', rawType: 'investment / brokerage', currency: 'USD', balance: 61250.55 }),
+            account({ id: 'd2', label: 'Courtier (0002)', rawType: 'investment / brokerage', balance: 118520.64 }),
+            account({ id: 'sv', label: 'Compte épargne', rawType: 'depository / savings', balance: 25000 }),
+            account({ id: 'shr', label: 'SHR Qualifying share', rawType: 'investment / rrsp', balance: 5 }),
+            account({ id: 'ch', label: 'Compte chèque', rawType: 'depository / checking', balance: 6412.37 }),
+            // ⚠️ [FINTABLE-SOLDE-CARTE-SIGNE-INVERSE] Signe corrigé le 2026-09-16 : ce relevé a été
+            // transcrit avant toute mesure de la convention Fintable, donc son montant positif reflétait
+            // la lecture d'un RELEVÉ (« solde dû »), pas ce que l'API envoie. Mesuré depuis :
+            // devoir de l'argent arrive en négatif. Le montant observé est inchangé.
+            account({ id: 'mc', label: 'Mastercard remises', rawType: 'credit / credit card', balance: -287.43 }),
+        ];
+        const r = mapFintableSnapshot(snap({ accounts, transactions: [] }), {
+            roles: {
+                d1: { kind: 'investment' }, d2: { kind: 'investment' }, shr: { kind: 'investment' },
+                sv: { kind: 'cash' }, ch: { kind: 'cash' },
+                mc: { kind: 'debt', debtName: 'Mastercard remises' },
+            },
+            transactionsAfter: '2026-07-28',
+        });
+
+        // Liquidités = épargne + chèque UNIQUEMENT (ni placements, ni carte).
+        expect(r.report.cashTargetCad).toBeCloseTo(31412.37, 2);
+        expect(r.report.debts).toEqual([{ name: 'Mastercard remises', balanceCad: 287.43 }]);
+        expect(r.report.investmentBalances).toHaveLength(3);
+        expect(r.report.accountsWithoutRole).toEqual([]);
+        // Aucune position mappée : ce courtier n'est pas couvert par SnapTrade (mesuré).
+        expect(r.payloads.some((p) => p.kind === 'broker_statement')).toBe(false);
+    });
+});

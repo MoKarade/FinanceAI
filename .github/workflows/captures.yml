@@ -1,0 +1,45 @@
+name: Captures avant/après
+
+# Joint à une PR qui change un écran deux captures côte à côte (« avant » = la branche de base, « après » = la PR),
+# pour juger en voyant et pour que le filet du PC puisse accepter seul une PR d'écran (cycle de vie §8, tâche
+# Jules full auto). Le contrôle est le workflow commun de MoKarade/.github ; ce fichier ne fait que l'appeler.
+#
+# Les images viennent de l'app lancée par le workflow avec les DONNÉES FICTIVES du mode test (couple Alex/Sam),
+# jamais de la production. FinanceAI tourne tout entier dans le navigateur : pas de session à simuler, le mode
+# test s'active par un clic dans Réglages, joué par les `etapes` avant chaque capture. Le drapeau d'onboarding
+# est posé dans le stockage local AVANT le premier chargement (`app_onboarding_done`, utils/storageKeys.ts).
+# Ce n'est PAS un contrôle exigé : il ne bloque aucune PR ; il commente la PR (un commentaire, mis à jour à
+# chaque push) et range les images dans la branche `captures`.
+on:
+  pull_request:
+    paths:
+      - components/**
+      - App.tsx
+      - index.css
+      - index.html
+      - locales/**
+      - .github/workflows/captures.yml
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  captures:
+    name: Captures avant/après
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    uses: MoKarade/.github/.github/workflows/captures.yml@main
+    with:
+      installation: npm ci
+      demarrage: npx vite --port 3000 --strictPort
+      url: http://localhost:3000
+      stockage-local: |
+        app_onboarding_done=true
+      etapes: |
+        aller /#SETTINGS
+        pointeur 1270 450
+        cliquer-bouton Activer le mode test
+        attendre-texte MODE TEST
+      pages: |
+        /#DEBT
+        /#FUTURE

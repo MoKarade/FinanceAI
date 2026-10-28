@@ -1,0 +1,75 @@
+# Mises à jour de dépendances proposées automatiquement (porte sécurité de l'Atelier, S6).
+# Groupées pour limiter le bruit : une PR par semaine pour les versions mineures/correctives.
+# Chaque PR passe par la CI complète (gate, E2E, qualité, sécurité) et fusionne seule si tout
+# est vert — la fusion automatique est faite par Mergify (.mergify.yml, depuis le 15/10/2026).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      # vitest et @vitest/* exigent la MÊME version (peer exacte) : séparés, chaque PR échoue à
+      # l'installation (ERESOLVE, vécu le 23/09). Leurs majeures voyagent donc ensemble.
+      vitest-majeures:
+        patterns: ["vitest", "@vitest/*"]
+        update-types: [major]
+      # react-i18next suit la majeure d'i18next (react-i18next 17 exige i18next >= 26.2) : séparée, la PR
+      # restait rouge à vie (#1025, 24/09/2026 : ERESOLVE à l'installation).
+      i18n-majeures:
+        patterns: ["i18next", "react-i18next"]
+        update-types: [major]
+      mineures-et-correctifs:
+        update-types: [minor, patch]
+    ignore:
+      # @types/node suit la MAJEURE de Node déclarée (engines, .nvmrc) : la garde
+      # [ENV-NODE-NON-DECLARE] exige les trois alignés. Une majeure de types plus récente ne peut
+      # que rougir (vécu : #1015, @types/node 26 sur Node 24) — elle se change AVEC Node, pas seule.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # vitest 5 (+ @vitest/*) : le lanceur vitest de Stryker ne sait pas encore le piloter — sous vitest 5
+      # chaque mutant « survit » à tort (stryker-js#6210, ouvert ; mesuré chez BatchChef le 24/09/2026 :
+      # 40,6 % → 5,2 %). Les tests de mutation du moteur fiscal en dépendent. À retirer quand
+      # @stryker-mutator/vitest-runner corrige #6210.
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
+      # jsdom 30 (+ @types/jsdom) : CONSÉQUENCE de l'épinglage vitest 4 ci-dessus. L'environnement jsdom de
+      # vitest 4.1.11 (dernière 4.x) convertit les Blob en lisant l'interne `_buffer`, que jsdom 30 a retiré :
+      # URL.createObjectURL lève « Cannot read properties of undefined (reading '_buffer') ». Mesuré le
+      # 24/09/2026 (#1026) : 1 test rouge (export CSV), la pile passe par vitest/…/makeCompatBlob, pas par
+      # notre code. À retirer EN MÊME TEMPS que l'exclusion vitest (vitest 5 lit jsdom 30).
+      - dependency-name: "jsdom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/jsdom"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 : aucune API programmatique avant la 7.1 (annonce TS 7.0, 08/07/2026) ; typescript-eslint
+      # en dépend, et la 7.0 change des défauts (`types` vide, imports à effet de bord vérifiés). Mesuré le
+      # 23/09/2026 (JobAI #29) : typecheck rouge. À retirer avec TypeScript 7.1 + typescript-eslint compatible.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # Tailwind 4 : vraie migration (plugin PostCSS déplacé dans @tailwindcss/postcss, configuration en CSS).
+      # Mesuré le 23/09/2026 (FinanceAI #1018) : build rouge. Chantier de design (S5), pas une montée de version.
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      # Contrat INTERNE, épinglé à la main sur un tag (outils/repin_hub_contract.py de l'Atelier) : pas à
+      # Dependabot. Il lisait mal le tag annoté v1.3.1 et proposait une RÉTROGRADATION v1.3.1 -> v1.3.0
+      # (sans dist/ : installation cassée) — vécu le 23/09/2026, BatchChef #114 et JobAI #34.
+      - dependency-name: "@mokarade/hub-contract"
+      # LIA (lia-ui) : même cause, même parade. Dependabot a proposé v0.38.0 -> v0.31.0 le 26/10/2026
+      # (CarAI #162, JobAI #275, FinanceAI #1288, app-template #155, toutes fusionnées) : LIA a perdu en
+      # prod ses humeurs et l'animation d'analyse. Le re-pin se fait à la main, à chaque version.
+      - dependency-name: "@mokarade/lia-ui"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      # Mineures et correctives : fusionnées seules par Mergify quand la CI est verte (MoKarade/.github#26).
+      # Majeures dans leur propre groupe : Marc les fusionne, et elles ne bloquent pas les mineures.
+      actions-mineures:
+        patterns: ["*"]
+        update-types: [minor, patch]
+      actions-majeures:
+        patterns: ["*"]
+        update-types: [major]

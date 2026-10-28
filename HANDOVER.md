@@ -1,0 +1,10834 @@
+# SESSION HANDOVER — pour le prochain Claude
+
+> **À lire EN PREMIER si tu reprends FinanceAI.** Ce document remplace
+> la lecture séquentielle de tous les autres. Pointeurs vers les détails
+> à la fin.
+>
+> ## 🟦 Session 2026-10-28 — **`[1159]`** : la session du hub ferme finance.hubperso.com (FinanceAI#1159, ADR 0027)
+> Décision de Marc (reco B) : plus de Cloudflare Access (jamais mis en service). `middleware.ts` (Routing Middleware Vercel) + `api/_lib/gardeSite.ts` + `api/_lib/accesHub.ts` (ex-`accessJwt.ts`) : le hub dit si la session est celle du propriétaire (`GET https://www.hubperso.com/api/session/moi`, Hubperso#601), FinanceAI ne vérifie aucune signature et n'a **aucune variable à poser**. Sans session : page 302 vers la connexion du hub, `/api/*` 401 JSON, autre courriel 403, hub en panne 503 ; seule `/api/sante` est publique. Relais Claude et proxys revérifient. ⚠️ **À fusionner APRÈS le déploiement `READY` de Hubperso#601** (sans la route, tout répond 503). ⚠️ Hôte `www.hubperso.com` obligatoire (l'apex redirige, `fetch` perd le cookie). ⚠️ `api/_lib/lia.ts` garde sa vérification par `HUB_SESSION_PUBLIC_KEYS` (absente sur Vercel : LIA y répond 401) : tâche à part. Dépendance ajoutée : `@vercel/functions` (`next()` du middleware). Retour arrière : `git revert`. Anciens noms de tests conservés (`tests/api/accessJwt.test.ts`) pour ne retirer aucun test.
+>
+> ## 🟦 Session 2026-10-28 — **`[PTF-L1C2-PASSE]`** : la passe du magasin de marché (FinanceAI#1329, mission #1161, lot 1c-2 de #1162)
+> `services/marche/passeMagasin.ts` (pur, lectures INJECTÉES, aucun `fetch`) : `executerPasseMagasin(magasin, cibles, lecteurs, options)` relit les séries en retard (la plus en retard d'abord, dans `budgetAppelsEodhd`, 15 par défaut), avec un jour de recouvrement au dernier point, sans appel quand aucune séance n'a pu paraître (week-end) sauf s'il reste un point de SECOURS à promouvoir, un ISIN répété n'est lu qu'une fois (deux devises pour un ISIN = refusé), fenêtre plafonnée à l'historique du plan gratuit (365 jours, le reste est compté `fenetresTronquees`) ; taux BdC hors budget ; fusion par `fusionnerClotures`/`fusionnerTaux` ; rapport de COMPTEURS seulement (ni ISIN, ni symbole, ni cours, ni clé : le journal de la tâche est public) ; `essaiABlanc` rend le plan sans appeler ; `majLe` ne bouge que si un point a changé. ⚠️ **Rien n'est branché ni activé** : le branchement (route Cloud Run, `financeai-eodhd-key` dans `mcp/deploy.sh`, écriture du fichier Drive séparé avec un seul écrivain) et le référentiel ISIN des titres sont les tâches suivantes de #1162 ; chemins protégés (`mcp/**`, `.github/**`) donc Garde-fou, et secret/cron/écriture Drive seulement après le « autorisé » de Marc.
+>
+> ## 🟦 Session 2026-10-28 — **`[COURBE-TROUS-COMBLES]`** : un trou intérieur d'historique ne sort plus le titre du TOTAL (FinanceAI#1326, chantier #1160)
+> Cause de la chute d'août mesurée avec `[COURBE-DIAGNOSTIC]` sur l'état réel : un titre sans clôture pendant près de deux mois, sorti du TOTAL après 7 jours puis revenu d'un coup. `buildMarketData` comble maintenant un trou INTÉRIEUR (clôture réelle avant et après) au dernier close connu, l'inscrit dans `syntheticTailKeys` (les variations lues sur une borne reportée rendent « — ») et le rend dans `gapBridges` (plage par titre) ; `HistoryCoverageNote` le dit. ⚠️ La QUEUE d'un historique arrêté reste exclue (ADR 0007 §3 et addendum) : trois titres dont le dernier cours est ancien restent hors du total des derniers jours jusqu'à de vrais cours. Le remède de fond est #1162 (clôtures EODHD archivées avant le 01/01/2027) ; pourquoi les sources gratuites ne rendent presque aucun point pour ce titre reste à lire. Preuve en production : le TOTAL de « Performance comparée » ne chute plus entre le 06/08 et le 22/09.
+>
+> ## 🟦 Session 2026-10-28 — **`[COURBE-DIAGNOSTIC]`** : diagnostic de la chute d'août de « Performance comparée » (FinanceAI#1324, chantier #1160)
+> `services/history/diagnosticCourbe.ts` (pur) rejoue `buildMarketData` et nomme, pour chaque saut du TOTAL, le titre sorti / entré / changé de quantité ou de prix, plus les trous d'historique de plus de 7 jours, les queues périmées, les sauts de cours d'un jour (fractionnement non répercuté) et les quantités de fiche qui ne rejoignent pas les achats. `scripts/diagnosticCourbe.ts` le lance sur l'état réel (Drive via `npm run mcp:auth`, sinon un export JSON), lecture seule, sortie sans montant ni quantité. ⚠️ Mécanisme connu, cause réelle encore à lire : une chute suivie d'un retour d'un coup est un titre qui sort du TOTAL (clôture de plus de `STALE_PRICE_DAYS` sans cotation fraîche) puis revient, jamais un marché. Ne pas committer la sortie du script (elle nomme les titres).
+>
+> ## 🟦 Session 2026-10-28 — **`[1319]`** : déconnexion de Drive à 30 jours d'inactivité au lieu de 8 h (FinanceAI#1319)
+> `INACTIVITY_LIMIT_MS` passe de 8 h à 30 jours (`services/sync/inactivityLogout.ts`), choix de Marc sur une carte du 28/10/2026 13:29Z (« une seule connexion par mois »). ⚠️ `setTimeout` plafonne à 2^31-1 ms (~24,8 jours) et tire AUSSITÔT au-delà : le délai est plafonné à `TIMER_MAX_MS`, `reschedule` revérifie à l'échéance. Test de régression ajouté. Le jeton Google reste d'1 h : la reprise silencieuse au boot dépend toujours de la session Google du navigateur ; si elle échoue encore, l'étape suivante est une session serveur avec cookie (comme DriveAI, `api/refresh`). Preuve en production : seuil lu dans le bundle servi.
+>
+> ## 🟦 Session 2026-10-28 — **modèles 5.5** : tout FinanceAI passe en génération 5.5 (tâche FinanceAI, demande de Marc)
+> Ids : `claude-haiku-5-5`, `claude-sonnet-5-5`, `claude-opus-5-5` (`services/aiChat/models.ts`, source unique ; plus aucun ancien id dans le code). Tarifs relus sur la page officielle le 28/10/2026 (`pricing.ts` : Haiku 5.5 0,10 $/0,50 $, Sonnet 5.5 2 $/10 $, Opus 5.5 4 $/20 $ ; lecture de cache ×0,1 Haiku, ×0,05 Sonnet et Opus via `lectureCache`). ⚠️ La famille 5.5 REFUSE `temperature` (400) : retirée de `chat`, `chatStream`, des deux extractions vision et de `BudgetAiModal`. ⚠️ Elle PENSE par défaut et la pensée compte dans `max_tokens` : `services/aiChat/reglages.ts` coupe la pensée sur Haiku (`disabled`), la met au plus bas sur Sonnet (`between_tools`, `disabled` y est refusé), borne l'effort ailleurs ; plafonds relevés (chat 4096, boucle d'outils 8192, fiche de paie 1024). Le relais ne transmet pas `thinking` / `output_config` à la passerelle locale (Ollama), mais les garde pour Anthropic. Reste à lire en production : un appel réel de chaque famille après la levée de la limite API (01/11).
+>
+> ## 🟦 Session 2026-10-27 — **`[1299]`** : `codeql.yml` ne laisse plus le jeton dans `.git` (FinanceAI#1299)
+> L'étape « Checkout repository » de `.github/workflows/codeql.yml` reçoit `persist-credentials: false` (alerte zizmor `artipacked`, .github#585). Rien d'autre ne change, aucun droit élargi. La PR de Jules (#1300) était restée en `hold` : sa base datait d'avant `lia-ui` v0.42.0 et elle touchait `reacteur.yml`, `fintable-sync.yml`, `HANDOVER.md`, `package.json` (hors « Fichiers permis ») ; remplacée par cette PR de 2 lignes. Preuve : le fichier fusionné contient la ligne et le contrôle CodeQL d'une PR suivante passe au vert.
+>
+> ## 🟦 Session 2026-10-26 — **`[1305]`** : CI plus courte sur le robot du PC (FinanceAI#1305)
+> `.github/workflows/ci.yml` et `lighthouse.yml` : (1) plus de cache npm sur dépôt privé (`setup-node` restaurait ~1,47 Go, ~80 s par job, pour un `npm ci` de 18 s) ; ⚠️ la première version `private && '' || 'npm'` ne désactivait RIEN (en expression GitHub, `'' ` est faux, donc `a && '' || b` rend toujours `b`) : « Setup Node 24 » durait encore 80 s au passage du 26/10/2026 22:05 UTC ; la forme qui marche est `(public && 'npm') || ''` ; (2) une seule tranche de tests sous couverture au lieu de quatre (un seul robot : les tranches passaient l'une après l'autre ; `--tranche i/1`, `--fusion 1`, matrice `[1]`, à changer ENSEMBLE si l'on repasse à N robots) ; (3) plus de passage de CI au push sur `main` (la file Mergify a déjà testé l'arbre fusionné ; `workflow_dispatch` reste pour un passage manuel). Mesure de départ (passage 40385588537, 26/10/2026) : ~29 min de temps-robot, dont ~12 min de « Setup Node ». Aucun test retiré ni sauté ; le nom des contrôles obligatoires de `.mergify.yml` ne change pas.
+>
+> ## 🟦 Session 2026-10-28 — **`[LIA-1322]`** : lia-ui v0.43.0, le clic droit de LIA marche partout (FinanceAI#1322)
+> FinanceAI épingle `@mokarade/lia-ui` v0.43.0 (sha pelé `c0f1ff7`), seul changement (`package.json`, lock, ligne de version de `docs/claude/hub.md`). Marc, 28/10/2026 : « faut qu'il marche partout ». Le clic droit (et l'appui long) de LIA s'ouvre sur le fond de page et même quand un gestionnaire de la page arrête la propagation ou bloque le menu natif ; les champs de saisie gardent le menu du navigateur. Rien à brancher. Preuve : déploiement Vercel de production `READY` sur le bon SHA, puis relevé du PC (lia-ui#147).
+>
+> ## 🟦 Session 2026-10-28 — **`[LIA-1315]`** : lia-ui v0.42.2, une discussion fermée ailleurs reste fermée (FinanceAI#1315)
+> FinanceAI épingle `@mokarade/lia-ui` v0.42.2 (sha pelé `9852596`), seul changement (`package.json`, lock). v0.42.1 ne rapprochait la discussion de l'onglet de celle de l'état partagé qu'à la première lecture, et seulement si la partagée était ouverte : une discussion fermée sur le hub était réécrasée par celle, plus ancienne, d'un onglet. v0.42.2 rapproche à chaque lecture (la plus récente gagne, fermée ailleurs = fermée ici) et écrit toujours la plus récente des deux. Rien à brancher côté app. Preuve : déploiement Vercel de production `READY` sur le commit fusionné, puis relevé du PC (lia-ui#144).
+>
+> ## 🟦 Session 2026-10-27 — **`[LIA-1313]`** : lia-ui v0.42.1, la discussion la plus récente l'emporte (FinanceAI#1313)
+> FinanceAI épingle `@mokarade/lia-ui` v0.42.1 (sha pelé `b8967ec`), seul changement (`package.json`, lock). Au montage, la discussion de l'onglet était datée « maintenant » et passait devant celle de l'état partagé : une question posée sur le hub ne se retrouvait pas dans CarAI. v0.42.1 range le vrai instant avec la discussion de l'onglet, et la plus récente gagne à la première lecture de l'état. Rien à brancher côté app. Preuve : déploiement Vercel de production `READY` sur le commit fusionné, puis relevé du PC (lia-ui#140).
+>
+> ## 🟦 Session 2026-10-27 — **`[LIA-1310]`** : lia-ui v0.42.0, la hauteur de la bulle de LIA se révèle en douceur (FinanceAI#1310)
+> FinanceAI épingle `@mokarade/lia-ui` v0.42.0 (sha pelé `cff04f4`), seul changement (`package.json`, lock, ligne de version de `docs/claude/hub.md`). La bulle de v0.41.1 restait dans l'écran mais changeait de hauteur d'un coup à chaque réponse ; v0.42.0 découvre la hauteur gagnée en 280 ms depuis le bord fixe, sans ombre coupée, et ne bouge rien avec `prefers-reduced-motion`. Rien à brancher côté app. Preuve : déploiement Vercel de production `READY` sur le commit fusionné, bundle servi (chunks compris) contenant `inset(-24px)` sur finance.hubperso.com ; la tâche reste ouverte jusque-là.
+>
+> ## 🟦 Session 2026-10-26 — **`[LIA-1301]`** : lia-ui v0.41.1, la bulle ne dépasse plus de l'écran (FinanceAI#1301)
+> FinanceAI épingle `@mokarade/lia-ui` v0.41.1 (sha pelé `90dc7e7`), seul changement (`package.json`, lock). Le relevé du PC sur v0.41.0 montrait la bulle hors écran à l'ouverture et à l'arrivée de la réponse, puis un saut. v0.41.1 place sans glisser quand la taille ou l'écran change et fait grandir la bulle vers le haut quand elle est dans la moitié basse. Rien à brancher côté app. Preuve : déploiement Vercel de production `READY` sur le commit fusionné, bundle servi (chunks compris) contenant `lia-ui__chat--glisse` sur finance.hubperso.com, puis relevé du PC ; la tâche reste ouverte jusque-là.
+>
+> ## 🟦 Session 2026-10-26 — **`[LIA-1297]`** : lia-ui v0.41.0, sources cliquables et chat en bulle lissée (FinanceAI#1297)
+> FinanceAI épingle `@mokarade/lia-ui` v0.41.0 (sha pelé `4d0c6f9`), seul changement (`package.json`, lock). v0.40.0 : les marques `[→lien]` d'une réponse de LIA deviennent une ligne « Sources » de petits liens (https, sans identifiants). v0.41.0 : le chat ne se replace plus à chaque image, reste dans l'écran visible (clavier du téléphone compris), glisse vers sa place, ne bouge pas quand le texte arrive. Retours de Marc du 26/10 : « incompréhensible, trop de texte, pas de liens » et « clunky, ça bug quand ça sort de la page ». Rien à brancher côté app. Preuve : déploiement Vercel de production `READY` sur le commit fusionné, bundle servi contenant `lia-ui__sources` et `lia-ui__chat--glisse` sur finance.hubperso.com, puis une réponse réelle de LIA ; la tâche reste ouverte jusque-là.
+>
+> ## 🟦 Session 2026-10-26 — **`[LIA-1291]`** : lia-ui remis à v0.38.0 (FinanceAI#1291)
+> Dependabot (#1288, fusionnée le 26/10 à 06:04Z) avait rétrogradé `@mokarade/lia-ui` de v0.38.0 à **v0.31.0** : il lit mal les tags, comme pour `@mokarade/hub-contract`. Re-pin à **v0.38.0** (commit `9faf1ac`, package.json et lockfile) et `@mokarade/lia-ui` ajouté aux `ignore` de `.github/dependabot.yml` : le re-pin se fait à la main à chaque version. Aucun changement de code.
+>
+> ## 🟦 Session 2026-10-24 — **`[SOCLE-VISUEL-6]`** : Réglages (sauvegardes, Drive, configuration) lisent le socle (FinanceAI#1280, suite de #1258 sous #1176)
+> `components/settings/BackupPanel.tsx`, `GoogleDriveSyncCard.tsx`, `UserConfigFields.tsx` et `AutoBackupPanel.tsx` migrés vers les jetons (même correspondance que #1258 ; rose → `erreur`, émeraude → `succes`, le bouton vert de sauvegarde complète → `succes-texte`/`sur-accent`, la carte `succes-fond/30`). Les survols de boutons secondaires prennent `bg-bordure` (le fond de base est déjà `bg-surface-douce`, un survol identique n'aurait rien montré). `PLAFOND_PALETTE` et `PLAFOND_BLANC_NOIR` resserrés à **238 / 838** (départ 266 / 934), mesurés le 24/10/2026. `PLAFOND_HEX` reste à **208** : ces fichiers n'ont aucun hex, ils ne tomberont que par les fichiers de graphiques (`Investments.tsx`, `future/seriesConfig.tsx`, `PerformanceComparee.tsx`), décision à part.
+>
+> ## 🟦 Session 2026-10-24 — **`[SOCLE-VISUEL-5]`** : Patrimoine (réglages), Budget et Système lisent le socle (FinanceAI#1258, suite de #1230 sous #1176)
+> `components/PatrimoineExtended.tsx`, `components/Budget.tsx` et `components/SystemView.tsx` migrés vers les jetons du socle (même correspondance que les tranches précédentes : `text-white` → `text-texte`, `border-white/N` → `border-bordure`, `bg-white/N` → `bg-surface-douce`, `bg-black/N` → `bg-fond`, jaune → `alerte`, rouge → `erreur`, vert/émeraude → `succes`). `PLAFOND_PALETTE` et `PLAFOND_BLANC_NOIR` resserrés à **266 / 934** (départ 287 / 1 021), mesurés le 24/10/2026. ⚠️ `PLAFOND_HEX` reste à **208** : les trois fichiers ne portent AUCUNE couleur hex (le garde les compte après blanchiment des commentaires ; les `#751`, `#608`, `#531` sont des numéros de PR dans des commentaires), la tâche supposait le contraire. Restent en dur dans `Budget.tsx` : les couleurs d'identité des deux conjoints dans les barres d'effort (indigo et rose, plus le vert des barres d'épargne), qui sont des séries catégorielles sans variable du socle.
+>
+> ## 🟦 Session 2026-10-23 — **`[LIA-1253]`** : LIA (assistant unique du hub) branchée dans FinanceAI (FinanceAI#1253)
+> `services/lia/demarrage.ts` (`demarrerLia`, appelé depuis `index.tsx`, hors du rendu : présente aussi pendant les chargements et si une page plante, #1267) → `POST /api/lia/ask` (`api/_lib/lia.ts` : origine, session du hub, propriétaire, corps borné) → hub avec `x-hub-token`. Aucun état LIA ici. Détail et variables : `docs/claude/hub.md`, section « LIA dans FinanceAI ».
+> ⚠️ Elle ne répond pour de vrai qu'une fois `HUB_TOKEN`, `HUB_SESSION_PUBLIC_KEYS` et `AUTHORIZED_EMAIL` posées sur Vercel (fil Secrets) et la route `/api/lia/ask` du hub en ligne ; sinon « indisponible », jamais une réponse inventée. Le lanceur de chat propre à FinanceAI peut chevaucher la bulle de LIA : à regarder à l'écran avant d'y toucher.
+>
+> ## 🟦 Session 2026-10-23 — **`[DEFICIT-MENSUEL]`** : le cashflow mensuel publié n'a plus de plancher à 0 (FinanceAI#1155)
+> `services/financialSnapshot.ts` : `monthlyCashflow = monthlyIncome − monthlyExpenses`, négatif en déficit (hub, MCP, IA). Test `[#1155]` dans `tests/services/financialSnapshot.test.ts`. ⚠️ La projection (`services/projection.ts`) avait déjà un cashflow signé : seule la photo publiée avait un plancher à 0. Preuve en production à lire après le déploiement (carte « Cashflow mensuel » du hub).
+>
+> ## 🟦 Session 2026-10-22 — **`[LOGO-SERIE-A]`** : l'icône et la marque de FinanceAI passent au logo série A (FinanceAI#1243, mission .github#467)
+> Marc a validé le 21/10 la série A (pièce avec un $ et étincelle IA, `#2DD4BF` sur tuile `#0B0D12`). Posé : `public/icon.svg`, PNG `icon-192`, `icon-512`, `icon-maskable-512`, nouvelle `apple-touch-icon.png` ; `index.html` pointe vers `/icon.svg` (la pastille « Fi » codée en ligne disparaît) et déclare l'apple-touch-icon ; la marque de la barre latérale (`Layout.tsx`) et de l'accueil (`Onboarding.tsx`) est le même `icon.svg` au lieu des tuiles « F » et « Fi ». ⚠️ `public/sw.js` : cache `financeai-v4` → `v5`, parce que `/icon.svg` y est précaché en cache d'abord et aurait gardé l'ancien dessin. PWA déjà installée : Android/PC se rafraîchissent seuls en quelques jours ; iPhone : retirer l'icône de l'écran d'accueil puis la rajouter. La couleur primaire de l'interface (`#10b981`) et `theme-color` ne changent pas (hors tâche). Verrou : `tests/pwaManifest.test.ts` (bloc `[LOGO-A]`).
+>
+> ## 🟦 Session 2026-10-21 — **`[DONNEES-PERSO-GARDE]`** : plus de donnée personnelle réelle dans le dépôt public (FinanceAI#1238, prio 1)
+> Un tour de relecture a trouvé dans des commentaires de code, des tests et deux ADR (`0007`, `0008`) des positions détenues, des montants et des dates réels. Remplacés par des formulations génériques ou fictives (aucune logique touchée). Verrou : `tests/guards/donneesPerso.test.ts` + `tests/helpers/donneesPerso.ts`. Il garde des EMPREINTES de formulations retirées (`tests/guards/donneesPerso/empreintes.json`, jamais le texte), des FORMES (« <objet> de Marc », courriel webmail, téléphone, code postal) et un CLIQUET par fichier (`baseline.json`, ce qui n'est pas encore nettoyé : journaux et archives). Sortie : `fichier:ligne [catégorie]`, jamais la donnée.
+> ⚠️ Ce que le verrou ne fait PAS : il ne prouve pas l'absence de donnée (un fait nouveau échappe tant qu'il n'est pas empreinté), et il ne touche pas à l'historique git, qui garde les anciennes valeurs. Nettoyage de l'historique = geste de Marc (nouveau dépôt, `git filter-repo`, ou passer en privé d'abord) : décision en attente, rien n'a été fait sur la visibilité du dépôt. Les tickers du `seed` d'`assetMeta.ts` et des tests sont des instruments publics sans quantité ni montant : laissés.
+> Ajouter une empreinte : `PII_HACHER="la phrase" npx vitest run tests/guards/donneesPerso.test.ts` (affiche longueur + empreinte), puis `empreintes.json` (`longueurs` comprise). Resserrer le cliquet après un nettoyage : `PII_ECRIRE_BASE=1`. Ne jamais relever sans décision de Marc.
+>
+> ## 🟦 Session 2026-10-21 — **`[CI-ROBOT-PC]`** : la CI du dépôt privé tourne sur le robot du PC (FinanceAI#1240)
+> Marc a passé FinanceAI en privé le 21/10/2026. Les 10 workflows qui visaient `ubuntu-latest` utilisent maintenant `runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || fromJSON('["self-hosted","pc-marc"]') }}` (modèle CarAI et « Garde-fou ») ; `reacteur.yml` et `garde-fou.yml` le faisaient déjà. Redevenu public, le dépôt revient seul aux machines GitHub. `codeql.yml` saute l'analyse tant que le dépôt est privé (`if: github.event.repository.private == false`) : sans cela le contrôle requis « Analyze (javascript-typescript) » échouait (« Code scanning is not enabled ») et bloquait la file de fusion.
+> ⚠️ [À vérifier] Les jobs E2E (captures d'écran Playwright, baselines faites sous Linux), Lighthouse et mutation dépendent du système et des navigateurs du robot du PC ; un rouge propre à la machine se lit dans le premier run. Les workflows communs `MoKarade/.github` (sécurité, conformité, captures, fumée) fixent `ubuntu-latest` chez eux : à adapter dans `.github`.
+>
+> ## 🟦 Session 2026-10-21 — **Graphe de code** (MoKarade/.github#331, mission #327)
+> `scripts/graphe.sh` (Graphify 0.9.93 épinglé, `GRAPHIFY_BACKEND=none`, analyse locale : 0 jeton, 0 réseau) + hooks `SessionStart`/`PreToolUse` fusionnés dans `.claude/settings.json` (les hooks existants sont intacts) + `.mcp.json` + `.graphifyignore`. `graphify-out/` (graphe, wiki) est généré et ignoré par git. Détail, règles et retour arrière : `docs/claude/graphe-code.md`.
+>
+> ## 🟦 Session 2026-10-21 — **`[LIGHTHOUSE-HORS-RESEAU]`** : l'audit Lighthouse ne dépend plus de la Banque du Canada
+> Cause lue dans l'artefact `lighthouse-results` du job rouge sur FinanceAI#1233 (PR qui ne touchait que `.mergify.yml`) : l'app, servie depuis `localhost`, appelle `https://www.bankofcanada.ca/valet/observations/group/FX_RATES_DAILY/json?recent=1` au démarrage ; la réponse ne portait pas d'en-tête CORS (`blocked by CORS policy`, puis `net::ERR_FAILED`), donc « errors-in-console » à 0 et « bonnes pratiques » à 0,96 pour un seuil de 1. Que la Banque du Canada était en maintenance [Probable] : `bankofcanada.ca` est refusé par le proxy du conteneur, la réponse elle-même n'a pas pu être lue. `fetchWithTimeout` (`services/finance.ts`) refuse maintenant toute requête quand `VITE_AUDIT_HORS_RESEAU=1`, variable posée par la seule étape « Build » de `.github/workflows/lighthouse.yml` (le repli habituel répond : cache, puis taux estimés). Un build de production ne la pose jamais. Les quatre seuils de `.lighthouserc.json` sont inchangés, et un test le verrouille (`tests/services/fx/fetchFxRates.test.ts`). Mesuré en local : sans la variable le build demande la Banque du Canada au démarrage, avec elle plus aucune requête externe ne part.
+>
+> ## 🟦 Session 2026-10-21 — **`[HONO-4.13.11]`** : plancher de `hono` relevé pour fermer GHSA-5r4p-p66f-jhc7
+> Un nouvel avis (`serveStatic` décode le chemin une seconde fois, contournement des middlewares sur les chemins statiques, hono 4.12.4 à 4.13.10) a fait échouer « Audit npm (production) » sur `main` le 21/10/2026, sans lien avec #1225. `hono` n'est pas importé par ce dépôt : il arrive par `@hono/node-server` et `@modelcontextprotocol/sdk`. Le plancher de `overrides` passe à `^4.13.11` (explication dans la clé `//overrides` de `package.json`) et le lockfile à 4.13.13. `npm audit --omit=dev` : 0 faille. Le lockfile est modifié à la main (une seule entrée) : `npm install` avec le npm de l'environnement retirait les champs `libc` des paquets natifs.
+>
+> ## 🟦 Session 2026-10-19 — **Captures avant/après automatiques** (Jules full auto)
+> `.github/workflows/captures.yml` appelle le workflow commun `MoKarade/.github` `captures.yml@main` sur toute PR qui touche `components/`, `App.tsx`, `index.css`, `index.html` ou `locales/` : l'app est lancée par `npx vite --port 3000`, le drapeau d'onboarding `app_onboarding_done=true` est posé avant le premier chargement, le mode test (couple Alex/Sam, données fictives) s'active par les `etapes` (Réglages, « Activer le mode test »), puis `/#DEBT` et `/#FUTURE` sont photographiés avant (base) et après (PR). Un commentaire de PR (`<!-- captures-avant-apres -->`) porte les images rangées dans la branche `captures`. Ce n'est pas un contrôle exigé. Le filet du PC s'en sert pour accepter seul une PR d'écran de Jules (FinanceAI est la seule app où c'est permis : les autres sont derrière la session du hub). [Probable] le panneau du jour du Futur (clic sur la courbe) n'est pas couvert : les étapes ne savent pas cliquer sur un graphique ; les trois écrans de #1220 ont été photographiés à la main. Dépend des entrées `etapes` et `stockage-local` du workflow commun (MoKarade/.github PR #310).
+>
+> ## 🟦 Session 2026-10-21 — **`[SOCLE-VISUEL-4]`** : Futur, configurateur immobilier et paramètres avancés lisent le socle (FinanceAI#1230, suite de #1220 sous #1176)
+> `components/FutureProjection.tsx`, `components/realestate/PropertyConfigurator.tsx` et `components/AdvancedProjectionParams.tsx` migrés vers les jetons du socle (même correspondance que la tranche 2 ; ambre → `alerte`, rouge → `erreur`, vert/émeraude → `succes`, orange/violet → `repere`, indigo/bleu actifs → `accent`). `PLAFOND_*` resserrés à **287 / 1 021 / 208** (départ 342 / 1 089 / 209), mesurés le 21/10/2026. Restent en dur dans ces fichiers : les couleurs des courbes du graphe Futur et de leurs légendes (cyan, fuchsia, indigo, hex des jalons). [Certain] le thème clair (FinanceAI#1215) attend la fin de la migration : au 21/10/2026, 136 fichiers de `components/` gardent des couleurs sombres en dur, et le fond de page (`bg-dark`) et les champs (`index.css`, `!important`) sont aussi sombres en dur ; le livrer avant donnerait un mélange clair/sombre. Choix de Marc (21/10/2026, carte du fil) : « migrer d'abord ».
+>
+> ## 🟦 Session 2026-10-19 — **`[SOCLE-VISUEL-2]`** : Placements et Transactions lisent le socle (FinanceAI#1214, tranche 2 de #1176)
+> Décision de Marc (19/10/2026, carte du fil) : « converger », donc les couleurs bougent un peu. `tailwind.config.js` expose les variables du socle comme jetons (`bg-fond`, `bg-surface-douce`, `text-texte`, `border-bordure`, `border-bordure-champ`, `bg-accent`/`text-sur-accent`, `text-repere`, `*-succes-*`, `*-erreur-*`… : chaque jeton vaut `var(--…)`, `index.css` reste la seule source ; le test vérifie la correspondance). `components/Investments.tsx` et `components/Transactions.tsx` migrés ; `PLAFOND_*` resserrés à **410 / 1 173 / 218** (départ 439 / 1 305 / 220), mesurés le 19/10/2026. Restent en dur : les palettes des graphiques (`COLORS_SECTOR`, `COLORS_REGION`), aucune variable du socle ne couvre des séries catégorielles. [Certain] `tests/a11y/ctaContrast.test.ts` ne lit que des hex : les boutons migrés ne sont plus dans son scan (leurs couples sont couverts par `socleVisuel.test.ts`), son témoin du survol passe en fixture écrite à l'exécution. Suite : groupe suivant (`StrategyOptimizerPanel`, `panneauJour/sections`, `DebtManager`…, mesure : `components/`, 59 / 59 / 52 occurrences), puis thème clair (#1215).
+>
+> ## 🟦 Session 2026-10-17 — **`[SOCLE-VISUEL-1]`** : variables du socle visuel + cliquet des couleurs en dur (FinanceAI#1212, tranche 1 de #1176)
+> `index.css` déclare en `:root` les variables du socle commun (`--fond --surface-douce --bordure --bordure-champ --texte --texte-doux --accent --accent-fonce --sur-accent --repere --repere-doux --succes/alerte/erreur-fond|texte --rayon` ; `--surface` existait déjà), aux valeurs SOMBRES de FinanceAI (= `dark`, `surface`, `surfaceHighlight`, `primary` du `tailwind.config.js`) : aucun écran ne les lit, le rendu est identique. `tests/guards/socleVisuel.test.ts` verrouille (1) les variables et leur alignement sur Tailwind, (2) les contrastes WCAG des couples texte/fond (4,5:1) et du contour de champ (3:1), (3) un cliquet sur `components/` + `App.tsx` : **439 classes de palette numérotées, 1 305 `white`/`black` de Tailwind, 220 hex, mesurés le 17/10/2026** (`PLAFOND_*`, le test échoue aussi quand le compte baisse). [Probable] le scan lit le code décommenté, pas le rendu : une couleur construite par concaténation lui échappe. Suite de #1176 : migrer les écrans par groupes (le cliquet baisse), thème clair en dernier (décision de Marc attendue sur la carte de #1176) ; #1176 ne se ferme qu'avec la tranche 3 (captures avant/après).
+>
+> ## 🟦 Session 2026-10-18 — **`[SENTRY-BRANCHER]`** : les fonctions `api/` signalent leurs exceptions imprévues à Sentry (FinanceAI#1171)
+> `api/_lib/sentryConfig.ts` (pur : `optionsSentry`, `retirerDonneesPersonnelles`) + `api/_lib/sentry.ts` (`signalerErreur`, import dynamique de `@sentry/node`, intégrations par défaut coupées, `flush` borné à 2 s avant de rendre la main) appelés depuis la ceinture finale des 4 fonctions (relais Claude, Yahoo historique et recherche, Fintable) APRÈS leur trace par nom. **Éteint sans `SENTRY_DSN`** (variable serveur, optionnelle) : le SDK n'est même pas chargé. Plus strict qu'app-template (tâche #40) : l'événement perd aussi `request` (le symbole boursier est dans l'adresse), `extra`, `breadcrumbs`, `server_name` et le MESSAGE des exceptions (remplacé par leur type), règle du dépôt « nom d'erreur seul ». Preuve de la chaîne : `.github/workflows/sentry-essai.yml` (manuel, secret `SENTRY_DSN` du dépôt) → `npm run sentry:essai` (échec fermé : sans DSN ou sans 2xx de Sentry). Dépendance `@sentry/node ^11.8.0` (lockfile : `libc` conservés, 30 paquets passent de `dev` à `devOptional`). **Limites assumées** : (1) `SENTRY_DSN` n'est PAS dans Vercel (Marc, 16/10, « on laisse ») : la production n'envoie rien ; (2) le NAVIGATEUR n'envoie rien : la CSP (`vercel.json` ET `index.html`, `connect-src`) bloquerait l'hôte d'ingestion et un joker `*.sentry.io` ouvrirait l'envoi vers n'importe quelle organisation ; il faut l'hôte EXACT du DSN, donc le DSN dans Vercel d'abord ; (3) le serveur MCP (Cloud Run) n'est pas branché. Ligne 9 de la grille : Sentry est maintenant câblé, mais reste rouge sur la route `/api/sante` (cherchée sous `app/api/sante/route`, FinanceAI est en Vite).
+>
+> ## 🟦 Session 2026-10-17 — **`[TS-STRICT]`** : `"strict": true` dans `tsconfig.json` (FinanceAI#1198)
+> Le mode strict complet révélait 74 erreurs, de trois causes seulement : (1) `lazyWithRetry` (`utils/lazyWithRetry.tsx`) contraignait `ComponentType<unknown>`, refusé par `strictFunctionTypes` pour tout composant à props typées (55 erreurs en cascade dans `TabRouter`, `App`, `Layout`…) : même contrainte que `React.lazy` (`ComponentType<any>`, un seul `eslint-disable` justifié) ; (2) 11 `formatter`/`labelFormatter` Recharts annotés `(val: number)` alors que la lib passe `ValueType` : paramètres inférés, `Number(val)`/`String(nom)` (sortie identique pour les valeurs numériques) ; (3) deux props de callback typées `unknown` (`updateProj` des commandes de projection, `onUpdateItem` du tableau Budget) alignées sur le type réel de leur fonction. Aucun `@ts-ignore`, aucun `any` ajouté hors la contrainte de `lazyWithRetry`. CLAUDE.md et ARCHITECTURE.md ne disent plus « strict partiel ».
+>
+> ## 🟦 Session 2026-10-16 — **`[VITEST-5]`** : vitest 4.1 → 5.0.5 (FinanceAI#1197)
+> `vitest` et `@vitest/coverage-v8` en `^5.0.5` (lockfile : seuls les paquets vitest bougent ; les champs `libc` que npm 10 retire sont remis, même geste que pour le contrat). `vitest.config.ts` et `stryker.config.mjs` inchangés : aucune option retirée n'y servait. Le commentaire en tête de `vitest.config.ts` cite encore `vitest ^4` à propos d'`environmentMatchGlobs` : exact, l'option reste retirée. `console.log` reste intercepté en v5 (revérifié, `docs/CONVENTIONS.md`). `stryker-mutator/vitest-runner@10` accepte `vitest >=2` : pas relancé ici (`npm run mutation` est long et hors du gate).
+>
+> ## 🟦 Session 2026-10-16 — **`[HUB-CONTRAT-1-5-0]`** : re-pin du contrat du hub sur `v1.5.0` (FinanceAI#1196)
+> `package.json` et `package-lock.json` pointent sur `hub-contract#v1.5.0` (commit `440a301`, zod `^4.6.7`) : `npm ls zod` ne montre plus qu'un zod 4.6.7 (la copie zod 3.25.76 imbriquée a disparu). Lockfile édité à la main sur les seuls blocs du contrat : `npm install` sous Node 22/npm 10 retirait aussi les champs `libc` de ~15 paquets natifs (bruit propre à la version d'npm, le dépôt vise Node 24). `docs/claude/hub.md` et `CHANGELOG.md` à jour. Preuve en production : déploiement `READY` sur le SHA fusionné puis `GET /hub/summary` du serveur MCP sans jeton → 401 (non mesurable depuis le conteneur, `finance.hubperso.com` est refusé par le proxy : à lire dans la réponse Vercel ou à demander à Marc).
+>
+> ## 🟦 Session 2026-10-16 — **`[A11Y-CIBLES-44-CLIQUET]`** : un cliquet des contrôles sans hauteur de 44 px établie (FinanceAI#1151)
+> `tests/guards/cibles44Cliquet.test.ts` lit chaque `<button>`, `<input>`, `<select>` et `<textarea>` de `components/` (cases, radios, curseurs, champs cachés exclus ; un composant enveloppe compte à sa définition) et cherche une hauteur de 44 px dans sa classe (`touch-target`, `h-11` et plus, `h-[44px]`…, constante du fichier résolue). **Valeur mesurée le 16/10/2026 : 349 contrôles sur 494 sans hauteur de 44 px établie** (`PLAFOND = 349`). Le test échoue si le compte MONTE, et aussi s'il BAISSE (il demande de resserrer la constante). [Probable] c'est un compte de cibles NON PROUVÉES par la classe, pas de cibles rendues trop petites : jsdom ne calcule pas la mise en page ; il surestime, voulu. L'écran Dettes (`DebtManager.tsx`, `debt/`) est verrouillé à zéro : trois boutons y restaient en dessous (« Ajouter » à 40 px, « Modifier » et « Supprimer » en liens de ≈ 16 px), portés à 44 px. Les plus chargés restent à traiter, un écran à la fois : `PatrimoineExtended` (23), `settings/BackupPanel` et `GoogleDriveSyncCard` (14 chacun), `Transactions` (13), `AddStockForm` (12). Piège évité : le premier recenseur perdait tout contrôle dont `className` est un gabarit (le compte passait de 273 à 349 une fois la fin de balise corrigée).
+>
+> ## 🟦 Session 2026-10-16 — **`[PRIVACY-GARDE-DUREES-SCORES-BARRES]`** : la garde du mode discret voit enfin les durées, scores et barres (FinanceAI#1149)
+> `tests/components/amountPrivacyScan.test.ts` relève maintenant trois familles de plus, en plus des montants et ratios : `{x}/100` (même refermé par une balise), largeur/hauteur en `${…}%` + `scaleX(` + `strokeDashoffset={…}` + `aria-valuenow={…}`, et `{n} mois|an|ans`. Sortie = celle des ratios : marque de mode discret dans la fenêtre, ou `NOMBRE-NON-MONETAIRE` / `MONTANT-PUBLIC` / `MONTANT-MASQUE-AILLEURS` pour un nombre NON dérivé du dossier. Une flèche `(v) => \`${v} ans\`` n'est plus ignorée comme « définition d'alias » (elle rend). Mesuré le 16/10/2026 : 41 sites relevés, dont 1 vraie fuite corrigée (badge « Diversification NN/100 » d'Investissements, désormais dans `<PrivateAmount>` ; témoin `tests/components/investmentsScoreModeDiscret.test.tsx`, rouge sans le correctif) ; les 40 autres sont des **déclarations** (37 `NOMBRE-NON-MONETAIRE`, 1 `MONTANT-PUBLIC`, 2 `MONTANT-MASQUE-AILLEURS`) : réglages saisis (âge de retraite, horizon, espérance de vie), axes d'âge/d'année, progressions de tâches (démarrage, visite guidée, optimiseur), historique/fraîcheur, parts constantes du catalogue de projets, barème légal, et masquages faits ailleurs dans le fichier. Ces déclarations sont des **arbitrages à contester** si Marc veut masquer aussi l'âge de retraite ou l'horizon. `jours` et `strokeDasharray` restent hors périmètre (fraîcheur de donnée, décor de grille). Reste ouvert, inchangé : `[PRIVACY-GEOMETRIE-GRAPHES]` (la forme des courbes, et la teinte du badge de diversification, disent encore un ordre de grandeur).
+>
+> ## 🟦 Session 2026-10-16 — **`[CONFORMITE-CONTROLES-COMMUNS]`** : la CI appelle les contrôles communs et passe la grille (FinanceAI#1168)
+> `ci.yml` : `securite-commune` (MoKarade/.github `securite.yml` : gitleaks, OSV-Scanner, CodeQL), `audit-npm` (`npm audit --omit=dev`) et `conformite` (`bloquant: false`, les lignes rouges restantes ont chacune leur tâche) ; le job `securite` exigé par `.mergify.yml` garde son nom. Toutes les actions épinglées par SHA (13), `timeout-minutes` sur `codeql.yml`. `fumee.yml` appelle la fumée commune sur `finance.hubperso.com` : santé = `api/sante.ts` (nouvelle fonction, `{ ok: true }`, no-store) et accueil `/`, SANS contrôle du summary (il vit dans le serveur MCP de Cloud Run, pas sur ce domaine). `BACKLOG.md` = renvoi vers les issues ; l'ancienne liste est figée dans `docs/BACKLOG_AVANT_ISSUES_2026-10-15.md` (les « Source : BACKLOG.md:Lnn » des issues y renvoient). Gardes `backlogArchivageDesCoches` (plafond 6 coches → zéro item, 20 lignes) et `backlogEnTetesSansCompte` (lit aussi l'archive) adaptées, même nombre de cas. Grille lancée en local le 16/10/2026 : 10 vert · 3 rouge · 2 sans objet (11 vert · 2 rouge après la protection au push) ; rouges restantes (la ligne 6, protection au push, est passée au vert le 16/10/2026 après le geste de Marc, #1199) : ligne 7 vitest 5 (#1197), TypeScript strict (#1198) et contrat v1.5.0 (#1196), ligne 9 Sentry (#1171) + route `/api/sante` que la grille cherche sous `app/api/sante/route` (FinanceAI est en Vite : `api/sante.ts` ne la satisfait pas). [À vérifier] après fusion : `GET /api/sante` en production rend `{ ok: true }` (la route statique n'est pas testable avant le déploiement) et la fumée passe.
+>
+> ## 🟦 Session 2026-10-16 — **`[DETTE-LIEN-IGNORE-SANS-MESSAGE]`** : le formulaire de dette dit pourquoi le lien marchand ne compte plus (FinanceAI#1147)
+> `components/debt/DebtKindFields.tsx` : `phraseLienIgnore(versementsFixes, lie, taux)` + région live permanente (même patron que le refus d'origine incohérente). Condition = inverse exact de `peutSuivreDesVirements` limité aux dettes AVEC lien ; un taux vidé en frappe (NaN) ne déclenche rien. Aucun changement de moteur : `paymentPayee` reste stocké.
+>
+> ## 🟦 Session 2026-10-16 — **`[COURS-AU-TROMPEUR]`** : l'âge réel des cours dans Placements (FinanceAI#1148)
+> `services/history/fraicheurCours.ts` (pur, date injectée, seuil `COURS_PERIME_APRES_JOURS = 4`) : la date d'un cours est celle de son dernier close (`priceHistory`), pas du rafraîchissement. `Investments.tsx` : « Actualisé le … » + `CoursPerimesNotice` (titre + date) ; « Sur 24 h » (portefeuille et par titre) à « — » si les deux closes ne sont pas récents ; `get_holdings` publie `priceDate` (null = inconnu, jamais signalé périmé). Limite : le score de diversification garde son momentum 24 h inchangé (hors périmètre).
+>
+> ## 🟦 Session 2026-10-16 — **`[HUB-TREND-VALEUR-NETTE-EST-LA-SEANCE]`** : plus de tendance trompeuse sur la valeur nette du hub (FinanceAI#1156)
+> `mcp/hubSummary.ts` : le metric « Valeur nette » ne publie plus de `trend` (c'était la séance des seuls placements) ; « Placements » la garde. Test : `tests/mcp/hubSummary.test.ts`. Effet côté hub : la carte n'affiche plus de flèche sur la valeur nette.
+>
+> ## 🟦 Session 2026-10-16 — **`[PDF-DETTES-SOLDE-BRUT]`** : le PDF s'additionne avec lui-même (FinanceAI#1154)
+> `useDerivedFinancials` expose `ecartCourtier` ; `exportPdfEcran` imprime `totalDebts = dettesHorsImmo` et `investmentsTotal = nonReg + ecartCourtier` ;
+> `buildDebtsRows(state, aujourdhuiIso)` passe par `soldeDetteAujourdhui` (jour REQUIS). Garde : `tests/services/pdfAdditionneAvecLuiMeme.test.ts`
+> (clic réel + vrai hook, discriminant : 3 tests sur 4 rouges avec l'ancien code). Limite [Probable] : l'écart courtier est classé dans « Non-Enregistré »
+> même s'il vient d'un panier CELI/REER (`placementsFaisantAutorite` ne le ventile pas par régime) ; la somme reste juste.
+>
+> ## 🟦 Session 2026-10-16 — **`[VERCEL-PREVERSIONS-COUPEES]`** (FinanceAI#1170)
+> `vercel.json` `git.deploymentEnabled` : `**` et `*` à `false`, `main` à `true` (même forme qu'app-template), `claude/*` gardé. Constat
+> avant : 10 préversions `agence/*` READY listées par Vercel le 16/10/2026 (dernière 09 h 57 UTC), car seul `claude/*` était coupé.
+> Garde : `tests/api/accessConfigFichiers.test.ts` (main seule activée). Chemin protégé : Marc fusionne. À vérifier après fusion :
+> une branche de test ne crée aucun déploiement, et le push de fusion sur `main` déploie en production.
+>
+> ## 🟦 Session 2026-10-16 — **`[FUTUR-AXE-Y-MINIMAL]` : Historique sur téléphone, axe Y masqué + badge** (FinanceAI#1144)
+> `ZoomableTimeChart` reçoit l'option `axeYMinimal` (défaut `false`) : axe masqué, `ReferenceDot` + `BadgeValeurFinale` sur le
+> dernier point (somme des aires empilées, `null` si une série manque ; `maskedTick` en mode discret). Seul `FutureHistorySection`
+> l'active, via `DashboardEvolutionChart`, et seulement sur téléphone (`isNarrowViewport`). Mesuré à 390 px sur données fictives : tracé
+> de x=71 à x=16 (gain 55 px). Non fait : les 8 autres écrans du rollout. Limite : l'Historique du mode test est vide sans cours
+> historiques (réseau) ; la capture vient d'un banc isolé, pas de l'écran réel.
+
+> ## 🟦 Session 2026-10-16 — **`[PANNEAU-VARIATION-RACCORD-PASSE-FUTUR]` : plus de « Variation du jour » au raccord** (FinanceAI#1142)
+> `recomputeDailyDiffs` (`services/projection/dailyCurve.ts`) retire les `diff*` d'un point projeté dont la veille
+> calendaire est un point RÉEL (`dayIsReal`). Le badge du panneau du jour disparaît ce jour-là (déjà masqué quand
+> `diffNW` est absent) ; aucun chiffre lissé. Non fait : décomposer l'écart 17/09 → 18/09 (bases de prix ?) ; le
+> libellé était seul en cause. Test : `tests/services/dailyCurve.test.ts` (« raccord réel → projeté »).
+
+> ## 🟦 Session 2026-09-29 (design) — **`[A11Y-PANNEAU]` : bordures des boutons fantômes >= 3:1**
+> Bordures du `PanneauJour` : `border-white/20` -> `/40` (Veille, Lendemain, Revenir à aujourd'hui),
+> `border-primary/30` -> `/45` (Détail complet), choisies par calcul de contraste composé sur les fonds du
+> panneau (3,76 à 3,95:1 ; WCAG 1.4.11). `tests/components/panneauJourLot3.test.tsx` lit les tokens de
+> `tailwind.config.js` et mesure. La colonne « flux » explicite vit déjà sur main (`[PANNEAU-FLUX-COLONNE-MUETTE]`, #1124) :
+> doublon retiré à la mise à jour. ⚠️ `npm run check-contrast` ne mesure toujours que les CTA pleins (trou d'outillage connu,
+> non corrigé) ; hover et contraste du texte de ces boutons non mesurés.
+
+> ## 🟦 Session 2026-09-29 (design) — **`[A11Y-DETTE]` : cibles tactiles 44 px + focus d'édition du formulaire de dette**
+> `touch-target` posé sur TOUS les champs/boutons du formulaire (`DebtManager`, `debt/DebtKindFields`,
+> `debt/ChampMarchandLie`). Le panneau d'édition est focalisable (`tabIndex=-1`, `role=group`) et reçoit
+> le focus à l'ouverture (`useEffect` sur `editingId`) ; le test lit `document.activeElement` (un `focus()`
+> sur un `<div>` non focalisable est un no-op silencieux). `phraseStatutSolde` reste hors région live et
+> le `role=status` du refus est inchangé : examinés, pas des défauts. Non corrigé (BACKLOG
+> `[A11Y-DETTE-FOCUS-RETOUR]`) : le focus ne revient pas sur « Modifier » à la fermeture.
+> ⚠️ Taille rendue non mesurée en navigateur (jsdom) : le test vérifie la classe et sa définition.
+>
+> ## 🟦 Session 2026-10-15 — **`[CI-QUALITE-EN-PARALLELE]` : le contrôle « Qualité » ne fait plus attendre la file** (FinanceAI#1181)
+> Avant : 10 à 13 min par passage (runs 38800255547 et 38802214924), dont l'essentiel en tests sous couverture
+> exécutés un fichier à la fois ; Mergify (`max_parallel_checks: 1`) faisait attendre chaque PR d'autant.
+> Après : 4 tranches de tests en parallèle (`qualite/portes.mjs --tranche i/4`) + contrôles statiques à côté
+> (`--statique`) ; le job « Qualité (lint · couverture · code mort · architecture) » — nom inchangé, contrôle
+> obligatoire — fusionne (`--fusion 4`) et juge au même cliquet. Aucun test retiré ni affaibli : mesuré en local,
+> 7 244 tests / 0 échec et 93,56 % de lignes / 84,12 % de branches, identiques à la mesure en une pièce. La fusion
+> échoue si une tranche manque. ⚠️ Le « 4 » est écrit dans la matrice, `--tranche` et `--fusion` du workflow.
+> ⚠️ `.github/` et `qualite/` sont des chemins protégés : Marc fusionne cette PR. Mesure en CI : voir la PR.
+
+> ## 🟦 Session 2026-09-29 (lot 5) — **`[PRIVACY-RATIOS-DUREES-UNIFORMES]` : ratios, durées et scores masqués**
+> Décision de Marc : en mode discret, ratios et durées DÉRIVÉS du dossier se masquent comme des montants
+> (arbitrages : scores, barres, axes/tableaux sr-only, taux saisis, hausse d'abonnement = masqués ;
+> prix de marché des titres, horizon, hypothèses, barèmes = visibles). ~20 composants touchés. Nouveau
+> type de segment `ratio` dans `utils/healthScore.ts` (masqué comme `montant`) ; `tendanceSparkline`
+> prend `masquer`. `amountPrivacyScan` relève les ratios (`formatPercent`, `formatVariationPct`,
+> `.toFixed(n)…%`) ; les durées, scores et barres n'ont PAS de détection automatique (tests de rendu :
+> `tests/components/privacyRatiosDurees.test.tsx`). L'ancienne règle « un ratio n'est pas un montant »
+> est abandonnée ; les jetons `NOMBRE-NON-MONETAIRE` de `DebtManager`/`BudgetGroupTable` sont retirés.
+> ⚠️ Non couvert : la GÉOMÉTRIE des graphes (camemberts d'allocation, position du repère FIRE sur la courbe).
+>
+> ## 🟦 Session 2026-09-29 (lot 4) — **`[PRIVACY-SCAN-FORMATNUMBER-DIRECT]` : fuite du mode discret corrigée**
+> Le récapitulatif d'`AddStockForm` affichait en clair, en mode discret, le prix d'achat et le montant
+> investi → `<PrivateAmount>` (test de rendu dans `tests/components/investments/AddStockForm.test.tsx`).
+> `amountPrivacyScan` relève maintenant les appels DIRECTS à `formatNumber(` ; un site non monétaire le
+> déclare par `NOMBRE-NON-MONETAIRE` (±2 lignes, jamais sur une ligne qui porte aussi un montant CAD).
+> Élargi sur décision de Marc : quantité et gain % du récapitulatif masqués, et total du jour du calendrier
+> des factures (`Planning.tsx`) masqué — la garde ne le voyait pas (alibi d'une autre marque sur la même
+> ligne → `[PRIVACY-SCAN-ALIBI-MEME-LIGNE]`). Ratios et durées perso partout : lot à part
+> `[PRIVACY-RATIOS-DUREES-UNIFORMES]` (il inversera les jetons de `DebtManager` et `BudgetGroupTable`).
+>
+> ## 🟦 Session 2026-09-29 (lot 3) — **code mort + garde vie privée `formatNumber`**
+> `[CSV-EXPORTS-MORTS-SANS-GARDE]` : `exportHoldingsCSV`/`exportBudgetCSV` retirés (aucun appelant).
+> `[FUTUR-DETAIL-SHOWNASSETSSUM-MORT]` : variable morte retirée de `FutureDetailModal.tsx`.
+> `[PRIVACY-SCAN-ALIAS-FORMATNUMBER]` : `amountPrivacyScan` voit les alias de `formatNumber` ; nouveau jeton
+> `NOMBRE-NON-MONETAIRE` (définition d'alias seulement, jamais pour un alias de `formatCAD`). Les appels
+> DIRECTS restent hors garde : 6 sites mesurés, à trier → `[PRIVACY-SCAN-FORMATNUMBER-DIRECT]`.
+> ## 🟦 Session 2026-09-29 (suite) — **`[SANDBOX-CURSEURS-THEORIQUES-RETRAIT]` + `[SANDBOX-PROMPTS-MARQUER-CONTEXTE]`**
+> **Retrait** (OK de Marc) : `useTheoretical`/`theoreticalIncome`/`theoreticalExpenses` NEUTRALISÉS dans le
+> moteur (3 sites : `computeIncomeBaseline` perd son paramètre `projection`, base de dépenses
+> `effectiveBaseExpenses`, sensibilité d'épargne) ; les 3 champs restent `@deprecated` dans `types.ts`
+> (pas de migration du schéma persisté). Interface retirée : `macroFields/FluxMensuelsFields.tsx`
+> (supprimé, grille Hypothèses bureau 4 → 3 colonnes) ET le commutateur « Données réelles / Bac à
+> sable » de `FutureProjection.tsx` (il ne pilotait que `useTheoretical` ; gardé, il aurait affiché
+> « Bac à sable » sur du réel — option A validée par financeai-chef). ⚠️ `[SANDBOX-MODE-TEST-GENERALISE]`
+> devra reposer un point d'entrée. Effet de bord utile : `[SANDBOX-FUITE-VERS-LE-MCP]` perd sa cause
+> moteur (un `useTheoretical: true` persisté n'a plus d'effet sur `get_projection` & co.).
+> **Marqueur** (décision Marc 22/09) : `systemPourAppel` (`services/claude.ts`) ajoute
+> `DONNEES_FICTIVES_MARQUEUR` (`utils/promptSafety.ts`) au `system` des 5 points de contact SDK quand
+> `modeDonneesFictives()` ; bloc ajouté EN DERNIER côté agent (cache du 1er bloc intact).
+> `services/claude.ts` rejoint l'inventaire `[SVC-STORE-COUPLING]`. Garde dérivée du grep :
+> `tests/services/promptMarqueurFictif.test.ts`. Tests moteur : `tests/services/useTheoreticalNeutralise.test.ts`.
+>
+> ## 🟦 Session 2026-09-29 — **`[CHIFFREMENT-PHASE1]` : création de passphrase + mémorisation WebAuthn**
+> Phase 1 (app web seule, aucune dépendance Infisical) du plan de chiffrement par défaut. Le chemin de
+> CRÉATION d'une passphrase (retiré en juin) est RÉTABLI : `components/settings/PassphraseCreate.tsx`
+> (3 étapes — saisie/confirmation, avertissement + carte imprimable/téléchargeable en Blob local sans
+> réseau, case « copie hors ligne » obligatoire avant le bouton Activer). Mémorisation par appareil
+> (`services/deviceKeyStore.ts`) : clé AES-256-GCM non extractible en IndexedDB, verrouillée par
+> **WebAuthn biométrique à CHAQUE usage** (authentificateur de PLATEFORME, `userVerification:
+> "required"` — condition BLOQUANTE de pole-securite donnée AVANT tout code, 28/09) ; échec fermé
+> partout (plateforme indisponible/refusée, IndexedDB absent, blob altéré → phrase complète
+> redemandée, jamais un repli plus faible). Filet non bloquant : expiration 30j d'inactivité. Pas de
+> révocation à distance par construction : l'outil de Marc en cas de vol est de CHANGER LA PHRASE
+> depuis un autre appareil (coupe tous les appareils mémorisés d'un coup — copie explicite à l'écran).
+> `PassphraseGate.tsx` tente le déverrouillage automatique au montage (verrou WebAuthn + déchiffrement
+> local, aucun réseau) avant d'afficher le formulaire. `services/googleDrive/backupCleanup.ts` :
+> nettoyage des anciens `.bak.json` en clair, compte AVANT, supprime SEULEMENT sur confirmation
+> explicite ; un backup illisible n'est ni compté ni supprimé (prudence). ADR 0026. Tests :
+> `tests/services/passphraseCreate.test.ts`, `tests/services/deviceKeyStore.test.ts` (15 cas),
+> `tests/services/cloudBackup.migration.test.ts`.
+> ⚠️ Aucun chemin de la config `chemins_label_validation` actuelle n'est touché (vérifié), mais la
+> règle GLOBALE de l'Atelier (jamais armer une PR touchant la sécurité sans OK pole-securite)
+> s'applique : PR ouverte, **non armée**, attend confirmation que les 3 conditions pole-securite (verrou
+> WebAuthn bloquant, filet 30j, copie rotation=révocation) sont bien implémentées telles que décrites.
+> Hors périmètre : Phase 2 (MCP+Infisical, bloquée) et Phase 3 (bascule du défaut), toutes deux plus tard.
+>
+> ## 🟦 Session 2026-09-29 — **`[VERROU-ECRITURE]` : Étape 2, verrou d'écriture MCP hors du chat**
+> Suite de `[MCP-CONFIRM-TOKEN]` (#1076, fusionnée) : le jeton d'aperçu empêche une écriture en UN
+> appel mais pas l'injection de consigne (aperçu+confirme enchaînés par un modèle piégé). Verrou
+> **désactivé par défaut**, activable UNIQUEMENT depuis l'app web (Réglages → Écritures MCP, nouvelle
+> `WriteLockCard`), jamais depuis claude.ai. État dans `financeai-write-lock.json` (appDataFolder,
+> même dossier que `financeai-sync.json`, aucun nouveau scope OAuth). **Lecture SEULE côté MCP**
+> (`mcp/drive/writeLockStore.ts` — n'expose AUCUNE fonction d'écriture, vérifié par test structurel) ;
+> **écriture SEULE côté app web** (`services/googleDrive/writeLock.ts`). Vérifié dans `runApply`
+> AVANT la logique d'aperçu/jeton de #1076 (les deux se cumulent, défense en profondeur) : un verrou
+> refermé refuse même un `confirmToken` valide émis pendant une fenêtre désormais close. Échec fermé
+> partout (réseau, fichier absent, JSON invalide, exception) — jamais un repli ouvert ; une source
+> d'état SANS Drive (fichier local, tests) n'implémente pas le mécanisme, ce n'est PAS un fail-open
+> (le verrou ne s'applique qu'aux déploiements Drive-backed, la seule forme exposée à un document
+> tiers). ADR 0025. Tests : `tests/mcp/verrouEcriture.test.ts`,
+> `tests/mcp/verrouEcritureIntegration.test.ts` (matrice 8 outils + structurel), `tests/services/writeLock.test.ts`.
+> ⚠️ PR sensible (`mcp/**`, `services/googleDrive/**`, `components/settings/**`) : brouillon, non
+> armée, relecture ligne à ligne de pole-securite obligatoire avant tout armement.
+>
+> ## 🟦 Session 2026-09-26 — **`[MCP-DURCISSEMENT]` : limites de débit du MCP, message de parse sans extrait, clé d'accès faible signalée**
+> Audit P3-P6 (moyennes 5, 6, 8). (1) `parseRawToAppState` : message fixe (« contenu non affiché »), plus l'extrait de `JSON.parse`. (2) `mcp/auth/routeRateLimit.ts` : `/mcp`, `/refresh`, `/fintable-sync`, `/hub/summary`, `/vehicule/bail`. RÈGLE : on VÉRIFIE D'ABORD le secret (mêmes comparaisons en temps constant que les handlers), on refuse après. Appels AUTHENTIFIÉS : plafond de volume (300/min, 12/h, 12/h, 120/h, 60/h) ; un appel non authentifié ne touche jamais ce budget. Appels NON authentifiés : compteur d'échecs PAR ADRESSE (dernier élément de `X-Forwarded-For`, seuil 100 par 15 min, table bornée) → 429 ; un secret valide n'est JAMAIS bloqué. Pas de blocage global (ce serait un déni de service ouvert à Internet). `/oauth/authorize` : même logique, compteur PAR ADRESSE (8 par 15 min) + plafond global de sécurité (200) appliqué SEULEMENT si la clé d'accès est faible (< 32) ; le blocage précède la comparaison de la clé (même pour la bonne clé depuis une adresse bloquée : sinon la clé se devinerait à la vitesse de la ligne) ; à vérifier en production que le dernier élément de `X-Forwarded-For` est l'adresse client (`docs/A_FAIRE_MOI.md`). (3) `FINANCEAI_ACCESS_KEY` < 32 caractères : le serveur DÉMARRE, alerte au journal (sans la clé ni sa longueur) et l'outil `ping` (derrière l'OAuth, donc visible de Marc seulement) ajoute « clé d'accès faible » ; `/health` ne dit rien. Avec `FINANCEAI_ACCESS_KEY_STRICT=1`, seule `/oauth/authorize` répond 503 (nouvelles autorisations) ; hub, véhicule, refresh, sync et les sessions déjà autorisées continuent.
+> Marc : régénère la clé (64 caractères hex) quand tu veux, puis pose la variable GitHub `MCP_ACCESS_KEY_STRICT=1` (câblée par `mcp/deploy.sh` et `deploy-mcp.yml` vers `FINANCEAI_ACCESS_KEY_STRICT=1`) (`docs/A_FAIRE_MOI.md`). Chiffres de débit = estimation de l'usage (`ROUTE_LIMITS`), cadence réelle du hub à confirmer.
+>
+> ## 🟥 Session 2026-09-28 (suite) — **`[GARDE-JQ-AUTO-MERGE-LENGTH]` : `main` bloquait toute PR sur une garde anti-fuite**
+> `tests/journauxCiSansDonnees.test.ts` (liste blanche des programmes `jq` des workflows) ne connaissait pas
+> `gh pr list --json number --jq 'length'` de `.github/workflows/auto-merge.yml:77` (compte de PR ouvertes,
+> jamais de contenu) — introduit par `[KIT-191]`/#1085 sans mise à jour de la garde, découvert en fusionnant
+> #1076. `main` lui-même était rouge sur cette porte : **toute PR en échouait**, sans rapport avec son propre
+> contenu. Corrigé : `'auto-merge.yml': ['length']` ajouté à `PROGRAMMES_JQ_AUTORISES`, aucun changement au
+> workflow. PR isolée et minimale, pas de chemin sensible (`tests/**` seul), armable dès portes vertes.
+>
+> ## 🟦 Session 2026-09-28 (suite) — **`[STRUCTURE-COMMUNE]` : docs/ETAT.md + ignoreCommand Vercel (structure commune aux 7 apps, spec pole-architecture)**
+> Vague 3 de l'alignement structurel : `docs/ETAT.md` créé (seul `docs/ARCHITECTURE.md` existait), même patron que BatchChef
+> (photographie datée, sourcée, pointeurs vers `HANDOVER.md`/`BACKLOG.md`/`docs/A_FAIRE_MOI.md`). `vercel.json` gagne un
+> `ignoreCommand` : saute la préversion Vercel quand la PR ne touche QUE `*.md`/`docs/**`/`.github/**` (échec fermé — tout
+> doute construit). ⚠️ `mcp/**` volontairement HORS de la liste ignorable, malgré le déploiement séparé du MCP sur Cloud Run :
+> `hooks/useFinancialSignals.ts` importe `mcp/financialSignals.ts`, un module RÉELLEMENT inclus dans le bundle web — l'exclure
+> aurait pu laisser une préversion stale sur un changement qui compte. Le script `qualite/portes.mjs` avait DÉJÀ une entrée npm
+> (`portes`/`portes:maj`) — vérifié avant de recréer quoi que ce soit, rien à faire de ce côté. Aucun code métier. PR brouillon,
+> chemin sensible (`vercel.json`), attend la relecture de pole-securite.
+>
+> ## 🟥 Session 2026-09-25 (suite) — **`[CF-ACCESS]` : le mur Cloudflare Access, vérifié côté API**
+> Marc a dit OUI (Access remplace la passkey ; ADR `0022`). **Code livré, sans effet tant que Marc n'a pas posé le mur**
+> (`A_FAIRE_MOI` → `[CF-ACCESS-MISE-EN-SERVICE]`, dans l'ordre : test iPhone → application Access → variables Vercel AVEC
+> `CF_ACCESS_REQUIRED=0` → DNS proxifié → vérifs → suppression de la variable = exiger). `api/_lib/accessJwt.ts` (jose 6.2.3 : RS256, iss/aud/exp/nbf,
+> `kid`, e-mail) ; relais Claude → 401 enveloppe Anthropic ; proxys Yahoo/Fintable = fonctions gardées (`api/yahoo/*`, `api/proxy/fintable.ts`,
+> réécritures `vercel.json`) ; `ipClient(headers, jetonValide)` ; redirection `*.vercel.app` → prod ; SW : jamais de réponse redirigée/opaque/`/api/*` en
+> cache (cache v4) ; `utils/sessionAccess.ts` (session expirée → rechargement) ; manifest `use-credentials`.
+> ⚠️ Valeur ABSENTE de `CF_ACCESS_REQUIRED` = EXIGER (sans config Access : tout refusé, échec fermé). ⚠️ Base = branche `durcissement` (#1072) : PR empilée, pas de CI
+> ⚠️ Changements de comportement : le service worker ne sert plus `/api/*` hors ligne (plus de cours Yahoo périmés) ; une session expirée affiche « Ta session de connexion a expiré » (cause `session-access`, `messageErreurIa`) et non « clé refusée » ; la sonde de session ne couvre que le retour dans l'onglet (≥ 1 min) / le retour du réseau. [À MESURER en prévisualisation] : que la réécriture vers une fonction conserve la requête d'origine (les proxys lisent aussi le chemin d'origine) ; Access 302 ou 401 sur `fetch` ; Host `*.vercel.app` jamais transmis par Cloudflare (sinon boucle de redirection).
+> tant que #1072 n'est pas fusionnée. Lot B (clé serveur) : BACKLOG, option non recommandée. Tests : `accessJwt`, `relaisAccess`, `accessConfigFichiers`, `sessionAccess`.
+>
+> ## 🟦 Session 2026-09-28 — **`[DOCS-PROTECTION]` (v3) : couche « documents des agents protégés » reconstruite sur main (kit 1.9.1 + attestation réelle)**
+> Reconstruit PAR-DESSUS main (contient déjà `[KIT-191]` + `[#1086]` + le correctif a11y `#1087` fusionnés) : `modeles/auto-merge/armer-docs.mjs`
+> (point d'entrée du workflow, AVANT l'`armer.mjs` du modèle, copie exacte intacte), `docsAjoutsSeulement.mjs` (décision pure, statique),
+> `LISEZMOI-docs.md`, ADR 0024. Deux niveaux : `chemins_ajouts_seulement` (STRICT — `docs/claude/lecons.md`, `docs/CONVENTIONS.md` : aucune ligne
+> existante ne change) et `chemins_contenu_surveille` (SOUPLE — `BACKLOG.md`, `HANDOVER.md`, `CHANGELOG.md` : cocher/archiver admis, mêmes
+> contrôles sur les lignes AJOUTÉES). `CLAUDE.md` + les 13 `docs/claude/*.md` (sauf `lecons.md`) passent sous attestation
+> (`chemins_label_validation`). Workflow `armement-auto-merge.yml` ADAPTÉ d'UNE ligne (`armer.mjs` → `armer-docs.mjs`), sorti du tableau
+> `COPIES.md` (9 fichiers exacts restants), les deux empreintes déclarées + un test qui vérifie que c'est la SEULE différence.
+> `securite_login`/`securite_user_id` sont RÉELS depuis #1086 : les tests d'attestation utilisent le VRAI `attestationValide`, plus de fixture
+> de substitution.
+> ⚠️ Repris d'une branche v2 périmée (base d'avant kit-190/191 et #1086) : le travail non commité réutilisable (bloc ESLint nominatif pour
+> les `.mjs` propres à FinanceAI, dead-code) a été porté ; le fix `exempleDe` split/join était déjà sur main via une autre branche (`resync`),
+> pas reporté (redondant). Bug trouvé en portant l'ADR : la v2 disait que cocher une case de `BACKLOG.md` exigeait l'attestation — faux, le
+> module l'admet SEUL (contenu surveillé) ; corrigé dans l'ADR ici. Le test a11y `chartAlternativeTexteGuard.test.ts`, trouvé rouge en cours de
+> route (préexistant, pas causé par ce lot), a été DIAGNOSTIQUÉ à tort comme « role="img" manquant sur FutureProjection.tsx » puis correctement
+> identifié comme un bug du TEST lui-même (Windows, voir session suivante) et corrigé en PR séparée #1087 AVANT de continuer ce lot (base à jour).
+> PR brouillon, `validation-marc`, **NON armée** (chemins sensibles ; attend la relecture ligne à ligne de pole-securite).
+>
+> ## 🟩 Session 2026-09-28 — **`[WIN-GARDES-A11Y-FUTUREPROJECTION]` : la garde a11y des graphes était rouge sous Windows, pas le composant**
+> `tests/components/chartAlternativeTexteGuard.test.ts` ligne 83 lisait `GRAPHES_INTERACTIFS[path.relative(ROOT, file)]` SANS `toPosix()` :
+> sous Windows, `path.relative` rend `components\FutureProjection.tsx` (antislash), qui ne matchait jamais la clé `components/FutureProjection.tsx`
+> (slash) → le graphe interactif (pastilles de jalons focusables, #599) était vu comme non-interactif, et le test exigeait `role="img"` au lieu
+> du `role="group"` déjà présent (ligne 1860) et correct. **Le composant n'a pas changé** : y ajouter `role="img"` aurait dégradé la protection
+> nested-interactive (WCAG 4.1.2) que le code commente explicitement. Correctif : `toPosix(path.relative(...))`, comme les deux autres usages du
+> même fichier (déjà corrects). Même classe de bug que `[WIN-GARDES]` (2026-09-26) — ce fichier de garde n'avait pas été balayé. Piste notée au
+> BACKLOG (`[WIN-GARDES-PATH-RELATIVE-BALAYAGE]`) : auditer les autres `path.relative()` de `tests/**`, non faite ici (hors périmètre, cosmétique
+> ailleurs). PR normale (non sensible), armée après gate vert (#1087).
+>
+> ## 🟦 Session 2026-09-28 — **`[KIT-191]` : le kit d'auto-merge de l'Atelier passe en 1.9.1 (tag `kit-1.9.1`) — delta isolé pour relecture sécurité**
+> Resynchro depuis `[KIT-190]` (commit `00512380`, déjà revu par pole-securite sur le fond) : sur les 10 fichiers copiables
+> attestés par `COPIES.md`, seuls `verifier-copies.mjs` (+128/-…) et `LISEZMOI.md` (+9, nouvelle section « Profils du kit »)
+> changent d'empreinte ; les 8 autres (`autoMerge.mjs`, `armer.mjs`, `fusionner.mjs`, `codes-raison.mjs`…) sont inchangés
+> depuis 1.9.0. Nouveauté 1.9.1 côté Atelier : profils `--profil prive/complet` (un dépôt privé sans protection de branche
+> peut retirer `armement-auto-merge.yml`) — **non adoptée ici**, FinanceAI reste au profil `complet` (armement natif conservé).
+> `COPIES.md` régénéré puis les sections « Source et méthode » / « Écarts FinanceAI » restaurées à la main (`--ecrire-copies`
+> les efface, voir `ECRIRE-COPIES-EFFACE-LA-DOC-MANUELLE-DE-COPIES-MD` dans `docs/CONVENTIONS.md`). `tests/blocageFusion.test.ts`
+> mis à jour (1.9.0/`kit-1.9.0`/`a17b41d` → 1.9.1/`kit-1.9.1`/`df55f4c`). Commit séparé (`ba609fab`) pour une relecture du
+> delta seul par pole-securite ; PR brouillon, étiquette `validation-marc`, **NON armée** (chemins sensibles, pas d'attestation
+> possible avant `securite_login`).
+>
+> ## 🟦 Session 2026-09-27 — **`[KIT-190]` : le kit d'auto-merge de l'Atelier passe en 1.9.0 (tag `kit-1.9.0`) — Dependabot re-fusionné**
+> Copies exactes du tag `kit-1.9.0` (commit `a17b41d`) dans `modeles/auto-merge/` (+ `codes-raison.mjs`), `COPIES.md` refait (écarts un à un). NOUVEAU workflow
+> `.github/workflows/auto-merge.yml` (gabarit événementiel, adapté de deux valeurs : `workflows: [CI]` et `node-version-file: .nvmrc`) : il fusionne Dependabot après `carence_dependabot_jours` = 3.
+> `securite_login`/`securite_user_id` toujours ABSENTS (PR de 2 lignes de pole-securite ensuite : App `<slug>[bot]` + identifiant numérique). `commit-gate`
+> hors lot. Tests : `tests/blocageFusion.test.ts` (Dependabot éligible fusionné / sensible refusé / carence, attestation App sur fixture, workflow lu comme donnée).
+>
+> ## 🟦 Session 2026-09-26 — **`[GARDE-RESYNC]` : le mécanisme de fusion auto = le modèle Atelier 1.6.0 (copies exactes)**
+> Autorisé par Marc. `modeles/auto-merge/*` (copies exactes du commit `f8e2177` d'atelier, empreintes dans `COPIES.md` racine, écarts
+> FinanceAI déclarés un à un), `.github/workflows/armement-auto-merge.yml` (gabarit tel quel) ; SUPPRIMÉS : `.github/workflows/fusion-auto.yml` et
+> `.github/scripts/auto-merge/`. `validation-marc` devient INFORMATIF ; sans `securite_login` (absent) aucune attestation n'est possible : les chemins
+> sensibles restent bloqués. ⚠️ Le modèle DÉSARME les PR Dependabot (« traitées par le workflow de fusion ») : plus d'armement automatique de Dependabot
+> tant que le gabarit de fusion événementiel n'est pas adopté. `commit-gate` hors lot. ESLint ignore `modeles/auto-merge/**`. Tests : `tests/blocageFusion.test.ts`
+> (modèle exécuté dans Node : `tests/helpers/peutArmerNode.mjs`).
+>
+> ## 🟥 Session 2026-09-25 — **`[GARDE]` : la fusion auto ne s'arme plus sur les chemins sensibles**
+> Demande pole-architecture/pole-securite. **Workflow `fusion-auto.yml` refait** sur le modèle de l'Atelier (identique à
+> BatchChef #128) : `pull_request_target` (workflow, script et listes lus sur `main`, jamais dans la PR), un seul checkout de la
+> BASE, la PR n'est lue que par l'API ; `armer.mjs` appelle `peutArmer` : brouillon, fork, label `validation-marc`/`do-not-merge`
+> ou fichier sensible ⇒ PAS armée (et désarmée si elle l'était). Sensibles : `scripts/hooks/**`, `.github/**`, `.claude/**`,
+> `**/settings*.json`, `**/commit-gate*`, `CODEOWNERS`, `modeles/**`, `.gitattributes`, + FinanceAI : `api/**` (entier), `mcp/**`, `services/secureKeyStore.ts`, `vite.config.ts`, `index.html`,
+> `vercel.json` (label `validation-marc` posé). ⚠️ ADAPTATION : `hooks/**` et
+> `**/settings*` du modèle sont RETIRÉS ici — `hooks/` = hooks REACT, `components/settings/**` = écran Réglages (~35 fichiers d'UI
+> bloqués à tort) ; à refaire à chaque re-synchronisation (`.github/scripts/auto-merge/chemins-interdits.json`, `_note`).
+> Copies de modèles et leurs empreintes : `.github/scripts/auto-merge/COPIES.md`. Tests : `tests/blocageFusion.test.ts` (table
+> d'attaque + grille A1-A9 du workflow lue comme donnée). ⚠️ Les contrôles obligatoires de la PR ne suffisent plus à fusionner :
+> une PR sensible reste à fusionner À LA MAIN par Marc.
+> 🔧 Aussi : `.gitattributes` (`* text=auto eol=lf`, l'index était déjà LF : aucun changement de contenu) ; test
+> `gateTestsHomonymes` réparé (séparateurs Windows + câblage sur la forme actuelle du hook) ; hook : limites connues documentées
+> et figées en test, sous-commandes git intégrées sans rapport avec un commit ne déclenchent plus le gate, commit non-TS sans
+> configuration globale = gardes-scan + typecheck + build (la suite complète reste celle de la CI). Le commit-gate « commun » de
+> `atelier/modeles/qualite/` n'existe pas encore : on reste sur celui de #1071.
+>
+> ## 🟥 Session 2026-09-25 — **`[DURCISSEMENT-RELAIS]` : le jeton de relais public disparaît, des freins honnêtes le remplacent**
+> 🔎 Audit sécurité (pole-securite, décision de Marc) : `VITE_PROXY_ACCESS_TOKEN` était recopié dans le bundle public ;
+> n'importe qui le lisait, il n'a jamais rien protégé. **Supprimé** (client + relais). À la place, dans `api/_lib/` :
+> Origin (finance.hubperso.com, `RELAIS_ORIGINES`, `VERCEL_URL`, localhost — falsifiable hors navigateur : un frein),
+> débit par IP (120/min) et par empreinte de clé (60/min) et budget de vérification de clé (10/min/IP) — en mémoire,
+> donc frein FAIBLE sur Vercel sans état (aucun stockage partagé, décision à part), corps ≤ 200 Ko (413),
+> `max_tokens` local ≤ 8192 (au-delà : Claude, jamais tronqué), `anthropic-version` en forme stricte.
+> Mémo de vérification de clé (S5) : négatif court (refus 60 s, panne 15 s), 200 entrées, éviction par ancienneté
+> (avant : vidage total à 50), empreinte SALÉE (`RELAIS_SEL_EMPREINTE`, sinon sel aléatoire par instance).
+> 🧪 `tests/api/relaisDurcissement.test.ts` + `tests/api/jetonAbsentDuBundle.test.ts` (construit avec une valeur canari dans
+> `VITE_PROXY_ACCESS_TOKEN`, échoue si elle ou le nom de l'en-tête est dans le bundle ; vérifié en le rendant rouge).
+> ⚠️ Action Marc (`docs/A_FAIRE_MOI.md` O4) : RETIRER `PROXY_ACCESS_TOKEN` et `VITE_PROXY_ACCESS_TOKEN` de Vercel s'ils
+> sont posés (inutiles, la première est même une valeur sensible à faire tourner par prudence). Décision : ADR 0021.
+> 🔐 **Routage local réservé à la clé de Marc** : `RELAIS_ORG_LOCALE` (organisation renvoyée par count_tokens) et/ou
+> `RELAIS_CLES_LOCALES` (empreintes salées, `scripts/empreinteCleRelais.mjs`, lancé par Marc) ; aucune des deux → routage
+> local désactivé (échec fermé). IP client : `x-vercel-forwarded-for`, puis `x-real-ip`, puis 1er saut de `x-forwarded-for`.
+> ⚠️ Le nettoyage de données d'identification (docs actuelles) NE change PAS l'historique git : les anciennes valeurs
+> restent lisibles tant que le dépôt est public et non réécrit. Rien n'est « réglé » de ce côté.
+> ## ⏸️ EN PAUSE (2026-09-25, 14:05 UTC, demande de Marc) — **point de reprise**
+> **État exact** :
+> - `main` = `1da01632` (#1064 fusionnée, déployée READY sur Vercel).
+> - **PR #1065 `[EXPORT-JSON-PERD-FINTABLE]` OUVERTE EN BROUILLON, NON FUSIONNÉE** (branche
+>   `claude/progress-check-yua8yy`). Code complet + revue de 3 agents intégrée (voir suite 6
+>   ci-dessous). Vérifs ciblées vertes (typecheck, lint 0 erreur / 32 avertissements, 25 fichiers de
+>   test). Reste à faire à la reprise : lire la CI sur la tête, sortir du brouillon, auto-merge
+>   SQUASH, vérifier Vercel READY, puis déménager `[EXPORT-JSON-PERD-FINTABLE]` vers l'archive.
+> - **Déploiement MCP : toujours impossible.** Marc a réactivé le workflow et l'a lancé (run
+>   `36144220105`, 13:56 UTC) : échec en 1 s sur le job garde — « la variable de dépôt
+>   `GCP_PROJECT_ID` n'est pas définie », job `deploy` **ignoré** (`skipped`). Donc la variable
+>   n'est pas vue comme **variable de dépôt Actions** (probablement posée comme *secret*, ou dans un
+>   *environment*, ou à un autre niveau). Mesure du job : 376 commits touchant le serveur depuis
+>   v0.11.0 (2026-07-13). Geste précis routé dans `docs/A_FAIRE_MOI.md` `[MCP-DEPLOY-CONTINU-MORT]`.
+> - Bloqués par ce déploiement : 1c-2 (brancher `financeai-eodhd-key` dans `mcp/deploy.sh`), 1g
+>   (import des relevés), `[FX-SERVEUR-JAMAIS-RAFRAICHI]`, la réparation du cron Fintable.
+> - Neuf, trouvé par la revue : `[SYNC-PULL-APIKEYS-NON-FILTREES]` (BACKLOG, 🟠 S).
+> - Aucun rappel programmé (le check-in de #1065 a été annulé pour la pause). Rien de non poussé.
+>
+> ## 🟩 Session 2026-09-25 (suite 6) — **Sauvegarde JSON = l'enveloppe persistée entière**
+> `[EXPORT-JSON-PERD-FINTABLE]` (décisions de Marc : conversations + documents inclus, restauration =
+> tout remplacer). `services/sauvegardeJson.ts` (pur) + `BackupPanel` : export = `getLocalPayload()`
+> (format `4.0`, `{ version, timestamp, store: { state, version } }`), refus en mode test ; restauration
+> 4.0 = `localStorage.clear()` puis `financeai-storage` réécrit tel quel, jugé au démarrage par `merge`.
+> `Settings` ne reçoit plus les 14 collections du vieux payload. Revue (3 agents) : blob illisible
+> nommé, `remplacerLeStockage` (retour arrière si l'écriture lève, coffre `app_api_keys_enc` gardé),
+> filet `createBackupNow` avant, `enveloppeARestaurer` retire `apiKeys` et le mode test d'un fichier
+> fabriqué, majeur de version PARSÉ. Même trou `apiKeys` côté pull Drive → `[SYNC-PULL-APIKEYS-NON-FILTREES]`. ⚠️ Le workflow `Deploy MCP (Cloud
+> Run)` est **désactivé** côté GitHub : Marc doit le réactiver avant qu'un déploiement puisse partir
+> (routé dans `docs/A_FAIRE_MOI.md`). 1c-2 attend ce déploiement vérifié.
+>
+> ## 🟩 Session 2026-09-25 (suite 5) — **Horizon = espérance de vie de la personne 1**
+> `[HORIZON-ESPERANCE-DE-VIE]` (décisions de Marc : personne 1, curseur retiré, chiffres acceptés,
+> fusion auto). Source unique `services/projection/horizon.ts` appliquée aux DEUX portes état → moteur
+> (`useSimulationParams`, `deriveSimulationInputsFromState`) ; `simulate_what_if`/`get_projection`
+> refixent `years` après coup et gardent leur paramètre. Plancher 5 ans. Mesuré (Couple à l'aise,
+> Node, MC 100) : 40 ans 1,07 s → 57 ans 1,55 s ; fin 11,23 M$ (2066) → 23,22 M$ (2083) ; succès
+> 95 → 97 %. Tests qui rendaient le futur « périmé » en changeant `years` : passent par `inflationRate`
+> (`years` ne pilote plus le moteur). `projection.years` reste dans l'état (compat), sans effet dans l'app.
+>
+> ## 🟩 Session 2026-09-25 (suite 4) — **Futur : la tuile « Patrimoine » = bout de la courbe**
+> `[FUTUR-KPI-PATRIMOINE-FIN-COURBE]` (décision Marc) : la tuile montrait `estateNetWorth` (héritage
+> net) sous « Fin de l'horizon », contredite par son info-bulle ; persona Couple à l'aise 9,79 M$ contre
+> 11,23 M$ sur la courbe, Retraite et Placements (mesuré dans une même session). Source unique
+> `components/projection/kpiPatrimoine.ts` : valeur = `finalNetWorth`, héritage net dans l'info-bulle
+> (masqué en mode discret). ⚠️ Vu au passage, NON corrigé ici : Retraite affiche « Succès jusqu'à 92 ans »
+> et « Héritage (92 ans) » alors que la projection s'arrête à la fin de l'horizon (75 ans pour ce
+> persona) — Marc a choisi l'horizon automatique jusqu'à l'espérance de vie, chantier à cadrer.
+>
+> ## 🟩 Session 2026-09-25 (suite 4) — **Décisions de Marc : date B, devise à choisir**
+> `[ADDSTOCK-DEVISE-A-CHOISIR]` : plus de devise par défaut dans `AddStockForm` (`''` = à choisir,
+> « Ajouter » désactivé). Passerelle : date tranchée **B** (livre depuis l'ouverture ; test de limite
+> inversé en test de décision ; exigence reportée sur 1g). En attente de Marc : gestes GCP + clé
+> EODHD (Secret Manager `financeai-eodhd-key`) + réouverture des 3 appareils ; export JSON (2 choix).
+>
+> ## 🟩 Session 2026-09-25 (suite 3) — **E2E « clic partout » : le bandeau du mode test recouvrait la cible**
+> `[E2E-FUTUR-CLICK-ANYWHERE-INSTABLE]` : rouge aussi sur `main` après #1058, vert 25/25 en local.
+> Mécanisme reproduit (graphe défilé sous le bandeau fixe « Mode test activé ») ; clic visé sous le
+> bandeau + diagnostic `elementFromPoint` dans `clickAndFreeze`. Pour rejouer l'e2e ici : config
+> locale qui pointe `launchOptions.executablePath` vers `/opt/pw-browsers/…` (révision 1243 absente)
+> et `webServer.cwd` vers le dépôt. #1059 fusionnée et déployée (READY).
+>
+> ## 🟩 Session 2026-09-25 (suite 2) — **Symbole de cotation vérifié avant la purge**
+> Livré `[QUOTE-SYMBOLE-SANS-CONTROLE]` : `services/verifierSymboleCotation.ts` appelé par
+> `handleApplyQuoteSymbol` (Investments) avant toute écriture ; `variantClosePlausible` déplacée dans
+> `services/history/plausibiliteCours.ts` (ré-exportée par l'hydratation). #1058 fusionnée.
+>
+> ## 🟩 Session 2026-09-25 (suite) — **Historique du Futur : la dette de chaque date**
+> Livré `[FUTUR-HISTORIQUE-DETTE-DU-JOUR]` : `services/history/detteDuPasse.ts`
+> (`prepareDetteNonImmoAuJour`, source unique extraite de `dailyPastLedger`), appelée par
+> `FutureHistorySection` (qui retranchait la dette du jour partout). #1057 fusionnée et déployée (READY).
+>
+> ## 🟩 Session 2026-09-25 — **Historique des cours : devise vérifiée**
+> Livré `[HISTORIQUE-YAHOO-DEVISE-NON-LUE]` : `HistoryPoint.currency` (optionnel, casse gardée),
+> `services/history/deviseHistorique.ts` (`verdictDeviseHistorique`, source unique), branché dans
+> `hydrateAssetHistories` (principal + variantes) et `usePastPortfolioHistory`. `[ADDSTOCK-…]` archivé.
+> ⚠️ Après le merge de #1055 (zod 4), un `npm install` est nécessaire dans le conteneur (typecheck rouge sinon).
+>
+> ## 🟩 Session 2026-09-24 (fin, suite 9) — **Ajout d'un titre : devise de la cotation**
+> Livré `[ADDSTOCK-DEVISE-USD-PAR-DEFAUT]` (`AddStockForm`) : devise lue de `quote.currency`, refus nommé
+> hors CAD/USD/EUR, avertissement si absente. `[SYNC-PUSH-SANS-OCC]` fusionné (#1054) et archivé.
+> `[EXPORT-JSON-PERD-FINTABLE]` re-mesuré M (restauration par clés legacy), plan au BACKLOG, non codé.
+> Test E2E instable `[FUTUR-CLICK-ANYWHERE]` inscrit (`[E2E-FUTUR-CLICK-ANYWHERE-INSTABLE]`).
+>
+> ## 🟩 Session 2026-09-24 (fin, suite 8) — **Le push Drive n'écrase plus une version qu'il n'a pas vue**
+> Livré `[SYNC-PUSH-SANS-OCC]` : `pushNow` relit le blob avant d'écrire ; `driveAAvance` (source unique
+> avec `decideOnLoad`) → réécrit depuis la dernière version vue ⇒ 0 écriture + modal de conflit
+> (`resumeConflit`, partagé avec `runDecision`). « Garder cet appareil » passe la version MONTRÉE
+> (`driveVuA`). Relecture en échec ⇒ push en échec (plus de push aveugle sans clés). Lot 1 (portefeuille)
+> en pause : e1 livrée (#1053), la suite attend 1c-2 (paramètres GCP + clé EODHD de Marc).
+>
+> ## 🟩 Session 2026-09-24 (fin, suite 7) — **Lot 1e, étape e1 : passerelle livre ↔ placements (non branchée)**
+> Livré `[PTF-L1E-PASSERELLE]` e1 : champ persisté `brokerAccountRegimes` (régime DÉCLARÉ par compte du
+> livre, tri-état comme le livre, `regime` dans `CHAMPS_TEXTE`) et module PUR
+> `services/portefeuille/passerelle.ts` (`deciderPasserelle`, `actifsHorsLivre`, `valeurDuLivre`). Parité
+> au cent avec `computeInvestmentsValue` aujourd'hui et à une date passée ; 5 perturbations, 5 rouges
+> distincts. Aucun écran ne change encore. ⏭️ Suite : e2 (présent + mois 0 + retrait des régimes couverts
+> de l'autorité Fintable) — à ne rien activer tant que le magasin de marché (1c-2) n'est pas alimenté.
+>
+> ## 🟩 Session 2026-09-24 (fin, suite 6) — **Lot 1f2 : lecture du relevé PDF**
+> Livré `[PTF-L1F2-LECTURE-PDF]` : `services/import/disnat/lignesDuPdf.ts` (fragments pdfjs → lignes,
+> tolérance 3 ; pdfjs-dist 4.10.38 chargé en différé, worker servi par l'app). Garde de traversée : PDF
+> fictif (jsPDF) → pdfjs → `lireReleveDisnat` = relevé lu depuis le texte. Non branché à l'écran.
+> ⚠️ Le `node_modules` partagé du conteneur manquait `@fontsource/*` (build local rouge sans rapport
+> avec le lot) : ré-installé à la main depuis le lock. ⏭️ Suite : `[PTF-L1E-PASSERELLE]` — l'import
+> (1g) attend la recherche EODHD de la tâche serveur 1c-2 (les relevés n'impriment aucun ISIN ; choix de Marc).
+>
+> ## 🟩 Session 2026-09-24 (fin, suite 5) — **Lot 1f : parseur courtier (partie texte)**
+> Livré `[PTF-L1F-PARSEUR-DISNAT]` : `services/import/disnat/lireReleveDisnat.ts` (texte → relevé, trois
+> recoupements du découpage) et `versEvenements.ts` (relevé → événements ; ISIN, devise de cotation et
+> position d'avant en ARGUMENTS). Relevé de test ENTIÈREMENT fictif ; essai local sur les 3 vrais relevés
+> (0 anomalie, toutes les positions retrouvées). ⏭️ Suite : `[PTF-L1F2-LECTURE-PDF]` (PDF → lignes, différé), puis 1g.
+>
+> ## 🟩 Session 2026-09-24 (fin, suite 4) — **Quatre sortes du grand livre, tranchées par Marc**
+> Livré `[PTF-L1A-SORTES-A-TRANCHER]` + `[PTF-L1B-CONVERSION-VIREMENT]` (ADR 0020 §11) : `annulation`
+> (`cancelsId`, la ligne reste et cesse de compter à la date de l'annulation), `echange` (`toIsin`),
+> `cost` (coût total imprimé), `conversion` / `virement-interne` (`toAccountId`, un seul événement).
+> `etatDuLivreAu` et `variationEntre` les lisent (échange suivi, fractionnement annulé DÉFAIT). Trois clés
+> textuelles neuves dans `CHAMPS_TEXTE`. ⏭️ Suite : 1f (parseur courtier), qui peut maintenant tout écrire.
+>
+> ## 🟩 Session 2026-09-24 (fin, suite 3) — **Lot 1d : moteur de valorisation pur**
+> Livré `[PTF-L1D-VALORISATION]` : `services/valorisation/valoriser.ts` (`valoriserAu`, `variationEntre`), PUR, non
+> branché. Total `null` + `manquants` dès qu'il manque un cours, un taux ou que le livre porte une anomalie (un total
+> amputé est un faux) ; aucun arrondi ; zéro artefact (jour sans mouvement → effets 0 exactement ; fractionnement
+> ré-exprimé). ⚠️ Porte « code mort » (knip 6, plafond 40) : seuls les symboles importés hors de leur fichier sont
+> exportés ; chaque lot ré-exporte ce qu'il consomme. ⏭️ Suite : 1f (parseur courtier), puis 1e.
+>
+> ## 🟩 Session 2026-09-24 (fin, suite 2) — **Lot 1c-1 : format du magasin de marché, clients purs**
+> Livré `[PTF-L1C1-MAGASIN-FORMAT]` : `services/marche/magasinMarche.ts` (format v1, validation qui refuse,
+> fusion idempotente où la source décide, `clotureAu`/`tauxAu` avec âge maximal REQUIS) et
+> `services/marche/clientsMarche.ts` (EODHD `close` brut, BdC par série datée). Aucun réseau ici : la tâche
+> serveur 1c-2 fera les appels (attend les paramètres GCP et la clé EODHD de Marc). Lecteurs d'événements
+> EODHD et Yahoo volontairement absents : `[PTF-L1C1-LECTEURS-EVENEMENTS]`. ⏭️ Suite : 1d, 1f.
+>
+> ## 🟩 Session 2026-09-24 (fin, suite) — **Lot 1b : positions et encaisse pures**
+> Livré `[PTF-L1B-LIVRE-PUR]` : `services/grandLivre/etatDuLivre.ts` (`etatDuLivreAu(livre, date)`), module PUR,
+> non branché à l'écran. Tri-état respecté (`undefined` → `null`), encaisse en cents entiers arrondis, fractionnement
+> avant les opérations du même jour, événements fautifs écartés et nommés (`anomalies`). ⚠️ Le livre n'a pas de sorte
+> pour une conversion de devises ni un virement interne : routé `[PTF-L1B-CONVERSION-VIREMENT]`, à trancher avec 1f.
+> ⏭️ Suite : 1c-1 (format du magasin de marché + clients purs), 1d, 1f.
+>
+> ## 🟩 Session 2026-09-24 (fin) — **Lot 1a : grand livre et référentiel déclarés, rien d'écrit**
+> Marc : « go pour le lot 1 ». Livré `[PTF-L1A-SCHEMA-LIVRE]` (ADR 0020) : `brokerLedger` / `instruments` dans
+> `AppState`, `undefined` explicite dans les défauts store ET MCP (purge persona), 3 clés textuelles neuves dans
+> `CHAMPS_TEXTE` avec témoins de la garde, compté par `DATA_ARRAY_KEYS` et le modal de conflit, sauvegarde JSON
+> aller-retour, nettoyeur persona. Revue (même PR) : restauration Drive tri-état (`CLES_TRI_ETAT`), modal qui
+> compte les instruments, garde « aucun persona ne plante de référentiel » ; schéma à trancher routé
+> (`[PTF-L1A-SORTES-A-TRANCHER]`). ⏭️ Marc rouvre ses 3 appareils (`[PTF-L1A-ROUVRIR-APPAREILS]`) ; suite = 1b
+> (positions/encaisse pures), 1c-1, 1d, 1f — un lot par PR.
+>
+> ## 🟩 Session 2026-09-24 (suite) — **Réponses du Lot 0, taux BdC côté serveur, fuite du journal public**
+> 🗳️ Marc a répondu aux questions du Lot 0 en session : décisions dans `docs/adr/0019-decisions-refonte-portefeuille.md`
+> (clôture × taux BdC fait foi, Fintable en contrôle ; EODHD gratuit ; coût fiscal PROVISOIRE ; import PDF local ET MCP
+> après `[SYNC-PUSH-SANS-OCC]`). 🔧 **Livré** : `[FX-SERVEUR-JAMAIS-RAFRAICHI]` (décision + écriture FX extraites vers
+> `services/fx/ecritureFx.ts`, source unique app/serveur ; `/refresh` lit les taux) — ⚠️ inerte tant que le serveur n'est
+> pas redéployé (paramètres GCP, `[MCP-DEPLOY-CONTINU-MORT]`). 🔴 `[PTF-JOURNAL-PUBLIC]` : le cron « Rafraîchir les prix »
+> publiait la liste des titres dans son journal PUBLIC depuis 254 passes ; il n'imprime plus que des comptes (garde
+> `tests/journauxCiSansDonnees.test.ts`). Les 254 anciens journaux ont été supprimés (décision de Marc, vérifié 404). Montants réels retirés
+> de toute la doc (fichiers courants ; historique git non réécrit).
+> ⏭️ **Suite** : Lot 1 (`[PTF-L1A-SCHEMA-LIVRE]`) — plan approuvé par les réponses ; attendre le feu vert explicite.
+>
+> ## 🟩 Session 2026-09-24 — **Portefeuille courtier : Lot 0 (audit) livré hors dépôt, Lot 0.5 livré ici**
+> 🔎 Marc : « faut tout checker pour avoir un vrai rapport détaillé », puis un cahier des charges (« PROMPT v2 »)
+> et un fichier de vérification. Trois analyses (38 agents) + relecture adverse → rapport, audit, plan des lots
+> 0.5 à 4 et questions, remis à Marc **HORS dépôt** (ses montants réels ; dépôt PUBLIC). Feu vert : **Lot 0.5 seul**.
+> 🔧 **Livré** : garde `tests/confidentialitePortefeuille.test.ts` (clés du fichier de vérification + code de
+> compte après « courtier ») ; code de sous-compte anonymisé dans `tests/services/categoryRules.test.ts` (historique
+> git NON réécrit) ; `.gitignore` (`prive/`, fichiers de vérification, relevés) ; workflow MANUEL
+> `mesure-sources.yml` + `scripts/mesureSources.mjs` (verdicts par rang seulement, journal public) ; section
+> « 💼 Portefeuille courtier » du BACKLOG (plan en tickets `[PTF-*]` + défauts trouvés) ; `docs/A_FAIRE_MOI.md`.
+> ✅ **Mesure des sources faite** (`[PTF-L05B-MESURE-SOURCES]`) : EODHD gratuit sert 12/12 lignes à 0,00 %
+> des ancres indépendantes, Yahoo 11/12 (et rend un prix AJUSTÉ avant fractionnement), Valet exact. Rien de payant.
+> ⏭️ **Suite** : attendre les réponses de Marc (`[PTF-QUESTIONS-LOT0]`), puis Lot 1.
+> ⚠️ Le BACKLOG publiait en clair des données réelles du portefeuille (composition, quantités, montants) : la
+> garde ne les voyait pas (elle cherche des FORMES, pas des valeurs). **Retirées du fichier courant** sur décision
+> de Marc, remplacées par des écarts relatifs ; historique git NON réécrit. ⚠️ Ne JAMAIS importer un relevé courtier par `apply_broker_statement` :
+> simulé sur l'état réel, il double une partie du portefeuille (`[MCP-BROKER-IMPORT-DOUBLE-COMPTE]`).
+>
+> ## 🟦 Session 2026-09-26 — **`[WIN-GARDES]` : `npm test` passe en local Windows**
+> 33 tests-gardes échouaient sous Windows (CRLF de `core.autocrlf` + `\` de `path.join/relative`) et bloquaient le
+> hook commit-gate. Ajout `.gitattributes` (`eol=lf`) + `tests/helpers/toPosix.ts` appliqué dans 14 gardes ; aucun seuil
+> ni assertion assouplis, aucun code de production touché. Suite : 6832/6832. ⚠️ Une copie déjà extraite reste CRLF
+> tant qu'on ne la ré-extrait pas. Leçon : `docs/CONVENTIONS.md` `UNE-GARDE-VERTE-EN-CI-LINUX-PEUT-ETRE-ROUGE-SOUS-WINDOWS`.
+>
+> ## 🟦 Session 2026-09-26 — **`[MCP-CONFIRM-TOKEN]` : les écritures du connecteur claude.ai exigent un aperçu puis un jeton serveur**
+> Audit sécurité P3-P6 (findings élevés 1-2) : `apply_*` écrivaient sans confirmation et `confirm:true` était fourni par le modèle.
+> Désormais 8 outils via `mcp/tools/_writeTool.ts` : 1er appel = aperçu + `confirmToken` (usage unique, 5 min, lié session/outil/arguments/changements),
+> 2e appel = mêmes arguments + jeton. `confirm` retiré du schéma MCP. Plafond 500 éléments, annotations MCP, journal d'audit sans donnée.
+> Jetons en mémoire (limite : redémarrage = nouvel aperçu). ADR 0023. Tests : `tests/mcp/confirmationEcritureMcp.test.ts`.
+> ⚠️ PR sensible (`mcp/**`) : brouillon, validation Marc, non armée. Déploiement Cloud Run via `deploy-mcp.yml` après fusion.
+>
+> ## 🟦 Session 2026-09-29 — **`[E2E-FUTUR-CLICK-ANYWHERE-RECIDIVE]` + `[E2E-RAPIDE]` : suite E2E stable et 2× plus courte**
+> Récidive du test « clic partout » avec une AUTRE cause que le bandeau du 25/09 : le toast « Persona … chargé »
+> (4 s) recouvrait la bande basse visée ; 11 runs touchés sur 45. `activateTestMode` ferme les notifications
+> (`fermerLesNotifications`). `workers: 2` en CI : 6,5 → 3,1 min en local (62/62 ×3) ; en CI 6,2-6,7 → 4,6 min (62/62, PR #1111).
+> ⚠️ Un 1er essai du helper (clic « fermer » sans délai) a fait expirer 3 specs en CI : tout clic d'un helper doit être borné.
+> Leçon : `docs/CONVENTIONS.md` `UNE-SURFACE-QUI-RECOUVRE-UNE-CIBLE-PEUT-ETRE-TEMPORAIRE`.
+>
+> ## 🟥 Session 2026-09-23 (suite) — **`[IA-LOCALE-ROUTE]` : le relais n'était PAS routé en prod**
+> Après #1009 + variables Vercel : `POST /api/claude/v1/messages` → **405**, `GET` → `index.html`. L'attrape-tout
+> `api/claude/[...path].ts` n'est pas routé sur ce projet Vite ; la réécriture SPA `/(.*)` avalait l'appel → toute l'IA
+> texte en échec. **Rollback Vercel** vers le déploiement précédent (même code, construit SANS les variables = transport
+> direct). Correctif : `api/claude/v1/messages.ts` (chemin statique) + garde `tests/api/relayRouteStatique.test.ts`.
+> ⚠️ Après un rollback, Vercel coupe l'auto-assignation du domaine de prod : le prochain déploiement doit être
+> **promu** (Vercel → Deployments → Promote) — sinon finance.hubperso.com reste sur l'ancien.
+> Leçon : `docs/CONVENTIONS.md` `UN-RELAIS-NON-TESTE-EN-PROD-N-EST-PAS-UN-RELAIS`.
+>
+> ## 🟦 Session 2026-09-26 — **`[PTF-JOURNAL-PUBLIC-ERREURS]` : le journal PUBLIC des crons n'imprime plus le texte des erreurs**
+> Audit P3-P6 (moyenne 5) : `fintable-sync.yml` imprimait `error` du serveur, `refresh-prices.yml` `error` et `fx.erreur` — des messages d'exception libres (l'erreur de `JSON.parse` cite un extrait du texte fautif). Désormais modèle fixe : `erreur_signalee` (booléen) ; `ok`, `conflict`, `saved` normalisés en booléens ; `sautes`, `fx.ecriture`, `fx.cause` en codes d'une liste fermée (sinon « autre »). Garde : LISTE BLANCHE des programmes jq (`tests/journauxCiSansDonnees.test.ts`). Filtre exécuté sous jq réel sur 3 entrées piégées (texte libre partout) : rien de libre ne sort. Reste (hors lot) : le message de `parseRawToAppState` (`mcp/state/loadAppState.ts`) cite toujours le texte de `JSON.parse` côté serveur.
+>
+> ## 🟦 Session 2026-09-23 — **`[IA-LOCALE]` : le relais route un maximum d'appels Claude vers l'IA locale de Marc**
+> 🔎 Marc : « continue avec financeai … faire passer un max par ollama ». L'Atelier (dépôt MoKarade/atelier)
+> expose une **passerelle IA locale** (format API Anthropic → Ollama `gpt-oss-atelier` sur son PC, tunnel
+> Cloudflare `https://ia.hubperso.com`, clé par app, journal sans contenu).
+> 🔧 **Livré** : `api/_lib/relay.ts` route vers la passerelle tout appel **texte ou à outils « custom »**
+> sur Haiku/Sonnet (`IA_LOCALE_MODELES`), si l'env **serveur** `IA_LOCALE_URL` + `IA_LOCALE_CLE` est posé.
+> Restent sur Claude : Opus (choix explicite), image/PDF (Vision reste d'ailleurs en direct), outils serveur,
+> `tool_choice` forcé. Passerelle éteinte / 5xx / 529 GPU occupé / exception → **bascule Anthropic** avec la
+> clé BYOK (sonde `/sante` 1,5 s mémorisée 30 s). La clé BYOK n'est JAMAIS envoyée à la passerelle.
+> Fonction passée en **runtime Node.js** (Edge exige un début de réponse en 25 s ; bascule non-flux trop
+> longue) + `supportsCancellation` dans `vercel.json` (l'Annuler reste chaîné). **Opus ajouté à
+> l'allowlist** (il aurait échoué en 400 dès l'allumage du relais). `agentLoop` : un tour servi par
+> `gpt-oss-atelier` n'entre pas dans l'usage facturé (`isLocalModel`, `services/aiChat/models.ts`).
+> 🧪 `tests/api/claudeRelayIaLocale.test.ts` (14 cas) + 1 cas `agentLoop`. Bout en bout MESURÉ avant PR :
+> SDK → relais dev Vite → tunnel → passerelle → Ollama, clé BYOK FACTICE (un appel parti chez Anthropic
+> aurait rendu 401) : Haiku texte ✔, chat Sonnet + outil en flux ✔, Opus → Anthropic ✔.
+> ⚠️ **Rien ne change en prod tant que le transport n'est pas `proxy`** : le relais n'a jamais été allumé
+> (`docs/A_FAIRE_MOI.md` O4). Env à poser : `PROXY_ACCESS_TOKEN`, `VITE_PROXY_ACCESS_TOKEN`,
+> `VITE_CLAUDE_TRANSPORT=proxy`, `IA_LOCALE_URL`, `IA_LOCALE_CLE`. Décision : ADR 0018.
+> ⚠️ Qualité : gpt-oss-20b est en dessous de Haiku/Sonnet (banc Atelier : 80 % sur une catégorisation
+> synthétique ; enum pas toujours respecté en appel d'outil) — les garde-fous existants (allowlist de
+> catégories, zod des tools) restent la ceinture.
+>
+> ## 🟦 Session 2026-09-21 (suite 3) — **`[SANDBOX-ETANCHEITE-FICHIERS]` : aucun fichier ne sort pendant que les données sont fictives**
+> 🔎 Marc : « on va retravailler full le sandbox de l'onglet futur, jveux que ca change que ce soit
+> plus propore pose moi des questions ».
+> 🧭 **Cadrage fait, décisions de Marc** : (1) le bac à sable devient une **COPIE COMPLÈTE du
+> dossier**, modifiable de bout en bout ; (2) **toute la page change d'allure** tant que le mode est
+> actif ; (3) on **GÉNÉRALISE le MODE TEST existant** plutôt que d'en créer un second — il remplace
+> déjà tout l'état, garde une copie du réel (`realDataSnapshot`), sait revenir, coupe le push Drive
+> (`shouldPush`) et affiche déjà un bandeau plein écran ; (4) les deux curseurs actuels seront
+> **SUPPRIMÉS** avec neutralisation de la valeur persistée, ce qui referme le split 55/45 par
+> suppression du code qui le porte ; (5) l'étanchéité se ferme **tout de suite, en lot séparé** ;
+> (6) backup manuel **refusé avec explication**, PDF **refusé** — choix de Marc CONTRE ma
+> recommandation de filigrane, noté comme décision et non comme oubli.
+> 🔧 **Livré (décision 5)** : `store/modeTestActif.ts` (source unique du prédicat, il vivait en DEUX
+> copies non exportées, `isTestModeNow` et `isTestModeActive`) ; `createBackupNow` prend une
+> **INTENTION REQUISE** (`archive` / `filet`) et rend une union discriminée ; refus d'export **PDF**
+> (`PdfRefusedTestModeError`, jumeau du refus de mode discret) et de téléchargement **CSV**.
+> ⚠️ **Le backup FILET n'est PAS refusé**, et c'est le cœur du lot : `createBackupNow` a CINQ
+> appelants, dont trois posent un filet avant une opération destructive. `writeExecutor` écrit en
+> toutes lettres que « le filet est la CONDITION de l'écriture » — le refuser interdirait à
+> l'assistant toute écriture DANS le bac à sable, l'usage même qu'il sert ; `syncPull` et
+> `restoreBackup` perdraient le leur. Un filet pris en mode fictif porte `testMode: true`.
+> ⚠️ **Le CSV a failli être la porte oubliée** : le plan d'architecture affirmait « Export CSV :
+> n'existe pas ». Il existe. Sa garde vit dans `downloadCSV` — le point de SORTIE commun aux trois
+> presets, y compris celui qu'un lot futur ajoutera — et non dans chaque preset.
+> 🧪 **Gardes** : `tests/services/etancheiteDonneesFictives.test.ts`, 11 cas, prouvés par **deux
+> perturbations de sens OPPOSÉ** (règle désarmée → 3 rouges ; `intent` ignoré → 2 rouges, dont
+> exactement l'assertion du filet).
+> 📏 `npm run typecheck` vert · `npm run lint` **0 erreur / 32 avertissements** = base d'`origin/main`.
+> ⚠️ **Le LINT a trouvé mon seul vrai défaut** : l'alias avait rendu `useFinanceStore` inutilisé dans
+> `syncPush.ts` (32 → 33). Invisible au typecheck ET à la ligne « 0 errors » — seul le COMPTE comparé
+> à la base le montre.
+> ⚠️ **Trois `as never` de mocks** rendaient l'ANCIENNE forme et laissaient le typecheck vert pendant
+> que l'exécution rougissait : réécrits SANS l'échappatoire.
+> ⚠️⚠️ **Et la CI a rendu 3 rouges dans 2 fichiers que le lot ne touche PAS** (PR #1006) : (a)
+> l'anti-vacuité du patron MGA exigeait `code/brut > 0.45` sur `services/` contre une mesure de
+> **0,45072** — 0,0007 de marge, que 4 900 caractères de commentaire ont suffi à franchir ; elle
+> devient une PAIRE sans réglage fin, au seuil de sa garde JUMELLE sur la MÊME portée ; (b) la garde
+> de frontière `services/ ↔ store` cherchait la chaîne `store/useFinanceStore`, donc l'extraction de
+> `store/modeTestActif.ts` l'a rendue aveugle à `syncPush.ts` **des deux côtés** — son détecteur est
+> désormais DÉRIVÉ (scanner `store/` pour juger `services/`), l'inventaire restant écrit à la main.
+> Mesuré : le détecteur élargi sort exactement les 7 entrées. Leçon :
+> `UN-SEUIL-ECRIT-A-RAS-DE-SA-MESURE-N-EST-PLUS-UN-SEUIL`.
+> ⚠️ **Non couvert, et dit plutôt que sous-entendu** : les prompts envoyés au modèle
+> (`services/claude.ts`). C'est le SEUL des trois canaux qui sort de la machine (le backup va dans
+> IndexedDB local chiffré, le PDF reste sur le disque), il n'a pas de point d'entrée unique (7
+> fonctions qui parlent au modèle, 3 appels SDK directs), et la réponse juste n'y est probablement
+> — ⚠️ **chiffre CORRIGÉ le 2026-09-22 : 5 points de contact SDK, tous porteurs d'un `system`,
+> dont 4 dans `claude.ts` ; il y a une taille de guêpe, contrairement à ce que j'avais publié** —
+> pas un refus — demander conseil SUR un scénario est l'usage même du bac à sable. **À trancher.**
+> ⚠️ **Ce lot touche l'app** (pas seulement le serveur MCP) : un déploiement Vercel est à vérifier.
+> ✅ **MERGÉ** (PR #1006, `17d02997`) et **DÉPLOYÉ** : déploiement de production
+> `dpl_5f5dEZRS5VD4TtXhqwDYyDmADopy` **créé et `READY`** sur le SHA exact. ⚠️ La RÉPONSE servie
+> n'a PAS pu être lue depuis ce conteneur (403 au CONNECT) — c'est la création + l'état qui sont
+> vérifiés, rien de plus. Item déménagé vers `docs/BACKLOG_ARCHIVE.md`.
+> ## 🟦 Session 2026-09-21 (suite×3) — **`[FUTUR-AXE-Y-MINIMAL]` : axe Y minimal + badge flottant sur la courbe principale**
+> 🔎 Après le correctif du bandeau/tiroirs (entrée juste en dessous), Marc a choisi parmi 5
+> maquettes (canvas `eeecb5db-c2f1-49a1-8f29-9b82b46610a2`, E1-E5) la combinaison **E2 (badge
+> flottant) + E4 (étiquettes superposées)** pour resserrer la courbe « Courbe de vie » sur
+> téléphone (« l'axe Y prend trop de place »).
+> 🔧 **Livré sur `FutureProjection.tsx`** (le graphe principal SEULEMENT — les 9 autres écrans à
+> graphe restent à porter, `[FUTUR-AXE-Y-MINIMAL-ROLLOUT]` au BACKLOG) :
+> - `<YAxis hide domain={['auto','auto']} />` remplace l'ancien axe à chiffres — `hide` retire
+>   aussi la gouttière réservée (~60-70px), le `domain` reste explicite pour que recharts garde son
+>   échelle interne (`ReferenceLine`/`ReferenceDot`/`CartesianGrid` en dépendent). Les 5 lignes de
+>   grille discrètes restent dessinées (vérifié en DOM, indépendant du rendu de l'axe).
+> - Nouveau badge flottant `TodayValueBadge` (`components/projection/ProjectionTooltip.tsx`),
+>   ancré sur le point « aujourd'hui » de la courbe via `shape=` d'un `ReferenceDot`, montrant
+>   `pointAncre.NetWorth` (**même source que le panneau du jour**, jamais recalculée), masqué en
+>   mode discret via `maskedTick` (source unique déjà nommée, `utils/chartPrivacy.ts`). Rendu
+>   APRÈS les `Area`/`Line` (et non avec les autres `ReferenceLine`) pour se peindre PAR-DESSUS la
+>   pile colorée — un premier essai plus haut dans l'ordre de rendu le laissait invisible, masqué
+>   par les aires (mesuré à l'écran).
+> - Le conteneur du graphe déborde du padding de sa `<Card>` (`-mx-6 px-1`) — `.chart-fullscreen:fullscreen`
+>   reçoit `margin: 0` pour que cette marge négative ne pousse pas l'élément hors du viewport en
+>   plein écran (l'API Fullscreen sort l'élément du flux normal).
+> ⚠️ **Panel a11y-auditor/code-reviewer/silent-failure-hunter lancé et corrigé** (0 bloquant,
+> 4 correctifs) : garde `Number.isFinite` (pas `typeof === 'number'`, qui laisse passer `NaN`) ;
+> `Pill` extraite en composant partagé (`TodayValueBadge`/`RefLineLabel` dupliquaient le même
+> patron pastille) ; `aria-hidden="true"` explicite en défense en profondeur ; `dy` du badge monté
+> à -60 (mitigation d'un chevauchement possible avec une 2e pastille d'événement empilée le même
+> jour). Nouveau test `tests/components/FutureProjection.todayValueBadge.test.tsx` (4 cas) — le
+> composant n'était exercé par AUCUN test avant ce lot (tous les mocks recharts neutralisent
+> `ReferenceDot`).
+> ⚠️⚠️ **Deux pièges rencontrés en écrivant ce test, capturés dans `docs/CONVENTIONS.md`** : (1)
+> `pointAncre` (la valeur du badge) vient de `displayData`, préfixé par la reconstruction RÉELLE du
+> passé du persona chargé — PAS par la prop `transactions` du harness de test, qui peut donc
+> sembler contrôler la donnée sans le faire réellement ; (2) `isPrivacyMode` est un PROP de
+> `FutureProjection` (défaut `false`), jamais lu du store À L'INTÉRIEUR du composant — un harness
+> qui oublie de le câbler rend tout test de masquage VACUEUX (toujours en clair, quel que soit le
+> store).
+> ⚠️ Gate ciblé vert (typecheck, lint, 40 tests ciblés) — **gate complet PAS relancé, CI = arbitre**
+> (PR #1004, déjà ouverte pour le lot précédent, poursuivie plutôt que fractionnée).
+> ⚠️ Vérifié sur Pixel 10 Pro (**[Probable]**, ~412×915px CSS, websearch — device sorti après le
+> dernier entraînement) : zone de tracé 238px→~290px sur 412 (57,8 %→70 %+ de la largeur).
+>
+> ## 🟦 Session 2026-09-21 (suite du suite) — **régressions du bandeau `[FUTUR-NAV-TIROIRS]` : trois grilles écrasées dans le tiroir/la sidebar**
+> 🔎 Une fois `[FUTUR-NAV-TIROIRS]` (voir entrée juste en dessous) mergée, Marc a rouvert l'écran
+> Futur et signalé trois défauts VISUELS en rafale, capture à l'appui : « texte dépasse c'est
+> moche » (barre latérale), « pareil quand je fais modifier les hypothèses », « pareil pour
+> historique, trop cramped ». Cause UNIQUE des trois : `StatGrid`/les grilles Tailwind du dépôt
+> forcent leurs colonnes par SEUIL DE VIEWPORT (`sm:`/`md:`/`lg:`), pas par largeur de CONTENEUR —
+> or la barre latérale (280px) et le tiroir latéral desktop (`max-w-[440px]`) n'existent QUE quand
+> le viewport fait déjà ≥1024px, donc ces seuils sont TOUJOURS actifs et écrasent 3-4 colonnes dans
+> un espace pensé pour une page pleine largeur.
+> 🔧 **Livré** (aucune maquette requise, mécanique) :
+> - **Bandeau KPI** (`components/FutureProjection.tsx`) : libellés raccourcis PARTOUT (« Patrimoine »,
+>   « Succès », « Vitalité » — texte complet déplacé dans le `tooltip`, déjà le patron établi) pour
+>   ne jamais faire diverger le test money-critical qui compare l'innerText mobile/desktop au
+>   caractère près. Deux grilles séparées sur les MÊMES `<KPIStat>` : `cols={4}` en page empilée
+>   (inchangé), `cols={2}` FIXE dans la sidebar (`kpiGridSidebar`). Sidebar élargie 280px→320px
+>   (`FutureSidebar.tsx`) pour utiliser l'espace libre, comme demandé.
+> - **Tiroir Hypothèses** (`ProjectionControls.tsx`) : nouveau prop `isLateralDrawer` (fourni par
+>   `FutureProjection.tsx` = `!isBelowSidebarBreakpoint`) qui REMPLACE les préfixes `md:`/`lg:` de 4
+>   grilles par des colonnes fixes quand le tiroir est latéral (mobile inchangé, feuille `w-full`).
+> - **Tiroir Historique** (`FutureHistorySection.tsx`) : sélecteur de période (6 boutons) passe à la
+>   ligne (`flex-wrap`) au lieu de s'écraser ; titre de `<Card>` retiré (redondant avec le titre
+>   « Historique » du `<Drawer>` qui l'entoure désormais — libère la largeur pour le sélecteur).
+> ⚠️ Vérifié à la largeur RÉELLE du téléphone de Marc (Pixel 10 Pro, **[Probable]** viewport CSS
+> ~412×915px / DPR ~3,125, websearch — device non sorti au moment du dernier entraînement) : capture
+> + mesure DOM confirment le bandeau KPI en 2×2 propre, SANS chevauchement. Mais la zone de tracé du
+> graphe principal ne fait que **238px sur 412** (57,8 %) à cette largeur — l'axe Y fixe (`width=55`
+> chez `ZoomableTimeChart`, `tickFormatter` chez le graphe Futur) et le padding de `<Card>` (`p-6`)
+> mangent le reste. C'est exactement ce que les 5 maquettes E1-E5 (canvas déjà publié) adressent —
+> **la partie « courbe trop petite sur téléphone » attend toujours le choix de Marc parmi E1-E5**,
+> aucune n'a encore été appliquée au code.
+> ⚠️ Gate ciblé vert (typecheck, lint, vitest ciblés sur les 6 fichiers de test touchés, 2 specs e2e
+> `futureAxis`/aucune régression du seuil ratio) — **gate complet PAS encore relancé, CI = arbitre**.
+>
+> ## 🟦 Session 2026-09-21 (suite 2) — **`[MCP-VERSION-FIGEE]` + `[DEPLOY-CLONE-EN-RETARD]` : le serveur MCP sait enfin dire quel code il sert**
+> 🔎 Marc : « affciehe encore la mauvais valeur dans hubperso, pourtant jai deploy », puis
+> « corrige tout maointeant je veux avoir la bonne valeur dans hubperso et que ca réarrive jamais ».
+> 🔬 **Diagnostic, après DEUX conclusions fausses de ma part** : le serveur MCP sur Cloud Run était
+> **à jour** (sans jeton → `401` ; avec le vrai jeton, lu depuis Secret Manager dans la commande
+> elle-même → `grep -c "Total avoirs"` = **1**). C'est le HUB qui interrogeait un autre hôte :
+> `finance.hubperso.com/hub/summary` répond **200 avec `<!DOCTYPE html>`** — l'app Vercel, pas le
+> serveur MCP. Marc a changé `FINANCEAI_SUMMARY_URL` et redéployé hubperso (`READY`) : la carte est
+> repartie.
+> ⚠️ **Ma 1re « preuve » était vide** : j'avais écrit « PROUVÉ : le serveur tourne du vieux code »
+> parce que `totalDebt` restait inchangé. Or ce solde est daté APRÈS le dernier prélèvement le prêteur
+> (2026-09-15) : le vieillissement est un **no-op sur cette donnée**, ancien et neuf rendent le MÊME
+> nombre. **Ma sonde ne discriminait pas**, et j'ai conclu quand même. C'est l'observation de Marc
+> (« aucune tuile Total avoirs ni Dettes ») qui a tranché.
+> 🔧 **Livré (la moitié FinanceAI de « que ça ne réarrive jamais »)** :
+> - `mcp/bootstrap.ts` — `buildSha(env)` : rend le SHA si `FINANCEAI_BUILD_SHA` est 40 hexadécimaux,
+>   **`null` sinon**. Jamais de repli sur `MCP_SERVER_VERSION` ni sur `'inconnu'` : un identifiant de
+>   build faux est pire qu'absent (`no-fake-data`).
+> - `mcp/http.ts` — `GET /health` publie `sha`. Avant, il publiait `version: "0.11.0"`, figée depuis
+>   le **2026-07-13** pendant que **351 commits** touchaient le serveur (chiffre imprimé par le
+>   workflow de déploiement lui-même). Une version qui ne varie plus donne l'ILLUSION de dire quel
+>   code tourne — c'est ce qui a rendu le diagnostic impossible.
+> - `mcp/deploy.sh` — REFUS si le clone est derrière `origin/main` (le script déploie `--source .`,
+>   donc le DOSSIER local, et `gcloud` annonce quand même « serving 100 percent of traffic »). Le
+>   refus nomme le retard ET la commande qui répare ; `ALLOW_BEHIND=1` autorise un retour arrière
+>   volontaire **en l'annonçant**. Pose aussi `FINANCEAI_BUILD_SHA=$(git rev-parse HEAD)`.
+> 🧪 **Gardes (7 tests, 2 fichiers neufs)** : `tests/mcp/healthPublieLeCommit.test.ts` (4) et
+> `tests/mcp/deployRefuseCloneEnRetard.test.ts` (3). La seconde est **COMPORTEMENTALE** et pas un
+> scan de source : `deploy.sh` est du shell dont les COMMENTAIRES écrivent « REFUS » et « en retard
+> sur origin/main » mot pour mot, donc un scan y serait satisfait par la prose
+> (`SCAN-QUI-MATCHE-LA-PROSE`, et `readCodeOnly` ne décommente que du JS/TS). Elle construit un vrai
+> dépôt git jetable et exécute le script, **dans les deux sens** (contrôle négatif + `ALLOW_BEHIND`).
+> ⚠️ Son contrôle négatif a **échoué au 1er essai parce que MON clone était en retard d'un commit** :
+> la garde avait raison, ma prémisse était périmée — le défaut s'est présenté pendant qu'on écrivait
+> sa garde.
+> 📏 Vérifs ciblées vertes : `npm run typecheck`, `npm run lint` (**0 erreur, 32 avertissements** =
+> base inchangée), 7/7 tests neufs. ⚠️ **Gate local complet NON relancé** — la CI exécute le même
+> gate sur le SHA exact (`QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE`).
+> 🧭 **Ce qui RESTE de « corrige tout »** : (1) `[HUB-URL-PAR-DEFAUT-POINTE-L-APP]` — le `defaultUrl`
+> de `financeai` dans `Hubperso/lib/sources.ts` pointe l'app, pas le serveur MCP (autre dépôt) ;
+> (2) `[MCP-DEPLOY-CONTINU-MORT]` — le workflow `Deploy MCP (Cloud Run)` échoue à chaque push depuis
+> des mois (`GCP_PROJECT_ID` + 2 secrets absents), **routé à Marc** dans `docs/A_FAIRE_MOI.md` :
+> créer des secrets GitHub et un compte de service Google n'est pas à ma portée.
+> ⚠️ **Rien de ce lot ne change ce que Vercel sert** (le serveur MCP est auto-hébergé sur Cloud Run,
+> pas sur Vercel) : il n'y a donc **pas de déploiement Vercel à vérifier** pour cette PR — le dire
+> plutôt que de laisser croire qu'on a vérifié (`CLAUDE.md` §6).
+> ✅ **MERGÉE** (PR #1003, `74415b87`, 20:48 UTC). ⚠️ Le job E2E a rougi une fois sur
+> `e2e/futureDailySelect.spec.ts:119` (`[FUTUR-CLICK-ANYWHERE]`) alors que ce lot ne touche AUCUN
+> code d'app ni d'E2E, que l'E2E était vert au SHA précédent et que la spec passait 6/6 en local :
+> **relance unique** → verte (59 passés, 6 min 18 s). Flake, donc, mais le mécanisme reste noté pour
+> la prochaine occurrence — le journal montrait Recharts à `width(-1) and height(-1)`, donc des
+> coordonnées de clic prises une seule fois sur un `chartBox()` initial peuvent devenir périmées
+> pendant que le graphe se redimensionne ; le correctif serait de relire `chartBox` juste avant
+> chaque clic (`UN-FLAKE-NON-REPRODUIT-SE-SOLDE-EN-RENDANT-SA-PROCHAINE-OCCURRENCE-LISIBLE`).
+> ✅ **La moitié Hubperso est livrée aussi** (PR Hubperso #63 `e8b1c848` puis #64 `bbea054`) :
+> `[HUB-URL-PAR-DEFAUT-POINTE-L-APP]` est CLOS — `defaultSummaryUrl` vaut désormais **`null`** pour
+> `financeai` (une adresse Cloud Run écrite en dur serait un défaut plausible-mais-faux), et
+> l'adresse d'ACCUEIL a été séparée dans sa propre table (`ACCUEIL_PAR_ID`) parce qu'un seul champ
+> ne pouvait pas dire les deux. Déploiement de production Vercel **créé et `READY`** sur le SHA
+> exact (`dpl_57CYRjvTuUYdPrMih2Kdjwk5v1Uj`) ; ⚠️ la RÉPONSE servie n'a pas pu être lue depuis le
+> conteneur (403 au CONNECT sur `hubperso.com`) — c'est à Marc de constater la carte.
+> 🗂️ Les trois items livrés ont DÉMÉNAGÉ vers `docs/BACKLOG_ARCHIVE.md` ; il ne reste de cette
+> section que `[MCP-DEPLOY-CONTINU-MORT]`, bloqué sur Marc.
+
+> ## 🟦 Session 2026-09-21 (suite) — **`[FUTUR-NAV-TIROIRS]` : la barre à 4 onglets devient une barre latérale + tiroirs**
+> 🔎 Marc a demandé un changement de design de l'écran Futur, maquette d'abord (Design canvas,
+> 2 rondes : A/B puis C/D). Il a choisi **B** (barre latérale desktop + panneau du jour À CÔTÉ du
+> graphe) — qui contredisait une décision déjà écrite dans le code, `[FUTUR-PANNEAU-FIXE]`
+> (« panneau fixe EN DESSOUS du graphe, pareil sur téléphone »). Signalé plutôt que tranché en
+> silence ; Marc a répondu **« autre design pour téléphone »** : la barre latérale reste à côté du
+> graphe sur desktop, le panneau du jour reste EN DESSOUS sur mobile (inchangé). Confirmé sur C/D
+> (« C et D me vont, continue ») : Hypothèses / Plan d'action / Historique s'ouvrent en **tiroir**
+> par-dessus la courbe (toujours visible), au lieu de basculer un panneau exclusif.
+> 🔧 **Livré** : la barre à 4 onglets (`role="tablist"`) est **retirée** — Projection n'est plus un
+> onglet parmi d'autres, elle est TOUJOURS affichée. Nouveau seuil de largeur **~1024px**
+> (`hooks/useViewportBelowLg.ts`, calque du patron existant `useViewportBelowSm.ts`) :
+> - **≥ 1024px** : `components/future/FutureSidebar.tsx` (titre, bandeau santé, KPI, barre d'outils,
+>   3 boutons qui ouvrent un tiroir LATÉRAL — `components/ui/Drawer.tsx` variant `'lateral'`).
+> - **< 1024px** : layout empilé inchangé (panneau du jour toujours EN DESSOUS du graphe), KPI
+>   déplacés AVANT le graphe, mêmes 3 boutons ouvrant un tiroir en **feuille du bas** (`'feuille'`).
+> `Drawer` (nouveau, `createPortal` + `useFocusTrap`, calque de `ui/Modal.tsx`) gère Échap, restaure
+> le focus au déclencheur, verrouille le scroll du body. La barre d'outils (sélecteur de période +
+> Ré-optimiser/Verrouiller/Plein écran) est hissée en UNE const `barreOutils`, rendue à un seul des
+> deux endroits selon le viewport — jamais recopiée.
+> ⚠️ **Aucun changement au bloc graphe/données** (`CURVE_FIELDS`, `dataColumns`, `<ComposedChart>`,
+> `PanneauJour`, sélection du jour) : contrainte vérifiée par les tests qui lisent ce fichier en
+> TEXTE (`plusDInfobulleFlottante.test.ts` reste vert — aucune chaîne interdite introduite).
+> ⚠️⚠️ **Trou fermé en chemin, touch-target** : l'audit e2e des cibles tactiles était scopé à
+> `<main>` seul — `Drawer` sort par `createPortal(..., document.body)`, donc son contenu (formulaire
+> Hypothèses inclus) était invisible à l'audit tant qu'un tiroir n'était pas ouvert. Élargi pour
+> unir `<main>` et tout `[role="dialog"]` ouvert. Plafond re-MESURÉ (jamais deviné) : **49** cibles
+> sous 44px, dette pré-existante (radiogroup `Pill size="sm"` 24px, conforme WCAG 2.5.8 AA).
+> ⚠️ Deux gardes existantes se sont RETOURNÉES (jamais supprimées, per convention du dépôt) :
+> `tests/guards/tablistMotifUniqueGuard.test.ts` (`FutureProjection.tsx` n'a plus de motif à
+> détecter — témoin positif retiré, anti-vacuité synthétique ajoutée pour prouver que le mécanisme
+> de scan marche encore) et `tests/components/subTabsAria.test.tsx` (`EXCEPTIONS_CONNUES` retombé
+> à `[]`, `[A11Y-SUBTABS-FUTUR]` marqué résolu — autrement que prévu, en RETIRANT le bandeau plutôt
+> qu'en le convertissant vers `<SubTabs>`).
+> 📏 Vérifs ciblées vertes : typecheck, lint (0 erreur), ~300+ tests Vitest ciblés (tous les fichiers
+> touchant `FutureProjection`/`future/`/guards concernés), 17/17 specs e2e Playwright (3 réécrites :
+> `futureMobileFilet`, `futureMobileHypotheses`, `futureMobilePlanHistoryDetail`), build propre.
+> `e2e/kpi.spec.ts` reste bloqué par un écart d'environnement PRÉ-EXISTANT et SANS RAPPORT (revision
+> Chromium installée ≠ celle attendue par `@playwright/test@1.60.0`) — non corrigé, hors périmètre.
+> ⚠️ **Gate local complet NON relancé** — vérifs ciblées + CI comme arbitre
+> (`QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE`).
+> 🧭 `[GODFILE-FUTUREPROJECTION]` reste entier à découper (la contrainte de séquencement avec
+> `[A11Y-SUBTABS-FUTUR]` est caduque, déjà notée dans `BACKLOG.md`).
+> 🔎 **Revue** (`code-reviewer` + `silent-failure-hunter` + `a11y-auditor` en parallèle sur le
+> diff) — chaque finding a été VÉRIFIÉ contre le vrai code avant application (`un rapport d'agent
+> n'est pas une source`) :
+> - **Réfuté** : « le focus revient au mauvais déclencheur en changeant directement de tiroir »
+>   (silent-failure-hunter). Le fond plein écran (`inset-0`, `z-[9999]`) de chaque `Drawer` couvre
+>   la barre latérale ET les boutons mobiles tant qu'un tiroir est ouvert — aucun clic ne peut
+>   atteindre un second déclencheur pour déclencher la course décrite. Vérifié en lisant
+>   `Drawer.tsx` directement plutôt qu'en faisant confiance au raisonnement de l'agent.
+> - **Corrigé** : cible tactile de la sidebar `min-h-[40px]` → `min-h-[44px]` (standard interne,
+>   incohérent avec les boutons mobiles équivalents à 44px) ; `aria-controls` restauré sur les 6
+>   boutons déclencheurs (perdu avec l'ancien `panelId` du bandeau à onglets — `Drawer` expose
+>   maintenant un `id` optionnel, `tiroirDomId()` en source unique) ; le tiroir Plan d'action
+>   pouvait s'ouvrir totalement VIDE pendant la fenêtre de restauration de la projection
+>   (`curveRestoring`, ni invite ni contenu) — spinner ajouté, symétrique à celui du corps
+>   principal ; `Drawer` gagne `initialFocusRef` (calque de `Modal.tsx`,
+>   `[A11Y-MODAL-GUIDE-NODIALOG]`, préventif — aucun contenu de tiroir n'a d'`autoFocus` aujourd'hui).
+> - **Trou de couverture fermé** : ni `Drawer.tsx` ni `FutureSidebar.tsx` n'avaient de test à leur
+>   niveau (seulement via l'unique site d'appel mobile) — c'est ce qui avait laissé passer la
+>   cible tactile à 40px. Ajout de `tests/components/ui/Drawer.test.tsx` (16 cas),
+>   `tests/hooks/useViewportBelowLg.test.tsx`, et `e2e/futureDesktopTiroirs.spec.ts` (variante
+>   `lateral`, jamais exercée avant ce lot).
+> - **Routé, pas corrigé** (edge case rare, sans crash) : si le viewport bascule le seuil ~1024px
+>   PENDANT qu'un tiroir est ouvert, le déclencheur d'origine peut être démonté avant la fermeture
+>   → le focus retombe sur `<body>` au lieu d'un point d'ancrage connu. `Drawer.tsx:58-61` a le
+>   garde-fou anti-crash mais aucun repli. Pas de ticket ouvert — fréquence quasi nulle (rotation
+>   d'écran exactement au seuil, tiroir ouvert) pour l'effort d'une API de repli.
+> ⚠️⚠️ **CI rouge après le premier push (merge avec `main` jusqu'à #999), et c'est du VRAI, pas des
+> flakes** — vérifié en le rejouant sur `origin/main` ET sur le commit pré-merge avant de conclure :
+> `futureAxis.spec.ts` (bande « passé » `> 5px` en dur, or la barre latérale rétrécit le tracé de
+> 986→682px au viewport par défaut, 5,99→4,14px — la PART du tracé occupée est IDENTIQUE des deux
+> côtés, 0,607 % : seuil remplacé par une PART, pas un compte de pixels) et
+> `futureMobileProjectionScreen.spec.ts` (l'ordre KPI/courbe comparait `getBoundingClientRect().top`
+> entre deux colonnes flex INDÉPENDANTES sur desktop — valide pour un flux empilé, pas pour une
+> sidebar ; remplacé par l'ordre DOM, `compareDocumentPosition`). Puis un DEUXIÈME conflit est
+> apparu, `main` ayant avancé jusqu'à `[KPI-AVOIRS-DETTES]` (#1000) pendant la résolution du premier
+> — remergé, mêmes vérifs rejouées (43/43 des 13 autres specs Futur, hors `futureTooltip.spec.ts`,
+> écart Chromium local documenté dans `CONVENTIONS.md`).
+
+> ## 🟦 Session 2026-09-21 (suite 4) — **une pastille qui promet et ne tient pas**
+
+🔎 **`[FUTUR-NOTES-PASTILLES-MORTES]`** — Marc : « le truc impôt latent méthode et raccord sert à
+rien, **le ⓘ fait rien** ». Exact, et le plus dur à admettre : **l'en-tête du fichier décrivait
+déjà le défaut**. Il disait « un `title` sur un `<span>` non focusable n'est lisible qu'à la
+SOURIS, donc ni au doigt, ni au clavier » — écrit comme la JUSTIFICATION d'ajouter un jumeau
+`sr-only`, et j'ai quand même livré un chemin visuel réservé à la souris, sur un écran que Marc
+regarde au téléphone. Il tapait, rien ne s'ouvrait.
+🔧 Les pastilles sont désormais de vrais `<button>` de dévoilement (`aria-expanded` /
+`aria-controls`) qui AFFICHENT la phrase sous la rangée. Doigt, souris, clavier et lecteur d'écran
+passent par le MÊME chemin ; `title` et jumeau `sr-only` retirés (béquilles du chemin mort, et un
+lecteur d'écran lisait la phrase deux fois). Une seule note ouverte à la fois — deux pavés dépliés
+refabriqueraient le mur de texte que le lot précédent venait de retirer — et re-taper referme.
+📏 Test de limite **INVERSÉ en place** : il exigeait `title` + `sr-only` et passait au vert sur un
+écran où le geste ne produisait RIEN. Il mesurait la présence d'un ATTRIBUT, pas l'atteignabilité
+d'une INFORMATION. Perturbation (retour au `title`) → 3 rouges.
+
+⚠️⚠️ **La leçon est sur la GARDE, pas sur le composant** : une assertion qui vérifie qu'un texte
+est PRÉSENT dans le DOM ne dit rien de son ATTEIGNABILITÉ. `title`, `sr-only`, `aria-label`,
+`data-*` : tous présents, aucun forcément joignable par un geste. La garde qui compte simule le
+GESTE que l'interface annonce.
+
+## 🟦 Session 2026-09-21 (suite 3-bis) — **le job E2E est bordé pour qu'il PARLE**
+
+🔎 Arbitrage de Marc (« fais le a ») : `--max-failures=2` sur `test:e2e:ci`. Sans lui, une suite
+qui échoue LENTEMENT n'échoue pas — elle est COUPÉE au plafond de 30 min, ressort `cancelled`
+(ni rouge ni vert) et **n'imprime jamais son résumé**. Mesuré sur trois runs d'affilée : 18 tests
+traités, zéro diagnostic.
+📏 Arithmétique écrite dans le workflow : `retries: 2` × `test.setTimeout(120_000)` = jusqu'à
+6 min par test qui expire ; deux échecs ≈ 12 min, sous le plafond, AVEC le rapport. Une suite
+saine n'est pas concernée (référence du workflow : 4 min 03 s pour les 54 tests).
+⚠️ Ça ne désactive, ne saute ni ne met en quarantaine aucun test.
+⚠️⚠️ **Fait décisif de la relance** : `futureDailySelect.spec.ts:142` a échoué DEUX fois à 2,0 m
+(son propre budget) puis **réussi en 4,7 s au retry #2**, même code, même run. Les tests ne sont
+pas faux : ils sont **AFFAMÉS**. La piste restante est la lenteur du rendu du graphe Futur sous
+`vite dev` sur un runner à 2 cœurs (option b, non prise : servir un BUILD plutôt que le serveur
+de dev).
+
+## 🟦 Session 2026-09-21 (suite 6) — **#1000 est EN LIGNE, et le E2E est redevenu un gate**
+> ✅ **PR #1000 fusionnée** (`cb3cc75e`), CI **entièrement verte** : `Lint / Typecheck / Tests /
+> Build` ET `E2E (Playwright / Chromium)` — ce dernier en **5 min 42 s**, à comparer aux **29 min**
+> coupés au plafond de 30 il y a quatre heures. Déploiement de production **CRÉÉ et `READY`**
+> (`dpl_2URNA9CNdEyj18mxJWNN5Efbs28t`). ⚠️ La RÉPONSE servie n'a PAS pu être lue d'ici (§6) — c'est
+> la création et l'état qui sont vérifiés.
+> 📏 **Ce que le E2E a coûté, en une ligne** : trois lots pour le remettre en marche
+> (`[E2E-RAIL-INTERCEPTE-LE-CLIC]` → le rail de nav recouvrait 224 px de contenu et la souris de
+> Playwright démarre en (0,0) ; `[E2E-MAX-FAILURES]` → sans borne, une suite qui échoue LENTEMENT
+> ressort `cancelled` et n'imprime jamais son rapport ; `[E2E-REDUCED-MOTION]` → une promesse
+> d'en-tête de config qui ne s'exécutait pas). **Aucun des trois n'était visible tant que le job ne
+> parlait pas.** L'ordre a compté : borner d'abord, diagnostiquer ensuite.
+> ⚠️ **Le BACKLOG est à jour** : 5 items cochés déménagés vers `docs/BACKLOG_ARCHIVE.md`,
+> conservation PROUVÉE (39 lignes retirées, **0 introuvable**). Il reste **0 case cochée** dans
+> `BACKLOG.md`. Les quatre lots E2E du jour n'y avaient jamais d'entrée — nés de signalements
+> directs de Marc — et c'est écrit dans l'archive plutôt que laissé à deviner.
+> ⚠️ **PR #1001** (autre session, écran Futur en tiroirs) est en CONFLIT et son E2E est ROUGE : elle
+> part de l'ancien `main`. Les deux se règlent par un rebase. **Marc a tranché : ne pas y toucher**,
+> il s'en occupe lui-même — ne pas reprendre cette décision sans lui redemander.
+
+## 🟦 Session 2026-09-21 (suite 5) — **le E2E s'est remis à tourner, et il a trouvé une VRAIE régression**
+> 📏 **Mesure qui tranche**, run 35634812081 sur `68bf327a` : **30 tests passés** contre **1** au run
+> précédent. `futureAxis` et `futureDailyRollover` — les deux `element is not stable` — sont VERTS.
+> `reducedMotion` était bien la cause.
+> ⚠️ Deux rouges restaient, tous deux réels et tous deux corrigés ici :
+> 1. **`futureMobileFilet` : 59 → 61 cibles tactiles < 44 px**, l'inventaire nommant `ⓘMéthode`
+>    90×**25** et `ⓘImpôt latent` 116×**25** — MES pastilles, celles que
+>    `[FUTUR-NOTES-PASTILLES-MORTES]` venait de rendre « tapables ». Une pastille de 25 px de haut
+>    ne l'est pas : `touch-target` (44×44), patron repris tel quel de `ui/SubTabs`/`ui/Toast`.
+>    **C'est un cliquet écrit par un AUTRE lot qui l'a vu** — et il n'a pu le voir que parce que le
+>    job s'est remis à tourner.
+> 2. **`sidebarKeyboard`** — rouge à cause de `reducedMotion`, mécanisme mesuré : `index.css` force
+>    `transition-duration: 0.01ms !important` sur `*`, donc `visibility` (interpolation DISCRÈTE)
+>    bascule une FRAME plus tard, et c'est elle qui sort les items du tab-order. Sonde : panneau
+>    `hidden`, enfant encore `visible`. Attendre le PANNEAU ne suffit pas ; attendre l'ITEM, oui.
+> ✅ Vérifs locales : les deux specs VERTES, typecheck vert, lint **32** (la base), 45 tests
+> `notesGraphe` + `a11y` verts.
+
+## 🟦 Session 2026-09-21 (suite 4) — **`element is not stable` : une promesse de config qui ne couvrait rien**
+> 🔎 **`[E2E-REDUCED-MOTION]`** — une fois le rail écarté ET le rapport enfin imprimé
+> (`--max-failures=2`), le journal a NOMMÉ ce qui restait : `219 × waiting for element to be
+> visible, enabled and stable / element is not stable`, pendant les **120 s entières**, sur le
+> MÊME bouton (« ou vois directement ta projection actuelle ») dans `futureAxis` et
+> `futureDailyRollover`. 219 × 500 ms : l'élément ne se fige JAMAIS — ce n'est pas de la lenteur,
+> c'est du mouvement.
+> ⚠️⚠️ **L'en-tête de `playwright.config.ts` ANNONÇAIT « Animations : reducedMotion pour
+> stabiliser les screenshots » depuis toujours, et la clé n'était nulle part dans `use`.** Une
+> phrase de COUVERTURE qui ne couvrait rien, exactement comme « déjà testée chez elle » du
+> 2026-09-18 : elle se vérifie en OUVRANT le fichier, pas en le citant.
+> 📏 **Trois protocoles de mesure, tous NÉGATIFS en local** — et c'est ce qui rend le correctif non
+> évident : étranglement CPU à 20×, réseau sortant coupé, échantillonnage de `boundingBox` sur
+> 120 points. La boîte du bouton est **bit-stable** (`y=570.0 x=503.3 w=337.5`) dans les trois.
+> Le mouvement n'existe QUE sur le runner ; on ne peut donc pas désigner l'animation coupable, on
+> neutralise la CLASSE : `index.css` rabat toute animation à 0,01 ms sous
+> `prefers-reduced-motion`, dont le `translateY(20px)` de `.animate-premium-in` que porte CHAQUE
+> `Card` — y compris celle qui contient ce bouton.
+> ⚠️ Corrélation la plus forte du journal, et elle est à moi : E2E **vert en 5 min 47 s** sur
+> `a94ea669`, rouge sur tous les commits depuis `[KPI-AVOIRS-DETTES]`, qui fait passer le bandeau
+> de quatre à **six** tuiles — donc chaque tuile plus étroite. Non prouvé, écrit comme tel.
+> ⚠️ `futureAxis` était la seule des treize specs Futur restée au budget par défaut de **30 s**
+> quand dix de ses voisines ont 120 s. Mesuré : la seule ARRIVÉE sur l'écran plus le premier clic
+> coûtent **19,5 s** à 20× d'étranglement. Alignée.
+> ⚠️ `reducedMotion` va sous **`contextOptions`** sur @playwright/test 1.60 — la forme racine est
+> refusée par `npm run typecheck`, qui l'a attrapée avant la CI.
+
+## 🟦 Session 2026-09-21 (suite 3) — **le job E2E ne tournait pas, il se faisait couper**
+> 🔎 **`[E2E-RAIL-INTERCEPTE-LE-CLIC]`** — le check E2E de la CI tournait **29 min** et se faisait
+> couper à son plafond de 30, sur `main` comme sur chaque PR, pendant que le reste du gate était
+> vert. Il ne ressemblait pas à un échec : `conclusion: cancelled`, donc ni rouge ni vert.
+> ⚠️⚠️ **La cause n'est pas dans les tests, elle est dans une décision de mise en page** : le rail
+> de navigation s'ouvre AU SURVOL (`w-16` → `w-72`) et RECOUVRE le contenu, qui ne réserve que
+> 64 px (`md:ml-16`) — une bande de **224 px** où aucun clic ne passe tant que le pointeur est sur
+> le rail. Et **la souris de Playwright démarre en (0,0)**, donc dessus. Le clic sur l'onglet
+> « Profil » du helper PARTAGÉ `activateTestMode` n'atteignait jamais sa cible : 30 s d'attente,
+> « subtree intercepts pointer events », puis expiration — en cascade sur toute une famille de specs.
+> 📏 **Mesuré sur `main` (4f1466b4), sans aucun changement applicatif** : `futureAxis` échoue 3/3
+> (30 s chacun) → passe en **10,9 s** ; suite complète **18 tests traités en 29 min, tous en échec**
+> → **54 passés en 7,4 min**. Le correctif est une ligne (`ecarterLeRail`), EXPORTÉE avec sa règle :
+> tout spec qui clique dans les 288 px de gauche après un `goto` doit l'appeler.
+> ⚠️ **Ce n'est PAS un contournement d'un bug de l'app** — un humain qui survole le rail le voit
+> s'ouvrir et déplace sa souris. C'est ce geste qui manquait au test.
+> ⚠️ **Deux specs mobiles restent rouges EN LOCAL et je ne les compte pas** : `44` attendu contre
+> **43,99999237060547** mesuré — un écart d'un ulp, sur un conteneur qui exécute Chromium **141**
+> (binaire préinstallé) là où le dépôt épingle **148**. Rien dans ce lot ne peut changer la hauteur
+> d'un bouton. La CI, qui a le bon binaire, est l'arbitre.
+> ⚠️ **Outillage** : le binaire Playwright épinglé n'existe pas dans ce conteneur ; les specs
+> acceptent `PW_LOCAL_CHROMIUM`, et un pont de liens symboliques vers `chromium-1194` marche aussi.
+
+> ## 🟦 Session 2026-09-21 (suite 2) — **les deux TERMES du patrimoine, partout**
+> 🔎 **`[KPI-AVOIRS-DETTES]`** — Marc : « je veux voir genre ma somme total d'argent et ma somme
+> total de dette / ce que je dois (partout dans financeai et dans hubperso) ». Né de l'écart
+> Fintable/app qu'il venait de signaler : Fintable additionne des SOLDES, l'app publie
+> une VALEUR NETTE, et **les deux termes de la soustraction n'étaient visibles nulle
+> part ensemble**.
+> 🧭 **Ses deux arbitrages ont DIVERGÉ de mes recommandations** (3ᵉ fois cette session — une
+> recommandation rend le choix rapide, elle ne le pré-décide pas) : dettes = **total TOUT COMPRIS +
+> le détail** (« dont X $ d'hypothèque »), et bandeau à **6 tuiles** (Liquidités gardée).
+> ⚠️⚠️ **La conséquence arithmétique de son choix est le cœur du lot** : si les dettes incluent
+> l'hypothèque, les avoirs DOIVENT porter la valeur **BRUTE** du bien — sinon elle est retranchée
+> DEUX fois et les trois tuiles cessent de se recomposer, la classe de défaut que Marc a signalée
+> QUATRE fois en deux jours. Aucun changement de moteur : tout se dérive de ce qui existe.
+> 🔧 **Deux sources uniques, et c'est la décision structurante** : `presentTermesOfGoal` (valeur +
+> hypothèque d'un bien) — dont `presentEquityOfGoal` DÉRIVE désormais — et `computePresentTermes`
+> (avoirs + dettes hors immo) — dont `computePresentNetWorth` DÉRIVE. Trois chiffres calculés par
+> trois appels indépendants se recomposent jusqu'au premier correctif appliqué à un seul
+> (`UNE-FORMULE-MONEY-CRITICAL-RECOPIEE-DIVERGE`) ; ici l'identité est vraie PAR CONSTRUCTION.
+> 📏 **6 gardes neuves** (5 sur les tuiles, 1 sur la carte hub), **5 perturbations séparées** :
+> avoirs sur l'ÉQUITÉ → 2 rouges · dettes SANS hypothèque → 2 · sous-titre non privé → 1 · hub
+> publiant `netWorth` en guise d'avoirs → 1. Le cas immobilier utilise 400 000 $ de valeur pour
+> 300 000 $ d'hypothèque, plus un bien à équité NÉGATIVE (un clamp à zéro casserait l'identité).
+> ⚠️ Le hub a son cas ENDETTÉ dédié : sur la fixture sans dette, « avoirs − dettes = net » est vrai
+> PAR ACCIDENT (avoirs = net) — un câblage qui publierait `netWorth` et `0` y passait.
+> ⚠️ **`vitest` NE TYPECHECK PAS** (re-payé) : mes deux assertions d'identité sur la carte hub
+> étaient VERTES pendant que `tsc` refusait l'arithmétique (`HubMetric.value` est
+> `string | number`). Les vérifs ciblées se relancent APRÈS la dernière édition.
+> 🧭 **Découvert et ROUTÉ — `[NW-IMMO-ABSENT-DU-HUB]`** : le patrimoine net du BANDEAU ajoute
+> l'équité immobilière, celui du snapshot MCP/hubperso NON. Identiques tant qu'il n'y a pas de
+> bien — donc invisible aujourd'hui, et faux dès l'achat immobilier prévu.
+> ⚠️ Perturbation MUETTE notée sans être réparée : retirer `if (goal.isOwned === false) return RIEN`
+> laisse `pastPurchaseInit.test.ts` VERT (17/17). Ce n'est pas une régression du lot (la garde est
+> préservée telle quelle) mais un trou de couverture PRÉEXISTANT sur un gate qui a coûté un
+> incident (A6, revue #684) — à vérifier avant d'y toucher.
+> ⚠️⚠️ **CI rouge, et c'est une leçon DÉJÀ écrite qui a été re-commise** : `amountPrivacyScan` a
+> refusé `sublabel={… ${formatCAD(hypotheque)} …}` — la règle « une ligne d'ATTRIBUT porte sa marque
+> À ELLE » existe depuis le lot 58, et mon drapeau `privateSublabel`, posé une ligne plus bas, ne
+> lui servait pas de preuve. Le correctif n'est pas de faire taire la garde mais de **DÉCOUPER** :
+> `sublabel` passe de `string` à `ReactNode` (leçon jumelle, déjà payée sur `DualKPIStat.sublabel`
+> et `PageHeader.subtitle`) et seule la VALEUR est enveloppée — en mode discret le sous-titre lit
+> « dont ••• d'hypothèque », donc la composition du total reste compréhensible. **Deux
+> perturbations de sens opposé** : montant nu → le scan rougit ; sous-titre masqué EN ENTIER → le
+> scan reste VERT et c'est la garde comportementale neuve qui rougit. Aucune des deux ne couvre
+> l'autre.
+
+> ## 🟦 Session 2026-09-21 (suite) — **les deux pavés sous la courbe, en pastilles**
+> 🔎 **`[FUTUR-NOTES-COMPACTES]`** — Marc, capture au marqueur rouge : « **vire moi tout le texte
+> que j'ai barré** ». Deux blocs : le bandeau `mentionAutoriteCourtier` et le pavé « Courbe au
+> jour » (méthodologie + impôt latent).
+> ⚠️⚠️ **Les supprimer tout court aurait réarmé TROIS plaintes déjà formulées par Marc**
+> (`EPURATION-SUPPRIME-LA-RESERVE`) — dont, **le jour même**, « explique pourquoi j'ai pas la même
+> valeur sur mon app et sur Fintable », à laquelle la phrase du bandeau répond mot pour mot.
+> Forme retenue, celle que le dépôt a déjà payée pour cette tension (`[FUTUR-INFOBULLE-EPUREE]` +
+> finding a11y #644) : **libellé court visible + phrase entière en `title` ET en jumeau `sr-only`**.
+> 🔧 `components/future/notesGraphe.tsx` (neuf, pur) ; le pavé conditionnel ne garde que les
+> AVERTISSEMENTS (non biffés — aucun n'était à l'écran, chacun ne parle que quand son défaut
+> existe) et ne se monte plus que s'il a quelque chose à dire.
+> 📏 **10 gardes neuves** tenant les DEUX moitiés ensemble (plafond de 14 car. sur le libellé
+> visible ET « aucune réserve perdue »), chacune seule étant satisfaite par le mauvais moyen.
+> La garde `[PASSE-REEL-IMPOT-LATENT-DEBUT]` est **INVERSÉE EN PLACE**, pas supprimée : elle vise
+> désormais `notesGraphe.tsx` (`UN-TEST-DE-LIMITE-S-INVERSE-IL-NE-SE-SUPPRIME-PAS`).
+> ⚠️ Deux pièges re-payés dans le lot : `SCAN-QUI-MATCHE-LA-PROSE` (ma garde d'absence lisait la
+> source BRUTE et rougissait sur un commentaire sans rapport) et le **compte de lint** (32 → 33 :
+> un `screen` importé et non utilisé — invisible si on ne lit que « 0 errors »,
+> `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`).
+>
+> ### 📊 Mesuré ce jour sur les données RÉELLES d'un utilisateur (question : « pourquoi pas la même valeur qu'sur Fintable »)
+> **Pour AUJOURD'HUI, l'app et Fintable sont d'accord** — quelques dollars d'écart sur les placements.
+> L'écart des TOTAUX (Fintable ≈ 20 % au-dessus de l'app) se décompose EXACTEMENT :
+> **+ la dette du bail** (que Fintable ignore) **+ le solde de la carte** (compté en ACTIF par Fintable)
+> **− quelques dizaines de dollars** (placements, liquidités) = l'écart total, à 1 $ d'arrondi près.
+> ⚠️ Fintable convertit le compte courtier **USD** (`$` nu, pas `C$`) à **1,4000** pile.
+> ⚠️ Le jour ÉPINGLÉ (20/09) est autre chose : un Non-Enreg ≈ 3,7 % sous la valeur des
+> titres aujourd'hui — sous-évalués par des **prix vieux de 59 jours**, parce que
+> **plus de la moitié** du portefeuille est coté en Europe. → `[COTATIONS-EUROPE-PERIMEES]`.
+> ⚠️ Et la dette du MCP dépasse celle de l'app au 20/09 (d'environ un mois de versements) — une dette de bail qui
+> MONTE en avançant est impossible : c'est `[HUB-MCP-PERIME]`, le serveur de Marc tourne du code
+> d'avant `balanceAsOf`. **hubperso est alimenté par ce même serveur** → redéploiement chez lui.
+> 🧭 **Cadré avec Marc, pas encore codé — `[KPI-AVOIRS-DETTES]`** : « ma somme totale d'argent et
+> ma somme totale de dettes, partout ». Ses deux choix ont DIVERGÉ de mes recommandations (total
+> tout compris + détail ; 6 tuiles).
+
+> ## 🟦 Session 2026-09-21 — **deux dettes de sens OPPOSÉS partageaient une seule courbe**
+> 🔎 **`[DETTE-LEVIER-EXPLICITE]`** — Marc, après le correctif de la marge : « **Non la dette augmente
+> à [montant retiré] alors que j'ai juste une dette auto qui fini dans quelques années** ». Il avait **raison ET tort** : sa
+> dette ORDINAIRE s'éteint bien à la fin de son terme ; ce qui monte ensuite est le **HELOC de la Smith Manoeuvre**,
+> activé par un bouton des réglages avancés dont le seul texte vivait dans un `title` (invisible au
+> doigt, au clavier et au lecteur d'écran). Interrogé, il a tranché : « **Je veux que ce soit
+> explicite et expliqué** » — donc PAS de retrait du réglage.
+> 🔧 **Livré** : le moteur publie `DetteLevierSmith` (`monthlyOutput.ts`) — **SOUS-ENSEMBLE** de
+> `DettesNonImmo`, jamais un terme de plus ; une **seconde courbe** sur le graphe Futur (« dont
+> levier Smith », **indigo POINTILLÉ**, la couleur du bouton qui l'active) distincte par la couleur
+> ET par la forme ; sa **colonne** dans la table `sr-only` ; une **sous-ligne** dans le panneau du
+> jour (libellé court + phrase entière en `title` **et** en `sr-only`, sans aucun montant) ; et
+> l'explication du réglage devenue **VISIBLE** à l'écran.
+> 📏 **MESURÉ le 2026-09-21** (fixture committée, chemin DÉTERMINISTE, 20 ans, marge à
+> `max(3 %, hypo + 2 pts)` = 7 %) — écart de patrimoine final **ON − OFF** :
+> **3 % → −51 794 $** · 4 % → −32 855 · 5 % → −12 344 · **6 % → +9 829** · 8 % → +58 824.
+> Le signe CHANGE : c'est la définition d'un levier, et c'est pourquoi l'écran ne promet aucun gain.
+> Contrôle négatif : `DetteLevierSmith` vaut **0 exactement** sur les 241 points sans le réglage.
+> Discriminant du sous-ensemble : **180 points** où le levier est STRICTEMENT inférieur à la dette
+> totale (sans un second prêt dans la fixture, « sous-ensemble » serait satisfait par un câblage qui
+> recopie son conteneur).
+> ⚠️ **Sur le profil RÉEL de Marc, le point d'équilibre est plus bas** : un seuil de
+> rentabilité dépend du PROFIL, d'où le refus d'en écrire un à l'écran
+> (`UNE-GRAVITE-CLASSEE-DEPUIS-UN-PROFIL-N-EST-PAS-UNE-GRAVITE`) — une garde l'interdit.
+> ⚠️⚠️ **Trou fermé en chemin** : la garde `[FUTUR-DAILY-NATIVE]` ne lisait que `dataKey="…"`, donc
+> une série tracée par **ACCESSEUR** (`dataKey={fonction}` — la dette depuis 2026-09-18) lui était
+> **invisible** : elle pouvait manquer à `CURVE_FIELDS` et rester muette au jour. La table
+> `CHAMP_PAR_ACCESSEUR` rend la chose vérifiable, et un test relit le CORPS de chaque accesseur pour
+> qu'elle ne puisse pas MENTIR.
+> ⚠️⚠️ **Et cette même garde lisait encore la source BRUTE** : elle portait toujours la bombe
+> `UNE-APOSTROPHE-FRANCAISE-EST-UN-DELIMITEUR-DE-CHAINE`, corrigée le 2026-09-18 sur sa jumelle de
+> `bilanQuotidien.test.ts` mais pas sur elle. Les trois extracteurs de source de
+> `FutureProjection.tsx` sont consolidés dans **`tests/helpers/futureSource.ts`**.
+> 📏 **25 gardes neuves** (3 fichiers), **12 perturbations SÉPARÉES**, chacune ne rougissant que sa
+> cible : champ retiré de `CURVE_FIELDS` → 2 · moteur qui publie la dette totale → 2 · légende
+> repassée en aire → 1 · colonne `sr-only` retirée → 1 · table accesseur qui ment → 1 · montant
+> dans la phrase → 1 · `null` remplacé par `0` → 1 · `sr-only` retiré → 1 · phrase rendue visible
+> → 2 · ligne affichée en permanence → 2 · explication remise en `title` → 5 · seuil chiffré
+> glissé dans la phrase → 1.
+> ⚠️ **Gate local NON lancé** (`UN-GATE-QUI-N-A-PAS-TOURNE`) : vérifs CIBLÉES (typecheck, lint à
+> **32 avertissements — la base inchangée**, les 3 fichiers de garde, les 3 gardes refondues) puis
+> commit/push. **La CI est l'arbitre** (`QUAND-LA-CI-EXECUTE-LE-MEME-GATE-ELLE-EST-L-ARBITRE`).
+> 🧭 **Reste ouvert, routé** : `[SMITH-LTV-SEUIL-65]`, `[SMITH-MARGE-BIEN-QUELCONQUE]`,
+> `[SMITH-VENTE-FORCEE-FLUX-MUET]`, `[HUB-MCP-PERIME]` (le serveur MCP de Marc tourne encore du code
+> d'avant les correctifs — ses chiffres MCP sont ceux d'AVANT).
+
+> ## 🟦 Session 2026-09-18 (suite 5) — **une marge jamais tirée était appelée, et rendait la dette NÉGATIVE**
+> 🔎 **`[SMITH-MARGE-SANS-DETTE]`** — signalé par Marc : « la dette ne s'arrête pas, ça me met [montant retiré] à
+> [âge retiré] ». Son bail auto n'y était pour rien (éteint en quelques années). Le bloc « LTV margin call » de
+> `realEstateMonth.ts` vivait **HORS** du `if (useSmithManoeuvre)` qui le précède, donc s'exécutait
+> pour TOUTE propriété — et sa condition (`marge + hypothèque > 65 % de la valeur`) est vraie **à
+> l'achat** pour toute hypothèque à moins de 35 % de mise. Le montant vendu était soustrait d'un
+> `smithManoeuvreDebt` à ZÉRO → **dette négative**, donc patrimoine net gonflé d'autant.
+> **MESURÉ sur sa projection réelle (MCP, 20 ans)** : `dettesNonImmo` **négative de plusieurs dizaines de milliers de dollars** l'année de
+> l'achat, **encore plus négative** cinq ans durant, puis **fortement positive** — négative sur douze ans. Vente forcée
+> visible dans la même série : non-enregistré **divisé par deux environ**, CELI **presque vidé**.
+> **MESURÉ sur la fixture de la garde**, avant → après : sans levier **−51 777 $ → 0**, négative sur
+> **227/241 points → 0/241**, non-enregistré plus liquidé (min **0 → 16 130 $**), patrimoine final
+> 1 832 835 → **1 839 046 $** ; avec levier, patrimoine final 1 816 056 → **1 776 477 $** (**−39 579 $**).
+> ⚠️ **Le SIGNE diffère entre les deux branches**, et c'est attendu : sans Smith on rend un
+> portefeuille liquidé pour rien, avec Smith on cesse d'effacer une dette de levier par un
+> remboursement fantôme. Publier une seule des deux mesures raconterait la moitié de l'histoire.
+> ⚠️⚠️ **Le correctif qui DISCRIMINE est le PLAFOND** (`Math.min(…, smithManoeuvreDebt)`), pas la
+> garde d'entrée : retirer `smithManoeuvreDebt > 0` laisse les trois gardes VERTES (mesuré), parce
+> que le plafond rend alors `aRembourser = 0`. Elle est conservée parce qu'elle ÉNONCE l'intention,
+> et **écrite comme redondante** — croire qu'on a deux protections là où il n'y en a qu'une est
+> précisément ce que `UNE-PERTURBATION-MUETTE-SUR-SON-PROPRE-AJOUT-MESURE-SA-REDONDANCE` interdit.
+> ⚠️⚠️ **`tests/services` : 4 023 tests VERTS, aucun golden déplacé — et c'est un résultat à
+> EXPLIQUER, pas un feu vert.** Ça mesure qu'**aucune fixture du dépôt** ne combinait un achat de
+> résidence principale à plus de 65 % de LTV AVEC un non-enregistré non nul : le chemin de l'appel
+> de marge n'était couvert par **aucun** test (vérifié : zéro fichier de test le nommait).
+> 🧭 **Routé, pas tranché — `[SMITH-LTV-SEUIL-65]`** : le seuil compare `marge + hypothèque` à 65 %
+> de la valeur, alors qu'au Canada ce 65 % borne la portion MARGE d'un ré-avançable (le total étant
+> plutôt borné à 80 %). Le correctif rend le défaut inoffensif ; changer le seuil déplace encore de
+> l'argent, donc c'est une décision de Marc.
+> 📌 `services/projection/realEstateMonth.ts` · `tests/services/smithMargeSansDette.test.ts` (4 cas).
+>
+> ⚠️⚠️ **APRÈS LE MERGE (PR #994), le panel a réfuté TROIS choses que j'avais publiées sur ce lot** —
+> corrigées dans `docs/CONVENTIONS.md`, le `CHANGELOG` et le commentaire du module :
+> (1) « LE correctif qui discrimine est le plafond `Math.min` » — perturbations séparées :
+> `Math.min` seul → 4 verts, `Math.max(0,…)` seul → 4 verts, les DEUX → 2 rouges. Les trois
+> écritures sont **mutuellement redondantes**, aucune ne discrimine seule (le panel se trompait
+> aussi, il disait « seul le plafond répare »).
+> (2) Le SIGNE dépend du CHEMIN : ma garde passait `enableMonteCarlo = true`, or le DÉFAUT est
+> `false` et c'est ce chemin-là que l'app publie. Avec Smith : **−39 579 $** en Monte-Carlo mais
+> **+8 017 $** en déterministe. **Une garde qui n'exerce qu'un chemin non emprunté ne protège
+> personne** → la garde couvre désormais les deux (le déterministe portait bien le défaut :
+> 227/241 points négatifs).
+> (3) Le `CHANGELOG` attribuait au défaut la chute du CELI de l'utilisateur (presque vidé) : re-mesuré,
+> le CELI est **identique au dollar** avant/après — c'est la cascade de MISE DE FONDS qui le vide.
+> 🧭 **ROUTÉ** : `[SMITH-MARGE-BIEN-QUELCONQUE]` — le bloc compare une marge de MÉNAGE au LTV de
+> CHAQUE bien, locatif compris ; **−27 010 $ sur 30 ans** mesuré sur un dossier mixte, avec ses deux
+> contrôles négatifs. Même classe que le défaut corrigé, un cran plus haut.
+>
+> ## ✅ Session 2026-09-18 (suite 6) — **Vercel a manqué DEUX merges, puis rattrapé au TROISIÈME**
+> **RÉSOLU à 21:47 UTC — rien à faire.** Chronologie mesurée, gardée parce que c'est la 2ᵉ fois que
+> ce dépôt voit cette panne et que les deux fois elle s'est résolue de la même façon :
+> | commit | PR | fusionné | déploiement de production |
+> |---|---|---|---|
+> | `68cd1734` | #991 | 20:07 | créé à 20:07:16, **`QUEUED` 43 min**, puis `READY` |
+> | `38162e50` | #994 | 20:38 | **aucun enregistrement**, 58 min plus tard |
+> | `ebe74ef3` | #995 | 21:36 | aucun — puis **repris tardivement à 21:50** |
+> | `d66fe5be` | #996 | 21:47 | créé **dans la seconde**, `READY` — porte LES TROIS lots |
+> ⚠️ « Aucun » était MESURÉ, pas déduit : filtré sur `QUEUED,BUILDING,ERROR,CANCELED` → zéro, et
+> `since` = 20:23 → zéro. Les onze déploiements précédents de la journée ont leur enregistrement créé
+> **dans les secondes** qui suivent le merge — 58 min d'absence n'est pas de la lenteur.
+> ⚠️ Écarté par la mesure : `vercel.json` porte `git.deploymentEnabled { "claude/*": false }`, qui ne
+> vise PAS `main`. Ce n'était pas la configuration.
+> ⚠️ **Ce que le rattrapage APPREND, et qui vaut pour la prochaine fois** : le remède n'est pas un
+> `Redeploy` manuel mais **un push de plus sur `main`** — exactement ce que DriveAI et JobAI ont
+> vécu le 31/07/2026, pendant que Hubperso et BatchChef, qui n'ont pas eu de push suivant, sont
+> restés CINQ JOURS sans déploiement. **Ne pas forcer un déploiement pendant que la file est en
+> panne** : on empile au lieu de débloquer.
+> ⚠️ Le routage vers Marc (`docs/A_FAIRE_MOI.md`) a été COCHÉ plutôt que supprimé : un routage périmé
+> qui envoie l'humain faire un geste inutile est aussi nuisible qu'un blocage non signalé.
+> 📌 La seule moitié de §6 qui reste est celle de Marc : la réponse SERVIE n'est pas lisible depuis ce
+> conteneur (403 au CONNECT sur `vercel.com` et `finance.hubperso.com`, SSO sur `*.vercel.app`).
+
+> ## 🟦 Session 2026-09-18 (suite 4 bis) — **la liste des marchands se CHERCHE**
+> 🔎 **`[DETTE-MARCHAND-RECHERCHE]`** — Marc : « je vois pas le marchand dans la liste ». MESURÉ avant de
+> toucher au code : « Prêteur Exemple » y ÉTAIT, sous le libellé exact « Prêteur Exemple (8) ». Mais
+> le `<select>` offrait TOUT marchand ayant une sortie d'argent — **1 879 sorties**, triées par
+> FRÉQUENCE, un marchand du quotidien **plus de 200 fois** contre **8**. Un tri par fréquence enterre par construction
+> ce qu'on cherche. Remplacé par un champ de recherche (casse et accents ignorés pour TROUVER,
+> jamais pour APPARIER — `clePayee` reste un `trim()`), la liste restant la SEULE émettrice de
+> valeur. Trois perturbations séparées. ⚠️ Pas d'état replié : un champ qui se referme rend le lien
+> invisible au montage suivant.
+>
+> ⚠️⚠️ **PUIS LE PANEL A TROUVÉ DEUX DÉFAUTS DANS CE COMPOSANT NEUF, après un gate ciblé vert.**
+> (a) Le marchand DÉJÀ LIÉ était protégé dans la liste complète puis **filtré comme les autres** :
+> chercher « hydro » sur une dette liée à « Prêteur Exemple » le faisait disparaître avec sa coche,
+> et rien d'autre du formulaire ne dit à quoi la dette est liée — alors que l'en-tête du fichier
+> CITE `UN-ETAT-DE-FILTRAGE-SANS-CONTROLE-QUI-LE-RALLUME-EST-UNE-TRAPPE` et affirme l'avoir
+> neutralisée. Il est désormais ÉPINGLÉ hors filtre, comme « aucun lien », sans doublon quand le
+> filtre le rend déjà, et le compte annoncé reste celui du FILTRE.
+> (b) Trois rôles ARIA MENTAIENT, mesuré par axe-core (**3 violations `nested-interactive`,
+> *serious***) : `role="option"` contenant un `<button>`, `aria-expanded` à `false` sur une liste
+> toujours rendue, et `role="combobox"` qui promet des flèches non implémentées. Le `<select>`
+> remplacé n'avait aucun des trois. Rôles retirés ; le choix courant se dit par `aria-current`,
+> porté par l'élément qui a vraiment le focus. Et le libellé « (aucun virement trouvé) » du
+> `<select>`, perdu au passage en « (0) », est restauré.
+> 📌 `components/debt/ChampMarchandLie.tsx` · `tests/components/debtManagerStatutSolde.test.tsx`
+> (2 perturbations séparées : épinglage → 1 rouge, `aria-current` → 2 rouges).
+>
+> 🧭 **ROUTÉ, pas corrigé** (préexistants, dans `BACKLOG.md`) : `[SMITH-VENTE-FORCEE-FLUX-MUET]`
+> (ÉLEVÉ — la vente forcée n'alimente aucun flux publié : **227 pas sur 240**, **209 749 $** cumulés
+> sur un dossier Smith ; le jumeau `contribNonReg` DÉPLACE de l'argent, donc le lot est asymétrique
+> et exige d'élargir la fixture `fluxForm`, qui n'a pas de maison) · `[DETTE-LIEN-IGNORE-SANS-MESSAGE]`
+> · `[SMITH-MARGE-BLOC-SANS-GARDE-FINIE]` · `[NORMALISATION-ACCENTS-DUPLIQUEE]`.
+> 🔧 **Deux docs réparées au passage** : `docs/FISCAL_REFERENCE.md` §8 décrivait encore un « taux
+> HELOC 5 %/an en dur » abandonné le 2026-08-24 (le taux SUIT l'hypothèque depuis), et la raison
+> d'inventaire du `0.65` dans `utils/fiscalConstGuardV2.ts` citait en preuve une phrase que mon
+> propre commit `e082081d` venait de retirer de §8 — elle commettait donc ce qu'elle reprochait.
+
+> ## 🟦 Session 2026-09-18 (suite 4) — **le BACKLOG ne gardait plus que le vivant que sur le papier**
+> ✅ **PR #992 fusionnée** (18:38 UTC), déploiement Vercel de PRODUCTION `dpl_9C7EhC3J…` **READY**
+> sur `069effd3`. ⚠️ La RÉPONSE servie n'a pas pu être contrôlée depuis ce conteneur : `vercel.com`
+> et `finance.hubperso.com` rendent **403 au CONNECT** (refus de politique du proxy), et l'URL
+> `*.vercel.app` est derrière le SSO Vercel — §6 du `CLAUDE.md`. Ce lot ne change que de la doc et
+> un test : il n'a **rien à déployer**.
+> 🔎 **`[BACKLOG-COCHES-ACCUMULES]`** — la règle « un item coché + mergé + gate vert DÉMÉNAGE vers
+> `docs/BACKLOG_ARCHIVE.md` au plus tard à la PR suivante » est écrite depuis le 2026-07-31 et avait
+> dérivé sans que rien ne rougisse. **MESURÉ juste après le merge** : **91** items cochés
+> cohabitaient avec **151** vivants — et **20** d'entre eux portaient dans leur PROPRE texte
+> « → à déménager vers BACKLOG_ARCHIVE à la prochaine PR ». Les 91 sont déménagés, avec leur section
+> d'origine ; deux sections entières (`🚗 Dette — les VRAIS virements`, `🔒 Sécurité des
+> dépendances`) n'avaient plus aucune tâche vivante et sont parties entières.
+> ⚠️ **Rien n'a été réécrit** : `git diff --numstat` sur l'archive rend **1144 insertions / 0
+> suppression**, et aucune ligne du backlog d'origine n'est introuvable dans l'un des deux fichiers.
+> Un item archivé est un RÉCIT daté — le rafraîchir effacerait ce qui était vrai à sa date
+> (`UN-REMPLACEMENT-GLOBAL-DANS-UNE-ARCHIVE-FALSIFIE-UN-RECIT`).
+> ⚠️⚠️ **La garde est un PLAFOND, pas « zéro coché »** : la règle AUTORISE de cocher dans la PR qui
+> livre et n'exige l'archivage qu'à la PR SUIVANTE — une garde à zéro rendrait le geste prescrit
+> impossible. Ce qu'on interdit est l'ACCUMULATION. Le plafond est **MESURÉ** (14 derniers merges de
+> `origin/main` : maximum **4** coches par PR ⇒ plafond **6**), et la commande de re-mesure est
+> écrite dans le fichier plutôt que son seul résultat — un chiffre périmé se lit comme un fait, une
+> commande périmée échoue bruyamment.
+> ⚠️ La seconde assertion ne dépend d'AUCUN plafond : un item qui écrit lui-même que son archivage
+> est dû est en retard par ses propres mots, qu'il soit seul ou quatre-vingt-onzième.
+> ✅ **Trois perturbations SÉPARÉES**, chacune ne touchant que sa cible : backlog d'avant le ménage
+> → 2 rouges (accumulation + dette déclarée) · **un seul** item coché SOUS le plafond mais portant
+> la phrase → 1 rouge, la seconde assertion seule · fichier vidé → l'anti-vacuité seule.
+> 📌 `tests/backlogArchivageDesCoches.test.ts` (4 cas) · `BACKLOG.md` 2874 → 1815 lignes.
+> ✅ **Compteur de tests MESURÉ en local**, suite complète verte : **6 319 tests / 638 fichiers**
+> (979 s, sur `cc0aa63c`). Le total DÉRIVÉ que portait l'en-tête pour `069effd3` (6 315 / 637) était
+> **exact au test près** — une mesure qui CONFIRME se publie autant qu'une réfutation.
+> ⚠️ **Le log du job CI n'est PAS téléchargeable depuis ce conteneur** : le blob Azure rend **403 au
+> CONNECT**, et `get_job_logs` ne rend que ~3,5 Ko de QUEUE, donc jamais le résumé Vitest. Le
+> compteur se mesure donc EN LOCAL — inutile de retenter le log.
+> ⚠️ **Et une suite lancée sur un arbre MOUVANT ne mesure pas l'arbre** : une première mesure a été
+> JETÉE parce qu'elle tournait pendant que je modifiais `BACKLOG.md`, que deux gardes de ce dépôt
+> lisent à l'EXÉCUTION. Figer l'arbre d'abord, mesurer ensuite.
+
+> ## 🟦 Session 2026-09-18 (suite 3) — **le détail du jour devient un PANNEAU FIXE**
+> 🔎 **`[FUTUR-PANNEAU-FIXE]`** — l'infobulle flottante du graphe Futur est REMPLACÉE par un
+> panneau dans le flux du document, sous le graphe. Demande de Marc en texte libre, puis cadrée en
+> trois lots de questions : **colonnes sur PC / onglets sur téléphone** · le graphe **garde sa
+> taille** (la page défile) · état initial **aujourd'hui** · ordre **net → flux → comptes →
+> mouvements** · survol = aperçu, clic = **épingle** · l'infobulle flottante **disparaît** · sur
+> téléphone, **flèches à PAS RÉGLABLE (jour / mois / année)**.
+> ⚠️ Ses trois premières options pour le téléphone ont TOUTES été refusées (tape + flèches, curseur
+> sous le graphe, flèches seules) : il a demandé d'autres propositions, et c'est la quatrième vague
+> qui a été retenue. **Un menu borne ce qu'on peut découvrir** — quand la question porte sur un
+> geste d'utilisateur, la réponse utile arrive souvent au deuxième tour.
+> ⚠️ **L'irritant n°1 est STRUCTUREL, pas réglable** : « elle disparaît / bouge quand je veux la
+> lire » est ce que fait un objet qui suit le curseur — pour le lire il faut bouger la souris vers
+> lui, et la bouger le change. Seul l'endroit où il vit le corrige.
+> ⚠️ **TROIS états, pas deux.** L'infobulle n'existait que pendant un survol ou un gel ; un panneau
+> fixe est toujours là et a besoin d'un troisième état — ce qu'il montre au repos (**aujourd'hui**,
+> choix de Marc). `choisirJourAffiche` en fait une fonction pure et l'ORIGINE est ÉCRITE à l'écran.
+> ⚠️ **Tout le POSITIONNEMENT est mort avec l'infobulle** : `useChartTooltipPosition` faisait deux
+> choses, la machine d'état (reprise telle quelle dans `useSelectionJour`) et le placement flottant
+> (bornage au viewport, mesure de hauteur, mutation de left/top au mousemove, bottom sheet,
+> remontage à la rotation). Retiré avec `clampTooltipPosition` et ses quatre constantes : un panneau
+> dans le flux n'a ni bord d'écran à éviter ni position à calculer.
+> 🔎 **`[INFOBULLE-DETTE-NW-NON-FINI]`** corrigé au passage, parce qu'il devient du chemin NOMINAL
+> (la colonne « Par compte » consomme `detteReductrice`) : `Number(point.NetWorth) || 0` rabattait
+> un non-fini sur ZÉRO et la fonction rendait la somme TOTALE des actifs sous le libellé « Dettes ».
+> Correctif = le TYPE (`number | null`), qui a fait énumérer les deux consommateurs par le
+> compilateur. **Les deux moitiés sont fermées** — un COMPTE non fini surévalue la dette du même
+> montant, l'erreur allant dans l'autre sens ; une clé ABSENTE reste légitime.
+> ⚠️⚠️ **Le LINT a trouvé ce qu'aucun test rouge n'aurait vu** : en retirant le bloc
+> `clampTooltipPosition` d'un fichier de test, j'avais emporté AUSSI le bloc `resolvePointByX` qui
+> le suit — douze assertions sur du code bien vivant (le clic sur la courbe). Signalé par un import
+> devenu inutilisé. `UNE-EPURATION-SE-JUGE-SUR-CE-QU-ELLE-NE-DOIT-PAS-EMPORTER`, et la question qui
+> l'aurait évité est « qu'est-ce qui n'existe QUE là ? ». Restauré.
+> ✅ Ciblé : `npm run typecheck` vert (VU) · `lint` **0 erreur, 32 avertissements = la base exacte**
+> (ils étaient montés à 36, et c'est ce qui a démasqué la coupe ci-dessus) · gardes neuves vertes.
+> **HUIT perturbations SÉPARÉES**, chacune ne touchant que sa cible, dont une de sens OPPOSÉ (un
+> commentaire français citant `createPortal` doit laisser la garde VERTE).
+> ⚠️ Le gate complet n'a PAS tourné en local : sur le chemin `git add && git commit` chaîné, le hook
+> `commit-gate` lit un index vide. **La CI est le gate de cette PR** (#992).
+> ⚠️⚠️ **La CI a rendu ONZE rouges que le gate ciblé ne pouvait pas voir**, tous de la même famille :
+> un test qui vise une SURFACE par son CHEMIN DE FICHIER (la garde des revenus ventilés scannait
+> l'ancienne infobulle) et **dix E2E** qui visaient `[data-frozen-tooltip]`. Le remplacement n'est
+> pas un renommage : le panneau est TOUJOURS là, donc sa PRÉSENCE ne prouve plus rien — ce qui
+> s'observe est l'ÉPINGLE (`data-jour-epingle`), et « relâché » se lit par la disparition de
+> l'ATTRIBUT, pas par `toBeHidden`. Deux specs faisaient déjà `toHaveCount(0)` sur l'ancien
+> sélecteur : elles étaient devenues VERTES pour la mauvaise raison. Les quatre fichiers e2e sont
+> réécrits et **rejoués en local, tous verts** (8 mobile + 6 desktop + 2 infobulle).
+> ⚠️⚠️ **Le PANEL a trouvé quatre défauts de plus après ça** : une mémoïsation cassée par un objet
+> recréé à chaque rendu (invisible à tous les tests) · l'`aria-label` du graphe qui décrivait encore
+> l'infobulle · `preventScroll` juste à la souris et faux au clavier (focus dans un panneau hors
+> écran — jsdom ne fait pas de mise en page, aucune fixture ne pouvait le voir) · un `0 $` fabriqué
+> qui CONTREDISAIT le refus affiché à côté. Plus une phrase de couverture FAUSSE que j'avais écrite
+> (« déjà testée chez elle » — aucun test n'importait le module) : la couverture annoncée existe
+> maintenant, et la branche de refus du second consommateur aussi.
+> ⚠️ La mesure la plus utile du panel est celle qui CONFIRME : l'ancien composant restauré et monté
+> sur le même point, **42 jetons numériques, 0 manquant, 0 en plus** — aucun montant déplacé.
+> ✅ Quatre findings FAIBLES routés au BACKLOG (contraste des boutons fantômes, colonne de flux
+> muette, variable morte, trou d'outillage du scan de vie privée).
+>
+> ## 🟦 Session 2026-09-18 (suite 2) — **la dette a sa courbe, l'infobulle ne cache plus rien**
+> Demande de Marc : « je veux voir la courbe de la dette même dans le passé et je vois pas les
+> transactions dans l'infobulle on dirait ça manque des transactions, fais une grosse grosse passe
+> sur les infobulles y a des irritants pose des questions ».
+> 🔎 **`[FUTUR-COURBE-DETTE]`** — `DettesNonImmo` devient une série du graphe, aire **orange plein
+> sous zéro** (`#ea580c`), présente au PASSÉ comme au futur, débrayable depuis la légende.
+> ⚠️ **Sa prémisse a été mesurée avant d'être suivie** : « il y a bien une courbe rouge sous zéro,
+> je veux que ce soit celle-ci ». C'est `ImpotLatent`, pas sa dette — la suivre aurait fait passer un
+> impôt hypothétique pour une dette réelle. Couleur ET forme distinctes, verrouillées par test.
+> 🔎 **`[FUTUR-MOUVEMENTS-TOUS]`** — le plafond de 6 mouvements par journée est RETIRÉ.
+> **Mesuré sur les vraies transactions de l'utilisateur** (1er août → 18 septembre) : **9 journées**
+> dépassaient 6, la pire le **31 août avec 18 mouvements (12 cachés)** — et la liste gardait les six
+> PREMIERS rencontrés, pas les plus gros : **deux dépenses de quelques centaines de dollars**
+> étaient cachés pendant que des frais de service de quelques dollars restaient affichés. Le conteneur défile
+> déjà (`max-h` + `overflow-y-auto`) : la place n'était pas la contrainte.
+> Le test de limite du plafond est **INVERSÉ** au même endroit, avec sa mesure. « +N autres » ne
+> parle plus que des transactions SANS description — ce qu'il aurait toujours dû dire.
+> ⚠️⚠️ **Le PANEL a trouvé DEUX défauts ÉLEVÉS après un gate ciblé vert, tous deux corrigés dans le
+> même lot** : (1) `buildPastPrefix` CALCULAIT la dette du mois et ne la PUBLIAIT pas — donc la
+> courbe neuve avait un **trou silencieux** sur le repli MENSUEL et sur le premier point d'ancrage,
+> indiscernable d'une dette à zéro, exactement là où Marc a demandé à la voir ; (2) la table de
+> données `sr-only` (dont l'`aria-label` promet « les mêmes données ») n'avait pas la colonne de la
+> nouvelle série — la valeur nette n'y était plus recomposable par somme des comptes. **Les deux
+> sont la même classe** : un lot qui ajoute une série ne l'a pas ajoutée PARTOUT où le graphe est
+> représenté. Plus un document de contrat périmé (`PROJECTION_OUTPUT_SCHEMA.md` décrivait encore le
+> plafond de 6).
+> ✅ Ciblé : `npm run typecheck` vert (VU), `lint` 0 erreur, 88 tests des surfaces touchées verts.
+> Sept perturbations SÉPARÉES au total, dont trois de sens OPPOSÉ (un faux positif doit disparaître
+> SANS que le vrai positif meure). Compteur : **6 262** (631 fichiers).
+> Perturbations SÉPARÉES : dette dessinée POSITIVE → 1 rouge · dette à la couleur de l'impôt latent
+> → 1 rouge · champ absent dessiné à zéro → 1 rouge · plafond de 6 rétabli → 2 rouges (et
+> uniquement les deux assertions visées). Compteur : 6 251 → **6 257** (630 fichiers).
+> ⚠️ **SUITE IMMÉDIATE — `[FUTUR-PANNEAU-FIXE]`, déjà cadré avec Marc, rien à lui redemander** :
+> panneau FIXE sous le graphe (PC **et** téléphone), **colonnes sur PC / onglets sur téléphone**,
+> le graphe **garde sa taille** (la page défile), état initial **aujourd'hui**, pas à pas
+> veille/lendemain toujours présent. Il a coché les QUATRE irritants **et** les quatre « ce que je
+> regarde en premier » ⇒ le problème est l'**ORGANISATION**, pas le volume : **aucune section ne se
+> supprime**.
+>
+> ## 🟦 Session 2026-09-18 (suite) — **la dette suit les VRAIS virements**
+> 🔎 **`[DETTE-VIREMENTS-REELS]`** — Marc : « chaque fois que je paie le prêteur ca enleve ca de la
+> dette ». Champ `Debt.paymentPayee` (le marchand, CHOISI dans une liste) ; `sourceVersements`
+> devient la décision UNIQUE « d'où viennent les versements », et les virements RÉELS battent la
+> grille modélisée. Une dette liée ne retombe **jamais** sur la grille, pas même en repli.
+> `transactions` est devenu **REQUIS** sur toute la chaîne (94 sites énumérés par le compilateur).
+> **Mesuré** : série au mois par les virements contre
+> la grille — l'écart est **concentré en juillet** (un
+> versement que le modèle inventait), août et septembre coïncident au cent près.
+> **Contrôle négatif DANS les données** : le libellé du vendeur (deux paiements) est celui du
+> concessionnaire — appariement EXACT, sinon ces deux paiements retirés à tort.
+> ⚠️ **Conséquence assumée** : avant le plus ancien virement importé, la dette reste PLATE.
+> ⚠️ **RESTE À FAIRE PAR MARC** : ouvrir la dette auto, choisir « Prêteur Exemple » dans « Virements qui
+> remboursent cette dette », Enregistrer. Le lien ne se devine pas.
+> ⚠️⚠️ **Le PANEL a trouvé SEPT défauts après un gate vert ET une CI verte**, tous corrigés dans le
+> même lot, tous mesurés : `isTransfer` inclus côté dette et exclu côté cash → **l'équivalent de plusieurs versements de
+> patrimoine CRÉÉ** (décision à moi, RÉFUTÉE par la conservation, test de limite INVERSÉ) ;
+> `startDate` et `minimumPayment` exigés par la série et pas par le solde du jour → deux registres,
+> deux dettes ; pas de borne de TERME sur les virements → **une dizaine de versements en trop** sur un bail éteint ; le
+> plancher `Math.max(0,…)` effaçait la dette à **0,00 $** sur un lien vers un marchand fréquent —
+> et la liste propose les plus fréquents EN PREMIER ; la carte de dette, le simulateur et `topDebts`
+> du payload MCP montraient encore le solde brut à côté du corrigé ; deux dettes liées au même
+> marchand déduisaient chacune la totalité. **Aucune de mes 22 gardes ne pouvait les voir** : ma
+> fixture décrivait le cas nominal (bail en cours, daté, bon marchand).
+> ⚠️ Cinq trouvailles MESURÉES et NON corrigées (hors périmètre), routées au BACKLOG : PDF au solde
+> brut, série mensuelle du passé qui mêle deux instants (**pré-existant, prouvé**), transaction
+> post-datée, transaction datée au mois seul, résidu `paymentPayee` invisible.
+> ✅ Suite complète MESURÉE le 18/09 à 15:31 UTC sur `7a2aa60b` : **629 fichiers, 6 248 tests, tous
+> verts** en 982 s. +3 gardes ciblées depuis ⇒ **6 251**.
+> ⚠️ Toujours en attente : `PROJECT_ID=<ton-projet-gcp> ./mcp/deploy.sh` (`[HUB-MCP-PERIME]`).
+>
+> ## 🟦 Session 2026-09-17 (suite) — **cadence des dettes, carte du hub, `[FINTABLE-AUTORITE-PARTOUT]` étape 3**
+> Trois lots, trois demandes de Marc dans le même message.
+> 🔎 **`[DEBT-CADENCE-REELLE]`** — « elle devrait descendre à chaque paiement au prêteur, pas une fois
+> par mois ». Nouveau champ `Debt.paymentFrequency` (absent ⇒ mensuel, rétrocompatible bit-à-bit),
+> saisissable dans le formulaire pour les types à versements fixes, accepté par `apply_debt`. Le
+> versement de la période se DÉRIVE de `minimumPayment` (× 12 / 52) — une seule saisie.
+> ⚠️ **La série MENSUELLE est dérivée de la grille en JOURS**, pas calculée à côté : c'est ce qui
+> interdit à `buildPastPrefix` et `dailyPastLedger` de décrire deux dettes. Le JOUR d'aujourd'hui est
+> devenu un paramètre **REQUIS** de tout ce chemin (60 sites énumérés par le compilateur).
+> ⚠️ **RESTE À FAIRE PAR MARC** : ouvrir la dette auto et choisir « Hebdomadaire ». Le champ ne se
+> devine pas, et sans lui la courbe garde son palier mensuel.
+> 🔎 **`[HUB-SPARKLINE-VARIATION-DE-VARIATION]`** — mesuré en LISANT le dépôt Hubperso (attaché à la
+> session) : `app/app/[id]/page.tsx` dérive l'évolution 7 j de la VALEUR de chaque métrique, et
+> `serieMetrique` indexe l'historique **par le LIBELLÉ**. Donc (1) `Placements (16 sept.)` remettait
+> la série à zéro chaque séance — « pas encore d'historique » à perpétuité —, et (2) publier une
+> variation comme métrique donnait « −430,6 % sur 7 j ». Libellé stabilisé, variations déplacées dans
+> `details` (rendu sans série dérivée, vérifié dans le code du hub).
+> 🔎 **`[FINTABLE-AUTORITE-PARTOUT]` étape 3** — la décision « quels paniers sont repris au courtier »
+> est extraite (`decideRegimesRepris`) et partagée ; chaque surface l'applique à SA base. Le refus
+> `famille-mixte` devient un FAIT sur les avoirs (`jumeauxPorteursDepuisActifs`) : lu dans les soldes,
+> il était STRUCTURELLEMENT inatteignable côté écran. Branché sur `computeInvestmentsValue` /
+> `computeGrossAssets` / `computePresentNetWorth` — Accueil, valeur nette, Santé financière, vue
+> d'ensemble MCP et hub bougent ensemble. Correction rendue REQUISE (19 sites).
+> 📏 Perturbations séparées pour chaque garde ; 4 tests de limite inversés en place avec leur histoire.
+> 📏 **Suite COMPLÈTE mesurée** : 625 fichiers, **6 183 tests**, exit 0, 660 s (2026-09-17 21:18 UTC).
+> `typecheck` OK, `lint` 0 erreur.
+>
+> ## 🟦 Session 2026-09-18 — **`[DETTE-BALANCEASOF-INVISIBLE]` livré (OK explicite de Marc)**
+> 🔎 Marc, après avoir fait le geste demandé : « vérifie que la date est posée ». **Impossible** —
+> `balanceAsOf` avait 2 écritures et 0 lecture dans `components/`, le MCP servi précède le champ, et
+> le snapshot Drive vit dans l'`appDataFolder` (invisible au connecteur). La VALEUR ne discrimine pas
+> non plus (sans prélèvement depuis l'estampille, le solde est identique des deux côtés).
+> 🔧 **Livré** : `statutSoldeDette` — le module qui DÉCIDE rend trois formes exclusives
+> (`suit-les-versements` / `date-figee` / `jamais-date`, dérivées de `grillePourDette`) ;
+> `phraseStatutSolde` TRADUIT sans décider ; une ligne sous le champ « Solde » du formulaire
+> d'édition, en ambre pour le seul cas qui appelle un geste. Plus `formatIsoDay` dans `utils/format`.
+> ⚠️ **Marc a choisi « formulaire seulement », CONTRE ma recommandation** (liste + formulaire).
+> ⚠️ **Le correctif que j'avais PRESCRIT la veille était incohérent avec son écran** : le formulaire
+> n'affiche pas le solde stocké mais celui ramené à aujourd'hui (`startEdit`) — la phrase prescrite
+> aurait contredit le champ au-dessus. Leçon du jour dans `docs/CONVENTIONS.md`.
+> ⚠️⚠️ **Piège FUSEAU, invisible à la CI** : `formatDate(iso)` parse à minuit UTC ⇒ affiche la VEILLE
+> en fuseau négatif (mesuré : « 17 septembre » contre « 18 » à Montréal). La garde force
+> `process.env.TZ` avant le 1er formatage, avec anti-vacuité du fuseau lui-même.
+> 📏 **12 gardes neuves**, **3 perturbations SÉPARÉES** à 2 rouges ciblés chacune (format / décision /
+> rendu), les autres restant vertes. 153 tests des 9 fichiers impactés verts. `typecheck` 0 erreur,
+> `lint` 0 erreur. Compteur : 6 199 + 12 = **6 211**.
+> ⚠️ **RESTE À MARC** : la ligne de console qui dit si `balanceAsOf` est posée sur la dette auto (s'il répond
+> `undefined`, son onglet servait l'ancien build au clic → Ctrl+Shift+R puis re-cliquer), et
+> `PROJECT_ID=<ton-projet-gcp> ./mcp/deploy.sh` (`[HUB-MCP-PERIME]`). La preuve comportementale
+> définitive arrive à son prélèvement du ~22/09 : le « Total dû » baissera seul d'un versement.
+>
+> ## 🟦 Session 2026-09-17 (suite) — **`[DETTE-SOLDE-INSTANTANE-FIGE]` livré (OK explicite de Marc)**
+> 🔎 Marc : « ça devrait enlever de la dette le montant que je paye quand je le paye ». La cadence
+> hebdo n'était PAS en cause (vérifiée contre ses vrais prélèvements à 10 dates : montant exact,
+> nombre de marches juste partout). Le défaut est que `Debt.balance` est un **instantané sans date**
+> que rien n'avance : solde ÷ versement tombe sur un nombre ENTIER de versements restants, et ce nombre + les prélèvements faits
+> = le bail complet ⇒ le solde valait après SEPT prélèvements quand il y en avait eu HUIT. Écart
+> d'un versement, +1 versement **par semaine**.
+> 🔧 **Livré** : `Debt.balanceAsOf` (additif, absent ⇒ comportement d'avant bit-à-bit) ; source unique
+> `soldeDetteAujourdhui` partagée par le chiffre ET la courbe ; porte **IDEMPOTENTE**
+> `dettesAuSoldeDuJour` au point de passage UNIQUE vers le moteur (`buildSimulationParams`) ;
+> `computeTotalDebt` / `computePresentNetWorth` / `buildFinancialSnapshot` / `HealthScoreInputs` /
+> `BuildSimulationParamsInputs` prennent le JOUR en paramètre **REQUIS** — 26 sites énumérés par le
+> compilateur. Estampillage automatique à l'écriture : formulaire `DebtManager` (ajout ET édition,
+> le formulaire s'ouvrant sur le solde CORRIGÉ) et `apply_debt` (seulement quand le solde est écrit).
+> ⚠️ `balanceAsOf` est TEXTUEL ⇒ ajouté à `CHAMPS_TEXTE` dans le MÊME geste que sa déclaration.
+> 📏 **12 gardes neuves**, 3 rouges sur perturbation (les 9 contrôles négatifs restent verts, c'est
+> la signature attendue). 140 tests des fichiers impactés verts. `typecheck` 0 erreur.
+> ⚠️ **Écriture sur les données RÉELLES d'un utilisateur** (demande explicite) : solde du bail porté à
+> **sa valeur du jour** via `apply_debt` — et la valeur `before` rendue par l'outil confirme au cent près
+> la déduction faite sans jamais l'avoir lue.
+> ⚠️ **RESTE À FAIRE PAR MARC** : ouvrir la dette auto et cliquer « Enregistrer » — c'est ce geste
+> qui pose `balanceAsOf` (le MCP servi est périmé, cf. `[HUB-MCP-PERIME]`, donc l'écriture du jour
+> n'a pas pu être estampillée). Sans lui le solde reste JUSTE mais cesse d'avancer seul.
+> ⚠️ Le décalage de PHASE d'un jour sur la marche (grille ancrée sur `startDate`, 1er prélèvement
+> réel 8 jours plus tard) est CONNU, mesuré, et invisible à l'écran — non corrigé délibérément.
+> 🔴 **CI ROUGE sur la PR #986, corrigée dans le même lot** : `apply_debt` datait le solde même
+> RÉÉCRIT À L'IDENTIQUE, donc le cron Fintable aurait listé la dette dans `debtsUpdated` (affiché
+> dans SystemView) à CHAQUE passe — `[FINTABLE-TXADDED-MENT]` réintroduite par le bas, arrêtée par un
+> test écrit par un AUTRE lot. La date se pose désormais sur une OBSERVATION seulement : solde qui
+> CHANGE, jamais une réécriture identique ni une mise à jour hors solde. Le chemin UI garde son
+> estampillage inconditionnel (un clic sur « Enregistrer » EST l'observation). **+4 gardes**, 2 rouges
+> sur perturbation. `typecheck` 0 erreur, `lint` 0 erreur.
+> 📏 **Suite COMPLÈTE mesurée par la CI** : 626 fichiers, **6 195 tests**, 773 s (2026-09-17 22:51 UTC)
+> — plus les 4 gardes de ce correctif ⇒ **6 199**.
+>
+> ## 🟦 Session 2026-09-17 (suite) — **3ᵉ vague du faux refus qui VIDE l'app + mesure de la dette**
+> 🔎 **`[HYDRAT-ALIAS-INVISIBLE]`** (PR #984, mergée 22:06, déploiement Vercel `dpl_CBNJCm…` READY sur
+> le SHA) — `debts[].paymentFrequency`, livré UNE HEURE plus tôt par `[DEBT-CADENCE-REELLE]`, n'était
+> pas dans `CHAMPS_TEXTE` : `merge` levait et l'app se réhydratait VIDE dès que Marc enregistrait
+> « Hebdomadaire ». La garde de dérivation, élargie DEUX fois le 01/09 pour empêcher exactement ça,
+> est restée verte — son extracteur ne reconnaît que `: string` et les unions écrites SUR PLACE, or
+> le champ passe par un **alias nommé**. Mesuré : **9** champs du contrat ne sont textuels que par un
+> alias, 8 couverts par accident. L'extracteur résout désormais les alias (union directe **et**
+> `typeof <TABLE>[number]` sur un `as const`), avec un plancher sur le nombre d'alias reconnus +
+> témoins nommés — sans quoi « aucun manquant » est aussi vrai d'un extracteur cassé.
+> ⚠️ Leçon `UN-CHAMP-DECLARE-PAR-UN-ALIAS-EST-INVISIBLE-AU-RECENSEUR-QUI-LIT-DES-FORMES` :
+> **élargir encore le motif n'est pas la leçon** (3 élargissements, 3 formes jamais croisées) — ce
+> qui borne est une anti-vacuité sur l'EXTRACTEUR, pas sur son sujet.
+>
+> 📏 **MESURE pour Marc, publiée sans correctif** (il a posé la question, le correctif attend son OK) :
+> · **Valeur nette vraie** : l'app la sous-estime d'environ 0,1 %. Liquidités et placements
+>   sont JUSTES (les positions resomment au total affiché ; facteur EUR **1,6073**, donc le correctif FX
+>   est bien en service). Le seul chiffre faux est la dette.
+> · **`[DETTE-SOLDE-INSTANTANE-FIGE]`** (BACKLOG, 🧭) — solde ÷ versement = un nombre ENTIER exactement, et
+>   ce nombre + 7 = le bail complet ⇒ le solde stocké vaut après **7** prélèvements ; il y en a eu
+>   **8** ⇒ un versement de moins. Écart d'un versement, +1 versement par SEMAINE. La cadence hebdo n'est PAS en
+>   cause (montant et nombre de marches exacts sur 10 dates ; reste 1 jour de phase, invisible).
+> · **`[HUB-MCP-PERIME]`** (`docs/A_FAIRE_MOI.md`, 👤) — la carte du hub rend encore le libellé daté
+>   et les deux métriques de variation SUPPRIMÉES par #983 : le binaire Cloud Run servi est antérieur.
+>   Le total amputé (≈ −10 %) vient de `[HUB-TOTAL-AMPUTE]` (#981), pas déployé non plus.
+>   Un seul geste : `PROJECT_ID=<ton-projet-gcp> ./mcp/deploy.sh`.
+>
+> ## ⚠️ Session 2026-09-17 (suite) — **le gate local ne tourne PAS sur ce chemin**
+> `commit-gate.mjs` est un `PreToolUse` Bash qui lit `git diff --cached`. Chaîner
+> `git add && git commit` en UN SEUL appel (ce que la §3 prescrit) laisse l'index VIDE quand le hook
+> s'exécute : mes commits reviennent en quelques secondes alors que le gate dure ~13 min.
+> ⚠️ **Conséquence à ne pas oublier : la CI est le SEUL gate sur ce chemin.** Ne plus écrire « gate
+> complet passé au commit » dans un message de commit ou un corps de PR sans l'avoir vu tourner.
+> 🔎 C'est ce trou qui a laissé passer un test de limite non inversé (`tests/mcp/…`), attrapé par la CI.
+>
+> ## 🟦 Session 2026-09-17 (suite) — **`[DEBT-BAIL-PASSE-PLAT]` + `[PASSE-JOUR-CLOTURE-PERIMEE]`**
+> Deux défauts signalés par Marc à l'écran, deux producteurs oubliés.
+> 🔎 **La dette figée dans le passé** : `KIND_AMORTISSANT['auto-lease'] = false` refusait d'amortir un
+> bail, pendant que la boucle du FUTUR amortit toute dette active **sans lire `kind`**. Sa seule dette
+> est un bail à **taux 0 %** (mesuré MCP) ⇒ plate derrière, décroissante devant.
+> ✅ Nouvelle famille `KIND_VERSEMENTS_FIXES` + forme **LINÉAIRE** : `solde(t) = solde + versement ×
+> mois`. Ancrée sur deux faits SAISIS, aucun `originalBalance` requis (le champ est caché pour un bail
+> — la précondition était inatteignable). Taux non nul ⇒ **refus nommé**, jamais une courbe plausible.
+> ⚠️ La justification d'origine était juste, et périmée par **mon propre lot du 14/09** qui a fait du
+> solde une « somme des versements restants ».
+> 🔎 **« prix J−55 »** : le correctif du matin ne touchait que la boucle MENSUELLE ; la courbe au JOUR
+> gardait ses clôtures périmées (**≈ 5 % sous** le prix courant). Source unique
+> `cotationFraicheSubstituable` appelée par les DEUX producteurs.
+> ⚠️ L'écart de fraîcheur est en valeur ABSOLUE : signé, il réécrivait une fenêtre historique au prix
+> du jour.
+> 📏 99 tests verts sur la surface ; perturbations SÉPARÉES (famille du bail → 8 rouges ; substitution
+> quotidienne débranchée → 1 ; `Math.abs` retiré → 1, l'autre). Test de limite INVERSÉ en place.
+>
+> ## ✅ Session 2026-09-17 (suite) — **PR #981 FUSIONNÉE (`b7634f46`) et DÉPLOYÉE**
+> Six lots d'un coup (`[HUB-TOTAL-AMPUTE]`, revue panel, `[FINTABLE-AUTORITE-PARTOUT]` étape 0,
+> `[DETTE-INVISIBLE-INFOBULLE]`, `[FUTUR-MOIS0-CLOTURE-SANS-AGE]`, `[HUB-REFUS-4-SANS-DIAGNOSTIC]`).
+> 📏 Les 7 checks verts sur le head, dont les deux requis. Déploiement Vercel de production **CRÉÉ et
+> `READY`** sur le SHA fusionné (`dpl_GWJtAcs…`) — §6 satisfaite pour la moitié vérifiable d'ici ; la
+> RÉPONSE servie reste illisible depuis ce conteneur (403 au CONNECT).
+> ⚠️ **RESTE À FAIRE PAR MARC** : `PROJECT_ID=<ton-projet-gcp> ./mcp/deploy.sh`. Le `/hub/summary`
+> vit dans le serveur MCP auto-hébergé, PAS sur Vercel — sans ça hubperso sert encore l'ancien code,
+> donc le total amputé. (Le job « Deploy MCP » rouge est une ALARME volontaire, pas une panne.)
+> ⚠️ Après le squash-merge, GitHub a supprimé la branche : `git checkout -B claude/progress-check-yua8yy
+> origin/main` suffit, et **il n'y a rien à pousser** — un push ressusciterait la branche avec un
+> commit orphelin (`UN-BLOCAGE-SUR-UNE-ACTION-N-EST-PAS-UNE-PREUVE…`).
+>
+> ## 🔎 Session 2026-09-17 (suite) — **`[FINTABLE-AUTORITE-PARTOUT]` étape 3 : conception CORRIGÉE**
+> Les deux obstacles bloquants sont LEVÉS par la PR #981 (module extrait, mois 0 corrigé). En
+> re-lisant le code avant de coder, la formule approuvée s'est révélée subtilement FAUSSE :
+> `Σ titres + écart_moteur` mélange DEUX bases (quantité DATÉE côté moteur, `a.quantity` côté
+> Accueil) et n'est une identité que si elles coïncident — la seule hypothèse jamais mesurée.
+> ✅ La forme juste **partage la DÉCISION, jamais la BASE** : une seule autorité décide quels paniers
+> sont repris, et chaque écran applique cette liste à SA propre base.
+> ⚠️⚠️ Et ça CONDAMNE l'option « rejouer l'autorité sur `holdingsCadByRegime` » pour une raison plus
+> forte que « deux règles » : sur cette base, `BUCKET_OF` replie CELIAPP→CELI et REEE→REER, donc le
+> refus `famille-mixte` est **structurellement inatteignable** — l'écran APPLIQUERAIT un panier que le
+> moteur REFUSE (double comptage du CELIAPP, mesuré : total supérieur à la somme réelle).
+> 📏 Mesure restante, désormais facile : les prix étant alignés, tout écart entre
+> `computeInvestmentsValue` et `Σ derivePortfolioStartingBalances` est EXACTEMENT la divergence de
+> quantité. Repère du jour : `get_holdings` = [montant retiré], toutes les positions en NON-ENREG.
+> Détail complet dans `BACKLOG.md`.
+>
+> ## 🟦 Session 2026-09-17 (suite) — **`[HUB-REFUS-4-SANS-DIAGNOSTIC]` LIVRÉ**
+> Conséquence DIRECTE du refus du total amputé livré le matin : la carte du hub peut perdre ses
+> trois lignes de placements, et le faisait SANS un mot — indiscernable d'une panne.
+> 🔎 Cause : `computePortfolioSessionMetrics` rendait `null` pour CINQ situations distinctes.
+> ✅ Union `ok`/`refus` (le refus porte sa cause ET les symboles fautifs) + section hub « Pourquoi
+> les placements manquent ». Le compilateur a énuméré les sites ; 15 appels de test passent par un
+> helper qui restaure la sémantique d'avant, pour que les cas anciens testent toujours la même chose.
+> ⚠️ On publie le FAIT et les SYMBOLES, jamais un montant.
+> 📏 48 tests verts sur la surface ; 2 perturbations séparées (section retirée → 1 rouge ; cause
+> rendue générique → 2 rouges, le service ET le hub, ce qui prouve le fil entre les deux).
+>
+> ## 🟦 Session 2026-09-17 (suite) — **`[FUTUR-MOIS0-CLOTURE-SANS-AGE]` LIVRÉ (version étroite)**
+> Le mois 0 du moteur préférait une CLÔTURE périmée à une COTATION fraîche : **un écart de
+> −5,6 %** au départ de toute projection.
+> ⚠️⚠️ **Le remède que j'avais écrit le matin même était FAUX** : borner la péremption à TOUTE date
+> aurait réécrit la courbe du PASSÉ au prix du jour. Pour une date passée, le dernier close connu
+> est la meilleure estimation. Livré au DERNIER point seulement, et un test verrouille que le passé
+> ne bouge pas.
+> ⚠️ La péremption se mesure contre AUJOURD'HUI, pas contre `t` : le dernier `t` est la fin du mois
+> courant (~30 j dans le futur), donc jugé depuis lui un close d'hier paraissait périmé. **Attrapé
+> par un contrôle négatif**, pas par une relecture.
+> ⚠️ Fraîcheur VÉRIFIÉE (`priceUpdatedAt`) : sans ça on remplace un chiffre vieux par un autre.
+> Champ neuf de `MinimalAsset` ⇒ **DEUX mappers** à compléter (hook + chemin état-pur/MCP).
+> ⚠️⚠️ **« Aucun golden n'a bougé » est EXPLIQUÉ** : aucun persona ni fixture ne porte
+> `priceUpdatedAt` (mesuré). Zéro rouge mesure l'absence de couverture. D'où une garde qui TRAVERSE
+> jusqu'au mois 0, perturbée sur le mapper.
+> ⏭️ Débloque `[FINTABLE-AUTORITE-PARTOUT]` étape 3, qui en dépendait.
+>
+> ## 🟦 Session 2026-09-17 (suite) — **`[DETTE-INVISIBLE-INFOBULLE]`**
+> Marc a d'abord signalé « un bug : une chute au 01/07 ». Ce n'en était pas un — c'est son BAIL AUTO
+> (plusieurs dizaines de milliers de dollars) qui entre au bilan : une dette à `startDate` est retirée du patrimoine tant qu'elle n'a
+> pas commencé (`dailyPastLedger.ts`), et le moteur compare des MOIS, donc un début au 20 juillet
+> apparaît au 1er. Confirmé par lui. ⚠️ **Aucune transaction de cet ordre n'existe autour du 1er
+> juillet** — vérifié avant de conclure, ce qui a écarté la piste évidente.
+> 🔎 Le VRAI défaut est celui qu'il a signalé ensuite : « je le vois nulle part, pas sur l'infobulle
+> ou quoi ». `TOOLTIP_ACCOUNTS` ne liste que des comptes POSITIFS : des actifs affichés nettement supérieurs à la
+> valeur nette, et rien pour expliquer l'écart.
+> ✅ Ligne « Dettes (hors hypothèque) » signée, rendue seulement s'il y a une dette. Dérivation
+> EXTRAITE du « Détail complet » (`detteReductrice`) et partagée, jamais recopiée ; par SOUSTRACTION
+> et non depuis `DettesNonImmo` (pas publié sur toutes les courbes).
+> ⚠️ **Troisième instance de la même famille dans la journée** (carte du hub, tuile « Variation
+> 30 j », infobulle) : deux chiffres d'un même écran qui ne se recomposent pas.
+>
+> ## 🟦 Session 2026-09-17 (suite) — **`[FINTABLE-AUTORITE-PARTOUT]` étape 0 LIVRÉE**
+> Demande Marc : « je veux que toutes les valeurs soient cohérentes de partout entre elles et que ce
+> soit la valeur Fintable, car la plus fiable ». Plan complet dans `BACKLOG.md` (5 étapes).
+> ✅ **Étape 0** : le montant NATIF (`amountNative` + `currency`) est persisté à côté de son reflet
+> converti, et `relireSoldeCourtier` reconvertit **au taux du jour**. Avant, la conversion était
+> faite À L'ÉCRITURE et figée : le compte courtier en USD, synchronisé pendant le repli des taux,
+> restait écarté jusqu'à la synchro suivante — **une grosse part du portefeuille** hors du panier NON-ENREG, donc
+> autorité courtier refusée en entier.
+> ⚠️ L'ORDRE DES BRANCHES EST LE CORRECTIF : le natif gagne sur un `missingRate` PERSISTÉ (qui décrit
+> ce qu'on savait à la synchro, pas ce qu'on sait maintenant). ⚠️ `estimated` vient de
+> `fxFaitAutorite`, jamais du booléen `fxRatesEstimated` — sinon les taux SAISIS À LA MAIN de Marc
+> seraient refusés, or c'est le recours prévu. ⚠️ Signature de `reconcileBrokerBalances` élargie et
+> le 3ᵉ paramètre REQUIS : le compilateur a énuméré 3 sites de prod + 18 de test.
+> 📏 430 tests verts sur la surface ; 2 tests de LIMITE inversés au même endroit avec leur histoire ;
+> perturbation (reconversion débranchée) → 1 rouge, le bon.
+> ⏭️ **Restent les étapes 1 à 4** (source unique « dernière valeur Fintable connue », les deux
+> garde-fous — 48 h dérivé du cron, seuil d'écart À MESURER —, branchement des écrans, variations).
+>
+> ## ⚠️⚠️ Session 2026-09-17 (suite) — **`[HUB-TOTAL-AMPUTE]` : le hub publiait un total amputé**
+> Marc : « corrige sur hubperso, j'ai pas le même montant que dans l'onglet Futur, et c'est pareil
+> pas équivalent à ce que j'ai sur Fintable ». Mesuré sur ses captures — **quatre** producteurs :
+> Accueil (référence) · Fintable réel **≈ −1,4 %** · Futur mois 0 **≈ −5,6 %** · hubperso
+> **≈ −11,4 %**.
+> 🔎 Cause de l'écart hubperso : `buildMarketData` laisse tomber (`continue`) un titre DÉTENU dont
+> la queue de chandelles est périmée > 7 j sans quote fraîche. Le `TOTAL` reste fini et plausible,
+> simplement AMPUTÉ — les trois refus de `computePortfolioSessionMetrics` jugent la fraîcheur et le
+> figement, jamais le PÉRIMÈTRE. **L'inventaire qui le disait existait** (`staleTailSymbols`, finding
+> silent-failure #493, avec son commentaire) : le consommateur faisait `const { rows } = …`.
+> ✅ `omittedKeys` (`[date, symbole]`, à TOUTE date — `staleTailSymbols` ne couvre que `lastAxisDate`,
+> donc jamais la borne passée d'une variation) + **refus 4** : séance amputée → rien n'est publié ;
+> borne amputée → variation refusée. 3 gardes, 2 perturbations séparées (1 rouge chacune, le bon).
+> 📏 **−11,4 %** sur le total publié, et « Variation 7 jours **+38,2 %** » qui n'était
+> qu'une DISPARITION relue comme un gain. Contradiction interne à la carte :
+> valeur nette − liquidités + dette = **placements de l'Accueil** ≠ total du hub.
+> ⚠️ **Effet visible à surveiller** : tant qu'un titre manque, la carte du hub perd ses trois lignes
+> de placements (arbitrage des trois autres refus : publier MOINS, jamais autre chose).
+> 🔎 **Découverte de chemin** : le compte courtier est en **USD** chez Fintable (`$` vs `C$`) — le compte
+> nommé en commentaire dans `brokerBalances.ts`. Écarté faute de taux à la dernière synchro (antérieure
+> au correctif FX) ⇒ panier NON-ENREG amputé ⇒ autorité courtier NON appliquée.
+> ⚠️⚠️ **2ᵉ passe — le panel a battu le gate ET la CI, 6ᵉ lot d'affilée.** (a) Mon inventaire couvrait
+> **2 chemins sur 3** pendant que le commit affirmait « les DEUX chemins sont tracés » : le manquant
+> est qu'un titre SANS historique n'entre au TOTAL que s'il est détenu AUJOURD'HUI — vendu, il
+> compte zéro sur TOUT son passé. (b) Même amputation chez un consommateur VIVANT et visible :
+> `useNetWorthVariation` (tuile « Variation 30 j » du bandeau Futur) sommait les buckets `TOTAL_*`
+> aux deux bornes sans lire l'inventaire. Dépendance rendue **REQUISE** (compilateur → 4 sites).
+> (c) Codec `[date, symbole]` extrait en source unique (`encodeOmittedKey` / `datesAmputeesDepuis`).
+> 📏 3 perturbations séparées de plus, 1 rouge chacune ; contrôles négatifs partout (portefeuille
+> sain → 0 omission ; date amputée hors des bornes → tuile publiée).
+> ⏭️ **Suite chiffrée et NON faite** : `[FUTUR-MOIS0-CLOTURE-SANS-AGE]` — le mois 0 appelle
+> `priceAt(a, t)` **sans `maxStaleDays`** (seul écran du dépôt dans ce cas) ⇒ **−5,6 %**
+> au point de départ de la projection. Re-basera des goldens ⇒ plan-first.
+>
+> ## ⚠️⚠️ Session 2026-09-17 — **`[FX-OBSERVATION-COHORTE]` : on lisait `observations[0]`**
+> Marc a cliqué « Réessayer maintenant » (la carte livrée la veille), lu « au moins une des deux
+> séries était absente », puis **ouvert l'URL de l'API et envoyé la réponse**. Elle tranche :
+> `observations[0]` = `{ d: "2019-12-31", FXVNDCAD: … }` — le **dong vietnamien**, série abandonnée.
+> Sur un GROUPE, `recent=1` rend la dernière observation de **chaque série**, groupée par COHORTE :
+> l'index zéro ne désigne rien. `FXUSDCAD`/`FXEURCAD` étaient dans l'entrée suivante.
+> ✅ Lecture **par série** (`services/fx/observationsBdc.ts`, pur, partagé navigateur + MCP), refus
+> d'une observation de plus de **10 jours** (seuil DÉRIVÉ : **5 j** de fermeture légitime, 140 j
+> pour la plus proche série abandonnée de la vraie réponse), cause `'perimee'` distincte de
+> `'partiel'`, et **la date de l'observation affichée** — le chiffre dont l'absence a laissé servir
+> un taux de 2019 comme celui du jour.
+> 📏 **Mesuré** : USD repli 1,4000 contre **1,3947** réel (−0,38 %) ; EUR repli 1,4700 contre
+> **1,6073** (**+9,34 %**) → une position entière sous-évaluée d'autant.
+> ⚠️ **Les trois fixtures FX du dépôt étaient écrites À LA MAIN** et encodaient la forme qu'on
+> croyait avoir : elles ne pouvaient que confirmer l'erreur. La garde part maintenant de la réponse
+> RÉELLE (`tests/fixtures/bdcFxRatesDaily.json`).
+> ⚠️ Deux de ces fixtures n'avaient **aucun champ `d`** — impossible dans une vraie réponse. Complété,
+> et daté du JOUR : une date figée serait devenue périmée toute seule (bombe).
+> 👤 **Reste chez Marc** : un clic de confirmation après déploiement (`docs/A_FAIRE_MOI.md`).
+>
+> ## ✅ ÉTAT AU 2026-09-16 22:02 UTC — PR #978 **MERGÉE ET DÉPLOYÉE**
+> Squash sur `main` = **`e71a0359`**. CI verte sur le SHA exact (lint · typecheck · **6 091 tests**
+> · build · E2E Playwright). Déploiement de production **`dpl_FNfnnRMQ…` READY** sur `e71a0359`,
+> aliasé sur `finance.hubperso.com`.
+> ⚠️ **La seconde moitié de §6 n'a PAS pu être faite** : contrôler l'effet sur la RÉPONSE servie
+> exige de LIRE la réponse, et `vercel.com` comme `finance.hubperso.com` répondent **403 au CONNECT**
+> depuis ce conteneur. Ce qui est vérifié est la CRÉATION du déploiement et son état, pas ce qui est
+> servi. Le contrôle visuel (le bouton « Réessayer maintenant » des Réglages) revient à Marc.
+> 📦 Les cinq items finis des PR #977/#978 ont été déménagés vers `docs/BACKLOG_ARCHIVE.md` ; les
+> quatre découvertes du panel restent OUVERTES dans `BACKLOG.md`.
+>
+> ## ⚠️⚠️ Session 2026-09-16 (nuit) — **REVUE PANEL : 8 défauts réels, dont 3 rouges**
+> Quatrième lot d'affilée où le panel bat le gate ET la CI. Cette fois il a trouvé ce qui vidait le
+> lot de son sens.
+> 🔴 **Un total courtier AMPUTÉ écrasait le panier ENTIER** : un compte écarté (taux inconnu, régime
+> non déclaré) sort du total, et j'appliquais ce total partiel au mois 0. Mesuré sur l'état RÉEL de
+> Marc : **environ un huitième du vrai total**. Ma garde d'identité ne tenait que dans le cas
+> TOUT-ou-RIEN. ✅ Refus explicite + raison rendue + dit à l'écran.
+> 🔴 **Base de FAMILLE dans un panier ÉTROIT** : CELIAPP replié sur CELI côté comparaison, séparé
+> côté soldes → **+25 000 $** comptés deux fois. ✅ Refusé (pas corrigé d'office : mettre le jumeau à
+> zéro changerait le régime FISCAL de l'argent) → `[FINTABLE-AUTORITE-FAMILLE-CELIAPP-REEE]`, 🧭 Marc.
+> 🔴 **Le recours n'aurait vécu qu'UNE session** : au redémarrage, le repli écrasait la saisie
+> manuelle (1,3650 → 1,4000). ✅ Une lecture SANS autorité ne remplace plus jamais un taux qui en a.
+> 🟠 Sélecteur Zustand reconstruisant un objet, consommé sans `useShallow` **depuis la racine** →
+> toute l'app re-rendue à chaque écriture du store. ✅ `getState()` dans l'effet, zéro abonnement.
+> 🟠 **Le PDF** (seule surface non migrée) affirmait « taux non récupérés » sur un taux saisi par Marc.
+> 🟠 `text-warning-300` / `text-danger-300` n'existent pas dans la palette — no-op SILENCIEUX, le tout
+> premier piège de la section UI de ce dépôt, commis deux fois dans le même fichier neuf.
+> 🟠 L'erreur de saisie n'était **pas annoncée** : muette au lecteur d'écran, dans la carte qui sert
+> justement de seul recours.
+> 🟠 **Le MCP** passait par un second constructeur de paramètres → deux réponses à une seule question.
+> ✅ Même autorité des deux côtés.
+> ⚠️ **J'avais SUR-AFFIRMÉ dans le CHANGELOG** (« fait autorité sur aujourd'hui » ⊃ le patrimoine net
+> affiché, qui somme toujours les titres saisis). Corrigé là où c'était publié.
+> ⏸️ Routé : `[FINTABLE-AUTORITE-FAMILLE-CELIAPP-REEE]`, `[PROJ-DEUX-MOIS-ZERO]`,
+> `[GARDE-FUTURESEED-PERIMEE]`, `[FX-PASSE-TAUX-PLAT]`.
+>
+> ## ⚠️⚠️ Session 2026-09-16 (fin de soirée) — **les taux FX n'étaient JAMAIS arrivés**
+> Marc : « faut bien convertir en cad ce qui est en usd ». Mesuré sur son état RÉEL via le MCP :
+> **1,4000** et **1,4700** au dix-millième — `DEFAULT_FX_RATES` au caractère près — et ses
+> positions sont en USD ou EUR, **aucune** en CAD. 100 % du montant affiché reposaient sur un
+> chiffre en dur, et c'était la vraie cause du courtier USD non converti du lot précédent.
+> ✅ **Lot A** — provenance à 3 états (`api`/`manuel`/`repli`), bouton « Réessayer maintenant »
+> (avec `force` : sans lui le cache de 24 h en ferait un no-op), saisie manuelle de secours,
+> diagnostic qui DISTINGUE réseau / HTTP / réponse vide / repli partiel, et la condition d'écriture
+> du démarrage sortie en fonction PURE (elle ne comparait que les VALEURS, or la BdC ne publie qu'un
+> jour ouvré).
+> ✅ **Lot B** — le total du courtier fait autorité sur `liveCSVBalances`, donc sur le mois 0 du
+> moteur ET le départ de la courbe. Mesuré : un écart de départ vaut **≈ ×1,3 / ×1,8 /
+> ×3,1** à 5, 10, 20 ans. La marche au raccord est NOMMÉE sous le graphe.
+> ✅ **Lot C** — l'historique courtier s'accumule (1/compte/jour, 24 mois). Ne change rien
+> aujourd'hui ; c'est écrit à l'écran.
+> ⚠️⚠️ **Régression que J'AVAIS introduite, trouvée par un test d'un AUTRE lot** : `fxRatesSource:
+> 'repli'` dans l'état PAR DÉFAUT. `merge` superpose clé par clé — un blob d'avant le lot aurait
+> gardé `'repli'` alors que l'utilisateur a de vrais taux, et son compte étranger aurait cessé
+> d'être converti au déploiement. ✅ Clé retirée des défauts + garde sur la PRÉSENCE de la clé.
+> ⚠️ Garde REDONDANTE démasquée par perturbation (12/12 verts sans elle) : les deux refus de
+> l'historique ont été réunis au même endroit.
+> 👤 **Chez Marc** : ouvrir Réglages → Système & diagnostics et dire ce que raconte la carte « Taux
+> de change ». `www.bankofcanada.ca` est **403 au CONNECT** depuis le conteneur (§6).
+> ⏸️ **Routé, non fait** (choix explicite de Marc) : `[FX-PASSE-TAUX-PLAT]` — la courbe convertit
+> TOUS les points passés au taux d'aujourd'hui, et `Asset.priceHistory[].fxRate` existe dans le type
+> sans être ni écrit ni lu par personne.
+>
+> ## ⚠️⚠️ Session 2026-09-16 (soir) — **REVUE PANEL : 6 défauts RÉELS dans mon propre lot**
+> Quatre agents sur le diff. Le typecheck, le lint, **321 tests ciblés verts** et mes **8
+> perturbations** n'avaient rien vu. Troisième lot d'affilée où le panel bat les deux gates.
+> 🔴 **Le pire** : `DEFAULT_FX_RATES` porte `USD: 1.40` (« approximation Q1 2026 »), **toujours
+> présent**, avec `fxRatesEstimated` qui existe pour le dire. Je publiais ce repli comme AUTORITÉ —
+> exactement le piège que l'en-tête de mon lot prétendait éviter, un cran plus bas : **1,40 est pire
+> que 1:1 parce qu'il est plus crédible, donc moins réfutable**. Et ma branche « taux absent » était
+> **quasi inatteignable** pour USD/EUR. ✅ Corrigé : taux ESTIMÉ = traité comme absent.
+> 🔴 **Données bancaires réelles visibles en mode démo** : `setChampsInconnus` était appelé AVANT le
+> contrôle `isTestMode`, alors que `setIncertaines` est APRÈS — le commentaire qui explique cet ordre
+> était déjà là, trois lignes plus haut. ✅ Déplacé + réinitialisé en tête de passe.
+> 🟠 **Ma garde de non-fuite était VACUEUSE** : la regex d'espaces était `/ | /g`, de l'**ASCII pur**,
+> donc une transformation IDENTITÉ. 3ᵉ fois pour ce dépôt, 2ᵉ fois que je l'écris après l'avoir
+> documentée. ✅ Corrigée + **anti-vacuité du NORMALISATEUR lui-même**.
+> 🟠 **Un avertissement devenu FAUX** : « conversion non implémentée → IGNORÉ » sur le site
+> `investment`. ⚠️ Contrôle du panel : les 2 autres occurrences du même libellé restent VRAIES — **1
+> site sur 3**. ✅ Le mapper étant PUR (il ne voit ni taux ni drapeau), il décrit ce qu'il SAIT.
+> 🟠 **Remède qui nomme la mauvaise cause** (carte compact) : envoyait déclarer un régime fiscal à
+> quelqu'un dont le seul problème est un taux inconnu. ✅ Remède DÉRIVÉ de la cause unique réelle.
+> 🟡 **Trou de chaîne service→composant** sur `missingRate` : aucun test ne posait le champ dans le
+> composant. ✅ 4 gardes neuves, 2 perturbations (3 rouges / 1 rouge).
+> 🟡 **Mon commentaire affirmait une capacité INEXISTANTE** (`soldesDetteSignes` « seule trace pour
+> re-vérifier ») — le champ n'atteint aucun rapport. ✅ Corrigé, et routé.
+> ⏸️ **2 tickets routés avec leur mesure** : `[FINTABLE-ECART-FANTOME-DEUX-DATES-DE-TAUX]` (écart
+> inventé **2 000–4 000 $** mesuré, OUVERT par ce lot, borné à la carte, atténué par le durcissement)
+> et `[FINTABLE-SIGNE-RECIDIVE-NON-DETECTEE]`.
+>
+> ## ✅ Session 2026-09-16 (soir) — `[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]` LIVRÉ (3ᵉ des 3 GO)
+> `echantillonsClesInconnues` (pure, bornée 2× : clés ET nombre/longueur des exemples) publie les
+> VALEURS des champs hors contrat sur le SEUL écran de Marc (carte « Sync Fintable »).
+> ⚠️⚠️ **La contrainte de vie privée a dicté l'ARCHITECTURE** : l'échantillon voyage par le RETOUR de
+> `runFintableBrowserSync` (patron de `incertaines`, qui portait déjà sa justification écrite),
+> jamais par `report` ni le patch. Et le chemin CRON — dont le résultat est `cat`é dans un journal
+> PUBLIC — **ne rend pas ce champ du tout** : la fuite y est inexprimable, pas interdite.
+> La garde vise le rapport **SÉRIALISÉ ENTIER**, donc un champ ajouté demain est couvert sans qu'on
+> y pense ; anti-vacuité = le rapport doit NOMMER encore `external_memo`.
+> **11 gardes, 2 perturbations** : fuite exacte (valeur dans `warnings`) → 2 rouges (rapport ET
+> patch) ; câblage mort → 1 rouge.
+> ⏸️ **La question reste ouverte et elle est chez Marc** : à sa prochaine synchro manuelle, regarder
+> si un exemple contient une devise/un taux. **Réponse NÉGATIVE à publier aussi** — elle ferme la
+> piste au lieu de la laisser se faire retenter à l'aveugle (`DOC-STALE-IMPOSSIBILITY`).
+>
+> ## ✅ Session 2026-09-16 (soir) — `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]` LIVRÉ (2ᵉ des 3 GO)
+> Conversion à l'écriture quand le taux est CONNU ; signal nommé quand il ne l'est pas ; la 3ᵉ cause
+> d'écartement enfin recensée **là où Marc regarde ses placements** (carte Investissements + Accueil).
+> ⚠️⚠️ **Le remède ÉVIDENT était le piège** : `toCurrencyFactor` (source unique FX, gardée par
+> `assetFxGuard`) replie sur **1:1** sans taux — juste pour un ACTIF affiché, catastrophique pour un
+> total qui « fait autorité » (N USD → N « CAD », faux d'≈30 %, crédible). Taux interrogé
+> EXPLICITEMENT ; `0`, négatif et non fini = absent.
+> ⚠️ **L'ordre des gardes EST le correctif** : `missingRate` porte `balanceCad: 0` qui ne signifie
+> rien ; testé APRÈS la finitude il passe (0 est fini) et s'additionne à zéro → compte effacé du
+> total sans trace. Perturbation dédiée → 1 rouge.
+> ⚠️ La liste des écartés connaissait **2 causes sur 3** : le filtre de devise vivait un ÉTAGE
+> au-dessus d'elle, donc son compteur à zéro se lisait « rien à signaler ».
+> ⚠️ **J'ai annoncé un DÉCOUPAGE que la mesure a réfuté** (« la liste d'abord, la conversion
+> ensuite ») : les deux moitiés sont indissociables. Dit à Marc, lot livré entier.
+> **19 gardes** (14 → 19), 3 perturbations distinctes : `continue` restauré → 4 rouges ; ordre des
+> gardes → 1 ; taux aberrant → 1. Contrôle négatif (compte CAD, avec/sans taux) vert partout.
+>
+> ## ✅ Session 2026-09-16 (soir) — **CORRECTIF DU SIGNE LIVRÉ** (Marc : « ok pour tout »)
+> `owed = Math.max(0, −solde)` remplace `Math.abs` ; le commentaire inversé est corrigé ;
+> l'avertissement de mesure est MORT (garde INVERSÉE au même endroit, jamais supprimée).
+> Une carte en CRÉDIT ne fabrique plus de dette fantôme ; une carte à ZÉRO n'émet plus un payload
+> que `applyDebt` rejette — elle DIT que la dette garde sa valeur d'hier (moitié visible de
+> `[FINTABLE-CARTE-SOLDEE-GARDE-LA-DETTE-D-HIER]`).
+> **17 gardes, 3 perturbations aux signatures DISTINCTES** : `Math.abs` restauré → **1 rouge**, et
+> lui seul (perturbation chirurgicale) ; montant interpolé → **3 rouges** (producteur + les DEUX
+> orchestrateurs : la chaîne est prouvée) ; zéro qui n'abandonne plus → **2 rouges**.
+> ⚠️ **Le `surplus` n'alimente PAS les liquidités** — étape 2 de `[FINTABLE-CARTE-DETTE-AUTO]`, qui
+> bute sur `applyCashBalance` (refus d'une cible négative). Écrit dans le code ET dans le message
+> rendu à Marc, plutôt que livré à moitié.
+> ⚠️ Piège commis DANS ma propre garde : compter par sous-chaîne nue (`Dette acc_1`) comptait aussi
+> `Dette acc_10` — un PRÉFIXE, donc un rouge sur du code sain. Délimité par les guillemets que le
+> message écrit lui-même.
+>
+> ## ✅ Session 2026-09-16 (soir) — **MESURE OBTENUE** : Fintable écrit `négatif = dû`
+> Marc a lancé la synchro, puis répondu. Rapport : « [carte de crédit] →
+> **positif** » ; Marc : **« c'est en ma faveur »**. L'hypothèse du code (« positif = montant DÛ »,
+> commentée dans `mapSnapshot.ts` et jamais mesurée) est **RÉFUTÉE**. L'étape 1 a fait exactement ce
+> pour quoi elle a été écrite, dès sa première passe réelle.
+> ⚠️ **Portée** : la mesure TUE « positif = dû » ; elle est seulement *compatible* avec « négatif =
+> dû » (il faudrait une passe où Marc doit de l'argent pour le prouver positivement). Aucune décision
+> n'attend ça — le plan de `[FINTABLE-CARTE-DETTE-AUTO]` étape 2 (`dû = max(0, −solde)`) était **déjà
+> écrit dans ce sens**, donc la mesure le CONFIRME. Rien à recadrer.
+> ✅ **Aucun dollar n'est faux aujourd'hui** : aucune dette n'est associée à cette carte, donc la
+> dette fantôme n'a jamais été écrite. Défaut RÉEL ≠ défaut ATTEINT.
+> ✅ **Import de correction livré** : les originaux sous-évalués exclus, les bons
+> montants importés (aucun rejet). Précondition vérifiée **PAR LIGNE**.
+> ⚠️⚠️ **un marchand RESSORTAIT de la recherche** — mais à une autre date pour un autre montant, quand
+> la ligne visée était différente : deux transactions distinctes du même marchand, la
+> seconde arrivée le jour même avec le rattrapage d'historique. Lue vite, elle faisait suspendre un
+> import légitime (`UNE-RECHERCHE-PAR-MARCHAND-NE-PROUVE-RIEN-SUR-UNE-LIGNE`).
+> ✅✅ **Le plancher dérivé de la bascule a passé son premier VRAI test** : « Rattraper l'historique »
+> a ajouté **1 478 transactions** sur un état NON vierge (588 d'avant juillet 2025). Mesuré après
+> coup : les deux lignes réécrites à la main la veille sont intactes, leurs originaux ne
+> sont pas revenus, **0 doublon** sur les 36 lignes en devise étrangère. Une mesure qui confirme se publie.
+> ⚠️ **Marc a fermé un risque** : aucun voyage hors Canada avant sept. 2026 → le défaut de devise ne
+> touche que les 44 lignes déjà traitées ; les 1 478 lignes rattrapées ne sont pas concernées.
+> 🧭 **DEUX GO DE MARC, non commencés — plan d'abord** : `[FINTABLE-DISNAT-USD-SOLDE-IGNORE]`
+> (« prioritaire ») et `[FINTABLE-EXTERNAL-MEMO-PISTE-DEVISE]` (« oui, à l'écran seulement » — jamais
+> dans `report.warnings`, le rapport part dans un journal PUBLIC).
+> ⏸️ **Reste sur le signe** : `owed` dérivé du SIGNE au lieu de `Math.abs`, le **commentaire inversé**
+> de `mapSnapshot.ts:271-273`, et l'arrêt de l'avertissement de mesure (garde à INVERSER, pas à
+> supprimer). Money-critical → plan + OK de Marc.
+>
+> ## 🟦 Session 2026-09-16 — `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]` étape 1 : MESURER le signe
+> Marc : « fais la suite maintenant ». Le mapper porte `const owed = Math.abs(account.balance)` sous
+> le commentaire « un solde négatif signifie un crédit en ta faveur » ; Marc décrit l'INVERSE
+> (`-500` = 500 $ dus). `Math.abs` rend le cas nominal juste **dans les deux conventions**, donc
+> l'hypothèse est infalsifiable sans une mesure.
+> ✅ Livré : `signeSolde` (fonction pure, 4 états — `absent` couvre le `NaN`), `soldesDetteSignes`
+> au rapport du mapper, et UN avertissement agrégé qui publie **le SIGNE, jamais le MONTANT** (le
+> rapport est `cat`é en clair dans les journaux GitHub Actions). **Aucun dollar ne bouge** :
+> `Math.abs` est intact, c'est l'étape 2 qui le changera.
+> ⚠️⚠️ **La PRÉCONDITION du ticket était fausse, et elle a dicté toute la conception** : « mesure
+> inatteignable pour Marc, aucune de ses cartes n'a de `debtName` » — re-mesuré sur le code réel,
+> c'est faux depuis `[FINTABLE-CARTE-SANS-DETTE]` (PR #956, deux jours plus tôt, le ticket QUE CE
+> TICKET CITE). Son compte atteint bien `case 'debt'`, il en sort trois lignes plus bas. D'où la
+> seule contrainte du lot : publier le signe **AVANT toutes les sorties du bloc** (nom vide, solde
+> absent, devise étrangère) — sinon la mesure reste inatteignable pour la seule personne qui peut la
+> lire. La prémisse réfutée n'a pas annulé le travail, elle l'a FAÇONNÉ
+> (`UNE-PRECONDITION-CITEE-PAR-UN-TICKET-VIEILLIT-PLUS-VITE-QUE-SON-DEFAUT`).
+> **13 gardes, 5 perturbations séparées** (publication avant les sorties · montant interpolé · `NaN`
+> rabattu sur zéro · `-0` · publication pour TOUT compte) — chacune rougit sur les bons tests, dont
+> le contrôle négatif « aucun compte dette → aucune entrée ».
+> ⚠️⚠️ **Le panel a corrigé un chiffre que j'avais publié** : le patrimoine net était faux du
+> double du solde en crédit d'une carte. L'écart RÉPARABLE par le signe n'en est que la moitié — ce que
+> l'émetteur doit n'est représentable par AUCUNE convention (`applyDebt` refuse un solde `<= 0`).
+> Corrigé dans `BACKLOG.md` et `docs/A_FAIRE_MOI.md`. Il a aussi borné la liste de libellés du
+> nouvel avertissement (`MAX_CLES_CITEES`, déjà importé dans le fichier) — 14ᵉ garde, 2 perturbations.
+> ⚠️ **Deux découvertes PRÉEXISTANTES routées**, non corrigées ici :
+> `[FINTABLE-RAPPORT-EN-CLAIR-DANS-UN-JOURNAL-PUBLIC]` (le workflow `cat`e le rapport dans un journal
+> PUBLIC en affirmant « jamais de montant ni de libellé » — faux, vérifié : 15 sites interpolent déjà
+> `account.label`) et `[FINTABLE-CARTE-SOLDEE-GARDE-LA-DETTE-D-HIER]` (`owed = 0` → payload rejeté →
+> la dette garde la valeur de la veille).
+> ⚠️ **Reste à Marc** : lire le signe au prochain rapport et répondre — c'est la seule mesure qui
+> manque. Détail dans `docs/A_FAIRE_MOI.md`.
+>
+> ## 🟦 Session 2026-09-16 — `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]` : bascule PAR COMPTE
+> Marc : « go ». La bascule anti-doublon était dérivée « tous comptes confondus » : le chèque poste
+> le jour même et l'avance chaque jour, la carte poste 3 jours plus tard et arrive donc TOUJOURS
+> derrière — jetée, chaque jour, indéfiniment.
+> ✅ Livré : `deriveCutoverDatesByAccount` (clé = `Transaction.accountName`), `cutoverByAccount` sur
+> `decideCutoverDate` (plafonné par compte comme la globale), `transactionsAfterByAccount` au mapper,
+> et **`requestDateFrom`** — la borne de la REQUÊTE devient la plus ANCIENNE des bornes, sans quoi
+> l'API ne rend même pas les lignes du compte lent et le filtre du mapper est inerte
+> (`CORRECTIF-VERT-EN-TEST-INERTE-EN-PROD`). Câblé dans les DEUX orchestrateurs, gardé des deux côtés.
+> **17 gardes, 5 perturbations séparées** (mapper · requête navigateur · requête cron ·
+> `requestDateFrom` · avertissement) — chacune rougit seule.
+> ⚠️⚠️ **Le remède PRESCRIT par le ticket était INERTE, et c'est la mesure qui l'a dit** : « un compte
+> jamais vu retombe sur la bascule globale » est un INTERBLOCAGE — la carte ne peut jamais poser sa
+> première transaction, donc sa borne reste absente pour toujours. Mesuré : **0/9 avant, 0/9 avec le
+> repli prescrit, 9/9 dès qu'UNE transaction de la carte est connue sous son libellé.** Le repli est
+> gardé (l'ouvrir rapatrierait l'historique sans dédoublonnage — et rejouerait les 44 lignes en devise étrangère
+> aux MAUVAIS montants, corrigés à la main la veille) mais il est désormais **NOMMÉ** dans le rapport,
+> avec le seul geste qui débloque : « Rattraper l'historique », UNE fois.
+> ⚠️ **Reste à Marc** : lancer ce rattrapage une fois si le rapport nomme sa carte.
+> ⚠️⚠️⚠️ **Le panel a trouvé TROIS défauts APRÈS gate vert ET CI verte, tous introduits par moi** —
+> aucune fixture ne pouvait les voir (libellés propres, historique complet, un seul canal d'import) :
+> (a) clé normalisée d'UN SEUL côté → un libellé espacé donnait deux clés, interblocage PERMANENT
+> (mesuré `9/9` avec `'Carte'` contre **`0/9` avec `' Carte'` même après rattrapage**) → `cleCompte`,
+> source unique appelée aux deux bouts, trim SEULEMENT ; (b) un compte que l'API ne LISTE plus
+> n'était jamais nommé alors qu'il est condamné à la borne globale pour toujours → son propre
+> avertissement ; (c) **money-critical** — une borne par compte ne voit que les lignes portant SON
+> libellé, donc reculer sous la date de lignes entrées par un autre canal (CSV `'Importé'`, MCP sans
+> `accountName`, sync d'avant le 05/09) faisait **ÉCRIRE 3 doublons** (mesuré sur
+> `applyPayloadsIsolated`), ce qui aurait pu ramener les 36 lignes en devise étrangère aux montants faux
+> corrigés la veille → **PLANCHER DÉRIVÉ** (`plancherNonAttribuable`), calculé APRÈS la lecture du
+> snapshot parce qu'il faut les libellés routés. **28 gardes, 8 perturbations séparées.**
+> ⚠️ Prix assumé : sur un historique récent peu étiqueté, le plancher rend le comportement d'AVANT —
+> le bénéfice ne peut pas être payé par un doublon. Il est figé dans le passé, donc il se dissout.
+> ⚠️ Leçon : `LE-REMEDE-PRESCRIT-PAR-UN-TICKET-SE-MESURE-COMME-SON-DEFAUT` (`docs/CONVENTIONS.md`).
+>
+> ## 🟦 Session 2026-09-15 (4) — `[FINTABLE-CHAMPS-INCONNUS]` : savoir ce que le décodeur JETTE
+> Marc : « faudra qu'on fasse en sorte que ce problème n'arrive pas ». **Volet 1 livré** — ce n'est
+> PAS le correctif du montant, c'est la condition pour savoir s'il est possible.
+> `decodeTransaction` reconstruit la transaction champ par champ à partir de `FtRawTransaction`,
+> **un contrat écrit d'après la DOC et jamais d'après un payload observé** : tout champ hors
+> contrat disparaissait sans trace, donc « l'API dit-elle la devise RÉELLE quelque part ? » n'avait
+> aucune réponse possible — pendant que 44 montants étaient faux.
+> ✅ Livré : `clesInconnues` (pure), `unknownTransactionKeys` sur `FintableSnapshot` (**REQUIS** —
+> optionnel aurait fait écrire `?? []`, donc « pas regardé » indiscernable de « rien »), et
+> l'avertissement nominatif dans le rapport de sync (app + MCP). **11 gardes, 3 perturbations
+> séparées** (lecteur débranché → 1 rouge · avertissement retiré → 2 · clé retirée de l'inventaire
+> → 6, dont la garde de dérivation liste ↔ type).
+> ⚠️ **Mesure IMPOSSIBLE depuis le conteneur, et elle commande la suite** : `fintable.io` rend 403
+> au CONNECT (`EGRESS_BLOCKED` aussi via WebFetch). Les pages publiques de couverture nomment
+> **PLAID** et **FINICITY** — chez Plaid une transaction porte `iso_currency_code`. Si un champ de
+> ce type arrive, le correctif devient EXACT. Question + commande posées à Marc dans
+> `docs/A_FAIRE_MOI.md`.
+> ⚠️ **Le recoupement par le SOLDE** (la seule grandeur indépendante, bien donnée en CAD) est la
+> piste de secours, mais il exige `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]` d'abord : tant
+> que la bascule jette les transactions de la carte, l'écart est permanent et l'alarme naît morte.
+> ⚠️ Leçon : `UN-DECODEUR-QUI-RECONSTRUIT-CHAMP-PAR-CHAMP-JETTE-EN-SILENCE-CE-QU-IL-NE-CONNAIT-PAS`
+> (`docs/CONVENTIONS.md`).
+>
+> ## 🔴 Session 2026-09-15 (3) — réimport des 44 lignes en devise étrangère aux bons montants
+> Ticket 🔴 `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`, **dette de DONNÉES réparée** (la dette de CODE
+> reste entière : le mapper importe toujours la devise d'origine).
+> Marc : « tu peux réimporter avec les bons montants ». **36 lignes écrites**, via
+> `apply_bank_statement` (0 doublon, 0 rejet, sauvegarde horodatée automatique).
+> ⚠️ **Pas 44 lignes ni le total prévu, et l'écart est une MESURE** : `search_transactions` EXCLUT les
+> lignes marquées, donc ce qu'elle RENVOIE n'est pas marqué — et elle renvoyait encore quatre
+> originaux du tableau (quatre marchands, montants retirés
+> du dépôt). Les réimporter aurait compté la dépense DEUX fois. Les quatre sont
+> précisément des lignes **SOUS-évaluées** (USD) : elles ne ressemblaient pas au défaut qu'on
+> cherchait. **4 lignes suspendues à 4 clics de Marc** (procédure au bas de `docs/A_FAIRE_MOI.md`).
+> ⚠️ Quatre billets de métro du 31/08 écartés — Marc avait répondu « 2 vrais achetés » ; les 2 du
+> 08/09 sont conservés (autre jour, appariés séparément au relevé).
+> ⚠️ Trois libellés suffixés `(2/2)` : la dédup INTRA-LOT d'`applyBankStatement` jette la seconde de
+> deux lignes identiques (date+montant+marchand) — et le code dit lui-même que ce cas désigne
+> d'ordinaire deux vraies dépenses. Le suffixe conserve les deux montants sans en toucher un seul.
+> ⚠️ le marchand de métro local a reçu `Transport` EN DUR : la règle d'import lit `\bMETRO\b` → « Épicerie »
+> (le supermarché québécois). Une règle de catégorisation écrite pour un marché local est fausse
+> hors de ce marché.
+> ⚠️ Leçon : `UN-IMPORT-DE-CORRECTION-SE-MESURE-CONTRE-L-ETAT-REEL-PAS-CONTRE-LE-DOCUMENT-QUI-LE-DECRIT`
+> (`docs/CONVENTIONS.md`).
+>
+> ## 🔴 Session 2026-09-15 (suite) — « je vois plus aucune transactions du voyage »
+> Ticket 🔴 `[TX-EXCLUES-INTROUVABLES]`, **livré** (PR #968).
+> Marc l'a signalé après avoir exclu ses 44 lignes en devise étrangère — **ce que je lui avais demandé de
+> faire**. Aucune donnée perdue (`markTransactionsAsDuplicate` est PUR, aucune suppression), mais
+> `showDuplicates` est un `useState(false)` de `Transactions.tsx` et son SEUL `setShowDuplicates(true)`
+> vivait dans `handleMarkDuplicates` : **2 occurrences** du setter dans tout le fichier, mesuré.
+> Donc au rechargement les exclues disparaissaient et AUCUN contrôle ne pouvait les rappeler — le
+> seul recours, « Annuler tous les marquages », défait le travail au lieu de le montrer.
+> ✅ Livré : bouton « N exclue(s) — afficher / masquer » dans la barre de filtres, rendu dès qu'il y
+> a une exclusion. 5 gardes (3 scans + 1 garde comportementale au REMONTAGE + son anti-vacuité),
+> 3 perturbations séparées.
+> ⚠️ **Classe à retenir** : j'avais vérifié que Marc pouvait MARQUER, jamais qu'il pourrait REVOIR.
+> Un chemin de repli se vérifie dans les DEUX sens (`LE-CHEMIN-DE-REPLI-NOMME-PAR-UNE-DECISION…`,
+> payée une seconde fois un cran plus loin).
+>
+> ## ✅ Session 2026-09-15 (2) — `GET /vehicule/bail` : FinanceAI parle à CarAI
+> Ticket `[VEHICULE-BAIL]`, **livré**. ADR [`0017`](docs/adr/0017-endpoint-bail-vehicule-pour-carai.md).
+> CarAI affiche « payé vs total du bail » et ne connaît **aucun dollar** : les montants vivent ici.
+> `/hub/summary` ne peut pas les porter (six métriques) et le hub ne relaie pas d'app à app.
+> ✅ **Livré** : `mcp/vehiculeBail.ts` (PUR), route `GET /vehicule/bail` (Bearer, 401/404/405/409/503,
+> `no-store`), secret **DÉDIÉ** `FINANCEAI_VEHICULE_TOKEN` (jamais celui du hub — il ouvrirait la
+> valeur nette pour lire une mensualité ; même arbitrage que `/refresh` vs `/fintable-sync`).
+> **21 tests, 7 perturbations, 7 rouges.**
+> ⚠️ **DEUX GESTES DE MARC RESTENT**, sinon la route n'existe pas et CarAI dit « non configuré » :
+> poser `FINANCEAI_VEHICULE_TOKEN` (≥ 16 caractères) sur le PC qui fait tourner le serveur MCP, la
+> même valeur côté CarAI sur Vercel, puis **redémarrer le serveur MCP**.
+> ⚠️ **Leçon payée** : ma fixture de test portait `id: 'd1'` — un id de PERSONA DE TEST que le store
+> PURGE à la lecture. `store.get()` rendait `debts: []` et la route répondait 404 sur une fixture qui
+> « avait » une dette. Détail et portée dans `docs/CONVENTIONS.md`
+> (`UNE-FIXTURE-DONT-L-ID-EST-UN-ID-DE-PERSONA-EST-UNE-FIXTURE-VIDE`).
+> ⚠️ **Revue de sécurité passée sur le diff — UN correctif, UN routage.** Aucun 🔴, aucun 🟠.
+> • **Corrigé** : le log de démarrage interpolait le NOM de la dette EN CLAIR, alors que le fichier
+>   voisin (`mcp/bootstrap.ts`) porte la convention `[MCP-CLOUDRUN-DEPLOY-LOGS]` et masque l'email
+>   Drive au domaine seul. Il dit maintenant seulement que la variable est POSÉE. Garde neuve :
+>   `tests/mcp/logDemarrageSansIdentifiant.test.ts` (2 perturbations, 2 rouges séparés).
+>   Aucun test ne lisait ce fichier — un log n'est le sujet d'aucun test, d'où le corollaire dans
+>   `docs/CONVENTIONS.md`.
+> • **Routé, PAS corrigé** : `err.message` brut rendu à l'appelant authentifié. La ligne est
+>   identique au caractère près dans les QUATRE routes du fichier — préexistant, et durcir la seule
+>   route du jour créerait l'incohérence inverse. BACKLOG `[MCP-HTTP-ERR-MESSAGE]`.
+>
+> ## ✅ Session 2026-09-15 — « beaucoup trop de doublons » : mesuré, puis corrigé
+> Ticket 🔧 `[TX-DUPLICATES-BRUIT]`, **livré** (PR #966).
+> Mesuré sur **321 transactions réelles** (01/07 → 14/09, `scripts/mesureDoublons.ts`, committé) :
+> à 3 j de tolérance, **3 groupes sur 10** étaient des COLLISIONS DE MONTANT — une dépense à montant rond
+> groupé avec un paiement de carte ET un Interac. Cause : `findDuplicateGroups` ignore le marchand
+> PAR DÉCISION ÉCRITE (pour attraper les doublons à deux sources) — raisonnement juste, mais le
+> signal était JETÉ au lieu d'être rétrogradé.
+> ✅ **Livré** : le marchand reste hors du REGROUPEMENT et sert au CLASSEMENT (`confiance`
+> haute/moyenne/faible) ; tri par confiance avant montant ; seuls `haute`/`moyenne` pré-cochés ; les
+> `faible` restent listés, marqués « marchands différents ». Plus un **badge « N détecté(s) » sur
+> l'en-tête REPLIÉ** — Marc voit ses doublons « dans ma liste », donc rien ne l'invitait à ouvrir le
+> panneau. 12 gardes, **8 perturbations séparées**, chacune ne rougissant que sa cible.
+> ⚠️ **2ᵉ passe, imposée par le panel de revue APRÈS gate ET CI verts** : la clé marchand gardait les
+> DEUX premiers jetons, or `Interac e-Transfer to /<prénom> /` et `Bill payment - Hydro` mettent le
+> bénéficiaire en TROISIÈME → `interac e` / `bill payment` pour TOUT LE MONDE, donc deux virements
+> RÉELS et distincts au même montant le même jour ressortaient `haute` et **pré-cochés**. Corrigé en
+> retirant les jetons de CANAL avant la troncature (même geste que pour `GOOGLE *`) ; clé vide =
+> `faible`. Renommée `cleMarchandPourConfiance` — un `merchantKey` au contrat DIFFÉRENT existait déjà
+> dans `merchantProfile.ts`. Badge et panneau lisent désormais la même `TOLERANCE_PAR_DEFAUT`, et le
+> badge ÉCRIT sa portée (« Même jour ») plutôt que de l'élargir (à ±1 j, deux achats récurrents
+> identiques deux jours de suite deviendraient pré-cochés).
+> ⚠️ **Toujours AUCUN marquage automatique, et c'est mesuré** : sur sept achats de métro identiques
+> du même jour, Marc a répondu **« 2 vrais achetés »** — 5 doublons sur 7, une proportion qu'aucune
+> heuristique ne devine. Ma question en clic proposait « 7 vrais » ou « 6 doublons » : les DEUX
+> étaient faux, et ma recommandation penchait vers le mauvais.
+> ⏳ **RESTE ouvert** : le détecteur exige le montant EXACT, donc il ne peut pas rapprocher deux
+> imports du même achat à des montants différents (le cas de `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`).
+> Élargir demande une mesure dédiée — à ouvrir si Marc constate qu'il en manque encore.
+> Ticket 🔴 `[TX-DUPLICATES-BRUIT]`, **mesuré, pas encore corrigé** (question en attente chez Marc).
+> Mesuré sur **321 transactions réelles** (01/07 → 14/09, via le MCP) avec
+> `scripts/mesureDoublons.ts` (committé) : le détecteur propose **10 lignes à tolérance 0**, dont
+> **3 groupes sur 10 sont des COLLISIONS DE MONTANT** à tolérance 3 (une dépense à montant rond ↔ un paiement
+> de carte ↔ un Interac). Cause : `findDuplicateGroups` **ignore le marchand par décision écrite**.
+> ⚠️ Le remède mesuré : un marchand NORMALISÉ agressivement retire les 5 collisions **sans perdre**
+> la paire cross-source `CHAINE 12345` ↔ `Chaine` (les deux → la même clé) — donc
+> l'intention d'origine de la décision est préservée. `marchandNormalise` est déjà écrit et mesuré
+> dans le script.
+> ⚠️⚠️ **NE RIEN MARQUER AUTOMATIQUEMENT** : le plus gros groupe est sept achats de métro identiques le
+> même jour — au prix d'un titre de métro, ce sont vraisemblablement sept TRAJETS RÉELS, et le
+> détecteur propose d'en effacer six. Tant que Marc n'a pas tranché « même marchand + même montant +
+> même jour = doublon ou répétition réelle ? », tout marquage auto détruirait de l'argent réel.
+> ⏳ **EN ATTENTE DE MARC** : cette question, plus de savoir s'il voit ses doublons DANS le panneau
+> (qui proposerait du faux) ou DANS sa liste (que le panneau ne propose jamais).
+
+> ## ✅ PR #964 FUSIONNÉE et EN LIGNE — et ce que §6 ne peut PAS vérifier d'ici
+> Fusionnée à 22:16 UTC (squash, `af7388b1`). **Déploiement Vercel vérifié** :
+> `dpl_fsb5tSyKwXtRnRxrf8HUVzUYeNPo`, cible `production`, état **READY** sur `af7388b1`.
+> ⚠️ **La seconde moitié de §6 (« contrôler l'effet sur la réponse réelle ») est IMPOSSIBLE depuis le
+> conteneur**, mesuré plutôt que supposé : `finance.hubperso.com`, `hubperso.com` et `vercel.com`
+> rendent tous **403 au CONNECT** (refus de politique du proxy) quand `api.github.com` rend 200 ;
+> et l'URL `*.vercel.app` est derrière la protection Vercel (`302` vers `sso-api`, y compris via
+> `web_fetch_vercel_url`). Détail et conduite à tenir : `CLAUDE.md` §6. **Ne pas la retenter à
+> l'aveugle** — vérifier la CRÉATION du déploiement, et router à Marc tout contrôle qui exige de LIRE
+> la réponse servie.
+
+> ## 🔴 Session 2026-09-14 (fin++) — « j'arrive pas à les marquer en doublon » : le bouton n'existait pas
+> Ticket 🔧 `[TX-SELECTION-SANS-ACTION]`, **livré** (PR #964).
+> ✅ **Marc avait raison, et ce n'était pas une maladresse.** Recensé dans le code : le SEUL point
+> d'entrée vers `isDuplicate` était `DuplicatesPanel`, qui ne rend QUE les groupes trouvés par
+> `findDuplicateGroups`. Ses 44 lignes en devise étrangère (montants en devise d'origine étiquetés CAD,
+> `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`) sont le doublon de **rien** — donc inatteignables, pour
+> la CLASSE entière « ligne unique au montant faux ». Le seul levier restant était le ⇄ « virement »,
+> qui neutralise bien mais **étiquette une vraie dépense en virement interne**, × 44 clics.
+> ✅ **Livré** : barre d'actions sur la sélection multiple (qui existait déjà et ne servait QU'à
+> re-catégoriser) → « N sélectionnée(s) » · « Sélectionner les N filtrées » · « Exclure des calculs »
+> · « Désélectionner ». 4 gardes, 3 perturbations séparées (chacune rougit UNIQUEMENT son test).
+> ⚠️ **L'ADR 0009 §3 n'a PAS été rouverte** — et c'est le point de la session. Elle diffère un outil
+> MCP d'écriture sur les transactions au motif que « le chemin sûr **existant** (marquer
+> `isDuplicate`) » suffit : ce repli était mesurément FERMÉ pour cette classe. J'allais demander à
+> Marc de rouvrir l'ADR ; inutile — `markTransactionsAsDuplicate` est PUR et prend n'importe quels
+> ids, il manquait 53 lignes de JSX. **Avant de réclamer un droit d'écriture, chercher le MUTATEUR
+> qui fait déjà le travail et regarder qui l'appelle.**
+> ⚠️ **« filtrées », pas « de la page »** : la case de l'en-tête ne couvre que `paginatedTransactions`
+> (50), et les 44 s'étalent au-delà — un bouton borné à la page n'aurait pas réglé le cas qui l'a
+> fait naître.
+> ⚠️ **Piège d'environnement** : `typecheck` rendait **26 erreurs** (champ `details` du contrat hub).
+> `git stash` → **26 sur `HEAD` aussi**, donc pas le lot. Cause : `package.json` épingle
+> `hub-contract#v1.3.0` et `node_modules` portait **1.2.0**, jamais réinstallé. `npm install` les a
+> toutes effacées. **Un re-pin n'est pas un re-pin tant que `npm install` n'a pas tourné** (la CI
+> fait `npm ci`, le conteneur non).
+> ⏳ **CE QUE J'ATTENDS DE MARC** : qu'il neutralise ses 44 lignes avec le nouveau bouton (procédure
+> pas-à-pas dans `docs/A_FAIRE_MOI.md`) — j'importe les bons montants (le montant facturé au lieu de
+> l'importé) dès qu'il le dit. Plus les 3 réglages du bail sur la dette auto (ci-dessous).
+
+> ## 🔴 Session 2026-09-14 (fin+) — l'auto de Marc est un BAIL, et le moteur refuse d'amortir un bail
+> Ticket 🟠 `[DETTE-AUTO-BAIL-PRETEUR]`.
+> ✅ **BLOCAGE 1 TRANCHÉ ET ÉCRIT le 2026-09-14** — Marc : « le bon prix est celui que je paie car
+> j'ai des offres en plus ». Donc le prélèvement réel. Total du bail = versements × durée,
+> davantage avec rachat à la résiduelle. `apply_debt` a écrit : solde **ancienne saisie → somme des versements restants**,
+> paiement **mensualité sous-estimée → mensualité réelle**, taux **→ 0 %**, prêteur renseigné (sauvegarde horodatée).
+> ⚠️ **Le 0 % est MESURÉ** : le moteur amortit tout solde actif sans égard au `kind`, et le solde
+> écrit est la somme des versements restants — qui contiennent déjà l'intérêt. Le taux du contrat
+> donneraient **environ 7 mois et ≈ 16 % de versements de trop** : **des milliers de dollars de
+> versements fantômes**. Suivre « modifie par rapport au contrat » à la lettre les aurait inventés.
+> ⚠️ **Le plus gros écart n'était pas celui qu'on cherchait** : `minimumPayment` était **plus de 4 fois trop bas** pour
+> une auto au prélèvement réel. Mesuré après écriture : patrimoine ≈ +1,3 %, cashflow mensuel
+> **≈ −35 %**. Sa capacité d'épargne projetée était nettement surévaluée.
+> ⚠️ **RESTE, et seulement dans l'écran** : type `auto-lease`, date de début, date de fin de terme
+> — `apply_debt` ne peut écrire aucun des trois. Et la **résiduelle** n'a
+> aucun champ dans le modèle.
+> ⏳ **Les 44 transactions en devise** : Marc a dit « je marque en doublon ». Le marquage n'est PAS
+> vérifiable depuis le MCP (`search_transactions` ne filtre ni n'expose `isDuplicate`) → attendre sa
+> confirmation AVANT d'importer les bons montants, sinon la dépense est doublée le temps du marquage.
+> Marc a envoyé le contrat (photo) et demandé « retrouve toutes les infos, stocke-les, mets tout à
+> jour ». **Rien n'a été écrit dans ses données** : deux faits bloquent, et aucun n'était connu quand
+> il a répondu au menu.
+> **Contrat LU et VÉRIFIÉ par l'arithmétique** (concessionnaire et date retirés) : coût capitalisé
+> [montant retiré], **versement avant taxes + taxes = versement au contrat**, terme **48 MOIS**, taux [retiré],
+> résiduelle et kilométrage retirés. Le terme en MOIS se PROUVE : sur la durée en semaines le versé
+> avant taxes colle à dépréciation + intérêt à **+0,4 %**, contre **+18,9 %** à
+> 60 mois. Une lecture d'image se vérifie par le calcul — ici ça a tranché une ambiguïté réelle.
+> ⚠️ **BLOCAGE 1 — le réel ne colle pas au contrat** : prélèvements mesurés **plus élevés**
+> qu'au contrat (**+7,4 %**). Le document s'intitule
+> « **Offre** de Location » : le bail signé a pu changer. Question posée, pas tranchée.
+> ⚠️ **BLOCAGE 2 — `KIND_AMORTISSANT['auto-lease'] = false`**, par décision ÉCRITE (« n'amortit pas un
+> SOLDE : bail, révolvant »). Sa demande reste légitime mais porte sur une autre grandeur —
+> **engagement restant** (versements restants × montant) ou **solde capitalisé qui descend vers la
+> RÉSIDUELLE**, jamais vers zéro. Les deux donnent un patrimoine net différent.
+> ⚠️ Sa saisie actuelle (montant et taux saisis) ne figure nulle part au contrat, et son bilan ne porte
+> **aucun véhicule à l'actif**. ⚠️ Et `apply_debt` (MCP) ne peut écrire ni `kind`, ni `startDate`, ni
+> `originalBalance`, ni `termEndDate` — exactement les champs réclamés (ils existent dans l'UI).
+> ⚠️ **Dépôt PUBLIC** : NIV, adresse, téléphone, n° de contrat et nom du vendeur délibérément NON
+> consignés — aucune valeur de calcul, et un dépôt public n'est pas un classeur.
+> ✅ Marc a par ailleurs autorisé la correction des 44 transactions en devise (« tu corriges
+> directement toi ») — mais **aucun outil MCP ne modifie ni ne supprime une transaction**, donc la
+> procédure en deux temps de `docs/A_FAIRE_MOI.md` reste la seule voie propre. Élargir le MCP est du
+> code, en attente de GO.
+
+> ## 🔴 Session 2026-09-14 (fin) — Fintable importe le montant en DEVISE D'ORIGINE : des dépenses fantômes (≈ +190 %)
+> Marc : « fintable a importé des reals comme des CAD ». **Confirmé par la mesure, sur ses VRAIES
+> données** (serveur MCP joignable, `search_transactions`), en appariant une à une ses transactions
+> d'un voyage à l'étranger à son relevé de carte — qui fait foi, lui, en CAD : **44 transactions,
+> des montants importés ≈ 2,9 fois le facturé (+189,6 %)**.
+> ⚠️ Le défaut va dans les **DEUX sens** : 39 lignes dans une devise faible surévaluées (ratio 3,567–3,624) et **5 lignes
+> USD SOUS-évaluées** (1,417–1,427). Décrire ça comme « ça gonfle les dépenses » serait déjà faux.
+> ⚠️ **Contrôle négatif trouvé dans les mêmes données** : trois marchands locaux
+> tombent au CENT près — conversion au terminal (DCC), donc facturés en CAD d'origine. Le défaut suit
+> la devise d'ORIGINE, pas le pays : c'est ce qui rend l'heuristique géographique inutilisable.
+> **Cause** : Fintable étiquette `currency: "CAD"` (la devise du COMPTE) sur un montant qui est dans
+> la devise de la TRANSACTION. Le filtre `tx.currency !== baseCurrency` du mapper est donc
+> structurellement aveugle — il lit l'étiquette, jamais la valeur, et n'a jamais tiré une seule fois.
+> **Aucun correctif par le payload n'est possible** : `FtRawTransaction` ne porte ni montant facturé,
+> ni devise d'origine, ni taux. Seule piste : recouper avec le **SOLDE du compte**, que Fintable donne
+> bien en CAD. Ticket 🔴 `[FINTABLE-MONTANT-EN-DEVISE-ORIGINALE]`, table de correction complète dans
+> `docs/A_FAIRE_MOI.md`.
+> ⚠️ **La donnée de Marc est fausse AUJOURD'HUI et je n'ai pas pu la réparer** : aucun outil MCP ne
+> modifie ni ne supprime une transaction (`apply_bank_statement` n'AJOUTE que, dédup sur
+> date+montant+marchand ⇒ ré-importer créerait un doublon). Le seul levier est `isDuplicate` (exclut
+> de TOUS les calculs), posé à la main dans l'écran Transactions. Migration de données réelles ⇒
+> **feu vert de Marc exigé**, demandé, pas encore obtenu.
+> ✅ **Paiement minimum de la carte connu** (réponse de Marc). Avec le taux déjà tranché (19,99 %),
+> les trois champs requis par `applyDebt` pour CRÉER la dette sont enfin réunis.
+> 🧭 **Demande neuve de Marc, NON CADRÉE** : que la dette auto (montant et taux saisis) démarre
+> pile à son premier paiement et décroisse à chaque virement le prêteur, dans le PASSÉ comme dans le
+> FUTUR de la courbe. **Mesuré avant de poser les questions** : 7 versements **hebdomadaires à
+> Prêteur Exemple**, de fin juillet à début septembre, précédés
+> de deux paiements au concessionnaire.
+> ⚠️ **Le mécanisme existe DÉJÀ et n'est pas câblé sur sa dette** : `Debt.startDate`,
+> `Debt.originalBalance`, `Debt.kind` et `Debt.termEndDate` sont tous saisissables dans
+> Réglages → Dettes, et `amortirDettePassee` reconstruit le solde mensuel du passé. Avant d'écrire une
+> ligne, vérifier si c'est une lacune de CONFIGURATION et non de code. ⚠️ Mais la moitié « décroît
+> avec chaque virement RÉEL » n'existe pas : le module reconstruit un échéancier THÉORIQUE
+> (`solde × (1+i) − paiement`), il ne lit aucune transaction.
+
+> ## 🟢 Session 2026-09-14 (suite) — LA cause des transactions de carte : un rôle SANS NOM débranche le compte
+> Marc, en fin de session : « j'ai toujours pas mes transactions des derniers jours avec ma carte de
+> crédit **et ça me demande encore de mettre la dette de carte de crédit dans dette mais je veux
+> pas** ». Les deux moitiés de sa phrase étaient LE MÊME défaut, et ce n'était PAS la bascule
+> globale diagnostiquée plus tôt : `toMapperRoles` (`browserSync.ts`) OMETTAIT de la table remise au
+> mapper tout rôle « Dette » au `debtName` vide → `roleOf` rendait `null` → compte classé **SANS
+> RÔLE** → 100 % de ses transactions jetées. MESURÉ sur la vraie chaîne : rôle Dette AVEC nom
+> → **5/5** importées ; SANS nom → **0/5**, identique à « aucun rôle du tout ».
+> ⚠️ Ce qui rendait le défaut introuvable : l'écran de configuration affichait « Dette (carte) ».
+> Marc voyait un rôle posé (il l'a dit : « le rôle était déjà posé ») pendant que le moteur voyait un
+> compte inconnu — et cherchait donc ailleurs.
+> **LIVRÉ** (`[FINTABLE-CARTE-SANS-DETTE]`) : un `debtName` vide est désormais un CHOIX complet —
+> « importe les transactions, ne touche à aucun solde ». Les deux orchestrateurs l'acceptent
+> (navigateur ET parseur serveur, sinon le cron refuserait une config que l'app juge valide), l'écran
+> nomme l'option (« — aucune : importer seulement les transactions — ») et ANNONCE la contrepartie
+> (patrimoine net qui ignore le solde dû). Deux tests de LIMITE se sont INVERSÉS au même endroit avec
+> leur histoire, au lieu d'être supprimés — dont un qui verrouillait le défaut en croyant garder une
+> protection (« le compte est signalé, pas avalé » : or « sans rôle » EST ce qui l'avalait).
+> ⚠️ **EN ATTENTE DE MARC** : il a choisi « créer la dette automatiquement » pour le solde de la
+> carte (contre ma recommandation, c'est son droit) — mais l'option ouvre une SOUS-question que mon
+> menu ne posait pas : Fintable ne fournit **ni le taux ni le paiement minimum**, et `applyDebt` exige
+> les deux pour CRÉER. Sa réponse suivante (« je vire souvent de l'argent dessus … avoir de l'argent
+> en rab ») ajoute un second obstacle MESURABLE : le mapper fait `Math.abs(solde)`, donc un solde en
+> CRÉDIT (de l'argent en trop sur la carte) deviendrait une DETTE du même montant. Détail dans
+> `docs/A_FAIRE_MOI.md`. Rien n'a été codé là-dessus.
+>
+> ✅ **PR #956 MERGÉE** (squash sur `main`, `e1b3afc5`) — **par Marc lui-même à 17:58 UTC**, pendant
+> que j'attendais le quota GraphQL pour la sortir du brouillon. Gate local vert avant le merge
+> (lint 0 erreur, **5 867 tests / 602 fichiers**, build OK) et **7/7 checks CI verts**.
+> **Déploiement Vercel VÉRIFIÉ** (§6 : ce lot change ce qui est servi) — `dpl_7cBueJV64rnu…`,
+> cible `production`, état **READY** sur `e1b3afc5` ; la production actuelle (`34639f03`, PR #957)
+> est elle aussi READY.
+> ⚠️ **1 h 34 d'attente pour rien, et la leçon est à moi** : le merge échouait en `405 … is still a
+> draft`, la sortie de brouillon est une mutation **GraphQL** au quota épuisé, et j'ai re-tenté cinq
+> fois sur 2 h sans jamais RELIRE l'état de la PR. Elle était fusionnée depuis la 2ᵉ tentative. Le
+> signal était pourtant passé sous les yeux : un `git push` de la même branche a répondu
+> `* [new branch]` — la branche distante avait été supprimée par le merge. Détail et règle dans
+> `docs/CONVENTIONS.md` (`UN-BLOCAGE-SUR-UNE-ACTION-N-EST-PAS-UNE-PREUVE-QUE-L-ACTION-EST-ENCORE-NECESSAIRE`).
+> ⚠️ **Résidu à nettoyer** : ce `push` a RESSUSCITÉ la branche `claude/fintable-carte-sans-dette`
+> avec un commit orphelin (`51102ca2`) qui affirme « PR #956 verte mais bloquée en brouillon » —
+> faux depuis 17:58. Elle n'a aucune PR et son contenu est superseded par la présente entrée.
+> **Supprimer la branche distante demande l'accord de Marc** (action destructive hors cycle), donc
+> elle est laissée en place et signalée ici.
+>
+> 🔴 **Trouvé en posant les questions, pas en lisant le code : le SIGNE du solde de carte est
+> peut-être inversé.** Marc, interrogé en clic : sur Fintable, devoir 500 $ s'affiche **`-500`**. Or
+> `mapSnapshot.ts` porte `const owed = Math.abs(account.balance)` et commente « un solde négatif
+> signifie un crédit en ta faveur » — l'inverse. Si c'est confirmé : un solde en CRÉDIT (`+200`)
+> devient une **dette fantôme de 200 $ sans le moindre avertissement** (patrimoine net faux de 400 $),
+> pendant que l'avertissement « crédit en ta faveur » se déclenche sur le cas NOMINAL à chaque passe.
+> `Math.abs` sauvait la grandeur du cas courant **par accident**, ce qui rendait l'hypothèse
+> infalsifiable. ⚠️ `[À vérifier]` — Marc décrit l'ÉCRAN, l'API est lue telle quelle par `decode.ts`
+> mais les deux n'ont jamais été comparés. Ticket 🔴 `[FINTABLE-SOLDE-CARTE-SIGNE-INVERSE]`, étape 1 =
+> publier le SIGNE (jamais le montant) dans le rapport de synchro. Aujourd'hui **inatteignable pour
+> Marc** : aucune de ses cartes n'a de `debtName`.
+> 🧭 **`[FINTABLE-CARTE-DETTE-AUTO]` a maintenant un PLAN** (`docs/A_FAIRE_MOI.md`), en attente du GO.
+> Marc a choisi que le surplus de carte **compte comme des liquidités** — donc la carte devient un
+> compte à solde SIGNÉ dont les deux moitiés vont dans deux registres mutuellement exclusifs. Obstacle
+> mesuré : `applyCashBalance` REFUSE une cible négative et rejette alors le payload entier. Il manque
+> encore **un seul chiffre** : le paiement minimum.
+
+> ## 🟢 Session 2026-09-14 — « je reçois pas les transactions de carte de crédit » : CAUSE TROUVÉE ET MESURÉE
+> Marc, 2026-09-14. Son dry-run prouve que **Fintable LIVRE 293 transactions** pour la carte de crédit
+> (fenêtre 2026-06-16 → 2026-09-10) : le blocage est chez nous, en aval. **Cause** : la bascule
+> anti-doublon (`deriveCutoverDate`) est GLOBALE — « la transaction la plus récente, tous comptes
+> confondus ». Le compte chèque poste le jour même et avance la bascule chaque jour ; la carte poste
+> avec quelques jours de retard (`pending: false` FORCÉ par contrat ⇒ seules les transactions POSTÉES
+> sont exposées) → elle arrive toujours derrière et `tx.date <= transactionsAfter` la jette. **Chaque
+> jour, indéfiniment.** MESURÉ sur 12 passes simulées : **12/12 chèque reçues, 0/9 carte** ; contrôle
+> négatif à décalage NUL : **12/12 carte reçues**. Ticket 🔴 `[FINTABLE-BASCULE-GLOBALE-JETTE-LE-COMPTE-LENT]`
+> au `BACKLOG.md` — correctif proposé (bascule PAR COMPTE, la donnée existe déjà via
+> `Transaction.accountName`) **EN ATTENTE DU GO de Marc** : money-critical, touche les DEUX
+> orchestrateurs.
+> ⚠️ Le rattrapage `[FINTABLE-BACKFILL-HISTORY]` ne referme rien durablement : dès la passe suivante
+> la carte se refait jeter. ⚠️ L'avertissement « N transactions plus anciennes que la bascule » parlait
+> chaque jour — mais propose un remède PONCTUEL à un défaut PERMANENT.
+> **LIVRÉ dans la foulée** — `[FINTABLE-DEBTNAME-AUTO]` (demande Marc : « je veux pas avoir à donner
+> exactement le nom dans dette, ça devrait être automatique ») : le nom de dette d'un compte carte se
+> CHOISIT désormais dans la liste des dettes réelles et est PRÉ-SÉLECTIONNÉ depuis le libellé du
+> compte (`services/fintable/suggestDebtName.ts`, pur et timide — `null` sur une égalité de score).
+> Un `debtName` hérité qui ne désigne plus rien reste affiché marqué **INTROUVABLE**.
+> ⚠️ **Reste ouvert** : le jeton du chemin SERVEUR (secret `financeai-fintable-token`) rend **401** —
+> il porte encore un des jetons révoqués le 2026-09-05. Le chemin NAVIGATEUR n'est pas touché.
+> ✅ **PR #954 MERGÉE** (squash sur `main`) après ~1 h 45 de blocage du quota GraphQL de GitHub sur
+> la bascule brouillon→prêt — les lectures et les commentaires REST passaient tout du long, seule
+> l'écriture `draft: false` était refusée. Aucun correctif de code : juste une attente.
+>
+> ## 🟦 Session 2026-09-14 — Vérif mobile en direct + inventaire BACKLOG complet + 4 décisions Marc
+> Demande Marc : « va voir en direct sur mobile, fait-moi la liste de ce qu'il reste dans backlog et
+> pose toutes les questions pour decisions ». Réseau public bloqué depuis ce bac à sable (politique
+> réseau du conteneur) : le commit déployé (`06bef70`, confirmé identique à `origin/main`) a été
+> rejoué en LOCAL (`npm run dev` + Playwright Chromium, 390×844 tactile) — 4 captures de l'onglet
+> Futur mobile envoyées à Marc, rendu conforme. Inventaire : **113 tâches ouvertes** au BACKLOG,
+> réparties par section (détail dans le corps du message de session, pas recopié ici — un chiffre
+> qui varie à chaque push ROTE, cf §8 CLAUDE.md). ~30 questions de décision recensées
+> (`docs/A_FAIRE_MOI.md` + tickets 🧭 du BACKLOG) ; 4 posées en clic, **toutes répondues** :
+> - ✅ `[ENG-W5-BUSINESS-DIVORCE-NON-PARTAGE]` (Q16) → partager comme le reste (`× keep`) — **LIVRÉ
+>   cette session, PR #954, 2 commits** : `privateBusinessValue` `const`→`let` (valeur au bilan,
+>   écart 900 000 $ pile ramené à 225 000 $) ; puis, trouvé par 2 agents de revue INDÉPENDANTS avant
+>   merge, le dividende annuel de l'entreprise n'était PAS partagé non plus (`businessStates`, même
+>   patron que `rentalStates`) — le ménage restant touchait 100 % du dividende indéfiniment malgré
+>   une équité réduite. **Leçon** : `PARTAGER-LE-MONTANT-PAS-SES-REFLETS` a encore piégé un premier
+>   jet, deux fois en un an sur des actifs W5 différents (locatif en 2026-08, entreprise ici) — et un
+>   TROISIÈME cas du même patron (revenu locatif encaissé, pas seulement l'équité) a été TROUVÉ mais
+>   PAS corrigé, routé à `[ENG-DIVORCE-RENTAL-INCOME-UNSPLIT]`. Garde
+>   `divorceBusinessShare.test.ts` (6 cas), discriminants confirmés sur les deux commits.
+> - ✅ `[HYDRATATION-REFUS-TOUT-OU-RIEN]` → statu quo (tout-ou-rien conservé) — **fermé sans code**.
+> - ✅ `[ENG-LIQUIDDEBT-NEVER-REPAID]` → taux de découvert = carte de crédit ~19,99 % (choix Marc,
+>   PAS une source légale — à documenter en hypothèse assumée). **Reste un GO à obtenir** sur le
+>   plan d'implémentation (intérêt + remboursement prioritaire + alerte plan d'action) avant de
+>   toucher `cashflowAllocation.ts` (508 lignes, ordre des opérations = comportement) — plan posé
+>   dans `docs/A_FAIRE_MOI.md`.
+> - ✅ `[W5-RENTAL-DPA-ELECTION]` → option 3, élire AVEC vente et recapture. **Reste un GO** : ça
+>   exige de modéliser d'abord la vente d'un immeuble W5 (gain en capital, recapture) — chantier
+>   NEUF relevé de S à L, rien n'existe aujourd'hui pour ça. Plan en 5 étapes posé dans
+>   `docs/A_FAIRE_MOI.md`, alternative de repli proposée (option 1, zéro risque, en attendant).
+> **Suite proposée** : GO/NO-GO de Marc sur les deux plans ci-dessus ; sinon, prochaine session sur
+> les tickets déjà MESURÉS du BACKLOG qui n'attendent personne.
+
+> ## 🟢 Session 2026-09-03 — MARC A TRANCHÉ HUIT DÉCISIONS (+ deux sous-questions)
+> Toutes consignées dans `docs/A_FAIRE_MOI.md` (marquées ✅ RÉPONDU, énoncés d'origine conservés) et
+> converties en tickets actionnables dans `BACKLOG.md`. **Le backlog n'est plus bloqué.**
+> - ✅ `[ENG-T1213-NET-MONTHLY]` → retirer le bouton **+ forcer à OFF** — **LIVRÉ au lot 118**.
+> - ✅ `[IMMO-CLAMP-EQUITE-NEGATIVE]` → plancher retiré (les DEUX sites) — **LIVRÉ au lot 119**.
+> - ✅ `[BUDGET-EFFORT-NOMMER-LA-BASE]` → mention « de la paie déclarée » + infobulle — **LIVRÉ au lot 120**.
+> - ✅ `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` → pastille cliquable dans le résumé de Futur — **LIVRÉ au lot 122**.
+> - ✅ `[MIGRATE-GROSS-PROPOSER]` → avis au Profil + deux boutons, zéro écriture seule — **LIVRÉ au lot 121**.
+> - ✅ `[FMT-PROMPT-MIGRER]` → 17 sites migrés + arrondi abandonné + consentement corrigé — **LIVRÉ au lot 123**.
+> - ✅ Sans suite (décidé) : `[ENG-GOALS-HORS-TOTALEXPENSES]` (attendre le SWR) et
+>   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (ne rien changer).
+
+> ## 🟦 Session 2026-09-10/11 — Refonte Futur MOBILE : cadrée, lancée et TERMINÉE (`[FUTUR-MOBILE-PR0..5]`, 6/6 livrées)
+> Marc : « full refonte de l'onglet futur pour le téléphone, actuellement c'est inutilisable ». Cadrage
+> `/new-feature` (product-manager → architect), six maquettes 390×844 publiées
+> (https://claude.ai/code/artifact/260843dd-1ee9-4a39-b1cb-ce4095c328ec — valeurs d'EXEMPLE), seize questions posées
+> et TOUTES répondues : direction A (courbe d'abord, sous-onglets conservés), en-tête compact, **horizon complet**
+> (pas de fenêtre mobile, contre ma reco), période en `<select>` natif, courbe avant les KPI, tiroir « Séries »,
+> feuille du jour aux 3/4, curseur + champ numérique, CTA « Recalculer » collant, amorçage en puces, **zéro changement
+> desktop**, six PR incrémentales filet d'abord, captures 390×844 dans chaque PR. Verrouillé dans
+> `docs/adr/0016-refonte-futur-mobile.md`, tickets `[FUTUR-MOBILE-PR0..5]` dans `BACKLOG.md`.
+> **PR0 livrée** : projet Playwright `mobile-chrome` (specs « *Mobile* » seulement), `e2e/futureMobileFilet.spec.ts`
+> (4 sous-onglets au tap et au clavier, `scrollWidth ≤ 390` partout — la prédiction de débordement de la table de
+> `StrategyOptimizerPanel` est RÉFUTÉE par la mesure —, cliquet des cibles < 44 px mesuré à **93** sur tout `<main>`,
+> par axe : 65 dans les panneaux + 7 hors panneau × 4 sous-onglets).
+> ⚠️ Archi retenue : adaptation EN PLACE avec composants-feuilles purs ; PAS de coquille `FutureMobile.tsx` (elle
+> dupliquerait l'arbre d'état) ; `[GODFILE-FUTUREPROJECTION]` et `[A11Y-SUBTABS-FUTUR]` restent hors périmètre.
+> **Suite proposée** : `[FUTUR-MOBILE-PR1]` (extractions pures `seriesConfig` + `useHiddenSeries`, rendu byte-identique).
+> **PR1 livrée** : extractions pures `components/future/seriesConfig.tsx` (légende) et `hooks/useHiddenSeries.ts`
+> (séries masquées, même clé localStorage) — copié-collé strict, rendu bit-identique, 19/19 tests `FutureProjection.*`
+> rejoués verts. **Suite proposée** : `[FUTUR-MOBILE-PR2]` (en-tête compact, `<select>` de période, courbe avant KPI).
+> **PR2 livrée** : écran Projection mobile — en-tête compact, `FuturePeriodSelector` (nouveau, `components/future/FuturePeriodSelector.tsx`) en `<select>` natif sur mobile (desktop garde ses boutons byte-identiques), courbe avant les KPI sur mobile (desktop inchangé). Horizon INTACT (décision Marc) : garde money-critical dédiée (`e2e/futureMobileProjectionScreen.spec.ts`) prouvant le patrimoine affiché identique à 390 px et 1440 px sur la même page. Cliquet des cibles < 44 px : 93 → 92. **Suite proposée** : `[FUTUR-MOBILE-PR3]` (tiroir « Séries » replié sur mobile).
+> **PR3 livrée** : tiroir « Séries » (`components/future/FutureLegendDrawer.tsx`, neuf) — fermé par défaut sur mobile, compte et badge « Tout réafficher » lisibles sans l'ouvrir, chips 44×44 ; desktop légende inline inchangée. Bug de bouton imbriqué (HTML invalide) trouvé et corrigé avant tout commit. Cliquet des cibles < 44 px : 92 → 76. **Suite proposée** : `[FUTUR-MOBILE-PR4]` (Hypothèses mobile — curseur + champ numérique, ordre des sections, CTA Recalculer collant).
+> **PR4 livrée** : onglet Hypothèses mobile — `ReturnRateField` (`components/projection/ReturnRateField.tsx`,
+> neuf) = curseur + champ numérique synchronisés, pour les 5 taux (CELI, Non-Enregistré/REER, Crypto, Cash) et 8
+> facteurs macro ; `ProjectionControlsMobile.tsx` (neuf) réorganise en Mode → macro → rendements → 4 sections
+> repliées distinctes (inflation par poste, risques, rejeu krach, avancés) — desktop garde sa grille 4 colonnes
+> et sa section combinée « Risques & aléas » INCHANGÉES (`ProjectionControls.tsx` byte-identique sur ce chemin).
+> CTA « Recalculer la projection » collant au-dessus de la nav (compte les hypothèses modifiées depuis le
+> dernier calcul), clic = révèle + retourne à l'onglet Projection. `FluxMensuelsFields`/`ValeurMaxMaisonField`
+> extraits verbatim (`useTheoretical` voyage en PROP explicite). Bug de bouton imbriqué dans un `badge` de
+> `CollapsibleSection` trouvé et corrigé avant tout commit. Cliquet re-mesuré (10 nouveaux champs numériques
+> 64×22 px) → corrigé par `min-h-[44px]`, resté à 76.
+> **PR5 livrée — 6/6, la refonte mobile de l'onglet Futur est TERMINÉE** : amorçage (leviers `min-h-[44px]`, CTA
+> `min-h-[56px]`, lien « voir directement » `min-h-[44px]`), Plan d'action (« Pourquoi ? » `min-h-[44px]`, case
+> « Marquer comme fait » enveloppée dans une cible 44×44 sans grossir la case), Historique (pastilles + « Total »
+> `min-h-[44px]`) — tous MOBILE UNIQUEMENT, desktop byte-identique. Feuille du jour (`FutureDetailModal.tsx`) :
+> dialogue centré → feuille ancrée en bas (`h-[75vh]`) sur mobile, contenu condensé d'entrée (Veille/Lendemain,
+> `diffNW` déjà publié par le moteur, comptes, « N événements ce mois-ci ») + bouton « Détail complet » qui
+> déplie la liste complète des événements/catégories/transactions (desktop inchangé, toujours tout affiché).
+> Ratchet `[FUTUR-MOBILE-PR0]` re-mesuré et ABAISSÉ (dette réduite par ce lot) : 76 → 59. Détail complet dans
+> `docs/BACKLOG_ARCHIVE.md` (PR4 et PR5). `[FUTUR-MOBILE-RETURNRATEFIELD-DETTE]` et
+> `[A11Y-LEGEND-TOUTREAFFICHER-FOCUS-PERDU]` restent ouverts dans `BACKLOG.md`, hors périmètre de la refonte.
+
+> ## 🟦 Session 2026-09-07 — Lot 215 : les droits REER d'un couple ne meurent plus avec l'âge du premier conjoint (`[FISC-RRSP-ROOM-GATE-MENAGE]`, money-critical, fini)
+> Le gate des droits REER lisait `ctx.age` (premier conjoint) : à 72/57, le conjoint actif ne générait plus rien et le
+> pool était remis à zéro. Règle ARC : les droits naissent du revenu gagné à tout âge, et un 72+ cotise à un REER de
+> CONJOINT avec ses propres droits — donc le pool reste ouvert tant qu'UN conjoint a ≤ 71 ans. ⚠️ La prescription de
+> l'audit (« ≤ 71 par `roomUser` ») aurait retiré les droits du conjoint de 73 ans dans 60/73 : fausse sur la loi,
+> re-dérivée avant de coder. `ageCourantUtilisateur` hissé en source unique (FERR + gate). Mesuré (68/53, 25 ans,
+> DÉTERMINISTE) : droits à l'année 5 0 → 531 092 $, Σ cotisations REER 210 420 → 479 096 $, patrimoine final
+> 714 087 → 713 043 $ (−1 044 $) — cause : Σ PSV 316 184 → 202 735 $ (**−113 449 $ de récupération**), Σ FluxImpots
+> 2 040 → −32 180 $ (FERR obligatoire dès 72 ans sur des cotisations faites à 68–75 ans). ⚠️ Mes premiers chiffres
+> (533 978 $, −10 046 $) étaient en Monte Carlo graine 0 sans le dire — le projection-validator l'a vu ; 60/73 et 55/55 bit-identiques ; aucun golden ne bouge (aucune fixture ne
+> saturait). Gardes : +6 unitaires, +1 fichier de chaîne sur `REERMax − REER` ; 2 perturbations rouges. Résiduel routé
+> (`[REER-CONJOINT-ATTRIBUTION-72]`, reclassé MOYEN par la revue : ≈ +13,8 k$ surévalués sur la fixture, estimation
+> d'agent à re-mesurer) + deux pré-existants trouvés par la revue fiscale : loyer BRUT dans le revenu gagné
+> (`[RRSP-EARNED-INCOME-LOYER-BRUT]`), `age || 30` pour un user0 sans âge (`[AGE-USER0-SANS-AGE-VAUT-30]`), et deux du projection-validator : l'allocateur cotise à 72+ en détruisant
+> 113 449 $ de PSV (`[ALLOC-REER-72-RECUPERATION-PSV]`, 🧭 fonction objectif) et une croissance REER publiée le mois
+> où le solde tombe à 0 (`[REER-GROWTH-FANTOME-MOIS-VIDE]`). LIR 146(2)b.4 / 146(5.1) citées en §7. Lot 214 : Vercel READY sur `f55a90cd`. Code servi → déploiement à vérifier.
+> **Tout le stock sans décision de l'audit est livré** : reste Q15, Q16 et les tickets 🧭.
+
+> ## 🟦 Session 2026-09-07 — Lot 214 : l'entreprise privée est enfin PUBLIÉE (`[ENG-W5-BUSINESS-NON-PUBLIE]` 🔴 + 2), sans déplacer un dollar
+> Le CRITIQUE de l'audit n°4 : la valeur d'une entreprise privée comptait dans `NetWorth` depuis le 2026-08-19 et
+> n'existait dans AUCUN champ publié — identité `NW = Σ actifs − dettes` fausse de 900 000 $ sur 100 % des mois de la
+> fixture, dent de scie au jour (mesurée **901 171 $** entre la veille et le dernier jour du mois), marche au raccord
+> passé→futur. Livré : champ `Entreprise` (stock) dans `chartData`, `NET_WORTH_DAILY_ASSETS`, `FIELD_KIND`, `CURVE_FIELDS`,
+> aire empilée + infobulle + table + drill-down ; le passé (`buildPastPrefix`, `dailyPastLedger`) porte la valeur
+> COURANTE, plate, calculée par la source unique `computePrivateBusinessValue` (extraite de `projection.ts`) ; les trois
+> harnais de conservation comptent le 9e actif et la fixture W5 passe à 900 000 $. La garde qui manquait est
+> STRUCTURELLE (`netWorthPublie.test.ts`) : chaque terme de `NET_WORTH_SIGN` a un champ publié (`Record<keyof
+> NetWorthParts, …>` → refus au typecheck), la liste quotidienne se DÉRIVE du sign-map, `CURVE_FIELDS` la contient.
+> `NetWorth` bit-identique avant/après. Cinq perturbations, dont la preuve que le harnais était AVEUGLE (fixture à 0
+> + champ absent → 22 verts). ⚠️ `bilanDuJour` lit la même liste que la recomposition : identité CIRCULAIRE pour un
+> actif absent — d'où la garde par la dent de scie (< 50 000 $). **Panel** : le registre MCP (`extractYearlySeries`) ne
+> sommait pas non plus → clé `entreprise` + garde ; ma garde `CURVE_FIELDS` lisait la source BRUTE (un commentaire la
+> satisfaisait — ma propre leçon, re-commise) → décommentée ; et un 🔴 PRÉ-EXISTANT rendu visible : **l'entreprise n'est
+> pas partagée au divorce** (mesuré : +900 000 $ de patrimoine final, chute identique avec ou sans) → décision Marc **Q16**. Lot 213 : Vercel READY sur `1030a2f9`. Code servi
+> → déploiement à vérifier. Reste : lot 215 (gate REER per-conjoint) et les tickets 🧭.
+
+> ## 🟦 Session 2026-09-07 — Lot 213 : les 16 correctifs XS/S SANS décision de l'audit n°4, livrés d'un coup
+> Marc absent (« fais tout ce que tu peux seul ») : partition du rapport §10, première tranche. Servi : trois cartes de
+> conseil IA (couple, immobilier, rééquilibrage) refusent en mode discret avec le même message (décision « masquer »
+> du 2026-09-05 étendue, pas une nouvelle décision) ; un solde/taux/minimum de dette VIDÉ est refusé à l'ajout et à
+> l'édition, `computeTotalDebt` journalise un non-fini au lieu de le taire, la simulation dit « — » au lieu de « 0,1
+> ans » (et « — » sans dette) ; un relevé ou une paie coupés par `max_tokens` lèvent `VisionTronqueeError` et l'écran dit
+> « trop long » au lieu de « aucune transaction reconnue », et une réponse REÇUE mais inexploitable (JSON cassé, `refusal`)
+> lève `VisionReponseInvalideError` au lieu de tomber dans « vérifie ton accès Internet » (jumelle trouvée par la revue) ; `dispatch` scrubbe le message d'exception ; prompt système : paliers
+> dérivés de `utils/tax.ts` ; `REAL_ESTATE_SALE_NET_FACTOR` nommé et `monthlyEvents.ts` au périmètre du ratchet
+> (7 clés) ; `_history` retiré de `categorizeBatch` ; `logError` sur 4 `catch` ; 2 `ink-500` → `ink-400` ; donut
+> `aria-hidden`. Tests : +32 cas / +6 fichiers, 9 perturbations nommées, chacune rouge là où attendu — et
+> `moneyConservation` reste VERT sous `computeTotalDebt` muet (il certifiait le silence ; c'est la nouvelle garde qui
+> discrimine). Code servi → déploiement à vérifier. Reste de l'audit : lot 214 (publier `Entreprise`), lot 215 (gate
+> REER per-conjoint), et les tickets 🧭.
+
+> ## 🟦 Session 2026-09-07 — Lot 212 (docs) : AUDIT FINANCIER passe n°4 — cœur sain, 233/239 corrections tiennent, un CRITIQUE par OMISSION
+> Marc (« je ne peux pas agir pour le moment, fais tout ce que tu peux seul, lance une grosse analyse, check tous les
+> problèmes corrigés, mets à jour la doc ») → panel de 11 agents sur `3f657d7d`, chaque finding relu au `fichier:ligne`,
+> chaque chiffre publié RE-MESURÉ par moi. Rapport : `docs/AUDIT_FINANCIER_2026-09-07.md`. Résultat : 0 écart fiscal de
+> valeur, conservation 0,02 $, sécurité 0 finding, 10/10 de juillet fermés, **233/239** corrections archivées encore en
+> place (1 régression mineure `PaireTexte`, 2 gardes disparues dont 1 supersession volontaire). MAIS : 🔴 la valeur
+> d'une **entreprise privée est dans `NetWorth` et publiée NULLE PART** (`NW − Σ actifs publiés + dettes` = 900 000 $
+> exactement, mesuré) ; 🟠 les **droits REER d'un couple sont fermés par l'âge du premier conjoint seul** (72/57 →
+> 0 $ + reset, mesuré) ; 🟠 solde de dette `NaN` accepté à l'édition et rabattu sur 0 sans trace (« Liberté dans
+> 0,1 ans ») ; 🟠 trois cartes de conseil hors de la décision « masquer » du 2026-09-05 ; 🟠 `stop_reason` jeté par
+> l'import Vision. 25 tickets au BACKLOG (section 🔬 en tête), Q15 posée (fonctions cœur en mode discret),
+> FISCAL_REFERENCE §1 requalifiée (15 % CONTESTÉ) + §9 (proxy 45 %, dividendes, PSV), comptes README/ARCHITECTURE/
+> PROJECTION rafraîchis, god-files re-mesurés. **Suite, sans Marc** : lot 213 = XS/S sans décision ; lot 214 = publier
+> `Entreprise` (ne déplace pas un dollar) ; lot 215 = gate REER per-conjoint (money-critical contenu, mesure avant/après).
+> Rien de servi ne change dans ce lot.
+
+> ## 🟦 Session 2026-09-06 — Lot 211 (docs) : le stock de tickets MESURÉS sans décision est épuisé — plan P6 posé à Marc
+> Après les lots 201–210 (PR #932 → #941, toutes mergées, Vercel READY sur chaque merge de code servi), il ne reste au
+> BACKLOG que des tickets qui attendent une DÉCISION (P1–P6, Q1–Q14, ESTATE-NPV ×3, `[ENG-RENTES…]` couplé à P5,
+> `[FISC-REEE-GRANT-CLAWBACK]` = plan P3, `[FISC-DEC-PSV…]` = Q11, `[A11Y-CTA-HORS-SCAN]`, `[DETTE-COULEURS-ADHOC]`),
+> une SOURCE inaccessible (`[FISC-RAMQ-COUPLE-CAP]`, `[FISC-FED-CREDITRATE-15]` — canada.ca / revenuquebec.ca /
+> laws-lois bloqués), des lots LARGES (T4, GODFILE ×3, CIX-*, `[CHART-COLOR-DUP]` re-mesuré M, `[PROJ-TAXPAID-SOLDE-AVRIL]`
+> qui touche une fonction objectif) ou des hypothèses notées pour ne pas être re-cherchées. `[FUTUR-ANNOTATIONS]` (A12
+> répondu) est le seul lot produit prêt : plan P6 / Q14 dans `docs/A_FAIRE_MOI.md`, pas codé sans OK. Rien de servi ne
+> change. Archive du lot 210. Reprise : lire `docs/A_FAIRE_MOI.md` après la ligne 1360 pour les réponses de Marc.
+
+> ## 🟦 Session 2026-09-06 — Lot 210 : un seul 15 % pour une seule grandeur légale (`[FISC-DON-FEDRATE-DUP]`, fini)
+> Le 1er palier fédéral du crédit pour dons et le taux des crédits non remboursables vivaient en deux copies de `0.15`.
+> La LIR 118.1(3) les définit par le même terme (« taux de base pour l'année ») : `DONATION_CREDIT_RATES.fed.first` lit
+> maintenant `FED_NONREFUNDABLE_RATE`, entrée de ratchet retirée, note en FISCAL_REFERENCE §10 (citation relayée, LIR
+> inaccessible depuis le conteneur). Garde +1 cas ; deux perturbations à gardes distinctes (égalité / ratchet). Valeur
+> inchangée : aucun golden ne bouge ; bundle équivalent, code servi touché → déploiement à vérifier. Quand
+> `[FISC-FED-CREDITRATE-15]` tranchera la valeur, les deux suivront d'un coup. Archive du lot 209.
+
+> ## 🟦 Session 2026-09-06 — Lot 209 : `[VISION-NO-RETRY]` caduc, mesuré sur le vrai SDK
+> Le ticket voulait un backoff applicatif sur les six one-shots et les deux appels Vision. Mesuré sur `@anthropic-ai/sdk`
+> avec `fetch` seul simulé : le client de `makeClient` réessaie déjà (`maxRetries = 2`, 408/409/429/5xx + panne réseau,
+> `retry-after` honoré, backoff 0,5 → 8 s, signal d'abandon respecté). Garde de 7 cas sur le vrai module
+> (`claudeSdkRetryDefaut.test.ts`), perturbation `maxRetries: 0` → 5 rouges. Découvert en chemin, NON corrigé :
+> `categorizeBatch` empile sa propre politique sur celle du SDK (`[AI-CATEGORIZE-DOUBLE-RETRY]`, hypothèse). Tests et docs
+> seuls : rien de servi ne change. Archive du lot 208.
+
+> ## 🟦 Session 2026-09-06 — Lot 208 : l'arbitre de contraste voit enfin la palette Tailwind par défaut (`[A11Y-CONTRAST-ANGLE-MORT-541]`, fini) + `[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]` fermé
+> 539 occurrences de la palette par défaut dans 70 fichiers n'étaient vues par aucune passe. Résolveur élargi depuis
+> `tailwindcss/colors`, deux autres angles morts de l'extracteur fermés en chemin (texte de survol non apparié, bouton
+> translucide au repos ignoré). Rejoué : 19 paires CTA (8 avant), passe texte neuve (0 offender) ; 6 boutons réels sous le
+> seuil dans 4 fichiers, corrigés par mesure (green-700/800, purple-700, indigo-700). Garde +3 cas, 4 perturbations.
+> Servi : couleurs de 4 boutons → déploiement à vérifier. Archive du lot 207.
+
+> ## 🟦 Session 2026-09-06 — Lot 207 : les âges-seuils restants ancrés, une constante PAR SENS (`[FISC-CONST-ANCHOR-DEBT]`, fini)
+> 11 sites / 4 modules, quatre nombres, SIX règles : `18` en portait trois (CELI/CELIAPP/REER, résidence PSV, cotisation RRQ),
+> `71` deux (fermeture CELIAPP ≠ REER→FERR). Six constantes nommées dans `utils/tax.ts` (+ `RRSP_TO_RRIF_CONVERSION_AGE`
+> importé), sourcées dans FISCAL_REFERENCE ; 7 entrées de ratchet résolues. Six perturbations → six rouges, dont trois
+> témoins ajoutés parce que les fixtures existantes étaient muettes (borne 71/72, relation natif/immigrant, espion moteur
+> sur la résidence PSV). Valeurs inchangées : bundle équivalent, mais code servi touché → déploiement à vérifier. Archive du
+> lot 205-206 (`[KNIP-UNUSED-EXPORTS-73]`).
+
+> ## 🟦 Session 2026-09-06 — Lot 206 : 234 types exportés inutilisés → 0 (`[KNIP-UNUSED-EXPORTS-73]`, fini)
+> Seconde moitié du triage knip, même méthode (relevé par site) : 219 déclarations dé-exportées dans 149 fichiers, 14 entrées
+> de barils retirées, 2 types morts supprimés (`FtEnvelope`, `StorageKey`). Un type dé-exporté dans une signature exportée
+> reste valide sans `declaration` (typecheck vert). `npm run knip` ne signale plus que 2 exports en double, délibérés (alias
+> de rôle `CATEGORIZE_MODEL_ID`, crochet `_…ForTests`). Types seuls : le bundle servi est identique — rien à vérifier.
+
+> ## 🟦 Session 2026-09-06 — Lot 205 : 80 exports inutilisés → 0 (`[KNIP-UNUSED-EXPORTS-73]`, exports livrés ; types restants)
+> `knip` rejoué avant de coder (80 exports, 234 types — le ticket disait 73 / 209). Triage par site : 69 `export` retirés
+> (utilisés seulement chez eux), 3 ré-exports de barils, 6 morts supprimés dont deux crochets de test jamais appelés et
+> `RRQ_PART2_MAX` (dérivée, formule gardée dans FISCAL_REFERENCE). `npm run knip` : 0 export inutilisé ; typecheck vert ;
+> lint 18 avertissements, identique. Servi : code de production touché (mot-clé `export` retiré, 5 fonctions mortes
+> supprimées) → déploiement à vérifier. Reste : 234 types (triage à part) et Q13 (knip en CI ?). Archive du lot 204.
+
+> ## 🟦 Session 2026-09-06 — Lot 204 : `[AI-ONESHOT-NO-CACHE]` caduc, mesuré contre la doc Anthropic
+> Le ticket voulait autoriser `cache_control` sur le prompt système des appels one-shot. Mesuré : ce prompt fait ≈ 221 tokens
+> (774 caractères, + 168/295 pour paie et relevé) ; la doc « Prompt caching » relayée le 2026-09-06 fixe le minimum cacheable à
+> 4 096 tokens pour Haiku 4.5 et 1 024 pour Sonnet 4.6, et dit qu'un prompt plus court est traité sans cache, sans erreur. Le
+> correctif prescrit serait un no-op silencieux : commentaire posé sur les signatures de `services/claude.ts`, aucune ligne de
+> comportement changée. Rien de servi ne change. Archive du lot 203.
+
+> ## 🟦 Session 2026-09-06 — Lot 203 : tests directs de `syncPush`/`syncPull` — l'alarme re-mesurée, le trou réel fermé (`[SYNC-PUSH-PULL-NO-UNIT-TEST]`)
+> « Zéro test direct » était vrai à la lettre et faux comme alarme : les suites d'intégration font tourner les vrais
+> modules (seule la frontière est simulée) — 89 % / 80 % de lignes mesurés. Ce qui manquait vraiment : le push AUTOMATIQUE
+> (`schedulePush`, debounce 8 s, conflit survenu pendant l'attente, saut « rien n'a changé »), la réentrance de `pushNow`,
+> les refus nommés, le chiffrement des clés qui échoue, et quatre filets du pull. 21 cas, 5 perturbations du source à
+> 1 rouge chacune. Tests seuls : rien de servi ne change. Archive du lot 202.
+
+> ## 🟦 Session 2026-09-06 — Lot 202 : le journal RAMQ/FSS publie total et part par adulte dans la MÊME unité (`[LOG-RAMQ-FSS-DEUX-UNITES-DANS-UNE-PHRASE]`) + `[A11Y-ADDSTOCKFORM-LABELS]` caduc
+> Le journal de décembre écrivait « X/an (Y/adulte) » avec X nominal et Y réel : la division invitée ne rendait pas le
+> nombre d'adultes dès que l'année est indexée (mesuré : 605 $ affiché pour 907 $ payé par adulte, facteur 1,5). Les deux
+> lignes nomment maintenant le compte et publient la part dans l'unité du total. Garde sur la RELATION (n × part = total =
+> `divers`), 2 perturbations aux signatures distinctes. `[A11Y-ADDSTOCKFORM-LABELS]` : déjà livré au lot 51 (#777) sans être
+> coché — fermé par une MESURE (7 champs par `getByLabelText`, perturbation rouge). Servi : texte du journal de décembre
+> (FutureDetailModal) → déploiement à vérifier. Archive du lot 201.
+
+> ## 🟦 Session 2026-09-06 — Lot 201 : libellés visibles et `aria-label` — aucune dérive, garde posée (`[A11Y-LABELS-REDONDANTS-NON-ASSOCIES]`, caduc)
+> Scan de `components/` : 26 sites / 9 fichiers, 20 paires identiques, 4 délibérément descriptives, 2 non comparables. La
+> précondition du ticket n'est pas remplie → balisage intact, garde de dérive livrée (`labelAriaCoherents.test.ts`, 2
+> perturbations rouges). Tests seuls : rien de servi ne change. Archive du lot 200.
+
+> ## 🟦 Session 2026-09-06 — Lot 200 : la moitié FERR du crédit de pension atteint l'impôt latent (`[FISC-LATENT-PENSION-CREDIT]`, fini)
+> L'objection du lot 86 était une UNITÉ (cumul année-à-date) ; la grandeur annuelle existait un module plus loin
+> (`taxJanuary.ferrGrossByUser`, fixé en janvier). Le moteur la retient (`ferrAnnualByUser`) et la passe à
+> `computeLatentTax` (`ferrAnnualPerUser`), déflatée comme la rente DB. Mesuré : +250,50 $ de dette latente en
+> moins pour un retraité 72+ sans rente DB (le crédit fédéral perdu sur la base), 0 $ avec une rente DB (plafond
+> saturé), patrimoine successoral inchangé. Inventaire du lot 86 inversé ; garde de câblage par espion (constant
+> dans l'année, ré-évalué en janvier). Servi : `ImpotLatent` affiché → déploiement à vérifier. Archive du lot 199.
+
+> ## 🟦 Session 2026-09-06 — Lot 199 : un booléen dans un montant est refusé, comme une chaîne (`[BACKUP-BOOLEEN-DANS-UN-MONTANT]`)
+> Le ticket disait « hypothèse, non mesurée ». Mesuré : `netSalary = true` → patrimoine successoral **−91,9 %**, 0 refus.
+> Fermé par le même arbitrage que les textes : `CHAMPS_BOOLEENS` dérivée du contrat (58 noms), du store et des états
+> mesurés (clés du `Record` `setupOptOut`, invisibles au scan des types) ; l'oubli coûte un faux refus bruyant attrapé
+> par la dérivation et le canari des personas. Test de limite inversé ; 7 gardes ; perturbations 4 et 6 rouges. Servi :
+> la garde tourne au boot, à la réhydratation et à l'import — un blob corrompu de cette façon est refusé au lieu de
+> fausser la projection → déploiement à vérifier. Archive du lot 198.
+
+> ## 🟦 Session 2026-09-06 — Lot 198 : le moteur répond « +100 $/mois d'épargne = +X $ à la fin » (`[BUDGET-SENSIBILITE-MOTEUR]`)
+> Coût mesuré avant de décider : un second scénario BASE déterministe = 17 à 30 ms, **+2,5 à 4,1 %** d'une projection de
+> production (MC 100) → publié. `ProjectionResult.savingsSensitivity` (mêmes stratégie/report que `resBase`, dépenses − 100),
+> `null` sous `onlyStratTypes` (goal seek, stress-test) ; en mode « dépenses théoriques » c'est `theoreticalExpenses` qui est
+> réduit (sinon delta nul crédible — perturbation mesurée). Budget LIT le champ (ligne sous « Impact à long terme » + carte du
+> contexte de chat), `null` → rien. Test d'inventaire du lot 89 INVERSÉ en place. Mesuré : +115 528 $ / +199 727 $ / +18 809 $
+> sur trois personas. Servi : Budget → déploiement à vérifier. Archive du lot 197.
+
+> ## 🟦 Session 2026-09-06 — Lot 197 : la garde de conservation du divorce voit une maison DÉTENUE (`[TEST-DIVORCE-SANS-IMMOBILIER]`)
+> Le ticket était ARCHIVÉ depuis #748 et encore ouvert au BACKLOG (doublon périmé) ; restait sa dernière moitié,
+> « passer la fixture aux gardes de conservation ». Fixture hissée en `tests/helpers/menageProprietaire.ts` (depuis
+> deux copies identiques) ; cinq tests dans `projection.divorceConservation` : avec une hypothèque, la reconstruction
+> du patrimoine change de formule (`DettesNonImmo`, pas `DetteTotale`) — la contre-épreuve naïve mesure l'écart
+> (= l'hypothèque, 343 736 $). Ratios au divorce : hypothèque 0,4987, hors immo 0,4926. Perturbations : 2 et 10
+> rouges. Tests seuls : rien de servi ne change. Archive du lot 196.
+
+> ## 🟦 Session 2026-09-06 — Lot 196 : le flux du compte courant est publié dans le futur (`[ENG-LIQUID-FLUX-FORM]`)
+> `NetTransferLiquid` valait 0 sur 361 points (deux accumulateurs marginaux) pendant que le solde bougeait — 355 mois
+> sur 360 en résiduel, pire 108 608 $. Désormais DÉRIVÉ du solde (`liquid − prevLiquid − growthLiquid`) : tout ce qui
+> a bougé hors intérêts, le sens que le passé donnait déjà au même champ. Après : 358/361 non nuls, résiduel 0 mois,
+> mois ordinaire == `NetSalary − Expenses − Σcotisations`. Quatre surfaces mesurées sur 8 personas (médiane du flux
+> « Cash » annuel 79 à 496 $ ; pics = FERR de janvier, balayage du mois 0 ; le plan d'action gagne une ligne « Cash »
+> dont le « pourquoi » existait déjà). Test de limite INVERSÉ en place ; `Liquidites` entre dans les deux gardes de
+> forme-flux. Servi : Futur (infobulle, détail, explications, plan d'action) → déploiement à vérifier.
+
+> ## 🟦 Session 2026-09-05 — Lot 195 : persona « Gilles, 71 ans », le ménage ACTIF qui décaisse (`[PERSONA-ACTIF-QUI-DECAISSE]`)
+> Huitième persona du mode test : célibataire de 71 ans, consultant à temps partiel jusqu'à 76 ans, maison payée,
+> REER ~698 k$, non-enregistré ~197 k$, déficit mensuel voulu — le minimum FERR (72 ans) tombe PENDANT qu'il
+> travaille. Garde par espion sur `processDecemberTaxFiling` (vrai moteur, vrai constructeur de paramètres) :
+> **4 décembres** « actif + retraits REER + non-enregistré » (2027-2030), **0** sur les sept autres personas —
+> le contrôle négatif du lot 87. Pins de compte 7 → 8 dans quatre suites, ids `gi-*` au registre du sanitizer.
+> Goldens déplacés : aucun (5 678 verts) — les suites qui bouclent sur les personas n'épinglent que des BORNES (fini, ∈ [0, 1], > 1 000 $), jamais une valeur ; +19 tests (3 de la garde + 16 itérations du nouveau persona dans les boucles existantes). ⚠️ Découvert en mesurant, NON corrigé : un ménage actif ne touche aucune
+> rente RRQ/PSV avant `targetAge`, même après l'âge maximal de report (70 / 72) → ticket
+> `[ENG-RENTES-ACTIF-APRES-AGE-MAX-REPORT]` (≈ 126 k$ bruts sur Gilles). Servi : le menu du mode test liste
+> le persona → déploiement à vérifier.
+
+> ## 🟦 Session 2026-09-05 — Lot 194 (DOC) : deux tickets fermés CADUCS après mesure
+> `[ENG-TTP-NEGATIF]` : le risque de libellé n'existe pas — 0 composant lit `totalTaxesPaid`, le MCP l'a
+> renommé `netTaxSettlements` (`[PROJ-TAXPAID-LABEL]`), le seul « impôt à vie » affiché est `lifetimeTax`
+> (impôt total modélisé) ; le fond reste dans `[PROJ-TAXPAID-SOLDE-AVRIL]`. `[A11Y-PRIVACY-ONBOARDING]` :
+> masquer les champs de l'onboarding serait inerte — `isPrivacyMode` n'est pas persisté et l'onboarding
+> n'est rendu qu'au premier lancement, sans relance : il ne peut jamais s'afficher en mode discret.
+> Archive du lot 193. Rien de servi ne change. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 193 : badge « Taux de change estimés » sur la surface fiscale (`[FX-BADGE-SURFACES-RESTANTES]`)
+> Re-recensé : la surface Futur nommée par le ticket était DÉJÀ couverte (`FutureKpiStrip` rend le badge) ;
+> restait `TaxCenter` — `<FxEstimateBadge />` posé à côté de « Invest. Non-Enregistrés » (montant et impact
+> fiscal convertis via `assetValueCad`). Trois gardes (USD + repli → badge ; CAD seul → aucun ; USD + taux
+> réel → aucun), perturbation (badge retiré) → 1 rouge, contrôles verts. ⚠️ Le badge lit le STORE et
+> `TaxCenter` reçoit `assets` en prop : le test pose les deux (en prod c'est le même store). Push sans
+> leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 192 : « Combiné marginal » lu du moteur, net d'abattement (`[FISC-UI-MARGINAL-ABATEMENT]`)
+> `TaxBracketViz.tsx` : `combinedMarginal = getMarginalRate(annualGrossIncome, year) × 100` (fédéral net de
+> l'abattement 16,5 % + QC, paliers indexés de l'année) au lieu de `fed + qc` brut — 100 k$ : 39,5 % → **36,1 %**
+> (3,38 pts, survendait le REER). `computeTaxBreakdown` lit désormais `calculateDetailedTax` (montants par
+> palier de la source unique) et ne garde que la mise en forme (bornes) ; les « X % marginal » par
+> juridiction restent le taux brut du palier — c'est le seul endroit où le brut est juste. Quatre gardes
+> (`taxBracketVizMarginalAbattement.test.tsx`) : rendu = moteur ≠ somme brute (anti-vacuité > 2 pts),
+> contrôle par juridiction, montants par palier == `calculateDetailedTax`, scan de source décommenté.
+> Perturbations SÉPARÉES : somme brute remise → 2 rouges ; boucle `× b.rate` recopiée → 1 rouge (le scan
+> seul — les montants sont égaux par construction, c'est la DÉRIVE future qu'il interdit). ⚠️ `innerHTML`
+> encode l'insécable en `&nbsp;` : un attendu composé avec `formatCAD` ne matche qu'après normalisation
+> des DEUX formes (leçon, variante). Docs : CHANGELOG, BACKLOG (+ archive du lot 191).
+
+> ## 🟦 Session 2026-09-05 — Lot 191 : assiette d'emploi bornée à 0 (`[FISC-PAYROLL-NEG-GROSS]`)
+> `utils/tax.ts` : `employmentBase = Math.max(0, …)` en UN point — les trois cotisations (RRQ, RQAP, AE)
+> héritent du clamp au lieu d'un `Math.max` recopié par cotisation (seule la RRQ l'avait, par son
+> exemption). Mesuré avant : brut −5 000 $ → `deductionsSource` −86,50 $ (net > brut). Trois gardes
+> (brut négatif ; `employmentIncome` négatif avec brut positif, impôt sur placement conservé ; contrôle
+> positif bit-identique), perturbation (clamp retiré) → 2 rouges. Impact nul à l'écran (filtré en
+> amont) : pas d'entrée CHANGELOG. Docs : FISCAL_REFERENCE (note sous AE), BACKLOG (+ archive du lot 190).
+> Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 190 : borne SCHL stricte à 1,5 M$ (`[SCHL-1500K-BOUNDARY]`)
+> `services/realEstate.ts` écrivait `<=` là où la règle SCHL dit « inférieur à 1 500 000 $ » — au prix
+> EXACT, mise de fonds minimale 125 000 $ au lieu de 300 000 $, prêt assurable et prime calculée. Quatre
+> sites alignés (le ticket en nommait trois ; `aboveMaxPrice` de la prime est le quatrième — recensé par
+> grep de la constante), deux pins qui ENCODAIENT le défaut inversés avec leur histoire, bornes
+> 1 499 999 / 1 500 000 / 1 500 001 + validation + prime. Perturbations SÉPARÉES : `<=` remis au minimum
+> → 3 rouges ; `>` remis à la prime → 1 rouge. FISCAL_REFERENCE §8 : le tableau disait déjà « ≥ 1,5 M$ →
+> 20 % » — note datée « le doc avait raison, le code non ». Push sans leçon nouvelle (classe connue : un
+> pin peut encoder le défaut ; le périmètre d'un ticket se recense).
+
+> ## 🟦 Session 2026-09-05 — Lot 189 (DOC) : le jumeau du 188 s'est révélé un TROU d'impôt — deux tickets appariés, plan P5 à valider
+> Coder `[IMMO-BUT-LOCATIF-INTERET-BRUT]` (déduire les intérêts du loyer d'un BUT immobilier, `accRentesYear`)
+> a donné un SIGNE inattendu : patrimoine −2 820 $ / −6 836 $ / −10 076 $ à 10/20/30 ans, impôt INCHANGÉ.
+> Expérience discriminante (revenu gagné laissé brut → résultats identiques à l'AVANT au dollar près) :
+> `accRentesYear` n'a AUCUN effet fiscal pour un ménage ACTIF — la branche active de `taxDecember.ts` §1
+> taxe `salaire + retraits REER` seulement, le loyer de but n'entre que dans la branche RETRAITÉE
+> (miroir de `[REER-ACTIF-NON-RECONCILIE]`). Mesuré en l'ajoutant (part égale par adulte) : impôt
+> **+63 242 $ / +156 559 $ / +264 356 $**, patrimoine **−76 038 $ / −224 099 $ / −436 909 $** (couple
+> actif, condo loué 1 500 $/mois). Code du jumeau RETIRÉ (livré seul, il ne fait que retirer des droits
+> REER : `CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`). Routé : `[IMMO-BUT-LOCATIF-LOYER-NON-IMPOSE-ACTIF]`
+> (ÉLEVÉ, nouveau) + jumeau apparié, plan **P5** dans A_FAIRE_MOI (lot money-critical avec re-base de
+> 7 fichiers de fixtures — porte de plan). Rien de servi ne change. Leçon dans CONVENTIONS.
+
+> ## 🟦 Session 2026-09-05 — Lot 188 : les intérêts hypothécaires d'un locatif W5 sont déduits de la base imposable (`[W5-RENTAL-INTERET-DPA]`, volet intérêts)
+> `applyW5Effects` imposait le NOI BRUT au proxy 45 % pendant que `processRentalMonth` sortait le service de
+> dette en dépense. Désormais : `rentalInterestOfMonth` (`rentalMonth.ts`, SOURCE UNIQUE, solde de début de
+> mois) → `rentalInterestParImmeuble(rentalStates)` passé dans le contexte W5 AVANT le mois locatif →
+> base imposable = NOI − intérêt, même base NETTE pour le revenu GAGNÉ (T4040) ; trésorerie inchangée ;
+> intérêts > NOI → perte déductible (impôt négatif au proxy). T4036 ligne 8710 / TP-128 RELAYÉS
+> (`EGRESS_BLOCKED`, canada.ca 403 depuis le conteneur). MESURÉ AVANT/APRÈS (couple 260 k$, plex 450 k$,
+> prêt 300 k$ à 5 %) : impôt −49 114 $ / −79 804 $ / −77 772 $ à 10/20/30 ans, patrimoine +61 791 $ /
+> +128 255 $ / +175 797 $ ; sans hypothèque 0 $ (contrôle). Gardes : 7 unitaires (module, contexte
+> absent = rétrocompat), 1 revenu gagné hypothéqué (delta = NOI − Σ `ImmoInterest` PUBLIÉ), 3 de câblage
+> par espion sur `applyW5Effects` (table passée == `ImmoInterest` du point, mois par mois, décroissante ;
+> deux immeubles = deux clés ; sans immeuble = table vide). Perturbations SÉPARÉES : argument retiré au
+> site d'appel → 4 rouges (câblage + hypothéqué, unitaires verts) ; module sourd → 7 rouges (unitaires +
+> hypothéqué, câblage vert). Fixture des cas d'ATTRIBUTION du revenu gagné passée à `mortgageBalance: 0`
+> (ils portaient un prêt inutile qui, déduction faite, retirait 14 859,52 $ de l'attendu). Garde de FORME
+> du proxy ré-ancrée sur `rentalNoiImposableMonthly`. Écran : la phrase du proxy dit « net des intérêts
+> hypothécaires ». ROUTÉ : volet DPA → `[W5-RENTAL-DPA-ELECTION]` (décision Marc, A_FAIRE_MOI) ; jumeau
+> du but immobilier locatif (loyer → `accRentesYear` brut d'intérêts) → `[IMMO-BUT-LOCATIF-INTERET-BRUT]`.
+> Docs : FISCAL_REFERENCE §6 (+§7 base nette), PROJECTION, CHANGELOG, BACKLOG (+ archive du lot 187),
+> A_FAIRE_MOI, CONVENTIONS (leçon : `totalTaxesPaid` ne règle pas la dernière année).
+
+> ## 🟦 Session 2026-09-05 — Lot 187 : la succession lit l'espérance de vie SAISIE, plus un 95 en dur (`[ESTATE-LIFEEXPECTANCY-95-DUR]`)
+> `estateCalculation.ts` posait `lifeExpectancy = 95` sous le MÊME NOM que la saisie et ne la lisait jamais
+> (l'entrée du ratchet le justifiait par ce nom — c'est ce qui masquait le no-op). `EstateCalcInputs.lifeExpectancy`
+> câblé depuis `retirementGoal.lifeExpectancy` (`projection.ts`) ; absent / non fini / ≤ 0 → `DEFAULT_LIFE_EXPECTANCY
+> = 90` (`modelAssumptions.ts`), SOURCE UNIQUE consommée aussi par `Retirement.tsx` et `RetirementSettingsCard.tsx`
+> (trois `?? 90` / `|| 90`) — le moteur et l'écran disent enfin le même nombre. Ratchet : entrée `95` retirée,
+> entrée `90` ajoutée. Gardes unitaires (absent ≠ 95 = le discriminant ; absent == 90 ; monotone 85 < 90 < 100 ;
+> ≤ âge final → 0 ; NaN/0/−5 → défaut) + `estateLifeExpectancyWiring.test.ts` (espion : 88 transmis, `undefined`
+> transmis quand absent ; chaîne : 100 ans > 85 ans en succession, patrimoine final IDENTIQUE). Six pins
+> FA-5/FA-8/annualisation de `estateCalculation.test.ts` comptaient « 95 − 65 = 30 ans » sur le défaut implicite :
+> la fixture porte désormais `lifeExpectancy: 95` EXPLICITEMENT (voir la leçon). « Re-baserait des goldens » = **3
+> assertions dans 2 fichiers** : divorce −79 923 $ (92 ans ; déterministe ET Monte Carlo, même écart — la VAN ne
+> dépend pas du tirage), dividende −113 910 $ (90 ans, borne 1 700 000 → 1 590 000), patrimoine final inchangé
+> partout. ⚠️ La 3ᵉ (MC) n'a PAS rougi au premier gate : même `it` que la déterministe, dont le `toBe` interrompt
+> le cas — trouvée par instrument posé AVANT la première assertion. Docs : FISCAL_REFERENCE §6, PROJECTION,
+> CHANGELOG, BACKLOG (+ archive du lot 186), CONVENTIONS (leçon : une formule épinglée sur un défaut IMPLICITE).
+
+> ## 🟦 Session 2026-09-05 — Lot 186 : le `title` d'un champ masqué est composé, pas écrasé (`[A11Y-PRIVACY-TITLE-CLOBBER]`)
+> `PrivateNumberInput` : le `title` devient « <title appelant> — Montant masqué », ou « Montant masqué » seul — la
+> porte qu'un appelant futur aurait franchie sans avertissement est fermée. Trois gardes (composé ;
+> contrôle sans title : pas de « undefined — » ; hors mode discret : title tel quel sur l'input),
+> perturbation (écrasement remis) → 1 rouge. Le second volet du ticket (« aucun indice visuel au
+> clavier ») est RE-MESURÉ caduc : le focus clavier révèle l'input (cas « Tab » existant, vert), le
+> bouton masqué n'est jamais figé sous le focus — la piste `aria-describedby` n'a plus d'objet, écrit
+> dans le test. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 185 : une seule écriture du prédicat « mode couple » (`[COUPLE-PREDICAT-COPIES]`)
+> Re-recensé par le MOTIF : neuf sites, pas six (`MissingDataBanner` en négation, `Budget` qui dérive
+> `user2`, `nomsConjoints` de `SelectProprietaire`), tous sur `isCoupleMode` (hissé au lot 180). Les
+> affichages du nom ne sont pas des prédicats et restent. Garde `couplePredicatSourceUnique.test.ts` :
+> scan décommenté de components/services/store/hooks/utils sur « `[1]` + `.name` + `.trim()` », source
+> unique exclue, six témoins retirés (anti-vacuité), trois affichages comme contre-témoins ; perturbation
+> (prédicat remis dans Transactions) → 1 rouge. 17 suites des composants touchés vertes (150 tests) —
+> comportement identique par construction (même définition : nom NON VIDE après trim). Pas d'entrée
+> CHANGELOG : rien ne change à l'écran. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 184 : persistance du stockage demandée au boot et diagnosticable (`[STORAGE-PERSIST-REQUEST]`)
+> `services/storagePersistence.ts` : `requestPersistentStorage()` (une fois, promesse mémoïsée, quatre issues
+> sans throw : accordée / refusée / non supportée / inconnue), `queryStoragePersisted()` (état RÉEL via
+> `persisted()`), `libellePersistance()` (la phrase dit ce que l'état IMPLIQUE : évictable ou non).
+> Appel `void requestPersistentStorage()` dans `useAppBootEffects` avant le boot Drive ; `SystemView`
+> relit l'état au montage (et au bouton Rafraîchir) et pousse une ligne `STORAGE:` (`warn` si refusée).
+> Trois gardes / trois perturbations SÉPARÉES : appel de boot retiré → le scan du hook seul ; ligne
+> retirée → les 3 cas SystemView ; mémo cassé → « une seule demande » seul. ⚠️ Leçon : un
+> `--force-with-lease` chaîné par `;` derrière un rebase interrompu a poussé `origin/main` sous le nom
+> de la branche (rattrapé par `--abort` + `rebase --onto`, arbre identique) — voir CONVENTIONS. ⚠️ Mon insertion a déplacé
+> la directive `eslint-disable-next-line exhaustive-deps` posée devant le `useMemo` de SystemView (lint :
+> directive orpheline + dépendance « inutile ») — remise devant son sujet. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 183 : `formatCAD(… || 0)` — le formateur reçoit la valeur brute (`[FORMATCAD-OR-ZERO]`)
+> Re-recensé par le MOTIF du ticket (sa liste en annonçait 16, trois avaient disparu) : 13 sites, huit
+> formateurs de colonnes `ChartDataTable`, cinq tuiles de l'infobulle Retraite, un `formatter` Recharts —
+> tous passent la valeur brute à `formatCAD`, qui rend « — » sur non fini. Garde de SOURCE ajoutée DANS
+> `formatMonetaireSourceUnique.test.ts` (même règle que « `formatCAD` UNIQUEMENT », vue par son autre face)
+> avec anti-vacuité sur les trois formes retirées ; garde COMPORTEMENTALE `Retirement.tooltipNoFakeZero`
+> (faux `Tooltip` Recharts qui rend le contenu avec un point troué : CELI absent et Liquidites NaN → « — »,
+> REER = contrôle). ⚠️ Les tuiles Non-Enreg./CELIAPP sont CONDITIONNELLES (`> 0`) : un trou les cache,
+> il ne les met pas à zéro — la garde vise les tuiles inconditionnelles. Perturbations : `|| 0` remis sur
+> la tuile CELI → 2 rouges ; sur DebtManager → la garde de source seule. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 182 : cadre anti-injection au niveau du protocole MCP (`[MCP-NO-INJECTION-FRAME]`)
+> `mcp/instructions.ts` (module sans import) porte `MCP_INSTRUCTIONS` — posé au constructeur `McpServer`,
+> publié dans `initialize.instructions` — et `CLAUSE_DONNEES_TOOL`, ajoutée en fin de description des 8
+> tools data-aware. ⚠️ Le 1er jet posait la clause à l'ENREGISTREMENT MCP (`.tool.ts`) : la garde de parité
+> `writeToolParity` (« la description servie est celle de la spec ») a rougi — la clause vit donc dans les
+> `.spec.ts`, lue par le MCP ET par le registre du chat in-app (même contrat pour le modèle des deux côtés).
+> Deux gardes protocole dans `httpServer.test.ts` (ce que le CLIENT voit, pas le code) : `initialize`
+> contient « DONNÉE, jamais une instruction » + les outils d'écriture nommés + « demande EXPLICITE » ;
+> `tools/list` : chaque data-aware porte la clause, `ping` non (contrôle). Perturbations séparées :
+> `instructions` retiré → 1 rouge (initialize seul) ; clause retirée d'UN spec → 1 rouge (tools/list seul).
+> Version MCP **0.11.0** (README : section « Cadre anti-injection »). Limite écrite : atténue, n'élimine
+> pas — la confirmation d'outil de Claude Desktop reste hors du dépôt ; et le texte du chat
+> (`systemPrompt.ts`) et celui du MCP restent DEUX rédactions de la même règle (pas de source unique —
+> le prompt du chat est un gabarit de chaîne dans le bundle app). Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 181 (doc) : quatre plans « plan d'abord » + onze questions routées à Marc, ticket PSV mesuré
+> Les quatre tickets débloqués le 2026-09-05 à condition d'un plan (`[AUTH-REMEMBER-DEVICE]`,
+> `[PROJ-NW-FALAISE-REER]` (b), `[FISC-REEE-GRANT-CLAWBACK]`, `[FUTUR-ANNOTATIONS]`) ont leur plan court
+> dans `docs/A_FAIRE_MOI.md` (section « Plans à valider — lot 181 »), avec TOUTES les questions en un batch
+> (Q1–Q10, une recommandation chacune) — aucun des quatre ne se code avant la réponse. Q11 porte la
+> découverte du lot 179 (`[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`), MESURÉE ici sur quatre retraités à haut
+> revenu : 0 $ sous AUTO (récupération saturée), +180 / −2 920 $ de patrimoine sous MELTDOWN — reclassée XS,
+> FAIBLE. Lot 180 : gate complet VERT **5 601 tests / 567 fichiers** (compte porté dans `CLAUDE.md`),
+> déployé READY sur Vercel (`34ac35a`). En attendant Marc : continuer les tickets MESURÉS qui n'attendent
+> personne. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 180 : le revenu de placement est imposé chez son DÉTENTEUR (`[FISC-SOLO-INVEST-SPLIT]`)
+> Décision Marc 12 (« mode couple prévu ») a débloqué le ticket, dont le remède prescrit est la
+> détention réelle — livré tel quel, `[Q-SOLO-SPLIT]` fermé sur cette base (à contester si Marc voulait
+> un autre partage). Helper partagé `estimateTaxableInvestmentIncomeByOwner` (`services/taxEstimate.ts`)
+> + `isCoupleMode` hissé en source unique (`services/couple/netWorthByOwner.ts`), consommés par
+> `TaxCenter` et `get_tax_situation` : `owner` user1/user2 → chez lui, `joint`/absent → moitié-moitié en
+> couple, hors couple tout à user1. Le MCP nomme la part d'un conjoint sans brut dans `perUserOmitted`
+> (montant + « détention réelle ») au lieu de la taire. Trois gardes (helper 7 cas, MCP 4, TaxCenter 2),
+> trois perturbations SÉPARÉES : helper aveugle à `owner` → 7 rouges sur les 3 fichiers ; ancien split
+> dans TaxCenter seul → 2 rouges (TaxCenter seul) ; ancien split dans le MCP seul → 2 rouges (MCP seul).
+> Contrôles : sans `owner`, couple à deux salaires = même moitié chacun ; solo = tout à user1 (inchangé,
+> le profil de test est en solo → 0 $ aujourd'hui, comme mesuré au ticket). ⚠️ Deux gardes de `silencesFakeZero`
+> ancraient la FORME de l'ancien code (`reason: 'brut annuel inconnu…'`, la déstructuration exacte du
+> filtre) et ont rougi sans que le fait défendu bouge — ré-ancrées sur le fait avec commentaire daté
+> (`UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME-QU-AVAIT-LE-CODE`, 3e et 4e occurrences). Découverte routée :
+> `[COUPLE-PREDICAT-COPIES]` (6 copies du prédicat couple, 3 formes). Docs : FISCAL_REFERENCE (assiette
+> placement), mcp/README, CHANGELOG, BACKLOG (+ archive lot 179), A_FAIRE_MOI. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 179 : le dépôt fiscal de décembre se fait en FIN de mois (`[FISC-DEC-FLUX-ASSIETTE-TIMING]`)
+> Décision Marc 15 (« corriger : fuite d'assiette réelle »). Le bloc `processDecemberTaxFiling` de
+> `projection.ts` est déplacé APRÈS la cascade d'allocation, le meltdown, l'immobilier et les objectifs
+> datés du même décembre (déplacement fait par le banc `scripts/inverserOrdreBoucle.py`, clef
+> `dec_fin_de_mois`, puis commenté) ; avant, janvier effaçait les flux REER de décembre sans qu'aucune
+> année ne les ait imposés. La garde d'ORDRE `engineOrder.test.ts` est INVERSÉE au même endroit avec son
+> histoire ; garde COMPORTEMENTALE neuve `decemberReerWithdrawalAssiette.test.ts` (retraité seul, but de
+> 60 000 $ tiré du REER en novembre vs décembre : même impôt à ±25 %, ratio mesuré 1,080 ; 0,0055 sur
+> l'ancien moteur — prouvé en rejouant le fichier sur la copie `HEAD~1` du moteur). **17 goldens
+> re-basés SCIEMMENT dans 7 fichiers**, chacun avec son sens mesuré avant/après (instrument par fichier,
+> pas par console — voir la leçon) : retraités (item2c, bracketRealIndex, meltdownDisplay, totalTaxesPaid,
+> divorce*) impôt ↑ / patrimoine ↓ ; salariés (returnProfile, divorceEstatePension « mensuel ») cotisations
+> de décembre déduites → patrimoine ↑. Banc : ttp +25 568 $ (retraités AUTO), +14 751 $ (MELTDOWN),
+> −2 991 $ (couple actif). ⚠️ Découverte ROUTÉE, non corrigée : le bloc de récupération PSV lit les mêmes
+> accumulateurs AVANT les producteurs (`[FISC-DEC-PSV-CLAWBACK-ASSIETTE-TIMING]`) ; le banc y est aveugle
+> (0 $ sur 5 fixtures sous le seuil PSV). Docs : FISCAL_REFERENCE §1 (calendrier), PROJECTION Phase 4,
+> CHANGELOG, BACKLOG (+ archive du lot 178), A_FAIRE_MOI, leçon dans CONVENTIONS.
+> Gate complet VERT : **5 588 tests / 565 fichiers**, exit 0 (arbre re-basé sur `main` byte-identique).
+
+> ## 🟦 Session 2026-09-05 — Lot 178 : après une séparation, les allocations se récupèrent sur le revenu du parent qui RESTE (`[ENG-DIVORCE-ALLOC-ASSIETTE]`)
+> Décision Marc 14 (« comme mesuré »). Une ligne dans `projection.ts` : `householdGross` suit
+> `soloHousehold`, comme `grossAnnaBaseAnnual` juste au-dessus et `taxFilers`. L'assertion
+> « div ≈ cpl / 2 » de `divorceEnfantsScenario` est RE-BASÉE sciemment avec son histoire (166 → 250 $ :
+> 98 400 $ seul < 150 000 $, plus de récupération ; le couple à 183 600 $ reste à 332 $), plus un
+> contrôle négatif de la RÈGLE — un solo à 168 000 $ reste récupéré sur son revenu (205 $, ni 250 ni 0),
+> alors qu'en couple tout était récupéré. Perturbations : ex remis dans l'assiette → 2 rouges ; solo
+> jamais récupéré → 1 rouge (le contrôle seul). Mesuré (routage coupé ↔ rétabli, même seed MC) :
+> patrimoine **+13 460 $ / +29 388 $** à 10/20 ans. FISCAL_REFERENCE §7 porte la règle et sa mesure.
+> Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 177 (doc) : quatre tickets fermés par les décisions du jour, archivés avec leur décision
+> `[PROFIL-SWITCH]` (décision 8 : un seul profil), `[SUBS-TAB]` volet emplacement (10 : la liste reste
+> dans Budget), `[IA-NAV-LABELS]` (6 : rail replié), et `[PROFIL-NOMMER-MARC]` — mon propre ticket
+> dérivé, CADUQUE après recensement : la bannière de `Layout` nomme les PERSONAS, `TestModePanel` et
+> `SavedProfilesCard` disent « tes vraies données » / « ta config actuelle » ; aucun écran ne désigne
+> le profil courant par un nom générique, donc rien à renommer (une pastille « Profil : Marc » serait
+> une fonctionnalité neuve, non demandée). `[PURGE-TOAST-UX]` (lot 176) déménagé à l'archive. Rien de
+> servi ne change. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 176 : la purge d'artefacts au pull Drive prévient par un toast (`[PURGE-TOAST-UX]`)
+> Décision Marc 11 (OUI). Un AVIS est un événement, pas un état : canal distinct de `SyncStatus`
+> dans `syncStatusStore` (racine du graphe, 0 dep) — `emitSyncNotice` côté service, `subscribeSyncNotice`
+> exporté par le barrel ; `applyPulledPayload` émet à côté de son `logError` (phrase sans montant, rien
+> à masquer) ; `useAppBootEffects` s'abonne AVANT `runBootSync` (un avis sans abonné est perdu, pas de
+> file) et rend le toast, désabonné au démontage. Aucun module sync* n'importe un composant. Garde à
+> trois étages : canal (abonné/désabonné), émission sur le VRAI orchestrateur (harnais du flow test :
+> payload Drive pollué → 1 avis + restauration désinfectée ; payload propre → 0 avis, contrôle),
+> câblage du boot lu en source décommentée (ordre abonnement < premier pull, rappel → showToast,
+> désabonnement). Perturbations : émission retirée → 1 rouge (le contrôle « payload propre » reste vert,
+> par conception) ; abonnement retiré → 1 rouge.
+> Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 175 : en mode discret, le diagnostic IA du Budget ne part plus (`[PRIVACY-CONTEXTE-IA]`)
+> Décision Marc 13 (MASQUER). Recensé : le CHAT était déjà couvert — publisher purgé en mode discret
+> + chokepoint d'envoi qui refuse la ligne de contexte (finding #490, test existant) ; les quatre
+> cartes `MONTANT-HORS-ECRAN` de `Budget.tsx` ne partaient donc jamais. Le trou était le DIAGNOSTIC
+> (`BudgetAiModal`) : prompt aux montants en clair, envoyé mode discret ou pas. Livré : garde à
+> l'ÉGRESS dans le modal (le prompt ne se construit pas, message affiché) + refus à l'OUVREUR
+> (`handleAiDiagnosis`, toast) — un seul texte exporté (`MESSAGE_DIAGNOSTIC_MODE_DISCRET`). Le
+> jeton `MONTANT-HORS-ECRAN` de la garde de vie privée est requalifié : il ne dispense pas du mode
+> discret, il déclare un canal gaté EN AMONT et PROUVÉ (deux tests nommés). Gardes : 2 par étage,
+> chacune avec son contrôle « mode normal → le diagnostic part » (sans lui, « pas appelé » serait
+> vrai d'un espion jamais câblé). Perturbations : garde d'égress retirée → 1 rouge ; garde de
+> l'ouvreur retirée → 1 rouge. Autres surfaces IA (catégorisation, rééquilibrage, optimisation
+> couple, import) : HORS ticket, non recensées ici — à traiter si Marc le demande. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 174 : le grand livre exclut les positifs hors revenu, et les NOMME (`[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]`)
+> Décision Marc 2b. `buildMonthlyLedger` ne compte en revenu que `INCOME_CATEGORIES` — la règle du KPI
+> Revenus, source unique — et publie `entreesHorsRevenuRows` (par catégorie, « Non classées » pour
+> les statuts à classer) + `entreesHorsRevenuByMonth`. Le tableau du Budget gagne une section
+> « Entrées hors revenu (exclues du total et du solde) », ligne par ligne + total, en `PrivateAmount`.
+> Fin des deux « soldes du mois » différents côte à côte (KPI 6 000 $ / grand livre 6 700 $ mesurés).
+> ⚠️ Effet de bord ASSUMÉ : un remboursement REÇU (« Remboursement », lot 172) apparaît ici comme
+> entrée hors revenu — le grand livre montre les MOUVEMENTS, le crédit sur le poste vit dans les tuiles
+> et la parité (`isCreditBack`). Test de limite INVERSÉ (le « +50 à classer » n'est plus un revenu),
+> garde neuve avec l'invariant Σ positifs = revenu + hors revenu et l'égalité grand livre = KPI,
+> garde UI (tuile Revenus et « Total revenus » : le même 6 000 $ ; 700 $ nommés). Perturbations :
+> tout positif redevenu revenu → rouges attendus ; section retirée → rouge UI. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 173 : les impôts sortent des deux côtés de la comparaison budget↔réel, et la tuile le dit (`[BUDGET-IMPOTS-HORS-COMPARAISON]`)
+> Décision Marc 3a. Source unique `HORS_COMPARAISON_BUDGET = {Impôts}` dans `spendRules.ts` (le module
+> neutre partagé par `budget.ts` et `budgetSync.ts`). `computeBudgetParity` publie `totalSpent` HORS
+> impôts + `totalHorsComparaison` (les lignes restent listées parmi les orphelins : la parité informe,
+> elle ne compare pas). `computeMonthlyActualAverages` publie `expenseAvgHorsComparaison` +
+> `horsComparaisonAvg` en GARDANT `expenseAvg` entier — `TaxCenter` l'affiche « impôts inclus » et sa
+> phrase « mêmes chiffres que l'onglet Budget » est réécrite (elle serait devenue fausse :
+> `UN-LOT-QUI-CHANGE-CE-QU-UN-ECRAN-MONTRE-PERIME-CE-QU-IL-AFFIRME`) ; `financialSnapshot` ne lit que
+> le revenu. Tuiles Dépenses / Fin de mois / Restant : prévu ET réel sur l'assiette hors impôts, sublabel
+> « hors impôts (exclus : X $) » en `PrivateAmount`. Gardes : 3 parité, 2 moyennes (dont l'identité
+> `expenseAvg = horsComparaison + exclu`), 1 UI (réel 1 000 $ et non 1 700 $, phrase + montant).
+> Perturbations : ensemble vidé → 3 rouges (les gardes qui n'en dépendent pas restent vertes, par
+> conception) ; phrase retirée → 1 rouge. Le contexte de chat
+> (`totalSpent` de `chatViewDetail`) suit le réel affiché, donc hors impôts — même chiffre que l'écran.
+> Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 172 : un Interac REÇU importé devient « Remboursement », plus un revenu (`[TX-INTERAC-REMBOURSEMENT]`)
+> Décision Marc 1a. `categoryRules.ts` : la règle « VIREMENT INTERAC DE / E-TRANSFER RECU|RECEIVED »
+> passe de `Revenus divers` à `Remboursement` (+ graphie « E-TRANSFER FROM », qui rendait `null`), et
+> `Remboursement` entre dans `RULE_CATEGORIES` — donc dans l'allowlist IA, MCP et le menu de classement
+> par la MÊME source. Le mécanisme `CREDIT_BACK_CATEGORIES` (2026-07-31) est enfin ALIMENTÉ par la
+> prod : ses six tests unitaires fabriquaient la catégorie eux-mêmes (`UN-TROU-ENTRE-DEUX-MOITIES…`),
+> d'où la garde de CHAÎNE `interacRecuRemboursement.test.ts` (CSV brut → `parseBankCsv` → règles →
+> `computeIncomeBreakdown` / `computeMonthlyActualAverages`) : revenu 5 000 $ et non 5 300 $ (+5,7 %
+> de faux revenu sur la fixture ; un faux revenu récurrent chaque mois sur le corpus réel), dépenses 350 $ (le crédit ne réduit
+> que son poste), l'Interac ENVOYÉ reste une dépense « Autre ». Test de limite du corpus INVERSÉ avec
+> son histoire. Perturbation (règle remise sur `Revenus divers`) : 6 rouges, 56 verts. Non couvert,
+> délibérément : « e-Transfer to » (Interac envoyé, graphie anglaise) rend toujours `null` → IA ;
+> hors ticket. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 171 : le loyer net crée des droits REER chez son PROPRIÉTAIRE (`[FISC-RRSP-RENTAL-EARNED]`)
+> Décision Marc 5a. Nouveau module `services/projection/revenuGagnePartage.ts` (clé d'attribution :
+> `owner` optionnel `user1 | user2 | joint` sur `RentalProperty` et `RealEstateGoal`, absent = 50/50,
+> ménage solo/effondré → index 0). `applyW5Effects` RETOURNE le NOI mensuel par propriétaire (produit
+> avant janvier → tampon `grossIncomeEnAttenteByUser`) ; `processRealEstate` accumule
+> `rentalEarnedParProprietaire` (REQUIS dans `RealEstateState`, versé direct après le bloc de janvier).
+> Base = ce que le moteur impose (NOI W5, loyer indexé des buts) ; une perte locative réduit. UI :
+> `ui/SelectProprietaire.tsx` (source unique des libellés) posé dans `RentalPropertyPanel` (prop
+> `conjoints`) et `PropertyConfigurator` (bien loué seulement), jamais en solo. Gardes : 11 unitaires
+> (clé), 4 W5, 2 realEstateMonth, **9 par espion sur `processJanuaryReset`** (contrôle sans immeuble,
+> NOI ≠ loyer brut, perte, 50/50, but immobilier, résidence principale, solo), 7 UI. Six perturbations
+> nommées, chacune rouge SEULEMENT là où attendu (routage W5 → 5, routage buts → 2, base brute → 8,
+> 50/50 → 4, soloHousehold → 1, sélecteur en solo → 1). Mesuré : +10 753 / +31 703 / +56 558 $ (W5)
+> et +11 598 / +36 769 / +64 802 $ (but) à 10/20/30 ans sur droits SATURANTS, succession ↓ (plus de
+> REER à liquider), 0 $ sans immeuble ; et **0 $ à neuf points sur la 1re fixture**, où les droits ne
+> limitaient rien — le mécanisme n'est observable que là où il est limitant (leçon déjà indexée).
+> ⚠️ Un grep de fixtures par NOM DE CHAMP (`totalRentalIncome: 0`) a attrapé un cinquième site qui
+> n'était PAS un `RealEstateState` (`MonthlyOutputCtx` porte le même champ) : le compilateur l'a dit.
+> Push sans leçon nouvelle (variante d'homonymie déjà indexée).
+
+> ## 🟦 Session 2026-09-05 — Lot 170 : quatre règles fiscales ANCRÉES (doc + raisons du ratchet, code inchangé)
+> `[FISC-RAP-15ANS]` + `[FISC-RAP-GRACE-WINDOW]` (15 ans, début 2e année, fenêtre 2022-2025 → 5e
+> année — les quatre littéraux sourcés ENSEMBLE, sous-section « RAP — remboursement » en §7),
+> `[FISC-RRSP-LIMITS-PRE2024-DOC]` (14 plafonds 2010-2023 ajoutés à §7), `[FISC-LINE361-PERCONJOINT-
+> REDUC]` (réduction par conjoint sur le revenu familial : ligne ajoutée à la table ligne 361). Tout en
+> source RELAYÉE, écrite comme telle. **Le code était exact aux quatre endroits — il manquait la
+> protection, pas la valeur.** Raisons du ratchet fiscal mises à jour (plus de « non ancrée »). Doc +
+> commentaires seulement : rien de servi ne change. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 169 : la récupération du SRG d'un couple est 25 ¢/$ par adulte, pas 50 ¢
+> `[FISC-GIS-COUPLE-RATE]` → livré. Le taux célibataire était appliqué PAR ADULTE sur le revenu
+> COMBINÉ : SRG nul dès 15 888 $, seuil 29 760 $ mort. Nouvelle constante
+> `GIS_CLAWBACK_RATE_COUPLE_PER_ADULT` = 0,25 (source RELAYÉE, quatre sources cohérentes, table
+> Service Canada illisible d'ici — dit tel quel en FISCAL_REFERENCE §6.3). Mesuré (couple 66 ans,
+> 25 ans, constante basculée entre deux exécutions) : **+57 315 $** couple modeste (REER 150 k$),
+> **+3 075 $** couple 400 k$, **0 $** célibataire (contrôle). Gardes : pente couple = moitié de la
+> pente célibataire (RELATION, pas montant), 7 944 $/an à 15 888 $ (le chiffre du ticket), seuil
+> vivant, + garde de CHAÎNE au breakdown moteur ; perturbation (0,50 remis) → 4 rouges nommés.
+> Limite FA-11 conservée et re-chiffrée : marche de 42 $/mois au seuil couple (167 $ célibataire).
+> Lot 168 au gate : **zéro golden rouge — expliqué** (aucune fixture ne détient un REER à 94 ans),
+> couvert par le test inversé + la mesure. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 168 : le facteur FERR à 94 ans passe de 20,00 % à 18,79 %
+> `[FISC-RRIF-94-FACTOR]` → livré. La table prescrite ne rejoint le plateau qu'à 95 ans ; le 20 % à
+> 94 était le plateau un an trop tôt (CONTESTÉ depuis le 2026-08-06). Source RELAYÉE (4 tables 2026
+> concordantes ; officiels illisibles d'ici), écrite comme telle en FISCAL_REFERENCE §7. Mesuré en
+> process (couple 90 → 98) : **+1 367 $** de patrimoine final avec 500 k$ de REER à 94, **+4 778 $**
+> avec 1,5 M$, **0 $** sur un horizon qui n'atteint jamais 94 — ⚠️ ma 1re mesure (couple 62 → 102,
+> REER 900 k$) était MUETTE sur les 3 cas : le ménage était ruiné avant 94, REER vide, facteur sans
+> objet. Une perturbation muette accuse d'abord la fixture (classe déjà consignée). Le test « peaks at
+> age 94 at 20% » ÉPINGLAIT le défaut → inversé avec son histoire ; entrée du ratchet 0.2000 → 0.1879.
+> Push sans leçon nouvelle.
+
+> ## 🟢 Session 2026-09-05 — MARC A RÉPONDU À 17 QUESTIONS + recherche fiscale (lot 167, doc seulement)
+> Toutes consignées dans `docs/A_FAIRE_MOI.md` (✅ RÉPONDU, énoncés conservés) et reportées dans les
+> tickets BACKLOG (annotation « DÉCISION Marc 2026-09-05 »). Décisions : Interac reçu → Remboursement (a) ·
+> positifs orphelins EXCLUS nommés (b) · impôts hors comparaison des deux côtés (a) · falaise REER →
+> **plancher CELI (b)**, contre ma reco · loyer net → droits REER avec champ de propriété 50/50 (a) ·
+> rail de nav replié, ticket fermé · calibration net : rester au diagnostic · un SEUL profil réel « Marc »
+> (multi-profil caduque) · annotations Futur : TOUT, en bref, décochable · abonnements restent dans
+> Budget · toast de purge OUI · mode couple PRÉVU · mode discret → masquer aussi vers l'IA · divorce →
+> assiette du parent seul · décembre fiscal → CORRIGER · REEE clawback → GO (part subvention dérivée) ·
+> déco auto 8 h RETIRÉE avec « se souvenir de l'appareil ». Jetons Fintable révoqués (C1 fait).
+> **Recherche fiscale** : lecture de page bloquée PARTOUT (`EGRESS_BLOCKED`, y compris CFFP/CQFF/KPMG),
+> mais la recherche web répond → 9 items sourcés en « relayé » (tableau dans A_FAIRE_MOI) : B1 FERR 94 =
+> 18,79 % (écart confirmé), B2 SRG couple 1 $/4 $ combiné par conjoint (écart confirmé), B3 ligne 361
+> cohérente, B4 fédéral 14 % en 2026 + crédit compensatoire (écart confirmé, formule MANQUANTE), B5 loyer
+> net = revenu gagné, B6-B7 RAP exact, B8 REEE 35 ans après ouverture (décision 25 vs 35 à prendre),
+> B9 les 14 plafonds identiques. **Il ne manque plus que** : la formule du crédit compensatoire (B4) et la
+> décision B8 ; captures 7308(4)/SRG optionnelles. Marc : « tu pourras continuer tout ce qu'il manque ».
+> Nouveaux tickets : `[TX-INTERAC-REMBOURSEMENT]`, `[BUDGET-LEDGER-POSITIFS-EXCLUS-NOMMES]`,
+> `[BUDGET-IMPOTS-HORS-COMPARAISON]`, `[FUTUR-ANNOTATIONS]`, `[PROFIL-NOMMER-MARC]`.
+
+> ## 🟦 Session 2026-09-05 — Lot 166 : clôture du cycle des six décisions (doc seulement)
+> Les lots 160 à 165 sont TOUS mergés sur `main` et les déploiements Vercel de production sont
+> `READY` (vérifiés jusqu'au squash du lot 165, `f77917e`). Ménage BACKLOG : le bloc
+> `[ENG-FVI-EFFICIENCY-ESTATE]` déménagé vers l'archive (promesse « à la prochaine PR » tenue),
+> deux stubs 2026-08-21 retirés (leurs sections d'archive existaient déjà) et deux références
+> « PR à compléter au merge » complétées (#681, #680 — retrouvées par `git log --grep`).
+> ⚠️ Correction du lot 167 : « backlog restant entièrement gaté » était TROP FORT — il reste de la
+> dette technique, des god-files, de l'a11y et des gardes avançables sans Marc. Rien de servi ne
+> change dans ce lot.
+
+> ## 🟦 Session 2026-09-05 — Lot 165 : l'efficacité du FVI score l'impôt À VIE — LES SIX DÉCISIONS SONT LIVRÉES
+> `[ENG-FVI-EFFICIENCY-ESTATE]` → livré (option a). Le leakage de l'efficacité passe de l'impôt
+> d'HORIZON à `lifetimeTaxTotal` (source unique : réglé + dette d'horizon + successoral) ; le
+> clamp [0,1] reste (SCORE), `expertMetrics.taxLeakage` reste une MESURE d'horizon (contrat
+> distinct, écrit dans le code). ⚠️ Le « re-base FVI massif » annoncé par le ticket : RÉFUTÉ par
+> la mesure — AUCUN test n'épinglait un FVI calculé (zéro re-base ; 2e fois que l'alarme de coût
+> d'un ticket s'effondre au re-comptage). 2 tests neufs, rouges sous perturbation (retour à
+> l'horizon seul). ⚠️ Faute de procédure : lot codé PENDANT que le gate du lot 164 tournait —
+> le verdict de ce gate est réputé suspect, la CI de #895 (arbre exact) fait foi et le gate du
+> lot 165 couvre l'union. Push sans leçon nouvelle (classes déjà consignées).
+
+> ## 🟦 Session 2026-09-05 — Lot 164 : la croissance des immeubles locatifs se règle PAR immeuble
+> `[ENG-PROPGROWTH-CONFIG-DEAD]` → livré selon la décision (option a). `RentalProperty.
+> propertyGrowthRate?` (additif, zéro migration), semé dans `RentalState.growthRatePct` avec le
+> défaut NOMMÉ `DEFAULT_RENTAL_GROWTH_PCT` = 3 (écrit au semis, jamais un repli tardif — un 0
+> explicite reste 0, leçon ENG-PROPGROWTH-ZERO-INEXPRIMABLE appliquée aux locatifs).
+> `processRentalMonth` perd son paramètre config : le lecteur `effProj.propertyGrowthRate ?? 3`
+> est RETIRÉ du chemin — le champ config n'a plus aucun lecteur (laissé dans le type, configs
+> persistées). UI : champ « Croissance %/an » par immeuble (vidé → undefined, 0 tapé → 0).
+> 3 tests moteur + 4 tests UI neufs ; 2 perturbations séparées (semis qui ignore le champ → 2
+> rouges nommés ; régression `|| 0` au champ → 1 rouge nommé). Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 163 : Futur affiche enfin les objectifs que la projection n'a pas pu financer
+> `[ENG-GOALSHORTFALLS-CHAMP-MORT]` → EXPOSÉ (décision Marc). Bandeau sur l'onglet Futur (sous
+> « pas à jour ») : « N objectif(s) n'ont pas pu être financés en entier — il a manqué X $ ».
+> Dérivation PURE `components/projection/alerteObjectifsManques.ts` (phrase jamais recopiée dans
+> le JSX, montant en NŒUD `PrivateAmount` → suit le mode discret) ; null honnête quand rien à
+> dire (aucun manque, champ absent d'un gel d'avant PV-11, entrées sales). 5 tests unitaires +
+> 3 tests de rendu (harnais applyReveal réutilisé, mode discret vérifié en comportement).
+> 3 perturbations séparées → rouges nommés ; la 1re version de la perturbation « garde du
+> compte » était MUETTE (la garde du montant saturait la contrainte sur {0,0}) → fixture
+> isolante {0, 500} ajoutée, classe déjà consignée. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 162 : `rankStrategies` est RETIRÉ (module orphelin, décision Marc)
+> `[ENG-RANKING-MODULES-ORPHELINS]` — `strategyRanking.ts` supprimé avec ses deux fichiers de
+> test (aucun appelant hors tests, alias re-vérifiés au recensement). `OptimizeObjective` et
+> `OBJECTIVE_LABELS`, ses seuls exports VIVANTS (consommés par `strategyConfigRanking.ts`),
+> déménagent chez leur consommateur — avec l'avertissement daté du double-comptage successoral
+> du score `balanced`, pour quiconque ressusciterait le module depuis git. `compareLifeScenarios`
+> INTACT (vivant via GoalSeekerCard — le recensement #683 l'avait établi). Doc `PROJECTION.md`
+> réécrite (elle citait le trieur comme vivant), commentaires croisés (fireMilestone,
+> totalTaxesPaid.test) mis à jour. Aucun test neuf, délibérément : la garde du retrait est le
+> COMPILATEUR (tout import mort casse le typecheck) + knip rejoué (rien de neuf sur le périmètre
+> hors deux types internes déjà dans la liste tolérée). Rien de visible à l'écran. Push sans leçon.
+
+> ## 🟦 Session 2026-09-05 — Lot 161 : le taux de renouvellement SAISI pilote enfin l'hypothèque
+> `[ENG-RENEWAL-SAISIE]` + `[ENG-RENEWAL-RATE-MISMATCH]`, livrés ENSEMBLE (décision Marc).
+> Recensement : le champ `renewalRateProjection` existait dans le TYPE et le Studio immobilier
+> l'ÉCRIVAIT déjà — seul le moteur l'ignorait (choc `charCodeAt` mort à la place). Livré :
+> `pState.currentRatePct` (écrit à l'achat + à chaque renouvellement), consommé par le PMT,
+> l'intérêt mensuel ET la marge Smith — la paire PMT/intérêt ne diverge plus ; choc retiré,
+> message no-fake-data piloté par la saisie ; 3 défauts UI « 5,0 % » alignés sur « défaut = taux
+> actuel » ; ≤ 0 = absence (champ vidé écrit 0). Défaut neutre ⇒ zéro re-base attendu. 5 tests
+> moteur neufs (LEVIER, sentinelle d'extinction à l'échéance, Smith en différence-en-différences
+> au seuil mesuré des deux côtés 135 399 $/38 416 $), garde du message INVERSÉE avec son histoire.
+> 3 perturbations séparées → rouges ciblés nommés. Push sans leçon nouvelle.
+
+> ## 🟦 Session 2026-09-05 — Lot 160 : le meltdown ne gagne plus un mois plein de rendement sur son arrivée
+> `[ENG-MELTDOWN-MIMOIS]` — première des six décisions livrée. `growthApplication` reçoit
+> `arriveeMeltdownNonReg?` (défaut neutre, rétrocompat bit-identique) et l'exclut de la base de
+> croissance NonReg comme une cotisation ordinaire ; câblé au site d'appel de `projection.ts`.
+> Goldens NEUTRALITÉ re-basés SCIEMMENT : **−155,82 $** (NW final ET estate, fixture 10 ans) —
+> le rendement fantôme disparaît, sens attendu NW ↓. Preuves : perturbation du câblage (arg
+> neutralisé → les 2 goldens reviennent aux anciennes valeurs), unité « même croissance au dollar
+> près que via `contribNonReg` » rougie quand la soustraction saute. En chemin (lot 159) : bombe
+> datée désamorcée dans deux fixtures d'abonnements (dates relatives). Push sans leçon nouvelle.
+
+> ## 🟢 Session 2026-09-04 (soir) — MARC A RÉPONDU AUX SIX DÉCISIONS DU LOT 159, en session
+> Les six réponses sont dans `docs/A_FAIRE_MOI.md` (✅ RÉPONDU, énoncés conservés) et reportées
+> dans les tickets BACKLOG. **Le backlog est débloqué** — six lots livrables :
+> - Meltdown mi-mois → **CORRIGER** (re-base sciemment des 2 goldens NEUTRALITÉ, mesure au commit).
+> - `goalShortfalls` → **EXPOSER sur Futur** (« il manquait X $ »).
+> - Croissance des locatifs → **taux PAR IMMEUBLE** (`propertyGrowthRate?` sur `RentalProperty`).
+> - Renouvellement hypothécaire → **saisie par bien** (défaut = taux actuel), livrée AVEC
+>   `[ENG-RENEWAL-RATE-MISMATCH]` dans le même lot.
+> - FVI/efficacité fiscale → **brancher l'impôt à vie** (re-base FVI assumé).
+> - `rankStrategies` → **RETIRER**.
+> En chemin : CI rouge sur un dépôt inchangé — BOMBE DATÉE dans deux fixtures d'abonnements
+> (dates figées mai-juillet 2026 ; 62 jours plus tard, l'alerte « Plus débité depuis N jours »
+> rend un 2ᵉ « Netflix » → `getByText` rougit). Fixtures passées en dates RELATIVES, classe déjà
+> consignée (« un test qui fige une date pendant que le code lit l'horloge est une bombe »).
+
+> ## 🟦 Session 2026-09-04 — Lot 159 : six décisions en attente sont enfin VISIBLES chez Marc
+> Routage (doc seul) — six tickets « décision de Marc » du BACKLOG n'avaient AUCUNE entrée dans
+> `docs/A_FAIRE_MOI.md` : bloqués sans être visibles. Batch écrit en tête du fichier (meltdown
+> mi-mois, goalShortfalls, propGrowth locatifs, renouvellement ×2, FVI/efficacité, rankStrategies),
+> une recommandation par question. Le backlog NON GATÉ est épuisé : ce qui reste attend Marc
+> (décisions ci-dessus + B-sources fiscales), un cadrage plan-first (CHARGES-FIXES, ITEM-2A,
+> FISC-REEE), ou des données 👤. Push sans leçon.
+
+> ## 🟦 Session 2026-09-04 — Lot 158 : le store est découpé — la famille godfiles V11 est COMPLÈTE
+> `[GODFILE-STORE]` livré — useFinanceStore.ts (783 l. re-mesurées) → façade de 207 :
+> `etatParDefaut` (défauts + migration legacy + initialState calculé là), `migrationsPersistees`
+> (v1→v7), `actionsModeTest` (créateur set/get), `optionsPersistance` (merge/filet/partialize).
+> **Zéro migration** : nom/version/forme persistée inchangés, prouvé par EMPREINTE sha256 de la
+> sortie de partialize (61 clés, identique avant/après). Ré-exports de compatibilité (~200 sites
+> d'import intacts). 2 perturbations sur les modules extraits (apiKeys persistées → 2 rouges
+> sécurité ; refus de blob désarmé → rouge) ; storeRenameGuard suivie avec le code. Push sans leçon.
+
+> ## 🟦 Session 2026-09-04 — Lot 157 : la jambe d'arrivée du meltdown est publiée (sans déplacer d'argent)
+> `[ENG-MELTDOWN-JAMBE-ARRIVEE]`, moitié sans arbitrage — registre d'affichage dédié
+> (`arriveeMeltdownNonReg`) versé dans `NetTransferNonReg`, jamais dans `contribNonReg`
+> (l'exclusion de croissance). Résiduel de forme-flux sous meltdown : 25 273 $ → l'arrondi ; la
+> borne de 30 000 $ s'est INVERSÉE en tolérance au cent. Goldens NEUTRALITÉ verts, et prouvés
+> discriminants (le geste interdit les fait rougir). RESTE la 🧭 décision du rendement de mi-mois.
+> + [T4] re-censé : sa source (MANUAL_TEST_CHECKLIST) est morte depuis #244 — annoté au BACKLOG.
+> Push sans leçon.
+
+> ## 🟦 Session 2026-09-04 — Lot 156 : les formulaires ont leurs primitives Input/Select/Field
+> `[DETTE-UI-PRIMITIVES]` livré — trois primitives qui unifient le CODE, pas l'apparence (variants
+> reproduisant les densités peintes). Re-censé : APP 26 migrés (le « 27e » était de la prose),
+> Onboarding 8 (6 Field), ProjectionControls 1 select. Exclusions déclarées : PatrimoineExtended
+> (grille dense), sliders, prop « erreur » (aucun producteur), unification visuelle (décision
+> produit). Suites + scans privacy verts sans modification ; 6 tests neufs, 2 perturbations.
+> Push sans leçon.
+
+> ## 🟦 Session 2026-09-04 — Lot 155 : la prime RAMQ connaît l'assurance privée, par adulte
+> `[ENG-RAMQ-FIELDS]` livré — `User.hasPrivateDrugInsurance` (case par personne, Profil → Options
+> fiscales) → `ramqExemptAdultsCount` dans taxDecember (Annexe K : chaque conjoint calcule SA
+> prime ; 1 exempt sur 2 = moitié EXACTE, drapeau de ménage `ramqExempt` toujours accepté).
+> Défaut absent = bit-identique à avant (goldens/conservation verts, expliqué). 8 tests décembre +
+> scan de câblage + 2 tests UI, 3 perturbations à rouge ciblé. CHANGELOG (visible). Push sans leçon.
+
+> ## 🟦 Session 2026-09-04 — Lot 154 : FutureDetailModal n'est plus un godfile
+> `[GODFILE-FUTUREDETAILMODAL]` livré — re-mesuré 1 142 l. (ticket disait 606) → **445** :
+> `futureDetail/` porte les comptes (pur), les pastilles de transaction, le drill-down entier
+> (tooltip replié DEDANS — `chartPrivacyScan` exige la déclaration dans le fichier d'usage) et les
+> trois sections (catégories, variation avec pli persisté, transactions du jour). Conditions
+> no-fake-data restées chez le parent. 81 tests / 12 suites verts, 3 perturbations à rouge ciblé.
+> **V11 : il ne reste que `[GODFILE-STORE]`** (DERNIER, risque migration). Push sans leçon.
+
+> ## 🟦 Session 2026-09-04 — Lot 153 : RealEstateWorkspace n'est plus un godfile
+> `[GODFILE-REALESTATE-CMP]` livré — le ticket visait « RealEstate.tsx 624 » (déjà une façade de
+> 29 l.) ; le vrai godfile était `RealEstateWorkspace.tsx` (912 l. re-mesurées) → **661** :
+> `calculsImmoLocaux.ts` (amortissement local + Acheter-vs-Louer, fonctions PURES),
+> `ScenariosComparatifsCard.tsx` (état des curseurs resté chez le parent — la carte-conseil IA lit
+> les mêmes valeurs), `AmortissementCards.tsx`. 69 tests des 9 suites existantes verts + 12 neufs
+> (invariants de relation + câblage par espion, 3 perturbations à rouge ciblé). Leçon CONVENTIONS :
+> le normaliseur de testing-library ne touche pas l'attendu — composer avec formatCAD PUIS
+> normaliser. Reste V11 : `[GODFILE-FUTUREDETAILMODAL]` (re-mesuré 1 142 l.), `[GODFILE-STORE]`.
+
+> ## 🟦 Session 2026-09-04 — Lot 152 : le « 65 » du moteur est ancré — quatre constantes, un sens chacune
+> Tranche « seul vrai gain » de `[FISC-CONST-ANCHOR-DEBT]` : 13 littéraux 65/72 dans 5 modules →
+> `RRQ_STANDARD_START_AGE`, `PSV_ELIGIBILITY_AGE`, `PENSION_SPLIT_MIN_AGE`, `RRQ_MAX_DEFERRAL_AGE`
+> (utils/tax.ts) + import d'`AGE_AMOUNT_FED_MIN_AGE` dans mkAgeOpts. Valeurs identiques (65===65,
+> zéro re-base) ; 5 entrées d'inventaire résolues (l'anti-fantôme du ratchet les a nommées),
+> `projection.ts::65` requalifiée (défaut de saisie seulement). Perturbation 65→66 → rouge ciblé.
+> Push sans leçon.
+
+> ## 🟦 Session 2026-09-04 — Lot 151 : la couverture est MESURÉE — la cible 80 % est déjà dépassée
+> `[T3]` livré (mesure seule) : **90,6 % Stmts / 82,4 % Branch / 92,3 % Lines** sur le périmètre
+> config (services+utils+hooks). La question « 64→80 % » est caduque. Points bas honnêtes :
+> hooks 68,4 (les 3 hooks du lot 150, filet = E2E), sync 85,1, runAsync (Worker). Commande à
+> rejouer dans l'archive. Push sans leçon.
+
+> ## 🟦 Session 2026-09-04 — Lot 150 : App.tsx n'est plus une god-function
+> `[GODFILE-APP]` livré — App.tsx (910 l.) → 324 l. d'assemblage : effets de boot dans
+> `useAppBootEffects` (ordre provider-marché-avant-consommateurs préservé), navigation dans
+> `useTabNavigation`, hydratation marché dans `useAssetDataHydration`, handlers PDF/import dans
+> `components/app/`. Le remède du ticket (« AppProviders.tsx ») était périmé — re-dérivé du code.
+> Trois gardes ancrées au chemin suivies avec le code. Preuve : gate + E2E CI.
+
+> ## 🟦 Session 2026-09-04 — Lot 149 : le serveur HTTP MCP est découpé pour l'audit sécurité
+> `[GODFILE-MCPHTTP]` livré — `mcp/http.ts` (761 l.) → `http/plomberie.ts` (corps plafonné,
+> temps constant), `http/oauth.ts` (flux OAuth 2.1, limiteur en paramètre — un par process),
+> `http/routesPlanifiees.ts` (/refresh, /fintable-sync, /hub/summary, store en paramètre) ;
+> l'entrée garde options/sessions/routeur/refus de démarrage (467 l.). Extraction par tranches,
+> 70 tests HTTP/OAuth existants verts. Push sans leçon (classes connues).
+
+> ## 🟦 Session 2026-09-04 — Lot 148 : l'ingestion de documents est découpée par type
+> `[GODFILE-APPLYDOCUMENT]` livré — le monolithe de 1 012 lignes (8 handlers, pas les 5 du
+> ticket : re-recensé) devient `applyDocument/<type>.ts` + `types.ts` + `commun.ts`, façade de
+> 39 lignes qui ré-exporte tout le contrat (zéro consommateur modifié). Extraction par tranches
+> du source (aucun code retapé) ; preuve d'équivalence = les 235 tests existants du périmètre,
+> verts. Push sans leçon (classes déjà connues).
+
+> ## 🟦 Session 2026-09-04 — Lot 147 : vague `npm audit` du jour purgée (3 avis → 0)
+> `fast-uri` 3.1.5 (HIGH, 4 CVE — la version qui était le remède de la vague précédente),
+> `fflate` 0.8.2 (chaîne jspdf, bundle servi) et `qs` 6.15.2 (express du serveur MCP) corrigés
+> par `npm audit fix` simple — lockfile seul au diff, 0 avis restant, gate complet avec build.
+> Aucune garde neuve, délibérément (un test qui lance `npm audit` est une bombe).
+
+> ## 🟦 Session 2026-09-04 — Lot 146 : le rendu PDF est découpé par section + `[FISC-RRSP-RENTAL-EARNED]` routé
+> `[DETTE-GODFN-PDF]` livré — `generateFinancialReport` (615 lignes) devient 8 fonctions de
+> section + un `ContexteRenduPdf` ; équivalence prouvée au journal d'appels jsPDF identique à
+> l'octet (3 fixtures), garde structurelle committée (`pdfReport.journalRendu.test.ts`, ordre des
+> pages + témoins). Le dernier ticket god-fonction du backlog est soldé. En chemin :
+> `[FISC-RRSP-RENTAL-EARNED]` re-recensé (constat code CONFIRMÉ : le loyer net ne crée aucun
+> droit REER) puis GATÉ source humaine — la source T4040 est inaccessible d'ici
+> (`canada.ca` EGRESS_BLOCKED) et l'attribution per-conjoint du loyer est une décision produit →
+> `docs/A_FAIRE_MOI.md` « [DÉCISION — FISC-RRSP-RENTAL-EARNED] ».
+
+> ## 🟦 Session 2026-09-04 — Lot 145 : la fusion réel↔projeté de la courbe au jour est typée
+> `[DETTE-CAST-DAILYCURVE]` livré — l'identité d'un point quotidien est DÉCLARÉE sur
+> `ProjectionChartPoint` : 15 des 17 `as unknown as` retirés (tsc retrouve prise sur la fusion),
+> les 2 restants (handlers recharts, typage tiers) justifiés et bornés par
+> `dailyCurveCastGuard.test.ts`. Empreinte identique à l'octet, 57 tests ciblés verts, 3
+> perturbations chacune rouge au bon endroit.
+
+> ## 🟦 Session 2026-09-04 — Lot 144 : le reset de janvier est découpé, comportement prouvé inchangé
+> `[DETTE-GODFN-JANUARY]` livré — `processJanuaryReset` (183 lignes) devient 5 étapes nommées
+> (CELI, FHSA, droits REER, FERR, Guyton-Klinger), orchestrateur ~35 lignes. Empreinte identique
+> à l'octet + 29 tests module + 43 ciblés. Troisième découpage god-fonction de la journée, même
+> protocole — la famille DETTE-GODFN moteur est SOLDÉE (reste PDF, hors moteur).
+
+> ## 🟦 Session 2026-09-04 — Lot 143 : le revenu de retraite est découpé, comportement prouvé inchangé
+> `[DETTE-GODFN-RETIREMENT]` livré — `computeRetirementIncome` (260 lignes) devient 5 étapes
+> nommées (poids per-conjoint, âges/facteurs, RRQ+PSV, SRG, assemblage), orchestrateur ~40
+> lignes. Empreinte des grandeurs publiées identique à l'octet + 62 tests module + 34 moteur.
+> Aucun test neuf, délibérément : le contrat publié est déjà couvert, tester les helpers
+> internes re-testerait des copies. Refactor pur — bundle fonctionnellement identique.
+
+> ## 🟦 Session 2026-09-04 — Lot 142 : la cascade de décaissement est découpée, comportement prouvé inchangé
+> `[DETTE-GODFN-CASHFLOW]` livré — la god-fonction de 296 lignes devient des étapes nommées +
+> deux décisions pures exportées et testées (`ordreDesBuckets`, `reerDAbordEnCotisation` — la
+> frontière CF-3 à 0,40 décimal épinglée). Équivalence prouvée par l'empreinte des grandeurs
+> publiées (banc du lot 141, identique à l'octet) + 102 tests moteur ciblés. Refactor pur —
+> le déploiement suit `main` mais le bundle est fonctionnellement identique.
+
+> ## 🟦 Session 2026-09-04 — Lot 141 : l'ordre de la boucle moteur est gardé — et mesuré d'abord
+> `[ENGINE-IMPLICIT-ORDER]` livré — la paire du ticket (avril↔décembre) RÉFUTÉE par la mesure
+> (inversion bit-identique) ; trois couples réels gardés avec leurs chiffres (meltdown↔revenus
+> +7 387 $, décembre↔flux +25 568 $, avril↔allocation +438 $) : espion d'argument + scan d'ordre,
+> banc de mesure COMMITTÉ (`scripts/mesureOrdreBoucle.ts` + `inverserOrdreBoucle.py`).
+> Découverte routée au BACKLOG : `[FISC-DEC-FLUX-ASSIETTE-TIMING]` (retraits REER de décembre
+> hors de toute assiette annuelle — fuite ou convention, à trancher). Lot tests + scripts + doc
+> — rien à vérifier côté déploiement.
+
+> ## 🟦 Session 2026-09-04 — Lot 140 : la courbe Futur se pilote au clavier de bout en bout
+> `[D6-GRAPH]` clos — inventaire de 18 graphes : tout était couvert sauf le PREMIER geste clavier
+> sur la courbe Futur (figer un jour sans souris ; l'infobulle figée était déjà un dialogue
+> clavier complet). Livré : conteneur focusable (`tabIndex=0` + `focus-ring`), Entrée/flèches
+> figent le jour d'aujourd'hui, `aria-label` enrichi, e2e clavier ajouté (CI arbitre). Routé dans
+> la même PR : `[IA-NAV-LABELS]` → décision Marc (`docs/A_FAIRE_MOI.md`). Push sans leçon.
+
+> ## 🟦 Session 2026-09-04 — Lot 139 : l'onglet Impôts diagnostique l'écart net déclaré ↔ net du modèle
+> `[ENG-NET-MODEL-RESIDUAL]` volet diagnostic livré — `services/taxResidual.ts` (pur) + ligne
+> conditionnelle dans la carte Retenues (brut SAISI et |écart| ≥ 1 % du net déclaré ; brut déduit
+> → nul par construction, rien d'affiché). Par personne ; en solo, la vue globale (la seule) le
+> porte. Zéro changement moteur — le net encaissé reste le net déclaré. La piste « facteur
+> calibré au boot » (change les projections) est ROUTÉE dans `docs/A_FAIRE_MOI.md`.
+
+> ## 🟦 Session 2026-09-04 — Lot 138 : la frontière store ↔ services est documentée et gardée
+> `[SVC-STORE-COUPLING]` livré — les `as unknown as AppState` de `autoSync`/`appStateProvider`/
+> `writeExecutor` étaient du bruit (`FinanceState extends AppState` : l'assignation directe est
+> déjà typée) et désactivaient tsc sur le chemin d'écriture IA/MCP ; retirés, typecheck vert.
+> Frontière écrite dans `ARCHITECTURE.md` §2 (moteur PUR / orchestration-IO inventoriée) et gardée
+> par `storeCouplingBoundary.test.ts` (pureté moteur, inventaire fermé 2 sens, zéro cast — 4
+> perturbations séparées). Recensement : 7 importeurs réels, pas 8 (quotaStorage = prose).
+> Lot code de service (casts retirés, zéro comportement changé) + tests + doc.
+
+> ## 🟦 Session 2026-09-04 — Lot 137 : la règle anti-renommage du store existe (tests seulement)
+> `[STORE-RENAME-NO-GUARD]` livré — `storeRenameGuard.test.ts` : règle « rename = palier neuf +
+> nom réservé » + inventaire recensé (gemini, salary — les champs de test ont été re-légitimés,
+> pas retirés). Chaîne comportementale + porte de réutilisation + anti-obsolescence. Lot tests+doc
+> seulement — rien à vérifier côté déploiement.
+
+> ## 🟦 Session 2026-09-04 — Lot 136 : le taux marginal suit enfin l'année du rapport (money-critical)
+> `[FISC-MARGINAL-SPACE]` livré — `FiscalReport.marginalRate` passait par les paliers FIGÉS 2026
+> quel que soit `year` : rapport auto-contradictoire dès 2027. Corrigé à la source + alignement
+> taxJanuary (assiette déflatée → déflateur passé, justesse plus accidentelle). Effets mesurés :
+> taux affichés indexés (45,71 → 36,12 % sur 120 k$ en 2035), bascule AUTO_MARGINAL sur le VRAI
+> marginal (re-base −69 436 $ / −14,6 % sur la fixture divorce — 13 ans de REER-first fantôme).
+> ⚠️ Changement VISIBLE pour un salarié proche des seuils : projections AUTO_MARGINAL et taux
+> affichés bougent — c'est la règle des 40 % de Marc appliquée à la réalité indexée.
+
+> ## 🟦 Session 2026-09-04 — Lot 135 : clique-partout prouvé par e2e (le mécanisme existait)
+> `[FUTUR-CLICK-ANYWHERE]` clos — le clic résolvait déjà le jour par l'abscisse seule sur tout le
+> conteneur ([R3]+[FUTUR-CLICK-AREA]+[FUTUR-DAILY-NATIVE], postérieurs au ticket) ; ajouté l'e2e
+> clique-partout (ciel vide, bande basse, marge gauche). ⚠️ E2E local du conteneur inutilisable
+> (échec beforeEach sur les 5 tests préexistants — navigateur shimé + dev server lent) : la CI
+> est l'arbitre e2e, comme d'habitude.
+
+> ## 🟦 Session 2026-09-04 — Lot 134 : un chunk qui pend n'est plus une attente infinie
+> `[SDK-IMPORT-TIMEOUT]` livré — `importWithRetry` court chaque tentative contre 10 s
+> (`IMPORT_STALL_TIMEOUT_MS`, dimensionné sur recharts 404 Ko) ; blocage → erreur explicite,
+> jamais de reload. Partagé par tous les lazy. 3 gardes + perturbation à 2 rouges exacts.
+
+> ## 🟦 Session 2026-09-04 — Lot 133 : la frontière asynchrone de marketData existe enfin
+> `[PERF-MARKETDATA-DYNIMPORT-INERTE]` livré — App.tsx et usePastPortfolioHistory passent par
+> `services/marketData/lazy.ts` (promesse mémoïsée = ordre configure→quote préservé, échec non
+> empoisonnant). Build propre : 0 INEFFECTIVE (4 avant), providers hors du chunk d'entrée
+> (293 → 279,6 Ko), chunk marketData-*.js asynchrone créé. Garde de frontière + 2 perturbations.
+> Investments/AddStockForm gardent leur import statique (chunk paresseux — légitime, documenté).
+
+> ## 🟦 Session 2026-09-04 — Lot 132 : audit per-conjoint clos (tests seulement)
+> `[ENG-FERR-ECART-AGE-NON-COUVERT]` clos — les cas « toujours PAS testés » (`shares=[1,0]`,
+> soldes négatifs) sont couverts dans `stepReerByUserProprietes.test.ts` ; l'audit conclut
+> qu'aucune autre garde per-conjoint n'est vacueuse (seule la FERR dépend de l'âge, déjà couverte
+> sous écart d'âge). Absorption du négatif = DEUX planchers redondants, écrit dans le test.
+> Lot TESTS+DOC uniquement — aucun code de prod touché, rien à vérifier côté déploiement.
+
+> ## 🟦 Session 2026-09-04 — Lot 131 : la boucle chaude du moteur cesse de payer toFixed
+> `[PERF-ENGINE-TOFIXED-ROUND]` livré — ~94 champs/mois passent de `Number(x.toFixed(2))` à
+> `round2` (helpers.ts), BIT-IDENTIQUE (fuzz ~1 M de valeurs committé, 0 divergence) et ~13× plus
+> rapide (556 → 42 ms / 2 M d'appels, mesuré). Garde de source : plus de `.toFixed(2)` dans
+> monthlyOutput. Zéro golden bougé — prouvé par la parité, pas constaté.
+> ⚠️ Vercel n'a PAS créé de déploiement pour le merge du lot 130 (#861, 0b6beae) après ~8 min —
+> même panne que le 31/07 ; le push du lot 131 doit rattraper les DEUX. À re-vérifier au merge.
+
+> ## 🟦 Session 2026-09-04 — Lot 130 : le gel Fintable ne se cache plus derrière un CSV
+> `[FINTABLE-SOURCE-TAG]` livré — la limite connue de `[FINTABLE-STALE-ALERT]` est fermée.
+> - `FintableSyncReport.lastProductiveAt` (additif) : epoch de la dernière passe qui a ÉCRIT des
+>   transactions, reporté par la source unique `lastProductiveAtSuivant` (syncHealth.ts) à travers
+>   les 5 écrivains de rapport (browserSync ×2, autoSync, carte manuelle, cron MCP ×2).
+> - `computeSyncHealth` : quand le champ est présent, c'est LUI qui pilote « gelé côté
+>   fournisseur » (un CSV d'hier ne rajeunit plus un connecteur mort) ; absent → repli historique
+>   sur la date de transaction (zéro fausse alerte au déploiement). Nouveau champ exposé
+>   `daysSinceLastProductiveSync`.
+> - 12 gardes neuves (santé, chaînons navigateur/cron/auto/carte), 3 perturbations ciblées.
+> - Au passage : `[DEFAULTS-DRIFT-FINTABLE-FIELDS]` constaté DÉJÀ livré (PR #686) → archivé.
+
+> ## 🟦 Session 2026-09-04 — Lot 129 : la perte d'emploi datée verse l'assurance-emploi
+> `[CHOMAGE-DEUX-MODELES]` livré — **code de prod touché** (moteur, money-critical).
+> - Source UNIQUE `prestationAeNetteMensuelle` extraite du stochastique (bit-identique, 50 verts)
+>   et consommée par l'événement daté PERTE_EMPLOI. SABBATIQUE/ACCIDENT : coupe sèche inchangée.
+> - Approximation linéaire assumée (prestation pleine × part perdue) ; pas de double prestation si
+>   chômage stochastique le même mois ; AE ≠ revenu gagné (rien dans accGrossAddByUser).
+> - Mesuré : +20 492 $ à 5 ans / +80 711 $ à 30 ans (96 k$ brut, perte 100 % de 6 mois).
+> - 4 gardes comportementales sur Income publié (plafond prouvé par la RELATION), 3 perturbations
+>   à rouges exactement ciblés.
+> - Au passage : `[MCP-WHATIF-DATED-DEBT]` constaté livré par `[DETTE-DATES]` — ligne V12 corrigée.
+
+> ## 🟦 Session 2026-09-04 — Lot 128 : supprimer un bien purge ses ventes planifiées
+> `[DETTE-RE-SALE-PURGE]` livré (tranché Marc 2026-07-31) — **code de prod touché** (Immobilier).
+> - La confirmation ANNONCE le compte de ventes liées ; la purge retire exactement les événements
+>   du bien (témoin + événement libre survivent, aucune réécriture à vide). 3 cas, 3 perturbations.
+> - V3' soldé au BACKLOG : tout était déjà réglé (PR #729, Q-décisions) sauf ce ticket-ci —
+>   la ligne l'affichait encore entier (`PM-STALE-BACKLOG`).
+> - ⚠️ Re-base CI du lot 127 : les 2 ancres divorceRegisteredRoom ont bougé (−0,058 %/−0,075 %,
+>   sens attendu — la fixture 300 k$ est l'une des rares où le plafond REER mord), re-basées avec
+>   l'explication datée selon leur propre protocole.
+
+> ## 🟦 Session 2026-09-04 — Lot 127 : le plafond REER pré-2010 n'est plus celui de 2025
+> `[FISC-RRSP-FALLBACK-PRE2010]` livré — **code de prod touché** (droits REER historiques).
+> - Année pré-table → `RRSP_ANNUAL_LIMIT_PRE_TABLE` (= plafond 2010, DÉRIVÉ de la table, borne
+>   supérieure du vrai plafond) au lieu du plafond 2025. Hypothèse de modèle documentée
+>   (FISCAL_REFERENCE §REER) ; étendre la table vers le passé (B9) corrigera tout seul.
+> - Mesuré : −220 290 $ de droits fantômes (400 k$ né 1971, 21 ans × 10 490 $ au dollar),
+>   −96 001 $ à 250 k$, 0 $ à 60 k$ (contrôle). Gardes sur la RELATION (coût marginal d'une année
+>   de part et d'autre de la frontière de table), 2 perturbations à rouges ciblés.
+> - Clôtures : `[IMMO-3-FORMULES]` archivé (2 volets livrés, lots 112 + 119) ;
+>   `[ENG-PROPGROWTH-CONFIG-DEAD]` re-recensé (prémisse devenue FAUSSE : `projection.ts:1750` lit
+>   le champ pour les LOCATIFS ; toujours aucun producteur → locatifs figés à 3 %/an, décision).
+
+> ## 🟦 Session 2026-09-04 — Lot 126 : le ticket CELIAPP résiduel était fiscalement faux — classé, mesuré, figé
+> `[ENG-CELIAPP-RESIDUAL-PASTBUY]` classé CADUQUE — **aucun code de prod touché** (2 cas de test).
+> Aucun déploiement à vérifier.
+> - Le ticket annonçait un « retrait non imposable manqué » : faux — un propriétaire n'est plus
+>   premier acheteur, aucun retrait admissible n'existe. Le moteur fait déjà le comportement
+>   légal : fermeture à 15 ans/71 ans, transfert au REER en franchise.
+> - Mesuré bout en bout : transférer dès l'init (le « remède ») = +0 $ à 10 ans, +444 $ (+0,014 %)
+>   à 30 ans. L'attente légale ne coûte rien de significatif.
+> - Deux cas ajoutés à `taxJanuary.test.ts` figent le fait (2 perturbations, rouges ciblés).
+
+> ## 🟦 Session 2026-09-04 — Lot 125 : reliquat prorata-sans-net + hygiène du BACKLOG
+> `[BUDGET-SPLIT-PRORATA-SANS-NET]` livré (else final → 0,5 en couple) — **code de prod touché**.
+> - Hygiène `PM-STALE-BACKLOG` : 4 tickets retirés dont l'objet n'existait plus —
+>   `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` (classé par Marc : ne rien changer),
+>   `[HEALTH-CORRUPTION…]` (livré lots antérieurs + 122), `[BUDGET-DEUX-NETS…]` (livré lot 120),
+>   `[MIGRATE-GROSS-DEJA-PERSISTE]` (livré lot 121). `[ENG-GOALS-HORS-TOTALEXPENSES]` re-statué
+>   « ATTENDRE le SWR » (décision Marc) au lieu de « décision routée ».
+> - Un BACKLOG qui affiche « en attente de décision » sur des décisions PRISES trompe la reprise
+>   de session — c'est la tenue à chaque push qui empêche la dérive, pas les grandes passes.
+
+> ## 🟦 Session 2026-09-04 — Lot 124 : le partage 50/50 du couple partage enfin en deux
+> `[BUDGET-SPLIT-5050-RATIO-1]` livré — **code de prod touché** (carte couple du Budget).
+> - Le mode « 50 / 50 » n'avait aucune branche dans `coupleAnalysis` : ratio1 restait à 1, 100 %
+>   du commun au conjoint 1 (Effort 30 %/0 % mesuré). Branche explicite `ratio1 = 0.5`.
+> - Bug découvert au lot 120 (par la dérivation MANUELLE des attendus), routé au BACKLOG, corrigé
+>   ici comme lot à part entière. Seul consommateur de ratio confirmé : `Budget.tsx`.
+> - Garde 3 cas (50/50 = 15 %/19 % dérivés à la main, contrôle custom intact, contrôle solo),
+>   2 perturbations séparées à rouges ciblés.
+> - ⚠️ Reliquat routé : `prorata` sans aucun net saisi reste à ratio 1
+>   (`[BUDGET-SPLIT-PRORATA-SANS-NET]`, XS).
+
+> ## 🟦 Session 2026-09-04 — Lot 123 : les prompts passent par formatCAD, l'arrondi à 100 $ est abandonné
+> `[FMT-PROMPT-MIGRER]` livré — **code de prod touché** (prompts IA, résumés MCP, consentement).
+> - 17 sites migrés, `roundToHundred` supprimé (categorizeBatch : champ JSON → arrondi au dollar).
+> - ⚠️⚠️ Consentement corrigé DANS LE MÊME LOT (« montants exacts ») + garde de COHÉRENCE
+>   promesse ↔ mécanisme, prouvée par 2 perturbations (chaque moitié seule rougit).
+> - Survivants délibérés : replis honnêtes (`(non disponible)`, `null` — le « — » de formatCAD se
+>   lit comme une valeur par un modèle) et le prix en devise NATIVE d'applyDocument (formatCAD y
+>   serait faux). 4 EXEMPTIONS du scan de format retirées ; jetons `MONTANT-HORS-ECRAN` posés
+>   (exigés par le scan de vie privée).
+> - 11 assertions re-composées avec le formateur dans 6 fichiers. Leçon : « 12 000 $ » dans un
+>   `new RegExp` fait du $ une ANCRE (`UN-ATTENDU-COMPOSE-AVEC-LE-FORMATEUR-S-ECHAPPE…`).
+> - Ce lot solde les HUIT décisions de Marc du 2026-09-03 : toutes livrées ou classées.
+
+> ## 🟦 Session 2026-09-04 — Lot 122 : la pastille « donnée invalide » du résumé de santé
+> `[HEALTH-MARQUEUR-DONNEE-INVALIDE]` livré — **code de prod touché** (résumé de Futur + healthScore).
+> - Marqueur STRUCTUREL `HealthMetricRow.invalidData` posé par `sanitizeNonFinite` : le résumé s'y
+>   ancre, jamais sur le texte de `raw` (une reformulation le casserait en silence).
+> - Pastille DANS le bouton-résumé existant (bouton dans bouton = HTML invalide), nom accessible
+>   qui dit la cause, `title` au survol.
+> - ⚠️ LA distinction du ticket (invalide = corrigeable ≠ non calculable = rien à faire) est
+>   prouvée par perturbation : ancrer sur `!available` fait rougir exactement les 2 contrôles négatifs.
+> - 6 cas neufs, 3 perturbations séparées ; suites santé complètes vertes (55).
+
+> ## 🟦 Session 2026-09-04 — Lot 121 : le brut fabriqué (1,35×) est détecté et PROPOSÉ à la correction
+> `[MIGRATE-GROSS-PROPOSER]` livré — **code de prod touché** (Profil / Salaires + nouveau service).
+> - Détection `services/legacyGrossSignature.ts` : égalité STRICTE avec `Math.round(net × 1,35)`
+>   mensuel (la signature exacte de l'ancien `migrateUserConfig`), net dérivé comme le fabricant
+>   (`netSalary || salary`), exclusions confirmé/payslip/MCP. Borne INFÉRIEURE assumée.
+> - Deux boutons, AUCUNE écriture sans clic (décision de Marc) : recalcul = `calculateGrossFromNet`
+>   + `grossSalaryConfirmed` ; « C'est bien mon brut » = confirme seulement. Champ additif optionnel.
+> - ⚠️ La garde d'indiscernabilité du mode discret a rougi sur le premier jet : deux boutons
+>   conditionnels aux valeurs = fuite par la STRUCTURE → pas d'avis en mode discret.
+> - ⚠️ Perturbation `setTimeout(patch, 0)` restée VERTE sur « le rendu n'écrit rien » → test durci
+>   par un flush (instance de `UNE-PERTURBATION-PEUT-ETRE-MUETTE-PAR-DEBOUNCE`).
+> - 17 cas neufs, 6 perturbations séparées, rouges ciblés. Déploiements 119 et 120 vérifiés READY.
+
+> ## 🟦 Session 2026-09-04 — Lot 120 : le badge Effort nomme sa base
+> `[BUDGET-EFFORT-NOMMER-LA-BASE]` livré — **code de prod touché** (carte couple du Budget).
+> - « Effort : X % de la paie déclarée » + infobulle expliquant la distinction avec le « Revenu Net
+>   Disponible » de la même carte. Constante UNIQUE consommée par les deux badges. Aucun chiffre
+>   ne bouge. Suffixe laissé en ink-400 : ink-500 est AA-large seulement (dit par tailwind.config),
+>   trop faible pour du `text-meta`.
+> - Garde 3 cas, pourcentages dérivés À LA MAIN (prorata + poste perso asymétrique, sinon les deux
+>   badges seraient identiques par construction) ; 3 perturbations séparées, rouges ciblés.
+> - ⚠️⚠️ **Bug préexistant ROUTÉ, pas corrigé** : le mode « 50 / 50 » n'a AUCUNE branche dans
+>   `coupleAnalysis` → 100 % du commun au conjoint 1 (Effort 30 %/0 % mesuré). Atteignable en un
+>   clic, et les six personas de test sont à '50/50'. → `[BUDGET-SPLIT-5050-RATIO-1]`.
+> - C'est la dérivation MANUELLE des attendus qui a démasqué le défaut (ma fixture 50/50 rougissait
+>   sur 30 %/0 %) — une fixture copiée du code l'aurait certifié.
+
+> ## 🟦 Session 2026-09-04 — Lot 119 : l'équité immobilière peut être négative
+> `[IMMO-CLAMP-EQUITE-NEGATIVE]` livré — **code de prod touché** (historique du patrimoine).
+> - Le plancher `Math.max(0, …)` vivait en DEUX endroits (producteur `runAmortization` +
+>   consommateur `addEquity`), comme le ticket l'avait nommé : les deux retirés dans le même lot.
+> - Recensé : aucun 3e clamp en aval (tous les consommateurs sont additifs), et le moteur FUTUR
+>   publiait déjà le négatif (`realEstateMonth.ts:448`) — le passé contredisait le futur.
+> - Mesuré : fixture 5 % de mise + SCHL + marché −5 %/an → 5 années passées à 0 $ au lieu de
+>   −7 404 $ à −42 584 $. ⚠️ La fixture « naturelle » à −2 % ne passait JAMAIS underwater — le cas
+>   de test se mesure avant de s'écrire.
+> - Garde `equiteNegativeSansPlancher.test.ts` (6 cas, relation valeur−solde, 2 perturbations
+>   séparées : P2 ne rougit que la chaîne). Aucun test existant re-basé (aucune fixture underwater).
+> - Le déploiement Vercel du lot 118 a été vérifié READY (production) avant ce lot.
+
+> ## 🟦 Session 2026-09-03 — Lot 118 : le bouton T1213 est retiré et neutralisé
+> `[ENG-T1213-NET-MONTHLY]` livré — **code de prod touché** (UI + moteur). Déploiement à vérifier.
+> - Bouton retiré de `AdvancedProjectionParams`, ET le moteur force `optimizeSourceDeductions: false`.
+> - ⚠️ **Les deux vont ENSEMBLE** : le réglage est PERSISTÉ. Retirer le seul bouton aurait laissé une
+>   config déjà à `true` bloquée avec −45,7 % et AUCUN recours. C'est la sous-question posée à Marc.
+> - Le champ reste dans le type, `@deprecated` : le supprimer exigerait une migration du schéma
+>   persisté — un risque sur les données pour un gain nul.
+> - **La garde du lot 114 s'est INVERSÉE** au même endroit → `t1213ToggleInerte.test.ts` : elle
+>   affirme désormais que le réglage ne change RIEN (`toBe`, pas une tolérance : même calcul).
+> - ⚠️ Incident de pipeline payé DEUX fois dans ce lot : un script docs interrompu par une ancre
+>   fausse a laissé CLAUDE.md/HANDOVER non écrits, et le commit est parti quand même (heredoc et
+>   `git commit` non chaînés par `&&` — le saut de ligne les sépare). Rattrapé en relisant le DIFF
+>   contre l'intention, comme la leçon du dépôt l'exige.
+> - Gate complet VERT après rebase sur le lot 117 : **5 376 tests / 532 fichiers**, exit 0.
+
+> ## 🟦 Session 2026-09-03 — Lot 117 : le ratchet des décommenteurs passe à INTERDIRE
+> `[GUARD-STRIPCOMMENTS-MIGRER-LES-TESTS]` livré — **aucun code de prod touché**. Aucun déploiement.
+> - ⚠️ **Le travail décrit par le ticket n'existait plus** : il annonçait 15 décommenteurs à migrer,
+>   il n'en restait qu'UN, non migrable (`stripCommentsUniqueGuard`, dont le motif de recherche EST
+>   un motif de décommentage) — désormais exempté nommément.
+> - ⚠️⚠️ **Le vrai défaut était le plafond lui-même** : 15 pour un compte réel de 1, soit QUATORZE
+>   régressions silencieuses autorisées. Un plafond qui a cessé de suivre son compte porte le nom
+>   d'une protection sans en être une. Passé à **0** = « interdire ».
+> - ⚠️ Passer à zéro a créé un second trou, fermé dans le même lot : sans offender réel, « aucun
+>   trouvé » ne prouve plus que le motif marche → anti-vacuité explicite, prouvée par perturbation.
+> - 3 perturbations, 3 rouges ciblés (offender neuf · motif cassé · exemption retirée).
+> - Gate complet VERT : **5 375 tests / 532 fichiers**, exit 0.
+
+> ## 🟦 Session 2026-09-03 — Lot 116 : l'ordre du classement de stratégies est épinglé
+> `[ENG-RANKING-ORDER-PIN]` livré — **aucun code de prod touché** (une garde). Aucun déploiement.
+> - `rankStrategies` normalise en min-max sur l'ensemble comparé : déplacer une grandeur d'un seul
+>   scénario change l'échelle de tous. Le conseil de décaissement affiché pouvait donc basculer sans
+>   qu'aucun test ne bronche — les tests existants portent sur des scénarios SYNTHÉTIQUES.
+> - ⚠️ **L'ordre donné par le ticket était PÉRIMÉ** (« balanced : MELTDOWN > PRIO_REER > AUTO ») :
+>   mesuré, DEBT_FIRST et PRIO_CELI s'intercalent et PRIO_REER change de rang. Une baseline de ticket
+>   se re-mesure comme son périmètre — d'autant que le lot 115 du même jour déplace `estateNetWorth`.
+> - Les 4 objectifs donnent 4 ordres DIFFÉRENTS : c'est ce qui rend le pin par objectif utile.
+> - ⚠️ **Cette garde est FAITE pour rougir** : devant un rouge, mesurer le nouvel ordre et écrire sa
+>   cause — ne jamais re-baser mécaniquement. Elle épingle l'ORDRE, jamais les scores.
+> - ⚠️ Un rouge ABSENT est une mesure : inverser le sens de l'impôt ne retourne pas `balanced`, qui
+>   est dominé par le poids `estate` (0,4 vs 0,25).
+> - Gate complet VERT : **5 374 tests / 532 fichiers**, exit 0.
+
+> ## 🟦 Session 2026-09-03 — Lot 115 : le dividende réputé n'est plus imposé deux fois
+> `[FISC-DIV-ACB-STEPUP]` livré — **code de prod money-critical touché** (`taxDecember.ts`,
+> `projection.ts`). Déploiement à vérifier.
+> - Le dividende réputé du non-enregistré était imposé chaque année sans que l'ACB monte : la même
+>   somme était ré-imposée dans le gain latent, à la réalisation comme au décès. Le module rend
+>   désormais `nonRegACBAdd`, l'appelant l'applique — **même patron que `processGainHarvesting`**.
+> - ⚠️ **Le ticket avait raison sur le mécanisme et surestimait le chiffre** (« ≈ 58 k$ » par
+>   arithmétique). Mesuré : **+1 911 $ / +12 055 $ / +31 055 $** de patrimoine à 10, 20, 30 ans, et
+>   +7 739 / +16 703 / +30 975 $ de succession. Un ACB manquant n'est un impôt que le jour où on vend.
+> - Montant = dividende BRUT (ni le majoré, fiction de calcul ; ni le net, l'impôt sortant à part).
+> - ⚠️ Garde ancrée sur la RELATION, pas sur une valeur de fixture : mon 1er jet supposait 7 500 $
+>   d'après les soldes de départ, le premier décembre n'en voit que 178 587 $.
+> - Garde : `tests/services/dividendeReputeStepUpAcb.test.ts` (2 perturbations, signatures distinctes).
+> - ⚠️ « Re-base MASSIF » annoncé par le ticket = **5 assertions dans 4 fichiers**, toutes du même
+>   signe. Deux s'intitulaient « NEUTRALITÉ NW » (titre de CONCEPTION) — c'est le test lui-même qui
+>   a tranché : quatre re-bases y sont annotées « vrai changement fiscal, PAS une fuite de compteur ».
+> - Gate complet VERT : **5 367 tests / 531 fichiers**, exit 0.
+
+> ## 🔴 Session 2026-09-03 — Lot 114 : un bouton de l'UI détruit 46 % de la projection
+> `[ENG-T1213-NET-MONTHLY]` — **aucun code de prod touché** : le fait est FIGÉ, la décision est
+> ROUTÉE (c'est le point le plus grave de `docs/A_FAIRE_MOI.md`). Aucun déploiement à vérifier.
+> - Le réglage « T1213 retenue source ON » réduit la retenue modélisée mais ne majore JAMAIS le net
+>   mensuel encaissé (qui vient du `netSalary` saisi). L'utilisateur perd l'économie fiscale de son
+>   REER sans jamais toucher la contrepartie — l'inverse de la réalité.
+> - ⚠️ **Le ticket sous-estimait d'un facteur ~5** en n'annonçant qu'un montant (−183 598 $).
+>   Re-mesuré à quatre horizons : **−16,1 % / −24,5 % / −29,2 % / −45,7 %** (5, 10, 20, 30 ans),
+>   soit −1 031 419 $ à 30 ans. Le pourcentage GRANDIT — le défaut compose.
+> - 🧭 **Deux remèdes, tous deux des décisions** : (a) majorer le net mensuel — le remède prescrit,
+>   mais il bute sur une CAUSALITÉ que le ticket ignore (les déductions de l'année ne sont connues
+>   qu'en décembre) ; (b) retirer le bouton de l'UI. Recommandation : (b) en attendant (a).
+> - ⚠️ Signal écarté : `totalTaxesPaid` NÉGATIF est déjà documenté sous `[PROJ-TAXPAID-LABEL]`.
+> - Garde : `tests/services/t1213ToggleNuisible.test.ts` — inventaire de dette à INVERSER le jour du
+>   correctif, pas à supprimer.
+> - Gate complet VERT : **5 363 tests / 530 fichiers**, exit 0.
+
+> ## 🟦 Session 2026-09-03 — Lot 113 : les droits REER suivent enfin l'année civile
+> `[RRSP-FIRST-YEAR-13M]` livré — **code de prod money-critical touché** (`services/projection.ts`,
+> l'ORDRE de la boucle mensuelle). Déploiement à vérifier.
+> - Le revenu gagné était versé à l'accumulateur annuel AVANT le reset de janvier : janvier
+>   comptait dans l'année qui venait de se clore. Un tampon d'un mois verse désormais APRÈS.
+> - ⚠️ **Le ticket sous-estimait son défaut** : « fenêtre glissante de 12 mois ensuite » n'était pas
+>   neutre — février→janvier gonfle l'assiette de tout salaire qui CROÎT (**≈ 0,25 %/an** à 3 %), en
+>   plus du **+8,33 %** initial. Après correctif, les droits valent exactement 18 % × salaire × 1,03ⁿ.
+> - ⚠️ J'avais classé ce décalage « second ordre » d'après le cas à croissance NULLE, où il est
+>   strictement invisible (les deux fenêtres ont le même total).
+> - **Le correctif ALIGNE deux producteurs du même registre** : le congé parental versait déjà après
+>   janvier. La référence existait dans le fichier.
+> - ⚠️ Élargissement ÉCARTÉ par la mesure : `accCapitalGainsYear` semblait porter le même défaut —
+>   il est accumulé, imposé et remis à zéro entièrement dans le bloc de DÉCEMBRE. Faux positif.
+> - **Impact** : nul là où les droits ne limitent rien ; **−311 $ à −411 $** de patrimoine sur 8 ans
+>   là où ils saturent.
+> - Garde : `tests/services/rrspRoomAnneeCivile.test.ts` (espion sur l'argument — deux capteurs
+>   indirects essayés avant, tous deux mesuraient autre chose).
+> - ⚠️ **3 goldens re-basés, 2 natures** : deux ÉPINGLAIENT le défaut (`200_004 * 13/12` avec l'ID du
+>   ticket) ; le 3ᵉ a MONTÉ de 1 177 $ — moins de REER cotisé = moins d'abri fiscal (`finalNetWorth`
+>   **−1 769 $**) mais moins de REER à liquider au décès (`estateNetWorth` **+1 177 $**). Signes
+>   opposés, les deux justes.
+> - Gate complet VERT : **5 360 tests / 529 fichiers**, exit 0.
+
+> ## 🟦 Session 2026-09-03 — Lot 112 : la prime SCHL manquait à l'historique immobilier
+> `[IMMO-3-FORMULES]` **volet SCHL livré**, volet CLAMP routé — **code de prod touché**
+> (`services/realEstate.ts`). Déploiement à vérifier.
+> - `runAmortization` (l'historique) ignorait la prime d'assurance prêt que `initPastPurchase`
+>   (le présent) finançait : deux formules pour le MÊME prêt sur le MÊME écran, l'historique
+>   amortissant une dette trop petite et surestimant l'équité.
+> - **Mesuré** (420 000 $ à 5 % de mise, 5 %/25 ans) : surestimation de **15 631 $ à 1 an,
+>   14 137 $ à 5 ans, 11 798 $ à 10 ans** — elle DÉCROÎT, la prime s'amortissant. **0 $ exactement**
+>   à 20 % de mise (contrôle négatif). Les deux formules concordent désormais à moins d'1 $.
+> - ⚠️ **Piège de mesure payé** : mesurer par `price + prime` gonfle AUSSI la valeur du bien et
+>   INVERSE le signe. Gardé par une assertion dédiée, dont la perturbation est ce raccourci même.
+> - ⚠️ **Deux tests à mise ASSURABLE sont restés verts** — l'un n'asserte que des signes, l'autre
+>   épingle l'année d'achat qui ne passe pas par la fonction. Absence de couverture, pas d'effet.
+> - **Volet CLAMP routé à Marc** : `Equite: Math.max(0, …)` cache un bien *underwater* derrière un
+>   zéro et retire le déficit du patrimoine passé. Trois options, recommandation « retirer le
+>   plancher » (`docs/A_FAIRE_MOI.md`).
+> - Garde : `tests/services/schlDansAmortissementHistorique.test.ts` (6 cas · 3 perturbations).
+> - Gate complet VERT : **5 356 tests / 528 fichiers**, exit 0. CI verte sur les six checks.
+
+> ## 🟦 Session 2026-09-03 — Lot 111 : un versement RAP manqué devient un revenu imposable
+> `[ENG-RAP-MISSED-REPAYMENT-TAX]` livré — **code de prod money-critical touché**
+> (`services/projection/realEstateMonth.ts`, `services/projection.ts`). Déploiement à vérifier.
+> - Un versement RAP dû et non payé ne faisait **rien** : ni imposition, ni réduction du solde. Il
+>   s'ajoute désormais au revenu imposable de l'année (ARC, ligne 12900) et amortit la dette.
+> - ⚠️ **La gravité annoncée était fausse dans les deux documents qui la portaient** (ticket « S »,
+>   `FISCAL_REFERENCE.md` « LOW, impact borné pour les profils qui gardent des liquidités »). Mesuré
+>   sur un célibataire à 60 k$ / condo 420 k$ : **190 à 205 versements sautés sur 205**, 63 333 $ à
+>   68 333 $ jamais imposés, patrimoine final surévalué de **18 121 $ à 19 864 $**. Contrôle négatif :
+>   **0 $ exactement** sur le profil qui rembourse — d'où le mauvais classement.
+> - **Second défaut, absent du ticket** : sans réduction du solde, l'obligation de 180 mois ne
+>   s'éteignait jamais (mesuré **205 mois dus**). Une branche vide cachait deux manques, pas un.
+> - **Registre DÉDIÉ** (`rapMissedRepaymentAdd`), pas `accRetraitsReerYearAdd` : un RAP manqué n'est
+>   pas un retrait REER — aucun mouvement d'argent, aucune retenue à la source, et une garde voisine
+>   affirme `accRetraitsReerYearAdd === withdrawalREER − rapBorrowed`.
+> - ⚠️ **Deux limites SUBSISTENT** (consignées dans `FISCAL_REFERENCE.md`) : le solde impayé au décès
+>   n'est pas porté à la déclaration finale ; l'inclusion est ventilée entre conjoints au prorata des
+>   soldes REER, le moteur ne mémorisant pas QUI a emprunté au RAP.
+> - Garde : `tests/services/rapVersementManqueImpose.test.ts` (6 cas · 3 perturbations séparées).
+> - Gate complet VERT : **5 350 tests / 527 fichiers**, exit 0. CI verte sur les six checks.
+
+> ## 🟦 Session 2026-09-03 — Lot 110 : une limite épinglée dont le correctif évident est un BUG
+> `[ENG-GOALS-HORS-TOTALEXPENSES]` — **aucun code de prod touché** : un inventaire de dette + le
+> routage du vrai correctif. Aucun déploiement à vérifier.
+> - **Mécanisme CONFIRMÉ** (le ticket le disait « probable ») : `addExpense` est un no-op DÉLIBÉRÉ
+>   dans le `goalMutator`, commenté « déjà soustrait du compte ciblé ».
+> - ⚠️⚠️ **Le rendre effectif est une RÉGRESSION money-critical** : double soustraction du flux réel,
+>   `monthlyExpenses` alimentant `monthlyCashflow = monthlyIncome − monthlyExpenses`. Une garde de
+>   source fait rougir cette « correction ».
+> - ⚠️ **Qui LIT `totalExpenses`** (la consigne du ticket) : uniquement le **SWR** de `monteCarlo.ts`,
+>   qui n'a AUCUN consommateur d'écran. Coût aujourd'hui NUL ; risque demain : un SWR sous-estimé =
+>   un plan qui a l'air plus sûr qu'il ne l'est.
+> - **Correctif routé** : séparer le compteur de REPORTING de celui qui pilote la trésorerie touche
+>   le cœur du moteur → lot à part, plan-first. Recommandation : attendre que le SWR soit affiché.
+
+> ## 🟦 Session 2026-09-03 — Lot 109 : une récidive de corruption redevient audible
+> `[HEALTH-CORRUPTION-INDISTINGUABLE-D-UNE-ABSENCE]` (c) livré — **code de prod touché**
+> (`services/errorLogger.ts`).
+> - Le `Set` du throttle n'était JAMAIS purgé côté navigateur : « une fois par rafale » devenait
+>   « une fois par SESSION ». Devenu `Map` signature → horodatage, fenêtre de réarmement 60 s.
+> - **Valeur dérivée d'une MESURE** : rafale de 10 000 appels en **2,7 ms** sur `assetValueCad`.
+>   60 s = 4 ordres de grandeur au-dessus de la rafale, 4 en dessous d'une session longue.
+> - Pas de reset « par recalcul » : les appelants (hook, valorisation, hydratation) ne partagent
+>   AUCUNE occasion commune — c'est ce constat qui impose une fenêtre de temps.
+> - ⚠️ **3 des 5 sous-findings étaient DÉJÀ LIVRÉS** — (b), (e) et (d) — et deux portaient dans le
+>   code un commentaire qui CITE l'ID du ticket, lequel les affirmait encore au présent.
+> - ⚠️⚠️ Ma 3ᵉ perturbation ne changeait que la LECTURE d'une paire lecture/écriture : elle
+>   dupliquait « throttle supprimé » au lieu de tester la clé PAR SIGNATURE. Refaite des deux côtés.
+> - **(a) routé** : signaler une donnée invalide dans le RÉSUMÉ est une décision produit (trois
+>   options, recommandation « ne rien changer » — l'info est à un clic sur le détail).
+
+> ## 🟦 Session 2026-09-03 — Lot 108 : recensement de `[BUDGET-DEUX-NETS-MEME-ECRAN]` (doc seule)
+> **Aucun code touché.** Le ticket envoyait au mauvais correctif ; le recensement est consigné DANS
+> le ticket pour que le lot suivant parte du bon endroit.
+> - ⚠️ **Le second « net » n'est JAMAIS affiché comme montant** : ses trois usages sont des
+>   DÉNOMINATEURS (badge « Effort : X % », largeur de deux barres). « Une mention de provenance
+>   visible sur chacun » est donc inapplicable — il n'y a pas de second montant à étiqueter.
+> - Le vrai défaut est plus discret : un POURCENTAGE calculé sur une base différente du net affiché
+>   quelques lignes au-dessus, dans la MÊME carte fiscale.
+> - ⚠️ **L'écart « 154 $/mois, 3,1 % » était une valeur de fixture** : mesuré sur quatre paires
+>   brut/net, il CHANGE DE SIGNE (−0,3 %, −1,8 %, +2,6 %, +3,5 %). Il mesure la distance entre la
+>   paie réelle et le modèle fiscal, pas un biais du moteur.
+> - **Décision routée** (`docs/A_FAIRE_MOI.md`) avec le tableau des quatre mesures : aligner le
+>   dénominateur (déplace le badge de ~1,4 pt) ou nommer la base (ne déplace rien, recommandé).
+
+> ## 🟦 Session 2026-09-03 — Lot 107 : un réglage qui ne pilote rien, figé plutôt que tranché
+> `[ENG-RETURNRATE-SINGULIER-NON-CABLE]` — **aucun code de prod touché**, donc aucun déploiement à
+> vérifier. Moitié prouvable livrée, décision routée.
+> - **Fait vérifié COMPORTEMENTALEMENT** : `projection.returnRate` du simple au TRIPLE ⇒ patrimoine
+>   final identique au dollar près ; la carte `returnRates`, elle, le déplace de > 10 % (levier).
+> - **La garde fige le fait** pour qu'un câblage futur soit DÉLIBÉRÉ. 2 perturbations, 2 cibles.
+> - ⚠️ **L'ALARME du ticket est RÉFUTÉE** : « des dizaines de fixtures sans `returnRates` » →
+>   **72 fichiers posent le champ, 69 posent aussi la carte ; par SITE il en reste 3**, tous des
+>   tests d'UI/a11y où le singulier est légitime. Mesurer par SITE, pas par FICHIER.
+> - **Décision routée** (`docs/A_FAIRE_MOI.md`) : retirer / câbler / ne rien changer. Trois écrans
+>   lisent vraiment ce champ (Immobilier, Projets de vie) — ça change ce que Marc voit.
+> - ⚠️ **`[HEALTH-MONTANTS-HORS-PRIVATEAMOUNT]` fermé CADUQUE** : défaut réel, corrigé le 2026-09-01
+>   sous `[A11Y-PRIVACY-HEALTH-RAW]`. Vérifié par la garde de rendu, pas par un compte de grep.
+
+> ## 🟦 Session 2026-09-03 — Lot 106 : une affirmation juridique non citée, dans la source de vérité
+> `[RQAP-INDEX-SOURCE]` — **doc et commentaires seulement, aucun code de prod, donc aucun
+> déploiement à vérifier.**
+> - La phrase « le plafond RQAP est indexé sur la rémunération hebdomadaire moyenne » décrit la LOI
+>   et vivait dans `FISCAL_REFERENCE.md` sans citation : non marquée, elle héritait de l'autorité du
+>   document. Un chiffre non sourcé, le ratchet le cherche ; une PHRASE, rien ne la cherche.
+> - **Réglé par REQUALIFICATION** (2ᵉ option du ticket). ⚠️ Citer était mieux : LégisQuébec répond
+>   `EGRESS_BLOCKED` et `rqap.gouv.qc.ca` expire — tentative CONSIGNÉE avec sa cause pour que la
+>   prochaine session ne la retente pas à l'aveugle et ne la déclare pas impossible.
+> - ⚠️ **Deux sites annoncés, TROIS réels** : la note de §2 qui SIGNALAIT le problème le répétait
+>   elle-même au présent (`ENTREE-D-INVENTAIRE-FANTOME`) — invisible au ticket qui l'avait écrite.
+> - ⚠️ Ma garde exigeait la phrase dans CHAQUE fichier : mesuré, elle rougissait sur un retrait
+>   PARTIEL sain. Liste DÉRIVÉE ; retrait partiel → vert, retrait total → « retire cette garde ».
+> - **Routé sans être tranché** : `[MIGRATE-GROSS-DEJA-PERSISTE]` → `docs/A_FAIRE_MOI.md`, trois
+>   options, recommandation « détecter et DEMANDER » (le seul chemin qui ne peut pas écraser une
+>   saisie de Marc).
+
+> ## 🟦 Session 2026-09-03 — Lot 105 : cinq copies d'un patron, et une divergence qu'il fallait GARDER
+> `[MGA-PATRON-5-COPIES]` — périmètre re-recensé et confirmé (5 sites). Source unique :
+> `projeterAuPatronMga` + `MGA_EXCES_SUR_INFLATION_PP` dans `helpers.ts`. **Aucun montant ne bouge.**
+> - ⚠️⚠️ **La divergence signalée par le ticket était la BONNE réponse** : `taxJanuary` part d'une
+>   TABLE qui s'arrête à sa dernière année publiée, les quatre autres de l'année COURANTE. Ce ne
+>   sont pas deux vitesses, ce sont deux ANCRES. Les aligner aurait re-fabriqué la marche de
+>   **+4,54 %/an** corrigée par `UNE-ANCRE-D-EXTRAPOLATION-EN-DUR-FABRIQUE-UNE-MARCHE`.
+> - La source unique n'expose donc que la VITESSE ; l'ancre et le nombre d'années restent chez
+>   l'appelant, et un test verrouille l'écart des deux ancres (> 10 % sur le même plafond).
+> - ⚠️⚠️ **Le ratchet fiscal a arrêté le lot, et il avait raison** : deux entrées devenues FANTÔMES,
+>   un compte qui ment (4 déclarées, 2 réelles) et une constante hors inventaire. Aucun faux
+>   positif — c'est ce qu'une déduplication doit provoquer dans un registre indexé par FICHIER.
+>   Résultat non prévu : **cinq entrées éparpillées deviennent UNE**.
+> - 4 perturbations, dont une mesurée REDONDANTE et écrite comme telle : la prose française écrit
+>   « 0,5 » avec une virgule, le motif cherche le point décimal — le décommentage ne tire pas encore.
+> - ⚠️⚠️ **INCIDENT ENV — lot écrit DEUX FOIS.** Un redémarrage de conteneur PENDANT le gate a
+>   restauré `claude/lot-92` (12 commits de retard) et effacé tout le travail non commité. 4ᵉ revert
+>   de la session, 1ᵉʳ qui coûte un lot. **Le gate complet EST une attente longue** : vérifs ciblées
+>   → commit → push → gate. Nouvel ordre appliqué au 2ᵉ jet.
+
+> ## 🟦 Session 2026-09-03 — Lot 104 : le plafond RQAP enfin couvert SUR LA CHAÎNE
+> `[GOLDEN-RQAP-NON-COUVERT]` — prémisse RE-MESURÉE avant de coder, et **confirmée** : perturber le
+> plafond fait rougir 4 tests, tous UNITAIRES, aucun de scénario.
+> - **Pas un golden, une PENTE** : un golden épingle des nombres et se re-base à l'indexation. La
+>   garde mesure l'effet du congé par dollar de salaire du 2ᵉ parent — **0,291 sous le plafond,
+>   0,700 au-dessus** (le taux net de la fixture), rapport **2,40**. C'est le changement de RÉGIME
+>   qui est défendu.
+> - ⚠️ Le moteur ne publie PAS la prestation séparément (fondue dans `Income`) : on mesure ce que sa
+>   présence CHANGE — une différence, puis sa dérivée. Jamais reconstruire le calcul dans le test.
+> - 3 perturbations, 3 discriminantes. La 2ᵉ (plafond ÷ 2) rougit pour une raison non prévue — le
+>   couple « sous le plafond » passe au-dessus du plafond réduit ; c'est écrit, et une assertion
+>   dérivée de `RQAP_MAX_INCOME` vérifie que la fixture ENCADRE toujours le plafond.
+
+> ## 🟦 Session 2026-09-03 — Lot 103 : la classe JUMELLE, et un périmètre d'agent réfuté
+> `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]` — un montant `` `+${x}$` `` n'appelle aucune fonction, donc
+> aucune garde ne le cherchait.
+> - ⚠️ **Le périmètre du BACKLOG venait d'un AGENT et était faux DANS LES DEUX SENS** : sur-compte
+>   (`applyDocument` « ×11 » = onze COMMENTAIRES), sous-compte (6 sites non nommés, 2 formes que son
+>   motif ne voyait pas : `${x} $` avec espace, et un LITTÉRAL `+250 000$`).
+> - **Le résultat utile est une PARTITION, pas un nombre** : sur 19 lignes → 2 faux positifs,
+>   **4 corrigés** (ChildPlanning, journal FERR, deux littéraux qui recopiaient leur constante), et
+>   **17 de texte pour un MODÈLE**, exemptés AVEC leur raison.
+> - ⚠️ `formatCAD(x, { decimals: 2 })` sur le journal FERR : passer au défaut aurait CHANGÉ sa
+>   sortie. Migrer un formateur ne donne pas le droit de trancher la précision à sa place.
+> - **Question routée à Marc** (`[FMT-PROMPT-MONTANTS]`, `docs/A_FAIRE_MOI.md`) : les prompts
+>   arrondissent à 100 $ DÉLIBÉRÉMENT — le texte de consentement le promet. Recommandation : ne pas
+>   y toucher.
+> - ⚠️⚠️ **Le gate a trouvé ce que le lot ne cherchait pas** : `amountPrivacyScan` a rougi — les deux
+>   montants de `ChildPlanning` migrés vers `formatCAD` n'étaient PAS dans `<PrivateAmount>` et
+>   restaient lisibles en mode discret. Ils lui échappaient tant qu'ils étaient composés à la main.
+>   Corriger le FORMAT révèle la fuite de VIE PRIVÉE : même trou vu deux fois. Et
+>   `fiscalConstantsGuardV2` a signalé une entrée devenue FANTÔME (`projection.ts::250`, le fragment
+>   du libellé « 250 000$ ») — retirée. Un lot de format nettoie l'inventaire FISCAL.
+> - Garde élargie : `components/` → + `services/` + `mcp/`, 3ᵉ motif pour l'interpolation nue,
+>   exemptions déclarées + garde d'obsolescence. 5 perturbations, 4 discriminantes, 1 redondante.
+
+> ## 🟦 Session 2026-09-03 — Lot 102 : la dette `toLocaleString` tombe à ZÉRO
+> Dernier reliquat de `[FMT-TOLOCALESTRING-MONEY]` : `ProjectionTooltip` (18 « $ » retirés du JSX,
+> le 19ᵉ site basculé sur `formatNumber`) et `ImportBrokerPositions` (`formatNumber`, PAS
+> `formatCAD` — devise NATIVE suivie de son code).
+> - ⚠️ **L'inventaire a exigé sa propre mort et il ne fallait PAS le supprimer** : « dette à zéro →
+>   retire cette garde » a rougi, comme prévu. Le supprimer aurait rouvert la porte. L'INVENTAIRE
+>   meurt, la RÈGLE reste : « pas plus de N » est devenu « exactement zéro », au même endroit.
+> - ⚠️ **18 sites sur 19 portaient le « $ » à la main, 1 non** — un remplacement global aurait doublé
+>   le symbole 18 fois ou en aurait ajouté un jamais eu. Le membre déviant se compte.
+> - ⚠️⚠️ J'ai écrit l'avertissement sur l'INSÉCABLE puis commis l'erreur : un attendu NÉGATIF se
+>   compose avec le formateur autant que le positif ; `` `${formatNumber(n)} $` `` ne matche rien.
+> - **Reste ouvert** : `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]` (classe jumelle, invisible à ce scan).
+
+> ## 🟦 Session 2026-09-03 — Lot 101 : les 65 logs du moteur passent par la source unique
+> Étape 2 de `[FMT-TOLOCALESTRING-MONEY]`. **67 → 2** montants hors `formatCAD` ; le ticket parent
+> part à l'archive, le reliquat est `[FMT-TOLOCALESTRING-MONEY-COMPOSANTS]` (2 sites de composants).
+> - **Forme retenue** : `formatCAD(Math.round(x))`, en GARDANT `Math.round` — mesuré, `formatCAD(x)`
+>   en diffère sur les demis NÉGATIFS (4 cas sur 11) : le retirer aurait déplacé des montants.
+>   Le lot ne bouge donc aucun chiffre, il change qui FORMATE.
+> - ⚠️ **La garde du lot 100 a rougi sur le correctif qu'elle préparait** (elle épinglait
+>   `cashflowAllocation`/`taxDecember` comme OFFENDERS). Inversée au même endroit : elle affirme
+>   maintenant qu'ils sont BALAYÉS. Une garde qui nomme des coupables se périme au 1er correctif.
+> - ⚠️ **La suite est restée verte sur 65 chaînes réécrites** — résultat à EXPLIQUER, pas feu vert :
+>   aucun test n'assertait leur texte. D'où `tests/services/logsMoteurFormatCAD.test.ts`, garde
+>   comportementale sur `tryInheritance`, 3 rouges sur 3 au retour du code d'avant.
+> - ⚠️ **La revue a trouvé le JUMEAU à 36 lignes** : « Maladie grave (capital +250000$) », montant
+>   composé À LA MAIN dans le fichier même que le lot migrait — invisible à la garde, qui cherche
+>   `toLocaleString`. Corrigé, et le message de l'inventaire dit maintenant ce qu'il ne compte PAS.
+>   Classe jumelle routée : `[FMT-MONTANTS-COMPOSES-A-LA-MAIN]`.
+> - **Deux sites changeaient vraiment de sortie** (héritage, mise de fonds) : ils n'avaient aucun
+>   `Math.round` et Intl affiche jusqu'à 3 décimales par défaut → ils montraient des centimes.
+
+> ## 🟦 Session 2026-09-03 — Lot 100 : le SCAN de `[FMT-TOLOCALESTRING-MONEY]` (étape 1 sur 2)
+> Le ticket exige son scan AVANT tout correctif (« ses offenders SONT le périmètre »). Livré :
+> `tests/toLocaleStringMoneyScan.test.ts`. **Aucun code de prod touché.**
+> - **Périmètre RE-MESURÉ** : 81 occurrences brutes hors `utils/format.ts`, 3 en commentaire,
+>   78 en code → **67 montants, 9 dates, 2 compteurs**, relus à la main dans les deux sens.
+>   Le ticket annonçait 77 au 2026-08-19.
+> - ⚠️ **Cinq offenders NOMMÉS déjà corrigés** (`ProjectionExplains`, `ActionPlanDrilldown`,
+>   `GoalSeekerCard`, `ImportBankStatement`, le `fmtM` de `StrategyOptimizerPanel`) et remède
+>   prescrit REDONDANT (`formatCAD` arrondit déjà ; `formatSigned(n,{withCurrency:true})` existe).
+> - ⚠️⚠️ **Le remède du ticket est FAUX sur un membre** : `ImportBrokerPositions.tsx` affiche un prix
+>   en devise NATIVE suivi de son code → `formatCAD` donnerait « 1 234,56 $ USD ». C'est
+>   `formatNumber` qu'il lui faut. Et le `fmt` de `ProjectionTooltip` est appelé ~20× avec le « $ »
+>   à la main et **1× sans** : un remplacement global doublerait le symbole.
+> - ⚠️ **Trois seuils inventés avant d'être mesurés** dans le même fichier (34 → 67 ; 0,45 sur un
+>   ratio qui ne mesurait rien ; 0,9 → mesuré 0,583). Leçon `UN-SEUIL-ECRIT-AVANT-SA-MESURE-EST-UN-CHIFFRE-INVENTE`.
+> - ⚠️⚠️ **Le panel a trouvé dans la garde le défaut qu'elle empêche** : `[Tt]s` matchait `ts`
+>   minuscule ⇒ `debts`/`assets`/`amounts`/`results` classés « date », jamais comptés. Corrigé
+>   (`Ts`), plus témoins nommés dans les deux sens. Compte re-mesuré APRÈS : inchangé, 67/9/2.
+> - **Étape 2 routée** : `[FMT-TOLOCALESTRING-MONEY-CORRECTIFS]`, découpée logs moteur / infobulle /
+>   devise native, avec le compteur que chaque lot doit faire baisser.
+
+> ## 🟦 Session 2026-09-03 — Lot 99 : les placements muets disent enfin pourquoi
+> `[FINTABLE-INVESTMENTS-MUET]` livré (demande Marc du 2026-08-17), depuis le recensement du lot 98.
+> - Il manquait le FIL, pas le diagnostic : `holdingsSkipped` était mesuré puis jeté (seul
+>   consommateur = un script CLI). `services/fintable/comptesSansPositions.ts` est la SOURCE UNIQUE
+>   qui le traduit ; les DEUX chemins de sync la consomment, une garde couvre chacun.
+> - Champ DÉDIÉ et non un `warnings` de plus : `warnings` n'est rendu qu'en COMPTE à l'écran
+>   (« · 3 avertissement(s) »), découvert en écrivant le lot. Le `label` voyage avec l'`accountId`.
+> - `undefined` et non `[]` quand rien à signaler ⇒ rapport persisté identique dans le cas nominal.
+> - Message : dit où ça se répare (Fintable), ne promet PAS de guérison automatique
+>   (`FINTABLE-POSITIONS` : certaines institutions ne fournissent JAMAIS les positions), et n'affiche
+>   AUCUN montant — un « 0 $ » y serait crédible et faux.
+> - 10 gardes, neuf perturbations séparées. ⚠️ 3ᵉ re-mesure du seuil d'anti-vacuité : `browserSync.ts`
+>   est à **0,358** de code (le 0,5 canonique le déclarerait vide). Seuils par fichier, mesure datée.
+
+> ## 🟦 Session 2026-09-03 — Lot 98 : recensement de `[FINTABLE-INVESTMENTS-MUET]` (doc seule)
+> **Aucun code de prod touché.** Le ticket (demandé par Marc) partait d'un diagnostic imprécis qui
+> envoyait au mauvais correctif ; le recensement est consigné DANS le ticket pour que le lot suivant
+> parte du bon endroit.
+> - La raison EST captée : `readFintableSnapshot` remplit `holdingsSkipped: {accountId, reason}`.
+> - Son **seul consommateur est `scripts/fintableDry.ts`** (CLI de dev). Zéro consommateur d'UI.
+> - Les DEUX chemins de sync (`browserSync.ts`, `mcp/runFintableSync.ts`) composent `warnings` de la
+>   même façon et **aucun n'y verse `holdingsSkipped`** → cause classée puis JETÉE.
+> - `FintableConnection.healthy` / `statusText` / `needsReconnect` : zéro occurrence dans `components/`.
+> - ⚠️ Correctif à faire : BRANCHER l'existant, pas ajouter un traitement de codes Plaid. Le canal
+>   `FintableSyncReport.warnings` existe et est persisté, mais il aplatit en chaînes — un champ dédié
+>   (avec l'identité du compte) est nécessaire, ajouté AVEC son consommateur d'écran (leçon lot 95).
+> - ⚠️ `types.ts` documente déjà que Fintable ne rend JAMAIS les positions de certains comptes
+>   (`FINTABLE-POSITIONS`, courtier hors SnapTrade) : le cas est STRUCTUREL, pas seulement accidentel.
+
+> ## 🟦 Session 2026-09-03 — Lot 97 : la marche du raccord expliquée sur la vue par DÉFAUT
+> `[PASSE-REEL-RACCORD-CHUTE-MENSUEL]` — ferme ce que le lot 96 avait routé.
+> - **Mesuré** : la marche mensuelle annule TOUT le mois courant (−10 900 $ contre −900 $ au jour sur
+>   la même fixture). Un test le mesure, il ne l'affirme pas.
+> - **Le fil est passé par le TYPE** : `buildPastPrefix` rend `{ points, fluxPeriodeAnnulee }` au lieu
+>   d'un tableau nu — 16 sites énumérés par le compilateur. Recalculer dans le composant aurait fait
+>   une SECONDE somme sur la même base d'exclusion.
+> - ⚠️ **Le GATE est le fait** : mention mensuelle affichée SEULEMENT hors vue au jour, sinon elle
+>   décrirait un raccord absent de l'écran. Perturbation retirant le gate → rouge.
+> - ⚠️ `pastPrefix.points` garde `EMPTY_ARRAY` : c'est l'identité que les memos avals comparent.
+> - 19 gardes (6 neuves), six perturbations séparées.
+
+> ## 🟦 Session 2026-09-03 — Lot 96 : la « chute » signalée par Marc, expliquée
+> `[PASSE-REEL-RACCORD-CHUTE]` — cause confirmée contre le code : le dernier point du passé est
+> reconstruit en DÉFAISANT les flux du jour, donc `veille = aujourd'hui − flux_du_jour`. Les deux
+> points sont JUSTES ; il manquait l'explication.
+> - `fluxPeriodeAnnulee` publié par `reconstructCashHistoryDaily`, remonté par `dailyPastLedger`,
+>   transformé en phrase par `services/history/raccordNotice.ts`, rendu sous le graphe.
+> - **Jamais lissé** (ce serait fabriquer un solde inexistant) ; **aucun montant** dans la phrase
+>   (plus masquable une fois interpolé) ; le SENS est dit (entrée → marche vers le haut).
+> - ⚠️ **Périmètre = borne INFÉRIEURE** : la version MENSUELLE a le même mécanisme, en plus gros
+>   (elle annule tout le mois courant) et sur la vue par défaut → `[PASSE-REEL-RACCORD-CHUTE-MENSUEL]`.
+>   Non livré ici : `buildPastPrefix` rend un tableau nu, et exposer le champ sans consommateur est
+>   exactement ce que le lot 95 a condamné.
+> - ⚠️ Garde jumelle MUETTE au 1er jet (`SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`) :
+>   `mentionRaccord` survit dans l'IMPORT, `fluxPeriodeAnnulee` dans la construction du memo.
+>   Ré-ancrée sur l'appel + le rendu.
+> - Deux pointeurs fermés, vérifiés : `[PASSE-REEL-DETTE-2]`, `[PASSE-REEL-DETTE-3]`.
+
+> ## 🟦 Session 2026-09-03 — Lot 95 : trois champs qu'il ne fallait PAS ajouter
+> `[DEBT-UI-CHAMPS-RESTANTS]` — le ticket (écrit par moi la veille) demandait d'exposer `limit`,
+> `amortizationYears` et `isInterestDeductible`. **Mesuré : aucun des trois n'est LU** en production.
+> - Les trois accès à `.amortizationYears` portent sur d'AUTRES objets (`rp.` RentalProperty, `ctx.`
+>   prompt IA, `doc.` payload MCP en écriture). `limit` et `isInterestDeductible` : zéro accès.
+> - Leur donner une saisie = trois champs dont le remplissage ne change rien. Image MIROIR de
+>   `UN-CHAMP-TYPE-SANS-PRODUCTEUR` : ici des producteurs, zéro consommateur.
+> - **Livré** : `tests/services/debtChampsSansLecteur.test.ts` — un inventaire qui SAIT MOURIR
+>   (rouge dès qu'un lecteur apparaît, et exemptions vérifiées dans l'autre sens).
+> - ⚠️ **QUESTION POUR MARC** dans `docs/A_FAIRE_MOI.md` :
+>   `[DEBT-AMORTIZATIONYEARS-QUATRE-PRODUCTEURS-ZERO-LECTEUR]` — quatre écritures, zéro lecture.
+>   Brancher (déplace de l'argent), supprimer (type persisté) ou assumer : à lui de trancher.
+
+> ## 🟦 Session 2026-09-02 — Lot 94 : la saisie à la main (chantier Dette CLOS)
+> `[DEBT-UI-PAR-TYPE]` — la courbe d'amortissement du passé est atteignable par les TROIS chemins :
+> assistant, import de contrat, saisie manuelle.
+> - `components/debt/debtKindLabels.ts` (`Record<DebtKind, string>` exhaustif) +
+>   `DebtKindFields.tsx`, câblé dans les DEUX formulaires jumeaux de `DebtManager`.
+> - La condition d'affichage d'`originalBalance` vient de **`KIND_AMORTISSANT`** (la table du
+>   moteur), jamais d'une liste recopiée. Le test balaie les 11 types.
+> - L'UI refuse ce que l'assistant refuse ; champ vidé ⇒ `undefined`, jamais `0` ni `NaN`.
+> - ⚠️ Périmètre RÉDUIT vs le ticket (pas de `LoanForm`/`LeaseForm` : 279 lignes, cinq champs
+>   communs ⇒ duplication). Reliquat routé : **`[DEBT-UI-CHAMPS-RESTANTS]`** (`limit`,
+>   `amortizationYears`, `isInterestDeductible`).
+> - ⚠️ Deux erreurs à MOI, corrigées et écrites : une garde muette (fusion « valeurs effectives »
+>   REDONDANTE ici — leçon du lot 93 recopiée sans vérifier sa prémisse) et un test bâti sur une
+>   prémisse fausse (les deux formulaires ne coexistent pas : `startEdit` ferme l'ajout).
+
+> ## 🟦 Session 2026-09-02 — Lot 93 : le montant emprunté entre dans l'app
+> `[DEBT-MCP-ORIGINALBALANCE]` — ferme le trou que le lot 92 avait mesuré chez lui-même : la courbe
+> d'amortissement était livrée et **inatteignable**, faute d'un producteur d'`originalBalance`.
+> - Champ câblé dans `DebtPayload`, le schéma Zod d'`apply_debt` (bretelle) et `applyDocument`
+>   (ceinture — l'import PDF ne passe PAS par Zod). Bornes identiques à `balance`.
+> - Refus `originalBalance < balance` sur les valeurs **EFFECTIVES** (après fusion), jamais sur le
+>   payload seul : même leçon que la garde de dates du même fichier, re-payée sinon.
+> - **Garde d'ATTEIGNABILITÉ bout-en-bout** (payload MCP → dette écrite → supplément au passé non
+>   nul) + son contrôle négatif. C'est le test qui manquait au lot 92 : chaque moitié était testée
+>   chez elle, le trou entre les deux n'appartenait à personne.
+> - ⚠️ **`[DEBT-KIND-MORTGAGE-DANS-DETTES-NON-IMMO]` RÉFUTÉ et fermé** (ticket écrit par moi la
+>   veille). `DettesNonImmo` exclut l'hypothèque des BIENS, pas les dettes de `kind: 'mortgage'` ;
+>   `Debt` n'a aucun lien vers un bien. Ses DEUX correctifs proposés étaient des régressions
+>   money-critical. Mesure dans `BACKLOG.md`.
+> - ⚠️ Reste ouvert pour rendre le champ saisissable À LA MAIN : `[DEBT-UI-PAR-TYPE]` (DebtManager
+>   n'expose ni `kind` ni `originalBalance`). Aujourd'hui le chemin est l'extraction de contrat.
+
+> ## 🟦 Session 2026-09-02 — Lot 92 : la courbe du passé montre enfin la dette qui fond (2/2)
+> `[DEBT-AMORTIZATION-CABLAGE]` — ferme le chantier ouvert au lot 91. C'est CE lot qui change ce que
+> Marc voit. Delta ADDITIF dans `buildPastPrefix` + `dailyPastLedger`, jamais une resommation.
+> - **Mesure publiée, script COMMITTÉ** : `npx tsx scripts/mesureAmortissementPasse.ts`. Prêt auto
+>   30 k$ / 18 k$ restants / 5 % / 560 $ : **−12 000 $** à −24 mois, −524 $ à −1 mois, **0 au raccord**.
+> - **Aucun golden n'a bougé, et c'est EXPLIQUÉ** : les 8 dettes des personas portent zéro
+>   `originalBalance` (mesuré par le même script) ⇒ le service refuse, comportement d'avant à l'octet.
+> - **Bandeau du graphe corrigé** : « dettes au niveau actuel » était devenu FAUX. Phrase sortie du
+>   JSX vers `services/history/pastDebtNotice.ts`, dérivée du MÊME verdict que le calcul, cas MIXTE
+>   nommé (un bail à côté d'un prêt = le cas de Marc). Garde jumelle contre le retour du ternaire.
+> - ⚠️⚠️ **INATTEIGNABLE depuis l'app** : grep du dépôt = **zéro producteur** de `originalBalance`.
+>   La courbe amortie ne s'affichera chez Marc qu'après `[DEBT-MCP-ORIGINALBALANCE]`, promu BLOQUANT
+>   au BACKLOG — **c'est la suite immédiate**. Classe `UN-CHAMP-TYPE-SANS-PRODUCTEUR…`.
+> - ⚠️ Le cas RÉEL observé est un `auto-lease` : même le champ rempli, il reste PLAT (2 gardes).
+> - ⚠️⚠️ **Le panel a trouvé un CRITIQUE dans mon propre lot, corrigé DANS le lot** : le
+>   rééchelonnement proportionnel de la série pouvait afficher **59 369 $ dus sur un prêt de
+>   30 000 $** (2× l'emprunt, facteur de bande). Remplacé par la résolution en FORME CLOSE du
+>   paiement qui relie les deux bouts — la courbe part du montant emprunté et arrive sur le solde
+>   réel, au dollar près. La bande `[0,5 ; 2]` porte désormais le PAIEMENT ; les deux tests de
+>   limite se sont INVERSÉS au même endroit.
+> - Trois autres findings livrés : `termEndDate` ignoré (le modèle payait après le terme),
+>   `jamais-decroissant` (paiement ≤ intérêt = refus, le moteur force un plancher), et une PERF
+>   O(jours × mois de prêt) — `amortirDettePassee` était appelée par mois ET par jour alors qu'elle
+>   reconstruit toute la série ; hissée hors des boucles, gardée par un espion.
+> - Absence vs corruption séparées + journalisées comme le module voisin le faisait déjà.
+> - Découverte routée : `[DEBT-KIND-MORTGAGE-DANS-DETTES-NON-IMMO]`.
+> - **37 gardes, 14 perturbations séparées**, chacune ne rougissant que sa cible.
+
+> ## 🟦 Session 2026-09-02 — Lot 91 : le service d'amortissement, avant tout câblage (1/2)
+> `[DEBT-AMORTIZATION]` lot 1/2 — découpage CHOISI par Marc. `Debt.originalBalance?` + le service
+> PUR `debtAmortization.ts` + 13 gardes. **Rien n'est branché, la courbe du passé est inchangée.**
+> - Table `Record<DebtKind, boolean>` EXHAUSTIVE (pas un `Set`) : un nouveau type de dette casse le
+>   typecheck tant que son cas n'est pas tranché. `auto-lease` (cas réel de Marc) = `false`.
+> - Le service REFUSE en NOMMANT sa cause ; recalage proportionnel borné `[0,5 ; 2]` qui fait
+>   atterrir la courbe EXACTEMENT sur le solde réel, refus hors bande.
+> - **SUITE = `[DEBT-AMORTIZATION-CABLAGE]`** : delta additif dans `buildPastPrefix`/
+>   `dailyPastLedger`, mesure AVANT/APRÈS de la courbe, et annotation de l'ADR 0012.
+> - ⚠️⚠️ **INCIDENT ENV** : un redémarrage de conteneur a restauré un clone + `node_modules` d'AOÛT
+>   (branche `claude/eng-divorce-coherent-v2`). Mon 1er recensement a porté sur le mauvais arbre et
+>   j'ai failli publier une fausse conclusion. **Après tout redémarrage : vérifier `git branch` ET
+>   `git log` AVANT de mesurer quoi que ce soit.** Récupération : `checkout -B <br> origin/main` + `npm ci`.
+> - ✅ **Incident données CLOS** : Marc a confirmé « tout est revenu » le 2026-09-02.
+
+> ## 🟦 Session 2026-09-02 — Lot 90 : le backlog annonçait plus du double de ce qu'il contenait
+> `[PM-BACKLOG-ENTETES-PERIMES]` — aucun code de prod touché : c'est l'outil de DÉCISION qui mentait.
+> - **MESURÉ** : cinq en-têtes promettaient **50 items** pour **21** réels (Moteur & fiscal 8+7+7 →
+>   10 · A11y 5 → 1 · Performance 4 → 1 · IA 7 → 2 · Dette technique 12 → 7).
+> - Deux en-têtes affirmaient du FAUX au présent : le « point chaud `realEstateMonth` : QUATRE
+>   défauts money-critical » (les quatre sont `[x]` en archive, vérifiés un par un) et
+>   « Documentation — la doc a décroché du code » (vide depuis #674).
+> - ⚠️ Correctif = **supprimer les comptes**, pas les re-compter : leur source unique est la liste.
+> - ⚠️ **2ᵉ passe manuelle sur la même classe** (le lot 84 avait corrigé 4 en-têtes) ⇒ GARDE cette
+>   fois, sans exemption. Le seuil « je corrige → j'automatise » est la 2ᵉ occurrence.
+
+> ## 🟦 Session 2026-09-02 — Lot 89 : une sensibilité identique pour tous n'est pas une sensibilité
+> `[BUDGET-SENSIBILITE-FORMULE-5PCT]` CLOS — tuile SUPPRIMÉE des DEUX surfaces (écran + contexte IA).
+> - **Mesuré** : la formule locale ne dépendait que de l'horizon → **145 648 $ pour les 7 personas**.
+>   Le moteur répond **18 495 $ à 307 118 $** selon le ménage (**16,6×**). Rapport formule/moteur :
+>   **0,47× à 7,88×** — la FORME est fausse, pas le taux.
+> - ⚠️ Le ticket annonçait « ratio 0,56× » : vrai de SA fixture, faux comme description. Un écart
+>   mesuré à un seul point ne dit rien de sa nature.
+> - ⚠️ Surface la plus dangereuse : le chiffre partait dans le **prompt du chat**.
+> - Rien d'atteignable perdu (la carte navigue déjà vers Futur) ; question routée en
+>   `[BUDGET-SENSIBILITE-MOTEUR]` avec sa mesure. ⚠️ Le correctif n'est PAS de rappeler le moteur
+>   depuis Budget (2e simulation par rendu) mais de le faire PUBLIER la grandeur.
+
+> ## 🟦 Session 2026-09-02 — Lot 88 : deux copies divergeaient déjà, sans que rien puisse rougir
+> `[TAXDEC-TROIS-FABRIQUES-AGEOPTS]` CLOS. Refactor PUR : **bit-identique sur les 7 personas**.
+> - **3 fabriques d'`AgeCreditOptions` → 1**, garde stricte `>= 65` (équivalence VÉRIFIÉE : tous les
+>   crédits sont gatés en interne, `ageOpts` n'a pas d'autre consommateur). `hasSpouse` décidé à un
+>   seul endroit — le champ qui a déjà coûté ~305 $/tête.
+> - **2 validations jumelles de `accRetraitsReerYearByUser` → 1 autorité.** ⚠️ MESURÉ : elles
+>   divergeaient sur 3 entrées (solo, total non fini, total négatif). Les 3 donnaient le même
+>   résultat final **par ABSORPTION en aval**, pas par accord — une divergence rattrapée par un
+>   filet est une bombe à retardement.
+> - ⚠️ Le gate `activeUsersCount > 1` d'une des copies était **INERTE, prouvé** : chez un solo le
+>   repli vaut l'unique part. D'où sa longévité : rien ne pouvait la faire rougir.
+> - ⚠️ Un test a rougi sans que son objet bouge (`FRONTIÈRE 65 ans`) : il lisait la présence
+>   d'options, une propriété de la FORME. Re-fondé sur le FAIT, avec son anti-vacuité.
+
+> ## 🟦 Session 2026-09-02 — Lot 87 : le défaut dominant n'était pas celui que le ticket titrait
+> `[TAXDEC-ACTIF-72-PENSION-CREDIT]` CLOS — deux défauts, dont le gros n'était qu'en incise.
+> - **(A) IMPÔT JAMAIS FACTURÉ** : les bandes §2 (gains) et §3 (dividendes) empilaient sur le
+>   SALAIRE SEUL pour un ménage ACTIF, alors que `[REER-ACTIF-NON-RECONCILIE]` avait élargi
+>   l'assiette du §1 à ses retraits REER. **701 à 2 520 $/an** mesurés. ⚠️ Le ticket ne citait que
+>   le §2 ; le §3 avait le même trou — 12ᵉ ticket au périmètre trop étroit.
+>   Correctif de FORME : source unique `assietteEmpilementNominale`, `accRetraitsReerYear`
+>   **factorisé HORS** du ternaire (il appartient aux deux régimes).
+> - **(B) crédit de pension d'un actif 72+** : corrigé des DEUX côtés ensemble (§1 + bande).
+>   ⚠️ **Effet PUBLIÉ nul dans 4 cas sur 5** — le crédit s'annule entre impôt et retenue ; il ne
+>   survit que si le SALAIRE est petit devant les retraits (−305,81 $ net à 20 k$/50 k$). Mesuré au
+>   producteur il valait 250-679 $ partout : `UNE-GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`.
+> - ⚠️ **Zéro mouvement moteur, EXPLIQUÉ par un compteur** : le chemin « actif + retraits REER +
+>   non-enregistré » est exercé **0 fois sur 7 personas × 40 ans** → ticket `[PERSONA-ACTIF-QUI-DECAISSE]`.
+> - Les 126 tests de `taxDecember` restent verts STRUCTURELLEMENT : leur stub fiscal est PLAT.
+> - ⚠️ Le test de LIMITE qui figeait « pension admissible = 0 chez un actif » a été **INVERSÉ**
+>   au même endroit, avec son histoire — il avait raison à sa date, le §1 n'était pas encore corrigé.
+
+> ## 🟦 Session 2026-09-02 — Lot 86 : la source unique déclarée inatteignable ne l'était plus
+> `[FISC-LATENT-PENSION-CREDIT]` — moitié **rente DB** livrée ; moitié **FERR** routée avec sa raison.
+> - **Le vrai livrable est l'EXTRACTION** : `eligiblePensionFor` était une CLOSURE de `taxDecember`
+>   (le motif exact du routage au lot 84). Devenue `services/projection/pensionCredit.ts`, PURE,
+>   consommée par décembre ET par l'impôt latent. Les 126 tests de `taxDecember` restent verts.
+> - ⚠️ **Le ticket disait « +280 $ » ; le SIGNE dépend du revenu** : −250,50 $ à 12-24 k$ de base
+>   (impôt de base nul ⇒ crédit fédéral perdu, il ne sert qu'à la liquidation), +280 à +428 $ à
+>   40-70 k$ (le montant québécois est testé au revenu, lui). Les tests assertent les SIGNES.
+> - **Un seul persona bouge** (`pre-retraite-riche`, +709 $ au dernier point, −880 $ à 75 % de
+>   l'horizon) : les six autres portent `dbPensionMonthly: 0`. Absence EXPLIQUÉE, pas subie.
+> - ⚠️ **Moitié FERR bloquée par une UNITÉ** : seul `accRetraitsReerYear` (année-à-date) est
+>   disponible, or l'impôt latent se calcule chaque mois ⇒ dépendance au mois de lancement. Portée
+>   réelle étroite : le plafond est saturé dès 3 058 $/an (255 $/mois de rente DB).
+> - `ImpotLatent` est de l'AFFICHAGE (vérifié par grep) — aucune fonction objectif ne la trie.
+
+> ## 🟦 Session 2026-09-02 — Lot 85 : le refus est une livraison, quand il est MESURÉ
+> `[FISC-BANDES-FRERES-SANS-AGEOPTS]` — bande **SUCCESSORALE** de `estateCalculation` livrée ; bande
+> `facteurNetRentes` **ANNULÉE en cours de lot**, et c'est le vrai résultat.
+> - ⚠️⚠️ **Un invariant existant a arrêté la moitié fautive** : « une pension DB pleinement indexée
+>   ne peut pas appauvrir » s'INVERSAIT pour tout horizon ≤ ~9 ans (5 ans : +4 836 → **−4 845 $**).
+>   Décomposition par SITE : bande successorale seule +4 764 $ (intact), bande des rentes seule
+>   **−4 773 $**. Cause = l'artefact déjà ticketé `[ESTATE-NPV-CONTEXTE-PLURIANNUEL]`, qu'une
+>   sensibilité accrue au revenu AMPLIFIE. Les deux se livrent ENSEMBLE — ticket enrichi, dette
+>   bornée par un test qui doit MOURIR avec elle.
+> - ⚠️ **Le ticket nommait UNE fonction objectif, il y en avait DEUX** : `rankStrategies` score aussi
+>   `estateNetWorth` ET `totalEstateTax` (via `lifetimeTaxTotal`). **Mesuré : aucun classement ne
+>   bouge** (7 personas × 4 objectifs + `compareLifeScenarios`).
+> - Livré : `hasSpouse: false` sur la succession — par le MODÈLE du fichier (double décès → une
+>   déclaration, celle du survivant seul), pas par défaut. Impôt successoral **+3 440 $** (65+ seul).
+> - ⚠️ **Marche assumée à 65 ans** : +8 243 $ de saut quand l'horizon fait passer le décès de 64 à
+>   65 ans. Réelle (le crédit commence à 65), donc consignée et non lissée.
+> - ⚠️ **Slip de protocole attrapé** : un avant/après par `git stash` rendait des chiffres identiques
+>   — le correctif était déjà COMMITÉ. Un écart nul inattendu accuse le protocole avant le code.
+> - ⚠️ Le seuil d'anti-vacuité de `estateCalculation.test.ts` a rougi **sans que rien de ce qu'il
+>   défend ait bougé** : mes ~40 lignes de prose ont fait tomber la part de code à 0,240 (< 0,25).
+>   RE-MESURÉ à 0,20 avec sa raison, pas supprimé.
+
+> ## 🟦 Session 2026-09-02 — Lot 84 : l'impôt latent ignorait l'âge
+> `[FISC-BANDES-FRERES-SANS-AGEOPTS]`, moitié `latentTax` (AFFICHAGE) livrée ; moitié
+> `estateCalculation` **laissée ouverte** — elle touche une FONCTION OBJECTIF triée par
+> `drawdownOptimizer`, donc elle exige de mesurer le CLASSEMENT avant/après.
+> - Re-mesuré : **1 854 $/déclarant 65+** (fourchette du ticket : 1 741-2 444). **0,00 $ à 60 ans** —
+>   on transmet l'âge RÉEL, qui se limite tout seul ; le ticket disait « contextes par définition
+>   65+ », c'était faux et plus risqué.
+> - ⚠️ `eligiblePensionFor` INUTILISABLE (closure de `taxDecember`) → part pension (280 $) routée en
+>   `[FISC-LATENT-PENSION-CREDIT]`, avec l'avertissement RRQ/PSV non admissibles.
+> - ⚠️ Le RATCHET FISCAL a arrêté mon correctif (7ᵉ littéral `30`) → expression HISSÉE en source
+>   unique `ageSpouseProjete`, consommée par décembre ET par le latent.
+> - ⚠️ 2ᵉ garde vacueuse de la nuit, démasquée par la perturbation → refondée en OBSERVATION.
+> - ⚠️ Aucun golden n'a bougé : `ImpotLatent` n'est épinglé par AUCUN golden (absence de couverture,
+>   pas absence d'effet).
+> - **Backlog** : 4 en-têtes annonçaient des tickets inexistants (dont « les 2 plus gros de tout
+>   l'audit », section VIDE) — corrigés.
+
+> ## 🟦 Session 2026-09-02 — Lot 83 : « jusqu'au prochain push » voulait dire « indéfiniment »
+> `[SEC-AUDIT-SYNC-LEGACY-CLEARTEXT]` — prémisse vérifiée côté PRODUCTEURS (plus rien n'écrit de clés
+> en clair). Mais le ticket sous-estimait la fenêtre : le pull écrit une meta qui fait voir l'état
+> INCHANGÉ (volontairement), donc un vieux blob reste en clair INDÉFINIMENT sans modification.
+> - Livré : ré-écriture chiffrée après un pull hérité, à TROIS conditions (clair présent / clés non
+>   vides / coffre OK). Sans la 3ᵉ, `pushNow` partirait sans clés et les EFFACERAIT de Drive.
+> - ⚠️ Mon 1er jet appelait `markApiKeysHydrated()` → désarmait la protection anti-race du boot pour
+>   toute la session. Un test existant l'a montré. Inutile de surcroît (les clés sont déjà dans le
+>   store, d'où `pushNow` les lit).
+> - ⚠️ Une de mes 4 gardes était VACUEUSE (chiffré bidon ⇒ c'est `hasAnyKey` qui bloquait, pas la
+>   condition testée) — démasquée par la perturbation, refaite avec un vrai `encryptApiKeys`.
+> - ⚠️ Compte d'appels du verrou anti-double-sync RE-DÉRIVÉ (2 → 3), pas rebasé : il défend le
+>   verrou, le nombre n'en était que le proxy.
+
+> ## 🟦 Session 2026-09-02 — Lot 82 : une clé se dérive de ce qui IDENTIFIE
+> `[PLANNING-CALENDAR-KEY-DOUBLON]` — `['L','M','M',…]` avec `key={d}` ⇒ deux clés `M`, avertissement
+> React à chaque rendu. La clé devient le nom COMPLET du jour ; l'abréviation reste l'affichage.
+> - **Balayage publié** : 27 sites où la clé EST l'élément → 1 offender (celui-ci), 2 explicitement
+>   dédoublonnés avec leur commentaire, 24 uniques par construction. La classe était déjà comprise.
+> - Garde COMPORTEMENTALE (aucun scan statique ne juge l'unicité) : zéro avertissement « same key »
+>   au rendu, **plus** un cas d'anti-vacuité qui prouve que l'espion en voit une vraie.
+
+> ## 🟦 Session 2026-09-02 — Lot 81 : un écran affirmait une cause que son hook ne peut pas connaître
+> `[FUTURE-HISTORY-EMPTY-CAUSE]` — l'état vide du graphe « Évolution » disait « vérifie ta clé
+> Finnhub » alors que `usePortfolioHistory` ne fait AUCUN réseau (il dérive du store), et que sans
+> clé le repli gratuit EST le chemin normal.
+> - Livré : l'écran LIT le rapport de synchro réel → trois états (en cours / échec avec la cause du
+>   diagnostic / succès sans données). La promesse « apparaît toute seule » ne survit que dans l'état
+>   où elle est VRAIE.
+> - ⚠️ Mode discret traité (variante sans montant), avec contre-épreuve.
+> - ⚠️ Le critère des skips actionnables est extrait (`skipsActionnables`) — une 2ᵉ copie allait
+>   naître. Et le repli de l'écran Diagnostic RECOPIAIT la promesse retirée au lot 80 : corrigé, plus
+>   la source (l'exception inattendue de l'hydratation pousse maintenant son propre détail).
+
+> ## 🟦 Session 2026-09-02 — Lot 80 : le diagnostic promettait un retry impossible
+> `[MARKETDATA-HISTORY-CAUSE-PERDUE]` — mon ticket, **mal cadré une 2ᵉ fois, dans l'AUTRE sens** :
+> j'avais écrit « la cause est détruite, aucun écran ne peut la nommer ». Faux — `hydrateAssetHistories`
+> distinguait déjà l'échec du vide et publiait un diagnostic par titre.
+> - **Le vrai défaut** : ce diagnostic promettait « nouvel essai automatique au prochain chargement »,
+>   VRAI d'un quota/réseau, **FAUX d'une clé refusée**. L'app rassurait là où il fallait agir.
+> - Livré : le provider PROPAGE, `getHistoryDetaille` publie, `getHistory` garde son contrat INTACT
+>   (`[]`/`null`, dont dépendent la résolution de variantes et le verrou du cache négatif).
+>   `causePermanente()` = le FAIT partagé, chaque écran garde sa phrase.
+> - ⚠️ Dépendance rendue REQUISE (25 sites énumérés par le compilateur) : une porte optionnelle
+>   aurait laissé la production reprendre la version muette en silence.
+> - ⚠️ Piège : `findByRole('status')` est satisfait INSTANTANÉMENT par la région live vide du lot 78
+>   (rend `''` avant que la notice existe) — attendre le NŒUD du message, pas le rôle.
+> - **Débloque** `[FUTURE-HISTORY-EMPTY-CAUSE]` (la cause existe désormais côté hydratation).
+
+> ## 🟦 Session 2026-09-02 — Lot 79 : deux tickets décrivaient un arbre de dépendances qui a bougé
+> `[SEC-AUDIT-DEP-FASTURI]` **CADUC** : `fast-uri` est déjà en 3.1.5 (la version exacte réclamée) et
+> l'avis a disparu de `npm audit` — réglé par un bump transitif du SDK MCP.
+> - En REJOUANT l'outil : **4 autres avis** qu'il ne nommait pas (`brace-expansion`, `browserslist`,
+>   `nanoid`, `postcss-selector-parser`), tous chaîne de BUILD. `npm audit fix` SIMPLE (sans
+>   `--force`) → 10 paquets, `package-lock.json` seul modifié, **0 vulnérabilité**.
+> - Gate rejoué EN ENTIER (un lockfile touche le build) : le vrai risque était `browserslist`/
+>   `caniuse-lite`, qui pilotent la sortie CSS — pas les paquets de sécurité.
+> - ⚠️ **Push sans garde neuve, délibérément** : un test qui lancerait `npm audit` rougirait au
+>   prochain avis publié, sans qu'une ligne du dépôt ait changé — une bombe, pas une garde.
+> - **Requalifié** : `[DEP-ESLINT10]` a perdu sa raison d'être (ses 5 hautes sont parties SANS la
+>   migration eslint@10 qu'il présentait comme obligatoire).
+
+> ## 🟦 Session 2026-09-02 — Lot 78 : ma garde a démasqué MON correctif décoratif
+> `[MARKETDATA-SEARCH-CAUSE-COLLAPSE]` — ticket écrit par moi au lot 75. Défaut réel, **mais la perte
+> était attribuée au mauvais étage** : j'accusais le `catch` de la FAÇADE, or
+> `FinnhubProvider.searchSymbol` attrapait et rendait `[]` LUI-MÊME.
+> - ⚠️ Mon premier correctif était donc INATTEIGNABLE — le défaut que le lot 75 venait de nommer,
+>   re-commis par moi. C'est la garde comportementale, écrite AVANT de supposer la réussite, qui l'a
+>   démasqué (4 rouges sur un correctif que je croyais posé).
+> - Livré : le provider PROPAGE, la façade ENCODE (`searchSymbolsDetaille`), `searchSymbols` reste
+>   l'enveloppe au contrat inchangé, l'écran affiche la cause dans une région live PERMANENTE.
+> - **Requalifié** : `[A11Y-RESERVE-CHIP-PROMINENCE]` — chiffres du ticket CONFIRMÉS au centième
+>   (1,17 / 1,83 / 8,82 / 10,86), conclusion réfutée : WCAG 1.4.11 ne s'applique pas à une pastille
+>   dont l'état est écrit en toutes lettres. Reste un choix de DESIGN pour Marc.
+
+> ## 🟦 Session 2026-09-02 — Lot 77 : un sélecteur se restreint sur la DÉRIVÉE
+> `[PERF-RENDER-SETUPHUB-FULLSTORE]` — diagnostic juste, **remède du ticket faux** : « restreindre
+> aux champs réellement lus » est inapplicable (ils sont décidés par `REQUIREMENTS[*].isMet`, hors du
+> composant) et produirait une donnée PÉRIMÉE au prochain prérequis ajouté.
+> - Le bon patron vivait 40 lignes plus loin (`MissingDataChecklist`, `[PERF-MISSINGDATA]`) :
+>   `useShallow` sur le RÉSULTAT DÉRIVÉ. Grepper le remède, pas seulement le défaut.
+> - **Mesuré** (`React.Profiler`) : 2 écritures sans rapport → 2 rendus avant, **0 après** ; le levier
+>   (un prérequis qui change) rend toujours.
+> - ⚠️ `useShallow` sur un tableau d'OBJETS est vacueux (jamais shallow-égal) → deux tableaux de
+>   primitives.
+
+> ## 🟦 Session 2026-09-02 — Lot 76 : un avertissement de lint cachait une fuite de vie privée
+> `[HOOKS-EXHAUSTIVE-DEPS-WARN]` (moitié (a)) — le ticket annonçait 2 violations « dette
+> technique » ; rejoué, l'outil en sort **4**, et les 2 non nommées (`Planning.tsx`) sont une
+> **fuite**.
+> - **Mesuré** : mode discret activé après le montage ⇒ bouton « Épingler **Marchand masqué** »,
+>   toast « **Netflix** épinglé ». `isPrivacyMode` manquait aux deps de deux `useCallback`, et rien
+>   d'autre ne change quand on bascule le mode ⇒ fermeture périmée. Le correctif vie privée #645
+>   était annulé exactement dans le cas qu'il visait.
+> - Les 2 autres warnings (`dockedRef`, `armPinch`) sont **INERTES** — corrigés, et l'inertie est
+>   écrite dans le code au lieu d'être couverte par une fixture qui n'exerce rien.
+> - **Routé** : `[Q-HOOKS-DEPS-ERROR]` (passer la règle à `error` = arbitrage de POLITIQUE pour Marc,
+>   avec sa mesure : 0 violation restante ⇒ gratuit aujourd'hui) et `[PLANNING-CALENDAR-KEY-DOUBLON]`.
+
+> ## 🟦 Session 2026-09-02 — Lot 75 : la cause existait, c'est son TRANSPORT qui manquait
+> `[AI-FINNHUB-CAUSE-COLLAPSE]` — `getQuoteDetaille` publie `ok` / `absent` / `echec` (+ cause et
+> provider) ; `getQuote` en devient l'enveloppe, contrat historique intact (`priceRefresh` repose sur
+> « ne rejette jamais »). `services/marketData/messageEchec.ts` : une phrase par cause.
+> - **Mesuré avant de coder** : 401, 429, panne réseau et symbole inconnu rendaient TOUS `null`, sans
+>   lever — l'écran disait « ticker introuvable, configure ta clé » sur une coupure réseau.
+> - ⚠️ Le ticket demandait « un classificateur côté marketData » : il **existait déjà**
+>   (`MarketDataError.code`). Grepper le REMÈDE d'un ticket, pas seulement son défaut.
+> - ⚠️ **La garde qui protégeait cette distinction était nourrie par un faux module qui MENTAIT** :
+>   `AddStockForm.test` simulait un `getQuote` qui REJETTE — un contrat que la prod n'a jamais eu.
+> - **Routé avec sa mesure** : `[MARKETDATA-HISTORY-CAUSE-PERDUE]` (cause détruite DANS le provider,
+>   pas à la façade), `[FUTURE-HISTORY-EMPTY-CAUSE]` (le hook de cet écran ne fait aucun réseau, champ
+>   `error` nul en dur), `[MARKETDATA-SEARCH-CAUSE-COLLAPSE]`.
+
+> ## 🟦 Session 2026-09-02 — Lot 74 : `[]` pour quatre situations sans rapport
+> `[AI-REBALANCE-CAUSE-PERDUE]` — `getRebalanceJustifications` rend une union discriminée
+> (`ok` / `sans-cle` / `rien-a-justifier` / `sans-reponse` / `echec` + l'objet d'erreur ORIGINAL).
+> `Investments` rejoint les trois autres surfaces via `services/messageErreurIa.ts`.
+> - Ticket écrit par MOI au lot 68 : re-vérifié avant de coder — le recensement n'a d'exception ni
+>   d'auteur ni de fraîcheur. Il disait vrai.
+> - ⚠️ **Le service ENCODE l'échec plutôt que de LEVER**, explicitement : son unique appelant est un
+>   `onClick` en ligne sans `try/catch`. Le contrat d'erreur se DÉCIDE, il ne se copie pas du voisin.
+> - ⚠️ **La garde du lot 68 s'INVERSE au même endroit** : elle exigeait qu'`Investments` NE nomme PAS
+>   sa cause. Dette payée ⇒ l'exigence bascule, avec son histoire écrite dedans — un inventaire de
+>   dette doit savoir mourir, et sa mort s'écrit là où il vivait.
+> - **Reste** : `[AI-FINNHUB-CAUSE-COLLAPSE]` (autre service, erreurs de forme différente).
+
+> ## 🟦 Session 2026-09-02 — Lot 73 : retirer du code mort a exigé de corriger la source de vérité
+> `[DEAD-CALCNETFROMGROSS]` — `calculateNetFromGross` retirée (zéro appelant, vérifié sur tout le
+> dépôt : tests, scripts, `mcp/`).
+> - ⚠️ **Elle était PIÉGÉE** : appel à `calculateFiscalReport` SANS année → barème par défaut, le
+>   défaut exact que `[GROSSFROMNET-ANNEE-FIGEE]` a corrigé sur son jumeau. La réveiller aurait
+>   réintroduit un écart connu et mesuré.
+> - ⚠️⚠️ **LA VRAIE TROUVAILLE EST DANS LA DOC** : `docs/FISCAL_REFERENCE.md` la citait comme « la
+>   source unique de conversion brut→net du dépôt » dans la preuve d'auto-cohérence de
+>   `[FISC-WHT-92PCT]`. FAUX — rien ne l'appelait. Le moteur calcule sa retenue lui-même
+>   (`taxDecember.ts`) et le dépôt ne convertit PAS brut→net : `netSalary` est une SAISIE, la seule
+>   conversion codée est l'inverse. **La conclusion du ticket (retenue = 100 %) est INCHANGÉE**,
+>   tenue par son test discriminant ; c'est la preuve qui pointait vers du mort.
+> - **Leçon** : avant de retirer un export, regarder ce que la DOC en dit — pas seulement qui
+>   l'appelle. Une source de vérité qui cite du code mort donne l'autorité d'une preuve à une phrase
+>   que plus rien ne soutient.
+
+> ## 🟦 Session 2026-09-02 — Lot 72 : ce n'est pas le NOMBRE de clés, c'est leur RÉPÉTITION
+> `[STORAGE-KEYS-NO-REGISTRY]` — `utils/storageKeys.ts` (module PUR, zéro import : il part dans le
+> bundle de BOOT) pour les **cinq** clés écrites à plusieurs endroits. Garde :
+> `tests/guards/storageKeysRegistreGuard.test.ts`.
+> - ⚠️ **Ticket faux DEUX fois** : 34 clés dans **8** fichiers (pas « 40 dans ~20 ») ; et les trois
+>   `DISMISS_KEY` ne sont pas des doublons mais des HOMONYMES à trois valeurs différentes — « les
+>   centraliser » les aurait mises en COLLISION, soit le défaut même que le registre empêche.
+> - **Le vrai risque** : `financeai-storage` (toutes les données de l'utilisateur, la clé de
+>   l'incident du jour) était écrite en QUATRE endroits, dont un avec un commentaire demandant de la
+>   synchroniser à la main. **Un commentaire qui réclame de la vigilance est l'aveu qu'il manque une
+>   source unique.**
+> - **Les clés écrites à UN seul endroit ne sont PAS déplacées** : elles n'ont pas le défaut, et les
+>   y forcer ajouterait un import à des fichiers qui n'en ont pas besoin — du bruit qui rend la règle
+>   plus facile à ignorer.
+> - ⚠️ **Copie irréductible enfin VÉRIFIÉE** : `public/ga-init.js` est chargé avant le bundle et ne
+>   peut rien importer. La synchronisation reposait sur un commentaire ; elle repose sur un test.
+
+> ## 🟦 Session 2026-09-02 — Lot 71 : le correctif prescrit aurait annulé une décision antérieure
+> `[AI-BUDGETMODAL-RAW-FALLBACK]` — le texte brut du modèle s'affichait dans les MÊMES puces qu'une
+> recommandation validée par `RecosSchema`. Union discriminée `validee` / `brute` + présentation
+> distincte (bordure pointillée, pas de puce) + la phrase qui dit ce que l'app n'a pas fait.
+> - ⚠️ **Le correctif du ticket (« échec honnête plutôt qu'affichage de secours ») aurait été une
+>   RÉGRESSION** : le repli est délibéré et commenté (`[BUDGET-AI-DUP-PARSING]`). Avant d'appliquer
+>   le remède d'un ticket, chercher si un lot ANTÉRIEUR a tranché dans l'autre sens — et le
+>   commentaire qui porte un ID de lot est fait pour ça.
+> - Ce qui manquait n'était pas le refus mais le STATUT — 3ᵉ fois en 3 lots (69, 70, 71).
+> - Le test compare les DEUX habillages (`not.toBe`), pas la présence de la phrase : un
+>   avertissement au-dessus d'une puce identique n'aurait rien corrigé.
+
+> ## 🟦 Session 2026-09-02 — Lot 70 : tous les ids de modèle ne se périment pas pareil
+> `[AI-MODELID-PINNING-DRIFT]` — chaque tarif porte `releveLe` + `aliasFlottant` (dérivé de la FORME
+> de l'id, vérifié), `ALIAS_A_EPINGLER` inventorie la dette, `provenanceTarif()` rend deux phrases
+> différentes selon la nature de l'id et alimente l'infobulle du coût.
+> - ⚠️ **Le correctif prescrit par le ticket n'était PAS faisable** (« épingler des instantanés datés
+>   partout ») : inventer un identifiant casserait tous les appels du chat — bien pire que la dérive.
+>   Livré la SECONDE branche (« dater la vérification ») ; la moitié restante est routée à Marc
+>   (`docs/A_FAIRE_MOI.md` C0, ticket `[AI-MODELID-EPINGLER-SNAPSHOTS]`).
+> - ⚠️ **PAS de test qui lit l'horloge** pour crier « tarif périmé » : un contrôle qui rougit à une
+>   date sans qu'aucune ligne n'ait changé est une BOMBE. C'est un inventaire qui porte la dette, et
+>   il doit SAVOIR MOURIR — le test refuse un alias absent de la liste ET une entrée qui n'est plus
+>   un alias (les deux sens, `ENTREE-D-INVENTAIRE-FANTOME`).
+> - Le mot « réel » retiré de l'infobulle : les TOKENS sont réels, le TARIF vient d'un relevé daté.
+
+> ## 🟦 Session 2026-09-01 — Lot 69 : l'auto-évaluation du modèle passait pour un verdict
+> `[AI-COUPLE-SELFRATED-CONFIDENCE]` — `CoupleOptimizationCard` : libellés qui disent QUI parle,
+> montant qui porte sa provenance, mention unique sous la liste. Périmètre du ticket EXACT
+> (`estimated_savings_cad` est le SEUL montant produit par un modèle dans l'app).
+> - ⚠️ **Le défaut n'était pas le mot, c'était l'HABILLAGE** : monospace verte encadrée, soit
+>   l'apparence exacte des montants d'impôt calculés du voisin immédiat. Corriger le texte sans
+>   corriger le style aurait laissé le chiffre inventé ressembler à un chiffre vérifié.
+> - ⚠️ **La mention est UNIQUE, et le test l'exige** (`toHaveLength(1)`) : répétée par carte, elle
+>   devient du décor qu'on cesse de lire. Plus un contrôle qu'elle n'apparaît PAS sur une carte vide,
+>   sinon « la mention est là » serait vrai d'un texte permanent qui ne qualifie rien.
+> - Les trois perturbations (libellé d'origine, habillage restauré, mention retirée) rougissent.
+
+> ## 🟦 Session 2026-09-01 — Lot 68 : « Vérifie ta clé » affirmé sur des causes inconnues
+> `[AI-BUDGETMODAL-ERROR-COLLAPSE]` — `services/messageErreurIa.ts` (7 causes, 7 phrases), branché
+> sur **8** surfaces. Ticket : 1 site. Recensés : 4. **+4 de plus** en REJOUANT la garde élargie
+> (`TaxCenter`, `ImportBankStatement`, `PayslipUploadCard`, `Planning`) —
+> `REJOUER-L-OUTIL-ELARGI-AVANT-DE-CROIRE-QU-IL-N-Y-A-RIEN`.
+> - ⚠️ **Deux sites écrivaient `catch { }`** : sans lier l'erreur, ils ne POUVAIENT rien dire d'autre.
+>   Capturer est la première moitié du correctif — un message ne se corrige pas là où il s'affiche.
+> - ⚠️ **`\b` est ASCII en JavaScript** : mon motif `\bcl[ée]\b` ne matchait JAMAIS (`é` n'est pas un
+>   caractère de mot, donc aucune frontière avant l'espace). La garde rendait « aucun offender » sur
+>   un fichier qui portait la phrase — c'est l'exemption qui a rougi et l'a démasqué.
+> - **Le classificateur existait déjà** (`classifyCategorizeError`) mais répond à « faut-il réessayer
+>   ce chunk ? », pas à « que dire à quelqu'un » : `retryable` fusionne réseau et 429. Les deux
+>   fonctions restent distinctes, dérivées du MÊME `httpStatusOf` (désormais exporté).
+> - ⚠️ **Deux bugs préexistants signalés, NON corrigés** : `[AI-REBALANCE-CAUSE-PERDUE]` (le service
+>   avale l'erreur → l'écran ne peut pas nommer sa cause, son message dit ce qu'il SAIT) et
+>   `[AI-FINNHUB-CAUSE-COLLAPSE]` (même défaut, autre service, erreurs de forme différente).
+
+> ## 🟦 Session 2026-09-01 — Lot 67 : changer d'onglet ne produisait aucun signal non visuel
+> `[A11Y-ROUTE-FOCUS]` — focus sur `#main` + annonce de destination au changement d'onglet
+> (`Layout.tsx`), et focus sur la cible du deep-link (`utils/usePendingFocus.ts`, 3 écrans).
+> - ⚠️ **Périmètre du ticket JUSTE, correctif prescrit compris** — 2ᵉ fois en 5 lots. `<main
+>   id="main" tabIndex={-1}>` attendait depuis le lot du lien d'évitement ; il manquait l'appel.
+> - ⚠️ **Trois pièges, tous prouvés par perturbation** : (1) ne PAS voler le focus au 1er rendu — un
+>   rafraîchissement restaure l'onglet mémorisé, ce n'est pas une navigation ; (2) la région
+>   `role="status"` est montée EN PERMANENCE et on ÉCRIT dedans — montée au moment de parler, elle
+>   rate la 1re transition (`COPIER-LE-VOISIN-N-EST-PAS-COPIER-LE-BON-PATRON`) ; (3) la cible d'un
+>   deep-link est un CONTENEUR : sans `tabIndex = -1`, `focus()` y est un **no-op silencieux** —
+>   correctif qui a l'air posé et ne fait rien.
+> - Contrôle ajouté : un re-rendu SANS changement d'onglet ne reprend pas le focus (sinon il
+>   sauterait en pleine saisie) et ne répète pas l'annonce.
+
+> ## 🟦 Session 2026-09-01 — Lot 66 : cinq surfaces recouvraient l'app sans se déclarer
+> `[A11Y-MODAL-GUIDE-NODIALOG]` — ticket : 1 site (`GuideModal`). Réels : **5** — `GuideModal`, les
+> **trois** dialogues de `settings/BackupPanel.tsx`, et `auth/PassphraseGate.tsx`.
+> - **Migrés vers `ui/Modal`** : GuideModal + les 3 de BackupPanel (piège Tab, Échap, restauration du
+>   focus, verrou de défilement). `PassphraseGate` déclare `role="dialog"`/`aria-modal` À LA MAIN, et
+>   c'est délibéré : il n'a AUCUNE fermeture, la primitive n'a rien à lui apporter.
+> - ⚠️ **La primitive a dû grandir AVANT la migration** : les 3 dialogues de BackupPanel posaient
+>   `autoFocus` sur leur champ de passphrase, que le focus différé du ✕ (50 ms) leur reprenait.
+>   `Modal` accepte maintenant `initialFocusRef`. Migrer sans ça aurait livré une régression d'usage
+>   sous couvert d'accessibilité — **une primitive qui impose son focus initial n'est pas prête à
+>   accueillir un dialogue de SAISIE**.
+> - ⚠️ **Un test a rougi sans que son objet bouge** : `GuideModal.test` visait `/Fermer le guide/`,
+>   le libellé de l'ancien bouton manuel. Il mesurait la FORME → ré-ancré sur le bouton de fermeture
+>   DU dialogue. Non rebasé, re-dérivé.
+> - **Exemptions déclarées** : `Onboarding` (prise de contrôle de l'écran, rien derrière à rendre
+>   inerte) et le tiroir mobile de `Layout` (`role="navigation"` — un menu n'est pas un dialogue).
+> - ⚠️ **Contre-témoin de la garde** : un écran MIGRÉ disparaît du scan (il n'a plus de
+>   `fixed inset-0`), donc un test de présence ne dirait rien de lui. Sa moitié manquante est
+>   vérifiée autrement : il consomme la primitive, et n'a pas repris d'overlay à lui.
+
+> ## 🟦 Session 2026-09-01 — Lot 65 : le 4ᵉ bandeau d'onglets était resté à part
+> `[A11Y-TABLIST-NO-PANEL]` — `FutureProjection` rejoint le motif de `components/ui/SubTabs.tsx` :
+> `tabId`/`panelId` partagés, un `TabPanel` unique, et le clavier APG.
+> - ⚠️ **Périmètre du ticket JUSTE, pour la première fois après quatorze faux** : `Profile`,
+>   `Retirement` et `BudgetWorkspace` étaient déjà migrés ; Futur était bien le seul restant, parce
+>   que son habillage diffère (emoji). C'est comme ça qu'un motif se re-perd — par l'écran qui
+>   ressemble assez peu aux autres pour qu'on n'y pense pas.
+> - **Le clavier est un GAIN pour les 4 écrans** : `clavierTablist` (Gauche/Droite avec bouclage,
+>   Début, Fin) + `tabIndex` roving vivent dans la primitive, donc les trois déjà migrés en héritent.
+> - ⚠️ **Un `TabPanel` par bloc conditionnel aurait fait des `id` EN DOUBLE** (`graph` = 3 blocs,
+>   `plan` = 2) : `aria-controls` aurait désigné un élément ambigu. Un panneau UNIQUE dont l'identité
+>   suit l'onglet actif dit la vérité, puisqu'un seul onglet est actif à la fois.
+> - **Gardes** : `tests/guards/tablistMotifUniqueGuard.test.ts` (motif emprunté, flèches non
+>   recopiées ; son contre-témoin est `Profile.tsx`, qui PARLE de `role="tablist"` en commentaire
+>   sans en rendre — il prouve le décommentage) + `tests/components/subTabsClavier.test.tsx` (RENDU :
+>   la cible d'`aria-controls` EXISTE, le panneau repointe, les flèches bouclent, le focus suit).
+
+> ## 🟦 Session 2026-09-01 — Lot 64 : l'état sélectionné ne passait que par la COULEUR
+> `[A11Y-TABSTATE-TAXCENTER]` — `aria-pressed` (+ `type="button"`) sur **12** sites : `ChildPlanning`
+> ×5 (groupes à sélection unique), `LifeEvents` ×5, `TaxCenter` ×2. Garde de source neuve
+> (`tests/guards/etatSelectionAnnonceGuard.test.ts`) + test de RENDU dans `ChildPlanning.smoke`.
+> - ⚠️ Ticket : **1** site annoncé, **12** réels (14ᵉ périmètre faux d'affilée). Et **2 candidats
+>   écartés** parce que l'état est déjà dans le NOM ACCESSIBLE — `SavedProfilesCard` (`aria-label`
+>   qui bascule) et `PropertyConfigurator` (le libellé EST le mode). Exemptions déclarées + test qui
+>   refuse une exemption périmée.
+> - ⚠️⚠️ **Mon test de rendu était vacueux au premier jet** : il comptait les boutons pressés SUR
+>   TOUT L'ÉCRAN, donc un `aria-pressed={true}` constant sur le groupe « garde » le laissait VERT
+>   (les trois options actives ensemble, total invariant au clic parce que le clic tombait dans un
+>   AUTRE groupe). **La propriété est PAR GROUPE, elle se mesure par groupe.** Refondé : une seule
+>   active par groupe, avant ET après le clic, plus le groupe voisin qui ne bouge pas. Les trois
+>   perturbations (`true`, `false`, attribut retiré) rougissent.
+> - ⚠️ Un 6ᵉ `aria-pressed` préexistait (`ChildPlanning:330`, onglets par enfant) : un compte figé
+>   dans le test aurait menti — c'est son INVARIANCE au clic qui porte la propriété.
+
+> ## 🟦 Session 2026-09-01 — Lot 63 : la garde des cibles tactiles mesurait un CARRÉ
+> `[A11Y-TOUCH-DELETE-ICONS]` — 4 boutons sous le minimum WCAG 2.5.8 (24 px), corrigés `py-1` →
+> `py-1.5` : `Budget.tsx` ×2 (31×23), `Investments.tsx` (26×22), `AutoBackupPanel.tsx` (30×22).
+> - ⚠️ **Le défaut était dans la GARDE, pas dans le ticket.** `cibleSuffisante` prenait le `Math.max`
+>   des paddings et l'appliquait aux DEUX axes : elle voyait 26×26 un bouton de 26×22, et un `w-8`
+>   seul la rendait verte quelle que soit la hauteur. Mesurée PAR AXE, elle sort 4 offenders — tous
+>   trop courts en HAUTEUR seulement, ce qui est la signature du défaut (`py-` < `px-` presque
+>   toujours, donc fusionner par un `max` revient à mesurer la largeur).
+> - ⚠️ Périmètre du ticket faux **dans les deux sens** (13ᵉ d'affilée) : il nommait `Travel` et
+>   `BudgetGroupTable`, tous deux DÉJÀ corrigés, et ratait 3 des 4 sites réels.
+> - Assertion neuve écrite sur la fonction, avec le cas réel, son symétrique (trop court en LARGEUR)
+>   et les deux cas qui doivent rester verts (`p-2 -m-2`, `touch-target`).
+> - ⚠️ **Outillage** : `enable_pr_auto_merge` NE DÉCLENCHE PAS sur ce dépôt — #791 et #792 sont
+>   restées ouvertes en `mergeable_state: clean`, tous checks verts. Fusionner à la main dès le vert.
+
+> ## 🔴 Session 2026-09-01 — INCIDENT : l'app s'ouvrait VIDE, garde de type trop stricte
+> Marc : « j'ai perdu mes données, tout est vide alors que j'avais beaucoup de sauvegardes ».
+> **Rien n'était perdu.** `verifierTypesRestaures` (la garde de type de `[BACKUP-SCHEMA-NON-TYPE]`)
+> refusait des états LÉGITIMES : `merge` lève, zustand charge l'état par défaut, l'écran est vide —
+> et le blob reste intact dans `localStorage`. La restauration Drive rejouait le même refus, puisque
+> le pull appelle `persist.rehydrate()`. Vu de l'utilisateur : indiscernable d'une perte totale.
+> - **Trois clés PERSISTÉES et déclarées textuelles manquaient à la liste blanche** :
+>   `accountId` (identifiant de compte Fintable — `number` dans `Transaction`, `string` dans
+>   `FintableBrokerBalance`), `revealedProjectionSig` et `activeTestPersonaId`. **Chacune suffisait
+>   seule** à vider l'app.
+> - ⚠️ **La justification écrite dans le module était FAUSSE** : « zéro clé porte à la fois une chaîne
+>   et un nombre » — mesuré sur les états DU DÉPÔT uniquement, dont aucun ne porte de données
+>   Fintable. Corrigée sur place ; une mesure citée sans son périmètre se lit comme un fait général.
+> - **Correctif durable** : la liste se dérive désormais du CONTRAT, sur ses **deux** surfaces
+>   (`types.ts` ET le corps de `FinanceState`, moins les huit clés retirées par `partialize`). Deux
+>   tests l'exigent, plus un test de non-régression qui rejoue l'état de l'incident.
+> - ⚠️ **La vraie leçon est l'ASYMÉTRIE DES COÛTS.** L'arbitrage du 2026-08-29 disait : oublier un
+>   champ numérique rouvre un canal money-critical en silence, oublier un champ texte donne « un faux
+>   refus BRUYANT » attrapé par la CI. Le raisonnement tenait pour les surfaces que la CI porte —
+>   pas pour celles qu'elle ne porte pas. Et un faux refus n'est pas bruyant quand il vide l'écran :
+>   il ressemble à une perte de données.
+> - ⚠️ **Le diagnostic était lui aussi cassé, et c'est ce qui rendait l'incident opaque** :
+>   `SystemView` tronquait la ligne à **80 caractères**, or le seul préfixe du message en fait 95.
+>   La coupe tombait EXACTEMENT avant les chemins des champs fautifs — la seule partie exploitable,
+>   dans l'écran qu'on demande à l'utilisateur d'ouvrir. `PLAFOND_CITATIONS` bornait déjà le message
+>   à cinq chemins : la troncature était une SECONDE borne sur la même grandeur, et c'est la plus
+>   bête qui gagnait. Constante partagée + test du pire cas.
+> - ⚠️⚠️ **DEUXIÈME VAGUE (~1 h plus tard) : l'app s'est RE-VIDÉE, et la garde posée contre l'oubli
+>   était elle-même aveugle.** Champ fautif : `fintableRoles.<compte>.debtName` (le nom que Marc
+>   donne à une dette dans les réglages Fintable). La garde de dérivation — « tout champ textuel de
+>   `types.ts` figure dans la liste » — est restée VERTE : son extracteur ancrait le nom du champ en
+>   début de LIGNE, et `debtName` n'est déclaré que dans un littéral de type EN LIGNE
+>   (`| { kind: 'debt'; debtName: string }`, membre d'union). Élargi (nom reconnu aussi après `{` ou
+>   `;`, valeur arrêtée au `;` OU à l'accolade) : **76 → 78** clés vues dans `types.ts`, zéro perdue.
+>   Sur la 2ᵉ surface, le même élargissement fait voir l'INTÉRIEUR des signatures de méthode → le
+>   filtre « c'est une méthode » se pose désormais sur la LIGNE (sans lui, `finnhub` entrait).
+>   Leçon : `UN-RECENSEUR-ANCRE-SUR-LA-FORME-NE-VOIT-QUE-LES-FORMES-QU-IL-A-CROISEES`, et un témoin
+>   nommé ne discrimine que s'il n'existe QUE dans la forme la moins familière.
+> - ⚠️ **Risque résiduel à surveiller** : une clé LEGACY (champ retiré par une vieille migration mais
+>   encore présente dans le blob Drive de Marc) serait encore refusée — aucune dérivation ne peut la
+>   voir, puisqu'elle n'est plus au contrat. Le diagnostic la NOMME désormais (onglet Système, ou
+>   l'objet console `[FinanceAI] Hydration failure`).
+> - **Non tranché, laissé à Marc** : faut-il qu'un champ inattendu fasse échouer TOUTE la
+>   réhydratation, ou seulement signaler le champ ? Voir `[HYDRATATION-REFUS-TOUT-OU-RIEN]`.
+
+> ## 🟦 Session 2026-09-01 — Lot 62 : ma garde était satisfaite par mon propre commentaire
+> `[A11Y-BUDGETGROUP-CHART-NOALT]` — les 2 graphes de `BudgetGroupTable` reçoivent leur alternative
+> textuelle, plus une garde (`tests/components/chartAlternativeTexteGuard.test.ts`).
+> - ⚠️⚠️ **LA LEÇON DU LOT EST DANS MA PROPRE GARDE.** Écrite sur la source BRUTE, sa règle « chaque
+>   graphe porte sa marque » était satisfaite par le `role="img"` cité **en prose** dans le
+>   commentaire que je venais d'écrire au-dessus du graphe : retirer l'attribut RÉEL la laissait
+>   VERTE. Trouvé par perturbation, vingt minutes après l'avoir écrite. `SCAN-QUI-MATCHE-LA-PROSE`
+>   est la leçon la plus répétée du dépôt — et je l'ai re-commise dans la garde qui la cite.
+>   **Toute assertion de présence ou d'absence sur du source lit la source DÉCOMMENTÉE, sans
+>   exception, y compris quand on est en train d'écrire la garde.**
+> - ⚠️ Le ticket disait « le seul des **10** graphiques » : le dépôt en a **16 dans 12 fichiers**, et
+>   le fichier fautif en portait **DEUX**. Conclusion juste, deux nombres faux.
+> - **Deux remèdes différents** : patron complet (`role="img"` + `ChartDataTable`) pour le graphe
+>   déplié ; RÉSUMÉ (`tendanceSparkline`) pour le sparkline, qui existe une fois PAR LIGNE. Le résumé
+>   ne porte aucun montant (un pourcentage), donc rien à masquer en mode discret.
+> - ⚠️ Deuxième piège d'écriture de garde : la forme OBJET `role: 'img'` (props étalées) n'est pas
+>   l'attribut littéral `role="img"`. Une garde qui ne connaît qu'une écriture rougit sur du code sain.
+> - ⚠️ `formatPercent` sépare le « % » par une espace INSÉCABLE : un attendu écrit à la main échoue
+>   sur deux chaînes visuellement identiques. Composer l'attendu AVEC le formateur.
+
+> ## 🟦 Session 2026-09-01 — Lot 61 : le format et la vie privée étaient le même trou
+> `[FORMAT-EXPLAINS-TOLOCALESTRING]` — annoncé XS (3 sites), **mesuré M (16 sites)**. Migration vers
+> `formatCAD` / `formatCompactCAD` / `formatSigned`, plus une garde bloquante
+> (`tests/components/formatMonetaireSourceUnique.test.ts`).
+> - ⚠️⚠️ **Un montant composé à la main est INVISIBLE à la garde du mode discret** (lot 59), qui
+>   cherche `formatCAD`/`formatCompactCAD` et leurs alias. Les 16 sites échappaient AUX DEUX gardes,
+>   et migrer le format en a révélé **six** non masqués — dont trois coûts d'enfant. **Le format et
+>   la vie privée sont ici le même trou vu deux fois** ; la garde de format garantit que l'autre voit
+>   tout.
+> - **Deux vrais défauts de rendu** : « 2.35M$ » (séparateur décimal ANGLAIS en fr-CA) dans
+>   `StrategyOptimizerPanel` et `StressTestPanel` ; et l'objectif FIRE bloqué en « k$ » (« 1250k $ »
+>   pour 1,25 M$).
+> - **Nom trompeur retiré** : la prop `blur` de `Metric` — `PrivateAmount` ne floute pas, il RETIRE.
+>   Renommée `privacy` ; elle fabriquait deux faux findings dans la garde du mode discret.
+> - ⚠️ **3ᵉ récidive de `UNE-GARDE-ANCRE-LE-FAIT-JAMAIS-LA-FORME`** : `privacyDivers` (ma garde du
+>   lot 57) ancrait l'EXPRESSION au lieu du FAIT. Ré-ancrée, pas rebasée.
+> - ⚠️ **Faux positif de scan à connaître** : `${` contient un `$`. Un motif « chiffre puis `$` » sans
+>   `(?!\{)` relève des `toFixed(4)` sur des TAUX DE CHANGE (5 faux positifs mesurés).
+> - **À signaler à Marc** : les étiquettes d'axe passent de 1 à 2 décimales pour les M$.
+
+> ## 🟦 Session 2026-09-01 — Lot 60 : les douze chaînes découpées, et l'inventaire qui meurt
+> `[A11Y-PRIVACY-CHAINES-RESTANTES]` — les 12 sites `MONTANT-CHAINE-A-DECOUPER` sont soldés et le
+> jeton a été **RETIRÉ** du vocabulaire de la garde. C'est le test lui-même qui l'a exigé : sa
+> seconde assertion, symétrique, disait « dette à zéro → retire le jeton ». **Un inventaire de dette
+> doit savoir mourir**, sinon il devient une échappatoire permanente.
+> - ⚠️ **`FutureDetailModal` n'était PAS une fuite** — j'avais écrit l'inverse au tour précédent, en
+>   lisant une ligne de `grep` sans son contexte. Les deux surfaces enveloppaient la phrase ENTIÈRE :
+>   en mode discret la ligne devenait « ••• », icône comprise, et le FAIT partait avec le chiffre.
+>   Le découpage règle les deux sens ; les perturbations le prouvent dans les deux directions.
+> - ⚠️ **Le typecheck a révélé un TROISIÈME consommateur** de la liste des dépassements (le prompt du
+>   diagnostic IA), aux besoins opposés à ceux de l'écran. Découper un type, c'est se faire énumérer
+>   ses consommateurs par le compilateur — ce qu'aucun `grep` n'avait fait.
+> - ⚠️ **Un test qui rougit sur un lot qui ne touche pas son objet mesurait une FORME** :
+>   `RealEstateWorkspace.split` lisait le sous-titre par `getByText(/…/)`, donc supposait UN SEUL
+>   nœud — l'hypothèse même qui empêchait le masquage. Corrigé en lisant le texte complet, pas en
+>   rebasant.
+> - ⚠️ `isPrivacyMode` est un état de MODULE : trois fichiers de test ont reçu un `afterEach` de
+>   remise à zéro (mesuré — un cas contaminait le suivant).
+> - `PageHeader.subtitle` : `string` → `React.ReactNode`, même correctif que `DualKPIStat.sublabel`.
+
+> ## 🟦 Session 2026-09-01 — Lot 59 : la garde qui MESURE le mode discret au lieu de l'énumérer
+> `[A11Y-PRIVACY-SCAN-GLOBAL]` — `tests/components/amountPrivacyScan.test.ts`, pendant JSX de
+> `chartPrivacyScan`. Livrée **bloquante**, plus **22 montants masqués** dans 8 écrans.
+> - ⚠️⚠️ **Le ticket annonçait « 38 sites dans 19 fichiers » — chiffre produit par un grep `formatCAD`,
+>   donc AVEUGLE aux ALIAS LOCAUX.** La moitié des écrans passe par `const fmt = (n) => formatCAD(n)`
+>   (`money`, `formatCurrency`, `fmtMoney`) et n'écrit jamais le nom canonique : `ChildPlanning` (6
+>   sites) et `RealEstateWorkspace` (14) étaient invisibles au relevé censé les trouver. La garde
+>   DÉCOUVRE les alias par fichier. Famille `UN-ALIAS-…-INTROUVABLE-PAR-UN-SEUL-NOM`.
+> - ⚠️ **Le vrai défaut de conception : `sublabel`.** `KPIStat`/`DualKPIStat` enveloppent leur `value`
+>   dans `PrivateAmount` et rendent le `sublabel` NU une ligne plus bas (« Manque 12 000 $ »). D'où la
+>   règle : **une ligne d'ATTRIBUT porte sa marque À ELLE** — sinon le voisin masqué sert d'ALIBI.
+> - **Dette BORNÉE, pas cachée** : 12 sites `MONTANT-CHAINE-A-DECOUPER` (montant dans une chaîne,
+>   classe des lots 56/58), comptés par un test qui refuse le 13ᵉ →
+>   `[A11Y-PRIVACY-CHAINES-RESTANTES]`. ⚠️ Compter les OCCURRENCES du jeton donnait 12 pour 11 sites —
+>   le commentaire qui EXPLIQUE la dette porte le même mot ; on compte les LIGNES qui portent le jeton
+>   **et** un formateur.
+> - **Question routée à Marc** : `[PRIVACY-CONTEXTE-IA]` — masquer le contexte envoyé à l'assistant ?
+>   Les deux réponses coûtent quelque chose. 4 sites marqués `MONTANT-HORS-ECRAN` en attendant.
+> - **Découverte** : `[FORMAT-EXPLAINS-TOLOCALESTRING]` attendait ce scan « pour poser la source
+>   unique ». Les deux prétextes sont tombés (la source existe déjà, le chiffre du ticket était faux) :
+>   c'est désormais un remplacement de 3 sites, pas un chantier.
+
+> ## 🟦 Session 2026-09-01 — Lot 58 : le mode discret est complet sur l'indicateur de santé
+> `[A11Y-PRIVACY-HEALTH-RAW]` — cible FIRE et coût mensuel des abonnements masqués. `raw` de
+> `HealthMetricRow` passe d'une **chaîne** à une liste de **segments** (`HealthRawPart`) : un montant
+> reste un nœud jusqu'au rendu, donc `PrivateAmount` peut l'envelopper. `healthScore.ts` reste PUR —
+> il formate et MARQUE, le composant décide. Le helper `healthRawText(parts, masquer)` sert
+> l'`aria-label`, où il n'y a aucun nœud à envelopper.
+> - ⚠️ **Le ticket annonçait TROIS sites de consommation de `raw` ; il y en a DEUX.** Le troisième
+>   qu'il nommait (le `sr-only`) rend `m.help`, qui ne porte aucun montant. **Neuvième périmètre de
+>   ticket faux d'affilée — et celui-là, c'est MOI qui l'avais écrit la veille.** Un ticket récent et
+>   signé de sa propre main se re-recense exactement comme un vieux.
+> - ⚠️ **Un seuil d'anti-vacuité recopié d'une garde de DÉPÔT rougit sur un fichier de PROSE** :
+>   `healthScore.ts` est à 0,466 de code (chaque garde y porte son incident écrit), et mon
+>   `partDeCodeRestante > 0.5` l'a déclaré vide. Le seuil appartient à la PORTÉE mesurée.
+> - ⚠️ Récidive de `SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE` : mon motif `type: 'montant'`
+>   comptait 2 — la fabrication ET la déclaration de l'union. Ancré sur le `,` du littéral.
+> - **Découverte MESURÉE, routée** : `formatSigned(n, { withCurrency: true })` **existe déjà** dans
+>   `utils/format.ts` et sert à 8 sites. Le ticket `[FORMAT-EXPLAINS-TOLOCALESTRING]` prescrit de
+>   créer un `formatCADSigned` — ce serait un DOUBLON. Ticket corrigé, pas le code (scope).
+
+> ## 🟦 Session 2026-09-01 — Lot 57 : huit montants en clair, et un attribut mesuré redondant
+> `[A11Y-PRIVACY-DIVERS]` — 5 montants affichés + 3 champs de saisie masqués, dans 7 fichiers.
+> - **Périmètre RE-RECENSÉ** : lignes du ticket périmées, et pour `HealthIndicator` le ticket visait
+>   des POURCENTAGES. Les vrais montants viennent de `utils/healthScore.ts` (`raw`), un util PUR —
+>   même classe que les journaux du moteur du lot 56 → **découpé** en `[A11Y-PRIVACY-HEALTH-RAW]`,
+>   avec la note que `raw` est consommé à TROIS endroits qui doivent tous suivre.
+> - ⚠️ **Une perturbation a mesuré qu'un de mes propres attributs était REDONDANT** : le `htmlFor`
+>   posé sur le salaire du conjoint ne change rien — le `<label>` qui ENVELOPPE nomme déjà le
+>   `<button>` rendu par la primitive (`button` est labelable). Conservé pour la robustesse au
+>   refactor, avec sa raison écrite, et le test ne prétend plus le prouver : il prouve le FAIT.
+>   **Une perturbation muette sur MON PROPRE ajout dit qu'il ne sert à rien — pas que le test est
+>   mauvais.** Il faut distinguer les deux, et ici c'était le premier cas.
+> - **Découverte** ajoutée au ticket de format : `GoalSeekerCard` viole `formatCAD` sur ses 2 sites.
+
+> ## 🟦 Session 2026-09-01 — Lot 56 : le plus gros trou du mode discret
+> `[A11Y-PRIVACY-PROJECTION-EXPLAINS]` — `ProjectionExplains.tsx` avait **zéro** `isPrivacyMode` sur
+> 293 lignes, alors qu'il détaille la projection année par année ET mois par mois.
+> - **Deux canaux, deux remèdes** : les montants calculés étaient INTERPOLÉS dans des phrases (un
+>   `string[]`) — un montant noyé dans une chaîne n'est plus un nœud, donc la structure porte
+>   maintenant `{ montant, libelle }`. Les JOURNAUX du moteur portent le montant dans leur texte :
+>   regex proscrite (ils interpolent du texte utilisateur), donc on garde le FAIT et on tait le
+>   DÉTAIL — « 2 événements ce mois-ci ». **Décision de conception, tranchée au plus prudent.**
+> - ⚠️ **Une assertion d'absence VACUEUSE, démasquée par la perturbation** : `formatCAD` sépare les
+>   milliers par une espace INSÉCABLE (U+00A0). `not.toContain('90 000')` écrit avec une espace
+>   ordinaire ne pouvait JAMAIS matcher — et retirer le `PrivateAmount` laissait les 4 tests verts.
+>   Une perturbation muette dit d'abord que l'assertion ne l'atteint pas.
+> - ✅ **La leçon du lot 55 a servi immédiatement** : j'ai vérifié qu'un test existait déjà
+>   (`ProjectionExplains.test.tsx`, 6 cas) AVANT d'écrire — la garde neuve porte donc le suffixe
+>   `.privacy` et ne l'écrase pas.
+> - **Découverte routée** : `[FORMAT-EXPLAINS-TOLOCALESTRING]` — `fmtSigned` viole le non-négociable
+>   « `formatCAD` UNIQUEMENT ». Non corrigée : le correctif utile pose une source unique que les
+>   37 autres sites annoncés par `[A11Y-PRIVACY-SCAN-GLOBAL]` consommeront.
+
+> ## 🟦 Session 2026-09-01 — Lot 55 : le mode discret s'arrêtait au milieu d'un formulaire
+> `[A11Y-PRIVACY-PROPERTY-CONFIG]` — 5 champs de saisie + 1 slider masqués dans
+> `PropertyConfigurator`. Critère : le libellé porte un `$`. Les taux et la date restent en clair.
+> - ⚠️ **6ᵉ site absent du ticket** : « Plafond Valeur Max » affichait un montant sans
+>   `maskedSliderAria`, alors que les deux sliders d'à côté l'avaient depuis #608.
+> - ⚠️⚠️ **J'AI ÉCRASÉ UN TEST EXISTANT** en créant « mon » fichier de garde avec `cat >` :
+>   `tests/components/PropertyConfigurator.privacy.test.tsx` existait déjà (49 lignes, 3 cas D6-SR-2).
+>   Rattrapé avant commit — restauré par `git show HEAD:<fichier>`, puis FUSIONNÉ avec mes scans (9
+>   cas au total). **`cat >` court-circuite le garde-fou d'écrasement de l'outil Write** : vérifier
+>   l'existence AVANT d'écrire un fichier de test.
+> - ⚠️ Et ce test écrasé PORTAIT le constat du défaut : il asserait « 2 sliders masqués (le plafond
+>   ne l'est PAS) ». Il aurait rougi tout seul sur mon correctif et m'aurait dit quoi regarder — en
+>   l'écrasant j'avais supprimé le signal. Le compte passe à 3, avec sa raison écrite dans le test.
+> - 4 perturbations séparées, chacune vérifiée par `assert` avant la mesure.
+
+> ## 🟦 Session 2026-09-01 — Lot 54 : deux défauts d'âge, un seul remède — la source unique
+> `[ENG-STARTYEAR-DEFAUT-2026]` + `[ENG-LIBELLE-RRQ-70-VS-72]`, les deux découvertes du lot 53.
+> - **`startYear` est REQUIS** (défaut `= 2026` retiré) : `tsc` exige la valeur sur chaque site.
+>   `GoalSeekerCard` — le seul appelant fautif — reçoit l'année ET le mois d'une `new Date()`
+>   mémoïsée unique. Le chercheur d'objectif partait de janvier 2026 en dur.
+> - **`RRQ_DEFERRED_START_AGE` (72) / `PSV_DEFERRED_START_AGE` (70) exportés** et consommés partout.
+>   Le fait s'écrivait à trois endroits, dont deux faux. Corriger les deux mauvaises copies aurait
+>   seulement remis le compteur à zéro.
+> - ⚠️ **Une garde a rougi sur la FORME, pas sur son fait** : `taxBracketVizAnnee` ancrait
+>   `useMemo(() => new Date().getFullYear())`. Deuxième fois qu'elle casse ainsi — elle compte
+>   désormais `new Date(`, plus fidèle à son intention ET plus strict.
+> - ⚠️ **Deux entrées d'inventaire du ratchet sont devenues FANTÔMES** (leurs littéraux ont disparu
+>   avec les correctifs) et le garde l'a dit tout de suite. C'est exactement ce que
+>   `ENTREE-D-INVENTAIRE-FANTOME` doit produire : un inventaire qui DÉCROÎT.
+> - **6 perturbations séparées**, chacune vérifiée par `assert` avant la mesure, chacune rougissant
+>   le test visé. La garde des âges est **COMPORTEMENTALE** : le moteur tourne, et la PSV doit couler
+>   quand la RRQ n'a pas encore commencé — un test à un seul âge ne distinguerait pas 72/70 de 70/70.
+> - ⚠️ **`git push origin :claude/lot-53` échoue en 403 (proxy)** : la branche recréée par accident au
+>   lot 53 est toujours là. Routé dans `docs/A_FAIRE_MOI.md`, geste d'une seconde côté GitHub.
+
+> ## 🟦 Session 2026-09-01 — Lot 53 : le dernier trou déclaré du ratchet fiscal
+> `[FISC-GUARD-PROJECTION-TS]` — `services/projection.ts` entre au périmètre du ratchet
+> (`utils/fiscalConstGuardV2.ts`), avec ses **20 clés** inventoriées et triées une par une.
+> - **Re-mesuré avant de coder** : 37 littéraux / 20 clés, pas les 31 du ticket (chiffre du
+>   2026-08-20, le fichier a bougé).
+> - ⚠️ **Le ticket avait tort sur le FOND** : « le travail fiscal vit dans les sous-modules déjà
+>   scannés » vaut pour les BARÈMES, pas pour les **bornes d'âge**, qui se décident dans la boucle.
+>   Quatre vraies règles légales y vivaient sans clé — 18 (résidence PSV), 65 (fin d'accumulation),
+>   60 (taux au survivant), 70 (report RRQ). Toutes ancrables sur `FISCAL_REFERENCE.md` **existant** :
+>   aucune source externe requise, ce qui compte vu que le proxy bloque toujours `canada.ca` (re-testé
+>   le 2026-09-01, 403 en `curl` comme en `WebFetch`).
+> - ⚠️ **Une clé (fichier, valeur) fusionne les SENS** : `65` recouvre quatre sites dont un simple
+>   défaut de saisie, `60` en recouvre trois dont un mois de scénario. La marque `[≠N]` compte les
+>   OCCURRENCES, pas les sens — la garde l'a corrigé sur-le-champ (j'avais écrit `[≠2]` pour 3).
+> - **Deux découvertes ROUTÉES, aucune corrigée** (convention §6) :
+>   `[ENG-STARTYEAR-DEFAUT-2026]` — `startYear = 2026` en dur, avec **un seul** site consommateur,
+>   mesuré en rendant le champ requis (`GoalSeekerCard` via `Retirement.tsx:288`) ; et
+>   `[ENG-LIBELLE-RRQ-70-VS-72]` — un repli `?? 70` et un commentaire qui contredisent le moteur
+>   (RRQ 72 sous report).
+> - ⚠️⚠️ **ET J'AI PUBLIÉ UNE AFFIRMATION FAUSSE AVANT DE LA MESURER**, dans cinq documents : « l'écran
+>   annonce 70 ». Il ne l'annonce pas. `delayPensions` vaut `false` dans les **11** définitions de
+>   `scenarios.ts`, donc la branche exige `rrqStart > 65` **défini** et le `?? 70` n'est jamais
+>   évalué — c'est un repli MORT. Le commentaire du code le disait, trois lignes plus haut
+>   (« toujours false dans STRATEGY_DEFS »), et je ne l'ai pas vérifié. Corrigé dans le même lot,
+>   avant merge. **Ce qui reste vrai** : la valeur du repli est fausse (bombe si le chemin redevient
+>   atteignable) et le commentaire de `projection.ts:362` trompe un développeur aujourd'hui.
+
+> ## 🟦 Session 2026-09-01 — Lot 52 : quinze décommenteurs, un seul survivant
+> `[GUARD-STRIPCOMMENTS-DUPLIQUE]` — les **15 décommenteurs ad hoc** (13 fichiers) consomment
+> désormais `utils/stripComments.ts`. Garde neuve : `tests/guards/stripCommentsUniqueGuard.test.ts`.
+> - **Le coût, mesuré** : sur les 458 `.ts`/`.tsx` de `components/ services/ utils/ hooks/ store/
+>   mcp/`, l'ad hoc le plus répandu et la source unique diffèrent sur **154** (34 %) — **149** où
+>   l'ad hoc laissait passer de la prose, **5** où il MANGEAIT du code (`'https://hubperso.com'`
+>   coupé au `//`, 163 caractères perdus dans `Layout.tsx`).
+> - ⚠️ **Un décommenteur PLUS CORRECT casse ce qui dépendait de son approximation.** `stripComments`
+>   est un décommenteur JavaScript : dans un commentaire JSX il blanchit le bloc mais LAISSE les
+>   accolades, que les copies ad hoc retiraient. Une garde de `AdvancedProjectionParams` est passée
+>   de 40 à **39** paires label/champ vues, en silence. D'où `stripCommentsJsx` — même contrat, plus
+>   les accolades devenues vides.
+> - ⚠️ **Migrer vers un décommenteur qui BLANCHIT désarme toute anti-vacuité fondée sur la LONGUEUR**,
+>   et elle reste VERTE. Quatre refondées sur `partDeCodeRestante`. Prouvé : sur un décommenteur qui
+>   mange tout le fichier, la version « longueur » ne rougit pas.
+> - ⚠️ **Mon recensement manuel a raté 2 sites sur 17** — c'est la garde, écrite APRÈS, qui les a
+>   trouvés. Un fichier jugé « faux positif » sur sa première occurrence en cachait une vraie 250
+>   lignes plus bas.
+
+> ## 🟦 Session 2026-08-30 — Lot 51 : le nom manquant est une propriété du CONTRÔLE
+> `[A11Y-LABELS-RESTE-DU-DEPOT]` — **40 champs sans aucun nom accessible** (WCAG 4.1.2) câblés dans
+> 16 fichiers, et la garde de dépôt livrée avec : `tests/guards/controlAccessibleNameGuard.test.ts`.
+> - ⚠️ **Mon propre ticket, écrit au lot 50, désignait le mauvais objet.** Il comptait les `<label>`
+>   non associés (59 dans 16 fichiers). Recensé sur les CONTRÔLES — le vrai critère WCAG — le
+>   périmètre devient 48 dans 20 fichiers, dont 8 faux, soit **40 réels**. Les deux listes ne se
+>   recouvrent pas : **13 « labels orphelins » de `ProjectionControls` n'étaient pas un défaut**
+>   (leurs sliders portent un `aria-label`), et **le ticket ratait des sites** qu'aucun `<label>` ne
+>   signalait — un `<span>` voisin (`DividendPanel`), un `placeholder` seul (`PassphraseGate`), un
+>   `id` sans `htmlFor` en face (`Onboarding`).
+> - ⚠️ **Un `id` littéral ne convient qu'à un contrôle rendu UNE fois.** Les listes (`policies.map`,
+>   `holdings.map`, les postes du budget) reçoivent un `aria-label` discriminant : un `id` statique
+>   y serait dupliqué, et les labels pointeraient alors le même contrôle sans qu'un scan d'orphelins
+>   n'y voie rien — le piège du lot 50, transposé.
+> - Discrimination prouvée par **4 perturbations séparées**, chacune vérifiée par `assert` avant la
+>   mesure : `aria-label` retiré, `htmlFor` retiré, `id` dupliqué, exemption rendue fantôme.
+> - ⚠️ **Une garde voisine a dénoncé le lot le jour même, et elle avait raison** : le scan de source
+>   de `PatrimoineExtended.privacy` exige que TOUT champ nommé du fichier passe par ses règles
+>   « (dollars) », et sa regex ne connaissait que `<input>` et `<PrivateNumberInput>`. Mon
+>   `<select aria-label="Type d'assurance">` lui échappait. Correctif : **élargir l'ensemble des
+>   balises porteuses**, jamais exclure le champ — l'exclure aurait rendu la garde aveugle à un futur
+>   `<select>` monétaire. Un `<select>` est un champ de saisie, pas une action.
+> - ⚠️ **Environnement** : le conteneur avait été reverté à un clone de **157 commits de retard**, et
+>   `node_modules` ne suivait pas le `package.json` remis à jour (`@vercel/analytics`,
+>   `@mokarade/hub-contract` introuvables au typecheck). `git fetch` AVANT de juger l'état, puis
+>   `npm install`. Le gate local aurait été rouge pour une raison sans aucun rapport avec le lot.
+
+> ## 🟦 Session 2026-08-29 — Lot 50 : 26 réglages avancés sans nom accessible
+> `[A11Y-LABELS-PARAMS-AVANCES]` — dans `components/AdvancedProjectionParams.tsx`, 26 `<label>`
+> n'étaient reliés à aucun champ (ni `htmlFor`/`id`, ni enveloppement). Nom accessible VIDE au sens
+> WCAG 4.1.2, sur des réglages qui pilotent toute la projection.
+> - ⚠️ **Le travail était fait à MOITIÉ, et la moitié faite était la plus visible** : les 14 champs
+>   MONÉTAIRES du même fichier étaient déjà câblés `app-<clé>` — parce que le masquage du mode
+>   discret l'exigeait. Un besoin technique avait payé l'accessibilité par accident sur une moitié
+>   du fichier, et personne n'avait regardé l'autre.
+> - ⚠️ **Un attribut présent ne prouve pas qu'il désigne la bonne chose** : mon premier passage a
+>   posé `id="app-returnRates"` sur DEUX champs (la clé `projection.returnRates` est commune au
+>   rendement crypto et au rendement cash). Les deux labels pointaient alors le même contrôle — le
+>   second champ n'avait toujours pas de nom, et un scan d'orphelins n'y voyait rien puisque chaque
+>   label avait bien son `htmlFor`. D'où un 2ᵉ test dédié à l'UNICITÉ des `id`.
+> - Discrimination prouvée sur deux axes séparés (retirer un `htmlFor` → 2 rouges ; dupliquer un
+>   `id` → 2 rouges), chaque perturbation vérifiée par `assert` AVANT la mesure.
+> - ⚠️ **Un test voisin a rougi — et il avait raison de rougir** : le test du mode discret comptait
+>   `label[for^="app-"]` et exigeait 14. Le préfixe ne désignait « les montants » que par ACCIDENT
+>   (seuls eux étaient câblés) ; il en remonte 36 maintenant. Sélecteur re-dérivé de l'ensemble qu'il
+>   prétend couvrir — les 14 ids de `MONTANTS` — plutôt que son compte rebasé.
+> - **Reste du dépôt recensé** : **59 labels orphelins dans 16 fichiers**, routés dans
+>   `[A11Y-LABELS-RESTE-DU-DEPOT]` avec le détail par fichier et les deux pièges.
+
+> ## 🟡 Session 2026-08-29 — `[PERF-MARKETDATA-DYNIMPORT-INERTE]` : INSTRUIT, pas codé
+> Le défaut est **confirmé par un build propre** : les marqueurs du module (`api.coingecko.com`,
+> `finnhub.io`, `canAttemptQuote`) sont dans **`index-*.js`, le chunk d'ENTRÉE (293 Ko)** — 67 Ko de
+> sources qui partent au boot pour rien. Périmètre exact : **4 sites**, ceux que le build nomme.
+> - ⚠️ **Mais la conversion mécanique introduirait une COURSE SILENCIEUSE** : `App.tsx` configure le
+>   provider (`finnhubKey`) dans un effet, `getQuote` est appelé dans trois autres fichiers. Rendre
+>   la configuration asynchrone n'ordonne plus ces gestes — une cotation partie avant la pose de la
+>   clé échoue ou se replie **sans rien dire**.
+> - **La piste à retenir** : faire du module le porteur de sa configuration (promesse de chargement
+>   mémoïsée que `getQuote` attend), pour que le correctif vive DANS
+>   `services/marketData/index.ts` au lieu d'être dispersé chez quatre appelants. L'ordre est alors
+>   garanti par construction.
+> - Mesure, périmètre et risque sont écrits **dans le ticket** : la prochaine session part de là.
+
+> ## ⚪ Session 2026-08-29 — Lot 48 : `[PERF-ENG-INCOMELOSS-DATESTR]` était CADUQUE
+> Le cœur du ticket était **déjà livré** par `[PERF-ENGINE-ISOSTRING-HOTLOOP]` (2026-08-21) :
+> `computeIncomeLossFactor` ne contient plus aucun `toISOString()`, et le commentaire du code porte
+> l'ID du lot qui l'a fait. Vérifié avant d'écrire une ligne.
+> - ⚠️ **Le coût du doublon n'est pas le ticket en trop, c'est son CHIFFRE** : « 530 ticks CPU,
+>   2,6 % du profil » mesurait la construction de chaîne disparue. Repris tel quel, il aurait
+>   justifié un lot pour un gain nul — et un lot « réussi » sans rien avoir accéléré.
+> - Le seul résidu (retour anticipé sur `lifeEvents` vide) a été **micro-mesuré** : ~6 ms sur une
+>   recherche de stratégie de 52 s, soit **0,01 %**. Ne vaut pas un lot ; c'est écrit pour qu'un
+>   prochain passage ne le reprenne pas.
+> - Aucun code touché — ticket coché caduque, archive et leçon mises à jour.
+
+> ## 🟦 Session 2026-08-29 — Lot 47 : un bloc fiscal calculé puis jeté, à chaque mois de chaque itération
+> `[PERF-ENG-LATENT-MC-WASTE]` — sous Monte Carlo, `buildMonthlyDataPoint` ne rend que
+> `{ NetWorth, monthIndex }`, mais l'appelant calculait quand même l'impôt latent, les dividendes,
+> les taux marginal/effectif et les cumuls REEE.
+> - **Gain MESURÉ, meilleur que le ticket** : **18,65 → 16,45 ms/scénario** (médiane de 3 × 80
+>   scénarios), soit **−11,8 %** contre 4,6 % annoncés. Sortie **bit-identique** (empreinte sur
+>   `chartData`, 3 graines MC + hors MC).
+> - ⚠️ **Le saut a été prouvé sûr AVANT d'être fait** : les 7 grandeurs comptées une par une (aucun
+>   lecteur hors du `data.push`), et `computeLatentTax` est pure. Retirer un calcul dont la sortie
+>   est jetée n'est sûr que si l'on prouve qu'il ne fait rien d'autre.
+> - ⚠️ **La condition est EXPORTÉE (`estPointAllege`), pas recopiée** : le point reste DÉTAILLÉ sous
+>   MC quand `verboseMonthlyPoints` est vrai. Deux écritures divergeraient en silence — le test le
+>   prouve, brancher sur le seul `enableMonteCarlo` le fait rougir.
+> - Test par ESPION (`computeLatentTax` appelé ou non), pas par chronomètre : instable en CI et
+>   muet sur la cause. Vérifie les deux sens.
+
+> ## 🟦 Session 2026-08-29 — Lot 46 : le remède affiché survivait à la guérison
+> `[STORE-HYDRATION-STATUS-MONOTONE]` — trouvé en écrivant un contrôle d'anti-vacuité au lot 41,
+> corrigé ici. `getHydrationStatus()` ne redevenait jamais sain : une fois `failed`, il le restait
+> pour la durée du module.
+> - **Effet réel en production** : `services/sync/syncPull.ts:97` appelle `persist.rehydrate()` après
+>   un pull Drive, donc restaurer une sauvegarde saine laissait la bannière « ne rien saisir,
+>   restaurer un backup » affichée alors que tout était réparé.
+> - Correctif : une ligne (`_hydrationStatus` remis à zéro sur succès). **Aucune trace perdue** —
+>   l'incident reste journalisé en critique ; le statut décrit l'état COURANT pour l'afficher, le
+>   journal garde l'historique. Deux registres, deux durées de vie.
+> - Bénéfice collatéral : les tests de réhydratation ne dépendent plus de leur ORDRE. L'en-tête de
+>   `tests/store/hydrationTypes.test.ts`, qui justifiait sa séparation par cette monotonie, est mis
+>   à jour plutôt que laissé mentir.
+
+> ## 🟡 Session 2026-08-29 — `[ESTATE-NPV-BASE-REELLE]` : INSTRUIT et CHIFFRÉ, correctif REMIS
+> Le finding est **confirmé** par interception des entrées réelles de `computeEstateNetWorth` :
+> RRQ 3 609 $/mois (estimé indexé) contre **2 310 $ réellement versés** — ratio 0,640 —, PSV
+> identique au centime. **22 % de VAN surévaluée**, et c'est le RRQ SEUL qui diverge : la signature
+> exacte du prorata de gains/résidence.
+> - ⚠️ **Le correctif n'est PAS « changer la base de deux variables »** : ça fait tomber CINQ tests
+>   d'`[ESTATE-NPV-07]` qui ne sont pas des goldens mais des **invariants de conception** — la VAN et
+>   l'assiette imposable sont couplées par un « complément » qui assure la continuité du facteur
+>   d'impôt au démarrage d'une rente. Le vrai périmètre est le COUPLE (VAN, assiette).
+> - ⚠️ **Piège d'unité** : la rente réelle est DÉJÀ en dollars nominaux de l'année finale — la
+>   ré-indexer la gonfle de ×1,64. Seule la branche estimé s'indexe.
+> - Mesure, piège et trois points à trancher sont écrits **dans le ticket** (`BACKLOG.md`) : la
+>   prochaine session part de là, elle n'a pas à re-mesurer.
+> - **Rien n'a été livré côté moteur** : l'arbre est revenu propre, les 40 tests d'`estateCalculation`
+>   sont verts. Un demi-correctif money-critical déplace un chiffre faux au lieu de le corriger.
+
+> ## 🟦 Session 2026-08-29 — Lot 44 : un focus retiré sans rien à la place
+> `[A11Y-FOCUS-INDICATOR-MISSING]` — 9 contrôles portaient `outline-none` sans aucun remplacement
+> visuel : en navigation clavier, rien n'indiquait où on se trouvait (WCAG 2.4.7).
+> - **DEUX patrons selon le contexte**, et c'est le point du lot : `focus-within:` sur le CONTENEUR
+>   quand le champ vit dans une pilule ou une barre (un conteneur couvre plusieurs champs, et
+>   l'anneau ne déborde pas) — c'est ce que le dépôt fait déjà ailleurs ; `focus-visible:ring-2` ou
+>   `focus:border-primary/50` sur le CONTRÔLE quand il n'a pas de conteneur dédié.
+> - ⚠️ **Premier ticket de la série sans aucun faux site** — ses 6 sites sont tous réels (lignes
+>   décalées). Il en manquait 3.
+> - ⚠️ Le recensement a écarté **4 faux positifs que seul le PARENT révèle** (deux `focus-within:`
+>   préexistants, deux conteneurs `tabIndex={-1}` à focus programmatique) et un cinquième compensé
+>   par `focus:bg-white/10`, que le premier filtre ne cherchait pas.
+> - Garde : `tests/guards/focusIndicatorGuard.test.ts`, bâtie sur une LISTE d'exemptions nominatives
+>   plutôt que sur une remontée aux ancêtres JSX — parser des ancêtres à la regex est ce qui a coûté
+>   quatre itérations au recenseur du lot 43.
+> - **La famille a11y de l'audit est close** : les quatre tickets (`DELETE-SPAN`, `HOVER-ONLY`,
+>   `TOUCH-TARGET`, `FOCUS-INDICATOR`) sont livrés, chacun avec sa garde de non-régression.
+
+> ## 🟦 Session 2026-08-29 — Lot 43 : des cibles de 16 px sur des actions destructives
+> `[A11Y-TOUCH-TARGET-TINY]` — 10 boutons corrigés (le ticket en citait 6, dont 2 faux), dont
+> **4 sans aucun nom accessible** : ils s'annonçaient « × bouton » sur une suppression.
+> - **Patron `p-2 -m-2`**, pas `touch-target` partout : il agrandit la cible de 8 px par bord et
+>   annule le décalage visuel. ⚠️ Il ne vaut que pour un contrôle SANS fond ni bordure — sur la
+>   pastille bordée de `KPIStat` il grossissait le cercle lui-même. Ce cas est EXEMPTÉ (WCAG 2.5.8
+>   exempte une cible en ligne dans un bloc de texte) et documenté sur place.
+> - ⚠️⚠️ **Le recenseur s'est trompé QUATRE fois avant d'être juste**, toujours sur du parsing JSX à
+>   la regex : accolades non retirées récursivement (4 boutons manqués), `min-w-[24px]` non reconnu
+>   (2 faux positifs), libellé dynamique `{title}` compté comme « pas de texte » (7 faux positifs),
+>   et un `indexOf('>')` qui tombait sur la flèche d'une lambda. La version finale est un petit
+>   automate. **Un recenseur se vérifie autant que le code qu'il recense.**
+> - Garde : `tests/guards/touchTargetGuard.test.ts`, sur deux axes (taille, nom accessible).
+> - **Reste ouvert dans la famille** : `[A11Y-FOCUS-INDICATOR-MISSING]` (6 sites annoncés — à
+>   recenser avant de coder, comme les deux lots précédents l'ont montré).
+
+> ## 🟦 Session 2026-08-29 — Lot 42 : deux commandes qu'on ne pouvait pas atteindre
+> `[A11Y-DELETE-SPAN-NO-KEYBOARD]` (CRITIQUE) + `[A11Y-HOVER-ONLY-ACTIONS]` (ÉLEVÉ), tous deux
+> mesurés par l'audit et vérifiés contre le vrai code avant correctif.
+> - **Le « × » d'un onglet de propriété** était un `<span role="button">` sans `tabIndex`, IMBRIQUÉ
+>   dans le `<button>` d'onglet : inatteignable au clavier, et interdit par la spec. Correctif =
+>   l'option 1 du ticket, **sortir** le contrôle (deux boutons frères dans une pilule). ⚠️ L'option 2
+>   (`tabIndex` + `onKeyDown` sur le span) aurait laissé l'imbrication ET fait déclencher les DEUX
+>   actions par Entrée/Espace.
+> - **7 actions en `opacity-0 group-hover:` sans `md:`** — invisibles au doigt. Calquées sur le
+>   pattern sain de `Transactions.tsx`.
+> - ⚠️ **Le ticket annonçait 5 sites, le scan en a montré 8** — dont un que le ticket ne nommait pas
+>   (`Investments.tsx`) et un qu'il ne fallait PAS corriger (un halo décoratif `blur-3xl`). Les
+>   numéros de ligne des deux tickets étaient périmés. **Le vrai périmètre se recense, il ne se
+>   cite pas** — et il contient parfois un faux offender.
+> - Garde de non-régression : `tests/guards/hoverOnlyActionsGuard.test.ts` (exclusion déclarée +
+>   motivée, preuve de volume, contrôle que chaque exclusion correspond encore à du code réel).
+> - **Restent ouverts dans la même famille** : `[A11Y-TOUCH-TARGET-TINY]` (6 sites) et
+>   `[A11Y-FOCUS-INDICATOR-MISSING]` (6 sites) — d'une autre nature, gardés hors de ce lot pour
+>   qu'il reste relisible.
+
+> ## 🟦 Session 2026-08-29 — Lot 41 : du texte dans un montant ne se restaure plus
+> `[BACKUP-SCHEMA-NON-TYPE]` — la suite directe de la 4ᵉ passe du lot 38, sur les DEUX décisions de
+> Marc (2026-08-29) : **refuser et nommer le champ**, et **lister les champs TEXTE**.
+> - **Le raisonnement de l'arbitrage**, à garder : les deux listes n'échouent pas dans le même sens.
+>   Oublier un champ NUMÉRIQUE rouvre un canal money-critical EN SILENCE ; oublier un champ TEXTE
+>   donne un faux refus BRUYANT, qu'un canari transforme en échec de CI.
+> - **Un module, deux vecteurs** (`services/verifierTypesRestaures.ts`) : le `superRefine` du
+>   `BackupSchema` (les deux chemins d'import y convergent) et le **`merge`** du store.
+>   ⚠️ **Pas `migrate`** : lu dans `zustand/middleware.js`, il n'est appelé que si la version du blob
+>   DIFFÈRE — un blob v7, le cas de tous les jours, ne le traverse jamais.
+> - **7 canaux fermés** (dont `inflationRate = "2"` → −68 M$ et un montant immobilier en texte →
+>   −52 %), **0 faux refus** sur 8 états + 4 dégradations.
+> - ⚠️ **La liste a failli rater sa deuxième surface** : dérivée des types et des états du dépôt —
+>   qui regardent tous deux l'`AppState` — elle a refusé `version: '3.2'` au premier test sur un
+>   fichier de backup. Une liste se dérive de CHAQUE surface qu'elle garde.
+> - **Routé sans correctif** : `[STORE-HYDRATION-STATUS-MONOTONE]` (la bannière « restaurer un
+>   backup » reste affichée après une restauration réussie — effet en prod via `syncPull`),
+>   `[BACKUP-TEXTE-INCONNU-REFUSE]`, `[BACKUP-BOOLEEN-DANS-UN-MONTANT]`.
+> - ⚠️⚠️ **LE HOOK `commit-gate` N'EST PAS INSTALLÉ dans une session Claude Code web** :
+>   `.git/hooks/` ne contient que les `.sample` et `core.hooksPath` est vide, donc `git commit` passe
+>   SANS rien vérifier. Le `CLAUDE.md` présente ce hook comme le filet non négociable ; le croire
+>   actif ici, c'est croire à une vérification qui n'a pas lieu. **Lancer le gate à la main avant
+>   chaque commit** (`npm run typecheck && npm run lint && npm run test && npm run build`) ; la CI
+>   GitHub reste le seul filet automatique.
+> - ⚠️ **Piège d'ENVIRONNEMENT, pas du dépôt** : `npm run typecheck` peut échouer sur
+>   `Cannot find module '@mokarade/hub-contract/endpoint'` — `node_modules` porte alors une version
+>   antérieure au commit épinglé dans `package.json`. Correctif local :
+>   `npm install '@mokarade/hub-contract@github:MoKarade/hub-contract#<sha du package.json>' --no-save`.
+>   La CI, elle, est verte : ne pas chercher la cause dans le code.
+
+> ## 🟦 Session 2026-08-29 — Lot 38 : une entrée illisible ne produit plus de projection (PR #764, ouverte)
+> `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]` — **Marc a tranché la fourche** (2026-08-29) : la garde
+> vit à la frontière `buildSimulationParams`, et elle REFUSE en NOMMANT le champ.
+> - **Mesure re-dérivée par script COMMITTÉ** (`scripts/mesureFrontiereMoteur.ts`) : `netSalary: NaN`
+>   rend `baseNetAnnual = 52 800` au lieu de 115 200 — 62 400 $/an évaporés, **aucun** non-fini au
+>   premier niveau, courbe lisse et entièrement fausse. C'est le mode grave ; `Infinity` se voit.
+> - La garde **EFFACE** la projection déjà publiée, elle ne se contente pas de ne plus recalculer.
+> - Le motif est publié au STORE (`projectionRefus`) et `ProjectionRequired` REMPLACE son message
+>   habituel : « ouvre Future » ne répare pas une donnée corrompue.
+> - ⚠️ Leçon de test du lot : ma première preuve du blocage était MUETTE — le calcul est debouncé à
+>   300 ms, donc lire l'espion dès que le statut bascule mesurait la latence, pas la garde. « L'appel
+>   n'a PAS eu lieu » se lit APRÈS le budget de temps (faux timers).
+>
+> - ⚠️ **Le panel a trouvé CINQ trous dans la garde, tous reproduits, aucun faux positif** :
+>   `currentRentExpense` produit et non scanné (515 non-finis publiés) ; le canal BUDGET où
+>   `Math.max(0, …)` absorbe un `Infinity` (épargne 5 370 $ → 0) ; le contrôle du solde de départ
+>   structurellement MORT alors que la vraie porte existait (`termesFautifs`) ; quatre des cinq
+>   appelants du moteur qui ignoraient le refus (MCP servait −96 % à un LLM) ; et l'écran Futur qui
+>   affirmait « l'erreur a été journalisée » alors que rien ne l'était. Les cinq corrigés.
+>
+> - ⚠️⚠️ **QUATRE passes de panel, et la forme de la garde a été INVERSÉE en cours de route.** Trois
+>   passes ont trouvé trois canaux money-critical absents de la liste blanche des champs à vérifier
+>   (`currentRentExpense`, les postes de budget, puis `projection.*` et `liveCSVBalances`, de −52 %
+>   à −98,8 %). Le correctif n'est pas un quatrième ajout mais l'INVERSION : **scanner tout l'objet
+>   des paramètres, et déclarer les exclusions**. ⚠️ Le piège de la 3ᵉ passe est le pire du lot : mon
+>   « filet récursif » scannait SON ARGUMENT — un littéral de huit clés construit au site d'appel —
+>   donc la liste blanche n'avait pas disparu, elle avait monté d'un cran. 16 tests verts sur un
+>   filet inopérant, et l'affirmation fausse propagée jusque dans `CLAUDE.md`.
+> - ⚠️ **La 4ᵉ passe a montré que l'inversion ne supprime pas la liste — elle lui fait changer d'AXE.**
+>   Le filet couvre la FINITUDE de tout l'objet ; le TYPE n'est vérifié que sur 4 champs nommés. Une
+>   **chaîne** dans un champ monétaire traverse : mesuré, −52 % sur un montant de projet immobilier,
+>   −68 M$ sur `inflationRate = "2"`, chaque fois 0 refus et 0 non-fini publié. Correctif à la SOURCE
+>   → `[BACKUP-SCHEMA-NON-TYPE]` au BACKLOG (le schéma de restauration valide en `z.unknown()`).
+> - **Corrigé au même tour** : le libellé nommait « un réglage de la projection » pour une DETTE
+>   (mauvais écran) → carte conteneur → nom lisible ; `messageDeRefus` répétait la même phrase pour
+>   deux champs du même conteneur → dédup des LIBELLÉS, pas seulement des chemins ; le contrôle
+>   « zéro refus sur les 7 personas » mesurait un objet plus ÉTROIT que la prod (aucun persona ne
+>   porte `projection`) ; et les chiffres −93 %/−29 % gravés dans 3 fichiers d'après un rapport
+>   d'agent valent en fait **−98,8 %** et **−16,3 %** (`scripts/mesureFrontiereMoteur.ts` étendu).
+> - **Deux scripts committés** portent les chiffres du lot : `mesureFrontiereMoteur.ts` (le défaut)
+>   et `mesureGardeFrontiere.ts` (le coût de la garde — 39 états légitimes → **0 faux refus** ;
+>   ~24 µs/appel, insensible aux collections lourdes : pas de mémoïsation).
+>
+> ## 🟢 Session 2026-08-29 — Lot 37 : un décommenteur qui mangeait le code après une URL (PR #763, MERGÉE)
+> `[GUARD-STRIPCOMMENTS-CONSOLIDER]` — les décommenteurs `stripComments` recopiés du dépôt étaient
+> tous NAÏFS : un `//` dans un littéral de chaîne ampute la ligne. Une soixantaine de fichiers en
+> sortent différents, pour ~8 800 caractères de code jetés — `scripts/mesureStripComments.mjs`
+> (committé) re-dérive le compte, qui bouge avec l'arbre. L'un des fichiers mutilés était lui-même
+> une garde.
+> - Source unique : `utils/stripComments.ts`, un automate qui protège chaînes, gabarits et regex.
+>   PUR et dans `utils/` parce que `chartDataSumGuard` part dans le bundle du navigateur ; il
+>   **BLANCHIT** au lieu de supprimer (les gardes fiscales reportent des numéros de ligne) ; donc
+>   l'anti-vacuité compte les caractères NON BLANCS et plus la longueur, qui est désormais constante.
+> - « Aucune garde fiscale n'a bougé » est EXPLIQUÉ : les 21 modules de `FISCAL_MODULES` sont
+>   inchangés par le durcissement (mesuré). Préventif ici, curatif ailleurs.
+> - **Reste routé** (`[GUARD-STRIPCOMMENTS-MIGRER-LES-TESTS]`) : 15 copies dans des fichiers de test,
+>   comptées par un ratchet neuf, non bloquant par conception. Le ticket en annonçait six.
+>
+> ## 🟢 Session 2026-08-29 — Lot 36 : trois oublis d'accessibilité dans le bloc Rééquilibrage (PR #762, MERGÉE)
+> `[A11Y-REBALANCE-CIBLES]` — les trois findings routés par le panel du lot 35, tous PRÉ-EXISTANTS
+> depuis le 2026-07-31 et tous des oublis LOCAUX : cinq champs de cible au même nom accessible,
+> alerte du total sans `role="status"` (le patron était quelques lignes plus haut dans la MÊME
+> fonction), bouton bascule sans `aria-pressed` (déjà employé quatre fois dans ce fichier).
+> - ⚠️ **Leçon de méthode du lot** : mes trois tests rougissaient bien tous sur le code d'avant,
+>   mais DEUX rougissaient pour la raison du TROISIÈME — le sélecteur du nom accessible. Trois
+>   perturbations séparées ont été nécessaires, dont une qui SATISFAIT encore le sélecteur (cinq
+>   noms identiques commençant par le bon préfixe) pour prouver que l'assertion de distinction n'est
+>   pas vacueuse.
+>
+> ## 🟢 Session 2026-08-28 — Lot 35 : éditer une cible d'allocation réécrivait le modèle par défaut (PR #761, MERGÉE)
+> `[INVEST-CIBLES-DEFAUT-MUTEES]` — la variante **ACTIVE** de la classe du lot 34, routée par ce
+> lot-là et livrée ici. `[...targetModel]` copie le TABLEAU, jamais ses ÉLÉMENTS : l'écriture
+> `newModel[i].targetPct` atteignait donc l'objet de `DEFAULT_TARGET_MODEL`, la constante de module.
+> **Mesuré avant correctif** : après une édition à 77, un remontage NEUF sans persistance affichait
+> `77,30,15,10,5` au lieu de `40,30,15,10,5`.
+> - Trois changements complémentaires : constante typée `ReadonlyArray<Readonly<…>>` (l'écriture
+>   indexée devient impossible à ÉCRIRE), initialisation par `.map` dans les DEUX branches (l'état
+>   ne référence plus jamais le modèle), éditeur qui REMPLACE l'entrée au lieu de la muter.
+> - La preuve passe par le CHEMIN COMPLET (édition → démontage → remontage neuf), jamais par une
+>   lecture de la constante, qui n'est pas exportée. 2/2 rouges sur le code d'avant.
+>
+> ## 🟢 Session 2026-08-28 — Lot 34 : le résultat « aucune donnée » était un objet PARTAGÉ (PR #760, MERGÉE)
+> `[HISTORY-OBJET-VIDE-PARTAGE]` — même classe que le lot 33, mais en **production**. Trois sites
+> renvoyaient une constante de MODULE faute de donnée exploitable : `transactionsOnDay`,
+> `monthCategories`, et — **absent du ticket, trouvé en rejouant le scan sur tout le dépôt** —
+> `usePastPortfolioHistory`. Deux appels rendaient le même objet, tableaux compris ; un `push` ou un
+> `sort` posé par un consommateur y restait pour la vie du processus.
+> - **Correctif en deux moitiés qui ne se remplacent pas** : le type `readonly`/`ReadonlyArray` rend
+>   la faute impossible à ÉCRIRE (`npm run typecheck` refuse `.push`/`.sort`), la FABRIQUE la rend
+>   inoffensive sur les chemins qui échappent au typecheck. Le `readonly` a coûté **zéro** erreur —
+>   ce zéro mesure qu'aucun consommateur ne mute aujourd'hui ; la garde est PRÉVENTIVE.
+> - ⚠️ **Le ticket nommait mal le chemin, et ma première garde était VACUEUSE** : il disait « aucune
+>   transaction », mais `[]` est `truthy` et traversait déjà la boucle. Le retour partagé était celui
+>   des ENTRÉES INUTILISABLES (`null`, ou date trop courte). Écrite avec `[]`, la garde passait **sur
+>   le code d'avant** ; réécrite avec `null`, elle rougit 5/5 puis 2/2.
+> - ✅ Mergée (`7c7b0f9`), déploiement Vercel de production `READY` vérifié.
+> - **Routé sans correctif, puis LIVRÉ au lot 35** : `[INVEST-CIBLES-DEFAUT-MUTEES]` — la variante ACTIVE de la même
+>   classe. `components/Investments.tsx` fait `[...targetModel]` (copie SUPERFICIELLE) avant
+>   `newModel[i].targetPct = …`, donc éditer une cible réécrit `DEFAULT_TARGET_MODEL` en place.
+>   **Mesuré** : après une édition à 77, un remontage NEUF sans persistance affiche `77,30,15,10,5`
+>   au lieu de `40,30,15,10,5`. Pré-existant, hors périmètre (convention §6).
+>
+> ## ✅ Fourche TRANCHÉE (2026-08-29) — `[ENG-INFINITY-NON-GARDE-A-LA-FRONTIERE]`
+> La question restée ouverte depuis le lot 33 : (i) OÙ vit la garde ? (ii) QUE fait-elle ? **Marc a
+> répondu** : à la frontière `buildSimulationParams` — « le point de passage UNIQUE de toutes les
+> entrées vers le moteur » — et elle **refuse en nommant le champ** (ni bornage, ni trace
+> silencieuse). Livré au lot 38 ci-dessus. Gardé ici parce que c'est une décision de Marc, pas une
+> tâche : elle contraint toute garde future sur ce chemin.
+>
+> ## 🟢 Session 2026-08-28 — Lot 31 : deux métriques de santé qui inventaient un score (PR #757, MERGÉE)
+> Les deux angles morts que le panel du lot 30 avait laissés ouverts, tous deux PRÉ-EXISTANTS :
+> - **`[HEALTH-RATIOS-NAN-ABSORBE-EN-AMONT]`** : la garde de SORTIE du lot 30 filtre le non-fini,
+>   donc elle ne voit rien de ce qui a été ABSORBÉ en un nombre plausible en amont. Trois chemins
+>   mesurés, dans les deux sens : cible de poste `Infinity` → score 92,86 → **100** (parfait, depuis
+>   un poste corrompu) ; dépense réelle `NaN` → **0** (« 100 % de dépassement ») ; coût d'abo
+>   illisible JETÉ de la somme → 95 $/mois ramenés à 20 $/mois, score 87,3 → **97,3**. Correctif à
+>   DEUX portes : `totalYearlyCost` reste la porte de LECTURE (elle rend le TOTAL et écarte — c'est
+>   le bon comportement pour un écran), `totalYearlyCostAudit` ajoute la porte d'ÉCRITURE avec son
+>   compte de termes écartés, et `computeBudgetParityScore` / `computeSubscriptionLoadScore`
+>   REFUSENT (`null` → « — ») au lieu de se rabattre. Règle : **afficher peut écarter, calculer doit
+>   refuser.** Le `clamp01` local reste comme dernier filet mais TRACE désormais s'il tire.
+> - **`[AITOOLS-CALLSITE-UNIQUE-GARDE]` (volet a)** : `tests/aiTools/anthropicCallsiteGuard.test.ts`
+>   fige que **`services/aiTools/agentLoop.ts` est le SEUL site qui déclare des tools à l'API
+>   Anthropic** (pas `mcp/server.ts`, qui ne parle pas à l'API), avec sa contre-épreuve — ce site
+>   doit construire son tableau DEPUIS le registre et ne fabriquer aucun `input_schema` littéral.
+>   `tests/helpers/source.ts` est le PREMIER décommenteur EXPORTÉ du dépôt (les six copies
+>   existantes sont routées au backlog : leur migration change le contrat de leurs appelants).
+>   Volet (b) non livré délibérément — la parité comportementale du lot 30 détecte déjà le cas ; le
+>   risque est la RÉPARATION, donc un commentaire a été posé là où quelqu'un lira l'échec.
+>
+> Gate LOCAL vert : typecheck 0, lint 0 erreur, **4 891 tests / 459 fichiers**, build 0.
+> ✅ PR #757 mergée (`be51412`), déploiement Vercel de production `READY` vérifié. Les lots 32
+> (PR #758, `224cd86`) et 33 (PR #759, `0b8eb84`) ont suivi, tous deux mergés et déployés `READY`.
+>
+> ## 🟢 Session 2026-08-28 — Lot 30 : livraison de 3 findings pré-existants du panel PR #755 (PR #756)
+> Les trois findings routés par le panel de PR #755 ont été implémentés isolément, chacun sur son mécanisme :
+> - **`[MCP-WRITE-PARITY-GUARD]`** : garde comportementale `tests/mcp/writeToolParity.test.ts` — démarre le VRAI serveur MCP sur un transport en mémoire et vérifie que les tools d'écriture du serveur (`mcp/server.ts`) sont EXACTEMENT identiques à ceux du registre du chat in-app (`WRITE_SPECS`) et vice-versa. Parité bidirectionnelle + descriptions, exclusions `ping`/`connect_drive` déclarées et validées.
+> - **`[HEALTH-SCORE-NAN-SILENCIEUX]`** : `utils/healthScore.ts` `sanitizeNonFinite` — bascule toute métrique au score non fini (ex. `netSalary: Infinity` restaurée depuis un backup) en `available:false` + trace throttlée (source 'storage', sévérité 'warning'). Également ceinture `Number.isFinite` dans `computeHealthTotalScore`. Chemin mesuré : `netSalary: Infinity` → `savingsRateRaw = NaN` → score total NaN.
+> - **`[TEST-PERSONA-NON-DETERMINISTE]`** : `services/testTransactions.ts` seedé — le générateur utilisait `Math.random()` NU, rendant le persona `couple-confort` (PAR DÉFAUT) non reproductible. Fixes : mulberry32 avec graine 42 par défaut (même convention que `testPersonas/transactions.ts` et Monte Carlo), surchargeable. Dates toujours relatives à `new Date()` (volontaire, le passé doit toucher aujourd'hui).
+> **Panel `/review-all` (5 agents) sur la PR #756 — 4 défauts CAUSÉS ou LIMITÉS par le lot, corrigés dans la PR** :
+> (a) `computeHealthTotalScore` retombait sur `0` quand plus rien n'est mesurable — branche MORTE avant
+> le lot (les 3 métriques de base étaient `available:true` en dur), rendue ATTEIGNABLE par
+> `sanitizeNonFinite` ; `0` s'affiche « 0/100 » avec l'anneau ROUGE. Corrigé en `number | null`, ce qui
+> force `tsc` à exiger la branche honnête sur chaque surface. (b) `computeSubscriptionLoadScore`
+> fabriquait un score PARFAIT de 100 sous revenu `Infinity` (`Infinity > 0` est vrai → `95/∞ = 0`), avec
+> le libellé faux « 0,0 % du revenu net » — garde d'ENTRÉE durcie (`Number.isFinite`) ; la garde de
+> SORTIE ne pouvait pas le voir, 100 est un nombre fini. (c) Ma fixture de test portait
+> `subscriptions: []`, ce qui rendait cette métrique inobservable — abonnements épinglés ajoutés.
+> (d) Le « 3 088,55 $ » du ticket, que j'avais recopié dans le code, n'est pas retrouvable :
+> `calculatedStartingCash` est borné par construction à 2 480 $, re-mesuré à 1 168,66 $ sur 50 000
+> graines. Un ticket n'est pas une source.
+>
+> Gate complet vert : **457 fichiers, 4 874 tests**, typecheck + lint + build.
+>
+> ## 🟢 Session 2026-08-28 — Lot 29 : panel `/review-all` (7 agents) et PR #755
+> Les cinq tickets du lot 29 (voir entrées ci-dessous) ont été passés au panel complet à la
+> reconnexion de GitHub. **6 défauts CAUSÉS par le lot, tous corrigés dans la PR** : 3 dans la
+> nouvelle tuile Objectif du Budget (assiette incluant l'épargne alors que le réel filtre les
+> virements — 500 $/mois d'écart mesuré ; « 0 $ » crédible quand la paie est importée en net seul ;
+> objectif indexé par le simulateur d'inflation), une garde manquante sur `delete_item` (toute
+> `entity` inattendue tombait désormais sur les DETTES au lieu des objectifs — rayon d'impact
+> aggravé sur un geste irréversible), 3 correctifs a11y, et une **perte de couverture moteur** :
+> le test supprimé avec la feature était le SEUL à exercer la jambe `fromLiquid` du `goalMutator`,
+> code qui SURVIT et porte le clamp anti-découvert PV-11 (couverture restaurée, discriminée par la
+> mutation exacte du panel).
+> ⚠️ **Preuve que le moteur est intact** : 7 personas × 481 points × 105 champs, `md5` identique
+> HEAD vs `main` — et la preuve DISCRIMINE (retirer `financialGoals` déplace 93 511 $), donc
+> l'égalité n'est pas vacueuse. Explication du « rien n'a bougé » : aucune fixture n'exerçait le
+> chemin retiré.
+> 6 findings PRÉ-EXISTANTS mesurés par le panel, routés au `BACKLOG.md` sans les corriger :
+> `MCP-WRITE-PARITY-GUARD`, `TEST-PERSONA-NON-DETERMINISTE` (⚠️ `Math.random()` nu rend le persona
+> PAR DÉFAUT non reproductible : toute mesure avant/après y est impossible sans
+> graine), `ENG-GOALS-HORS-TOTALEXPENSES`, `ENG-GOALSHORTFALLS-CHAMP-MORT`,
+> `HEALTH-SCORE-NAN-SILENCIEUX`, `BUDGET-DEUX-NETS-MEME-ECRAN`.
+> Gate complet vert : **454 fichiers, 4 856 tests**, typecheck + lint + build. CI GitHub verte
+> (6/6 checks, dont E2E Playwright et le gate sur Node 20).
+>
+> ## 🟢 Session 2026-08-27 — `[INVEST-COURS-EXACT-TOUTES-ACTIONS]` : Xetra/Milan ajoutés au routage des cours
+> `toFinnhubSymbol` ne convertissait que 3 préfixes de place (NASDAQ/NYSE, TSE/TSX, EPA) — tout
+> autre préfixe (dont `ETR:` Xetra et `BIT:` Milan) retombait sur le
+> ticker BRUT sans suffixe, jamais résolu par Finnhub/Yahoo : cours gelé, SANS erreur visible.
+> `inferCurrency` anticipait déjà les suffixes `.DE`/`.MI` correspondants — la table de routage
+> n'avait juste jamais été complétée. Ajouté ETR/BIT aux deux fonctions. Portée volontairement
+> LIMITÉE à ces deux préfixes (les seuls confirmés par des tickers réels) : deviner les autres
+> conventions de préfixe (Madrid, Amsterdam…) risquerait de router vers un AUTRE instrument — pire
+> qu'un cours absent. un titre hors bourse (`OTCMKTS:`) reste un gap de couverture connu, pas un bug, noté au
+> `BACKLOG.md`. 2 tests neufs, discriminés par perturbation.
+>
+> ## 🟢 Session 2026-08-27 — `[BUDGET-REEL-PREVISIONNEL-OBJECTIF]` : 3e valeur Objectif sur les 4 tuiles Budget
+> Décision Marc (cadrage batch) : ajouter l'Objectif aux TROIS tuiles (Revenus/Dépenses/Fin de
+> mois/Restant), pas seulement Dépenses — a exigé de définir un « objectif de revenu » inexistant
+> côté UI, résolu en réutilisant `fiscalBreakdown.netDisplay` (déjà calculé dans `Budget.tsx`, déjà
+> distingué du réel sous le nom « salaire déclaré »). `DualKPIStat` gagne une prop `objectif?`
+> optionnelle (absente = comportement identique, rétrocompat). 3 tests neufs (présence, valeur
+> exacte de l'Objectif Dépenses, invariant Objectif Restant = Objectif Revenus − Objectif
+> Dépenses), discriminés par perturbation.
+> ⚠️ Découverte en chemin, corrigée dans le même lot : `components/Planning.tsx` (Charges fixes &
+> Abonnements) n'avait plus AUCUN test de rendu depuis `[NAV-REMOVE-OBJECTIFS-TAB]` — ajouté
+> `tests/components/Planning.smoke.test.tsx`, baseline avant `[BUDGET-CHARGES-FIXES-REFONTE]`.
+> Gate complet vert : 453 fichiers, **4 853 tests**, build.
+>
+> ## 🟢 Session 2026-08-27 — `[NAV-MERGE-SANTE-FUTUR]` : résumé Santé condensé en tête de Futur
+> Décision Marc confirmée : « Condensé (résumé + lien vers le détail) », pas un déplacement du
+> contenu. Le sous-onglet Santé (Budget → Santé) reste la vue détaillée inchangée ; un nouveau
+> `components/future/FutureHealthSummary.tsx` affiche en tête de Futur un score/100 condensé qui
+> pointe vers ce sous-onglet via `navigateWithFocus(Tab.BUDGET, 'sante')` (deep-link déjà câblé et
+> testé, zéro nouvelle plomberie). Le calcul du score a été EXTRAIT de `HealthIndicator.tsx` vers
+> `utils/healthScore.ts` (source unique — même score garanti aux deux endroits, comportement
+> bit-à-bit identique, 13 tests HealthIndicator/BudgetWorkspace verts sans modification).
+> No-fake-data : sans profil renseigné, le résumé invite à saisir le profil, jamais un score inventé.
+> ⚠️ En testant, découvert que l'import statique dans `FutureProjection.tsx` tire
+> `services/portfolio.ts` (`logErrorThrottled`) dans son arbre de rendu — 3 fichiers de test qui
+> montent `<FutureProjection>` avec un mock PARTIEL de `services/errorLogger` plantaient sur un
+> actif sans devise ; mocks complétés. 3 tests neufs, discriminés par perturbation.
+> Gate complet vert : 453 fichiers, **4 848 tests**, build.
+>
+> ## 🟢 Session 2026-08-27 — `[NAV-REMOVE-OBJECTIFS-TAB]` + `[UTIL-GOLDENSPLIT-ORPHELIN]` : retrait complet de la feature Objectifs, nettoyage de code mort
+> Suite de « continue et fini tout le backlog ». Deux items livrés dans le même lot :
+> - **`[NAV-REMOVE-OBJECTIFS-TAB]`** : la feature « objectif d'épargne » (`SavingsGoal`) est
+>   RETIRÉE DU PRODUIT — UI et moteur. Demande initiale de Marc lue comme un retrait UI ; une
+>   cartographie a montré que `savingsGoals` pilotait aussi un décaissement RÉEL dans le moteur de
+>   projection (`applySavingsGoalDeadlines`) — Marc a re-confirmé explicitement « retirer VRAIMENT
+>   tout (UI + moteur) » une fois informé (money-critical → jamais deviner, toujours re-demander).
+>   Retiré : l'onglet Objectifs de `BudgetWorkspace`/`Planning`, `applySavingsGoalDeadlines` du
+>   moteur (le `GoalDeadlineMutator` partagé et `applyFinancialGoalDeadlines` restent intacts, seul
+>   appelant restant), les deux surfaces MCP (serveur + registre de tools du chat in-app,
+>   `upsertSavingsGoal.tool.ts`/`.spec.ts` supprimés), `applyDocument.ts` (case + fonction dédiée),
+>   `types.ts` (`SavingsGoal`, `AppState.savingsGoals`), et les deux tables non typées invisibles au
+>   typecheck (`DATA_ARRAY_KEYS`, `ARRAY_SLICES`). `types.ts` traité EN DERNIER : le typecheck a
+>   effectivement rattrapé 3 sites oubliés. `BackupPanel.tsx` garde `savingsGoals` optionnel en
+>   LECTURE (vieux backups) mais ne le ré-écrit plus. `tests/components/PlanningGoals.test.tsx`
+>   supprimé ; le test TZ de `BudgetWorkspace.test.tsx` aussi (son sujet — le calcul local qui
+>   alimentait l'onglet retiré — est devenu du code mort, pas juste non testé).
+> - **`[UTIL-GOLDENSPLIT-ORPHELIN]`** : `computeGoldenSplit`/`GOLDEN_IDEAL`/`GoldenSplit`
+>   (`utils/budget.ts`) confirmés sans consommateur de production, supprimés avec leurs 5 tests.
+>
+> Gate complet vert : `typecheck`, `lint` (0 erreur), **4 853 tests / 453 fichiers**, `build`.
+> ✅ **GitHub reconnecté** : la PR est en cours de création (`claude/lot-29` → squash-merge sur `main`).
+>
+> ## 🟢 Session 2026-08-27 — `[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]` : un doublon bénin distingué d'un doublon intra-lot suspect
+> Finding financial-integrity (PR #754), routé au `BACKLOG.md` puis traité ici.
+> `applyBankStatement` fusionnait par la clé `date|montant|payee` sans distinguer un doublon
+> contre l'EXISTANT (recouvrement légitime, bénin) d'un doublon INTRA-LOT (deux lignes DISTINCTES
+> du même lot entrant — le plus souvent deux vraies dépenses identiques le même jour, dont une
+> seule écrite SANS avertissement). Mesuré : un petit montant perdu en silence, `cashAnchorDelta` absorbe
+> l'écart. `existingKeys`/`seenThisLot` séparés au lieu d'un seul `seen` ; nouveau champ optionnel
+> `ApplyResult.dupIntraLotCount`, `applyPayloadsIsolated` pousse un avertissement SÉPARÉ dans
+> `SystemView`. `mcp/README.md` mis à jour. 4 tests neufs, discriminé par perturbation ciblée.
+> ⚠️ **GitHub déconnecté côté outils MCP pendant cette session** (session invalide côté serveur) :
+> le code est committé + poussé sur `claude/lot-29`, mais la PR n'a pas pu être créée/fusionnée —
+> à faire dès que la connexion revient. Gate vert (4 871 tests) sur l'environnement reconstruit
+> (`npm install` refait après un changement de conteneur qui avait un `node_modules` d'une
+> branche différente).
+>
+> ## 🟢 Session 2026-08-26 — `[MCP-REJECTIONS-NON-STRUCTUREES]` : les rejets d'un relevé bancaire deviennent visibles à la sync automatisée
+> Finding hors-scope routé par le panel de PR #753 : `applyBankStatement` rejette des lignes
+> (montant aberrant, date invalide, ligne incomplète) SANS lever — seulement une phrase dans
+> `ApplyResult.summary`, jamais lue par le chemin de sync automatisé (`applyPayloadsIsolated` ne
+> destructure que `nextState`/`changes`). Une sync quotidienne qui recevait 10 lignes dont 5
+> rejetées écrivait bien les 5 valides sans qu'aucun signal n'apparaisse nulle part (ni
+> `SystemView`, ni log) — exactement la classe de silence que cette session a passé son temps à
+> fermer ailleurs. Nouveau champ optionnel `ApplyResult.rejectedCount` (PAS les doublons) ;
+> `applyPayloadsIsolated` pousse un avertissement dans `warnings` (déjà affiché par `SystemView`).
+> ⚠️ Panel `/review-all` (3 agents) : `financial-integrity` a MESURÉ que le motif d'exclusion de
+> `dupCount` (« attendu d'une sync à fenêtres chevauchantes ») était faux sur le seul chemin qui lit
+> ce champ — la bascule anti-doublon écarte déjà ce cas en amont (0 collision sur 60 jours mesurés),
+> donc un `dupCount` survivant y désigne surtout une collision INTRA-lot. Décision inchangée (exclure
+> `dupCount` reste correct — l'inclure ferait une alarme permanente), commentaire réécrit sur ce qui
+> est vérifié. Défaut préexistant routé au `BACKLOG.md` (`[FINTABLE-DOUBLON-INTRALOT-SILENCIEUX]`) :
+> deux dépenses réelles identiques le même jour se fusionnent en silence (petit montant mesuré,
+> `cashAnchorDelta` absorbe l'écart — total juste, ventilation fausse). `code-reviewer` a demandé un
+> test verrouillant que deux documents `bank_statement` du même lot produisent deux avertissements
+> distincts (ajouté). 4 tests neufs au total. Gate vert (4 867 tests). PR #754.
+>
+> ## 🟢 Session 2026-08-26 — 4 bugs préexistants routés par le panel de PR #752, corrigés séparément (PR #753)
+> Suite directe de la session `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` ci-dessous : le panel `/review-all`
+> de la PR #752 avait routé 4 défauts PRÉEXISTANTS (non causés par cette PR-là) au `BACKLOG.md`
+> plutôt que de les corriger sur le fait. Traités dans ce lot séparé, chacun sur son propre
+> mécanisme, sans ambiguïté produit : **(1)** `mcp/ingest/applyDocument.ts` — le résumé d'un relevé
+> bancaire annonçait toujours « 0 doublon(s) ignoré(s) » même quand `dupCount === 0` ; construction
+> réécrite en phrases nues jointes par `, ` (plus de virgule orpheline possible quand un segment est
+> vide). **(2)** `components/Budget.tsx` `getDateRange()` CUSTOM — une plage inversée (date de fin
+> saisie avant la date de début) rendait un « prévu » positif (`civilDaysBetween` fait `Math.abs`)
+> pendant que le « réel » restait toujours à 0 $ (le filtre par chaîne ne matchait jamais rien) ;
+> les deux bornes sont maintenant permutées silencieusement, sans message d'erreur pour une faute de
+> frappe bénigne. **(3)** `components/Budget.tsx` `handleUpdateItem` — renommer un poste écrivait à
+> CHAQUE frappe (`onChange`) : jusqu'à 5 réécritures complètes de `transactions` (persist Zustand +
+> push Drive) et 5 toasts pour « Resto » → « Restaurant ». Propagation débouncée (500 ms) ; le nom
+> de départ est figé dès la 1ʳᵉ frappe de la session d'édition (`renameOriginalNameRef`), jamais la
+> valeur intermédiaire de la frappe précédente — sinon un renommage en plusieurs frappes aurait
+> raté les transactions dont la catégorie ne matche que le nom D'ORIGINE. **(4)**
+> `mcp/ingest/applyDocument.ts` — JSDoc `[DEBT-MCP-PARITE]` sans `*/` de fermeture, avalait le
+> JSDoc suivant (`inferDebtCategory`) ; fermeture ajoutée. 3 tests neufs, chaque correctif
+> comportemental re-discriminé par perturbation ciblée (revert d'une ligne → rouge → restauré →
+> vert).
+> ⚠️ **Panel `/review-all` (3 agents), même PR** : le debounce du point (3) était lui-même CASSÉ,
+> trouvé indépendamment par `code-reviewer` ET `silent-failure-hunter` — **CRITIQUE** : les refs
+> étaient clées par `index` POSITIONNEL (recalculé à chaque render), pas par `item.id` stable ;
+> supprimer un poste pendant qu'un AUTRE poste (qui hérite de son index) est en renommage pouvait
+> corrompre la catégorie du mauvais poste, ou laisser une catégorie fantôme après suppression.
+> Reclé sur `item.id` ; la suppression annule + flushe tout renommage en vol pour le poste
+> supprimé et réassigne au nom RÉELLEMENT présent dans les transactions, jamais à la frappe
+> abandonnée. **2 ÉLEVÉ** : le nettoyage au démontage annulait le timer sans le FLUSHER (un
+> renommage tapé juste avant de changer d'onglet se perdait en silence) ; et le timer capturait
+> `transactions` par fermeture au moment de la planification (une écriture concurrente — sync/
+> import — pendant les 500 ms aurait été écrasée au flush) — les deux corrigés (flush au
+> démontage, `transactionsRef` toujours à jour). **1 MOYEN** : le libellé de période envoyé au
+> chat IA pour une plage Custom inversée gardait les dates BRUTES (ordre saisi), incohérent avec
+> les montants calculés sur la plage permutée juste à côté ; aligné. 4 tests neufs de plus. 1
+> finding hors-scope (compteurs de rejet MCP non structurés, invisibles à la sync automatisée)
+> routé au `BACKLOG.md`. Leçon `docs/CONVENTIONS.md` : un état différé (timer/ref/cache) associé à
+> un élément d'une liste rendue doit être clé par un id STABLE, jamais par sa position. Gate vert
+> (4 863 tests). PR #753.
+>
+> ## 🟢 Session 2026-08-26 — `[BUDGET-TRANSACTIONS-SYNC-AUDIT]` : audit sync Budget↔Transactions, 4 défauts corrigés
+> Ticket ouvert (« Marc n'est pas sûr que Budget s'adapte correctement à Transactions »), sans
+> hypothèse précise. Audit `financial-integrity` (lecture seule) : store/comptes/devises/bornes de
+> période/dépendances `useMemo`/détection d'orphelines confirmés SAINS. Quatre défauts réels
+> trouvés et corrigés : **(1)** `utils/budget.ts` — `fuzzyNameMatch` sans garde sur un nom vide
+> (`x.includes('')` toujours vrai) : un poste de budget vidé absorbait n'importe quelle catégorie
+> via le fuzzy. **(2)** `components/Budget.tsx` — le champ nom d'un poste est un input CONTRÔLÉ qui
+> écrit à chaque frappe ; le vider propageait `category: ''` à TOUTES ses transactions, et retaper
+> le nom ne les récupérait jamais (`oldItem.name` devenu `''`, falsy, ne redéclenchait plus la garde
+> de rename) — refusé à l'écriture. **(3)** `components/Budget.tsx` — `getMultiplier()` en vue
+> Custom comptait les jours civils EXCLUSIFS (`civilDaysBetween`) alors que la sélection est
+> INCLUSIVE des deux bornes (`t.date >= startStr && t.date <= endStr`) : le « prévu » était
+> systématiquement sous-estimé (mesuré −3,2 % sur un mois plein). **(4)** `mcp/ingest/applyDocument.ts`
+> + `applyBankStatement.spec.ts` — aucune validation de date sur une transaction MCP (format NI
+> calendrier) : un LLM produit plusieurs orthographes pour la même date, comptées différemment par
+> le grand livre (mesuré −75 % sur un KPI de fenêtre) ; ceinture Zod + garde runtime ajoutées,
+> comme `applyDebt`. Chaque correctif discriminé par revert CIBLÉ (single-line), pas `git stash`
+> pleine page — un `git checkout` malencontreux pendant une de ces perturbations a effacé les deux
+> fixs de `Budget.tsx` en cours de route, re-appliqués et re-vérifiés à l'identique avant de
+> continuer (leçon : ne jamais `git checkout -- <fichier>` sur un fichier qui porte du travail non
+> commité, même pour annuler une perturbation manuelle — restaurer par un second edit ciblé).
+> **Routé à Marc** (`docs/A_FAIRE_MOI.md`, 3 décisions produit, pas des bugs) : un Interac reçu
+> doit-il être un revenu ou un crédit sur poste (mécanisme `[TX-INTERAC-BUDGET]` actuellement code
+> mort côté producteurs) ; le grand livre doit-il compter les retours marchands/remboursements
+> d'impôt en revenus (écart mesuré 11,7 % sur une fixture) ; les impôts payés doivent-ils avoir un
+> poste budget (écart d'assiette mesuré 44 %, et le conseil du panneau Parité s'auto-annule sinon).
+> 12 tests neufs au total, gate vert (4 856 tests). PR #752.
+> ⚠️ **Panel `/review-all` (4 agents), même PR** : `silent-failure-hunter` a trouvé 2 ÉLEVÉ (le
+> refus d'un nom de poste vide était 100 % silencieux — input contrôlé qui « recrache » l'ancien nom
+> sans toast ; et la garde qui filtre les lignes MCP incomplètes, montant/date absents, ne comptait
+> AUCUN rejet — un lot où TOUTES les lignes ont ce défaut rendait « aucune nouvelle transaction. »
+> sans dire que N lignes avaient été soumises), corrigés dans le même lot (toast + nouveau compteur
+> `rejMalformedCount`). `financial-integrity` a ensuite trouvé 1 MOYEN RÉEL sur le `+1` lui-même :
+> le plancher `Math.max(0.1, …)` protégeait `getMultiplier()` CUSTOM contre `diffDays === 0` AVANT
+> le `+1`, mais depuis le `+1` le diviseur est TOUJOURS ≥ 1 — le plancher n'avait plus de rôle et
+> écrasait les plages de 1 à 3 jours vers la MÊME valeur (jusqu'à +204 % d'erreur sur 1 jour), en
+> plus de rendre le commentaire du correctif initial trompeur (il citait ce +204 % comme réglé par
+> le `+1`, alors qu'il ne l'était pas). Plancher retiré. 2 FAIBLE durcis au passage (`fuzzyNameMatch`
+> ne gardait qu'un nom strictement vide, pas fait uniquement d'espaces ; le libellé de
+> `rejMalformedCount` nommait 2 causes sur 3). 4 bugs PRÉEXISTANTS découverts en chemin, non
+> corrigés (hors scope), routés au `BACKLOG.md` : message « 0 doublon(s) » toujours affiché même à
+> zéro, plage Custom inversée jamais gérée, JSDoc non fermé qui avale le suivant, renommage d'un
+> poste qui écrit à chaque frappe (5 réécritures + 5 toasts pour un nom de 5 lettres). 3 tests
+> neufs de plus. ⚠️ **Deuxième incident de perte d'édition dans ce même lot**, cette fois SANS
+> commande destructive identifiée : deux `Edit` réussis (rapportés « updated successfully ») sur
+> `components/Budget.tsx` et `mcp/ingest/applyDocument.ts` n'avaient PAS persisté sur disque au
+> moment de lancer les tests suivants — `git diff --stat` les montrait absents. Cause non
+> déterminée (pas de `git checkout`/`stash` entre les deux). Détecté par la même discipline que le
+> premier incident (`git status`/`git diff` après chaque étape, jamais supposé), corrigé en
+> ré-appliquant et re-vérifiant immédiatement par `grep` après CHAQUE edit avant de continuer.
+>
+> ## 🟢 Session 2026-08-26 — `[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]` : le revenu du 1er disparaissait sous un fuseau négatif
+> Trouvé en diagnostiquant `[BUDGET-PREVU-BUG]` : `incomeBreakdown` comparait `new Date(t.date)`
+> (ancré UTC minuit) à `start`/`end` (heure LOCALE) — sous `TZ=America/Toronto` (mesuré, invisible
+> en CI qui tourne en UTC), le 1er jour de chaque période disparaissait du revenu réel. Fix :
+> `getDateRangeStrings()` + `toLocalDateStr()` (comparaison par CHAÎNE, jamais un aller-retour
+> `.toISOString()` qui décale la FIN de période d'un jour sous un fuseau négatif — bug JUMEAU
+> trouvé en écrivant le correctif, déjà présent dans le filtre des dépenses, corrigé au passage).
+> Le bloc `CUSTOM` de `getDateRange()` avait le MÊME défaut à la source (`new Date(customStart)`) —
+> corrigé avec `parseLocalDateStr()`, sans quoi mon propre fix aurait décalé la plage personnalisée
+> d'un jour dans l'AUTRE sens (mesuré par perturbation ciblée : reverter SEULEMENT ce bloc rougit).
+> 2 tests neufs sous `TZ=America/Toronto`, 2 perturbations confirmées séparément.
+> ⚠️ Panel `/review-all` a trouvé TROIS défauts de plus, même classe, même fichier — tous corrigés
+> dans le même lot : (a) `code-reviewer`, ÉLEVÉ — les valeurs par défaut du champ Custom
+> (`customStart`/`customEnd`) utilisaient encore `.toISOString()`, LE site le plus visible (une
+> valeur affichée directement dans le formulaire) sous un fuseau POSITIF (Europe/Asie/Australie) ;
+> (b) même finding — le libellé des 6 mois de tendance (`trendMap`) avait le même défaut ; (c)
+> `financial-integrity`, MOYEN — `getMultiplier()` en vue Custom comptait un delta de MILLISECONDES
+> entre deux `Date` locales, faussé de ±1 h par un changement d'heure (DST) dans l'intervalle
+> (mesuré : +3,45 % sur un budget cible). `toLocalDateStr`/`parseLocalDateStr`/`civilDaysBetween`
+> déplacés en fonctions MODULE (pas des closures du composant) : ils sont maintenant utilisés dès
+> l'initialisation des `useState`, avant que le corps du composant ait fini de s'exécuter. 2 tests
+> neufs de plus (dont un sous `TZ=Australia/Sydney`, fuseau positif — miroir du premier). Un défaut
+> RÉEL non introduit ici (le stub `parseLocalDateStr` d'un `<input type="date">` vidé donnait
+> silencieusement 0 $ au lieu de planter) a aussi été fermé par un repli sur AUJOURD'HUI plutôt
+> qu'une date invalide propagée.
+>
+> ## 🟡 Session 2026-08-26 — `[BUDGET-PREVU-BUG]` : diagnostiqué, reproduit exactement, routé à Marc
+> Ticket « À diagnostiquer » — livré tel quel, aucun code changé. Reproduit l'exemple de Marc au
+> dollar près : 3 mois d'historique à revenu mensuel constant → « prévu » trimestriel = **trois fois ce revenu**
+> (mensuel × 3). Le calcul est juste sur ses propres termes ; le problème est la MÉTHODOLOGIE.
+> Cause n°1 : `fullHistoryMonths()` (`utils/budgetSync.ts:65`) moyenne sur TOUT l'historique depuis
+> le 1er mois jamais vu — dénominateur qui ne fait que grandir, domine par un seul mois inhabituel
+> sur un compte récent, et ne converge JAMAIS vers un changement de revenu réel (mesuré : +67 %
+> d'écart qui persiste indéfiniment sur un historique long avec un vrai changement de revenu).
+> Cause n°2 : `categoryRules.ts:89-90` route des crédits ponctuels (Interac reçu, dépôt direct) vers
+> « Revenus divers » (= revenu récurrent) au lieu de « Remboursement » — qui existe déjà
+> (`CREDIT_BACK_CATEGORIES`) mais n'a **aucun producteur**, zéro transaction n'y est jamais routée.
+> Mesuré : un « prévu » trimestriel gonflé de trois versements, fabriqué par un simple Interac récurrent mal classé.
+> Cause n°3 (mineure) : la normalisation période-pleine/période-écoulée existe pour Mois+Dépenses
+> mais pas Trimestre/Année/Revenu (~38 % d'écart mesuré en cours de période).
+> **Routé à Marc** (`docs/A_FAIRE_MOI.md`) : fenêtre de moyenne à choisir (pleine-historique vs
+> glissante) et classification des motifs Interac ambigus — deux décisions produit, pas des bugs à
+> corriger d'office. Un 4e défaut MINEUR et non-ambigu (décalage UTC/local d'un jour sur la fenêtre
+> revenus, `Budget.tsx:350-354`) a été ajouté au `BACKLOG.md` (`[BUDGET-INCOME-WINDOW-UTC-OFFBYONE]`)
+> plutôt que fixé ici — nécessite un test avec `TZ` fixé à un fuseau négatif pour être vérifié
+> correctement, pas une correction précipitée en fin de diagnostic.
+>
+> ## 🟠 Session 2026-08-26 — `[BUDGET-CATEGORY-INCOME-SIGN]` : un remboursement DOUBLAIT l'erreur
+> Ticket d'audit ("valider que Budget traite bien un crédit sur une catégorie de dépense comme une
+> entrée d'argent") — mesuré avant d'écrire, et le bug était réel : `computeBudgetParity`/
+> `computeActualByOwner` (`utils/budget.ts`) agrégeaient une ligne à crédit (« Remboursement »,
+> `CREDIT_BACK_CATEGORIES`) avec `Math.abs` au lieu de `spendAmountOf` (déjà correct ailleurs dans
+> `spendRules.ts`) — un remboursement de 250 $ sur une sortie de 400 $ affichait **650 $** de
+> « versé ce mois » (objectifs Planning) au lieu de **150 $** : le crédit était ADDITIONNÉ, jamais
+> DÉDUIT. Erreur = 2× le crédit, pas zéro.
+> Fix aux deux fonctions. **Sans effet sur `Budget.tsx`** (tableau principal, répartition par
+> conjoint, tendance 6 mois) : ces trois pré-filtrent `amount < 0` en amont, donc un crédit
+> « Remboursement » y reste invisible (ni ajouté ni déduit) — une incohérence avec
+> `monthlyActualsMap` qui, elle, l'inclut et le déduit maintenant correctement. **Routé à Marc**
+> (`docs/A_FAIRE_MOI.md`) plutôt que tranché seul : uniformiser changerait pour la PREMIÈRE fois les
+> montants affichés dans le tableau principal.
+> 1 test neuf, perturbation confirmée (rouge à 650 $ sur le code d'avant).
+> ⚠️ Panel `/review-all` a trouvé un effet de bord réel du fix (MOYEN, `code-reviewer`) : un poste
+> à crédit peut désormais avoir un net NÉGATIF (crédits > sorties du mois), et `Planning.tsx`
+> affichait `formatCAD` du net brut → « Versé ce mois : −150 $ », lisible comme un bug. Corrigé :
+> clampé à 0 $ à l'AFFICHAGE seulement (jamais le calcul), avec une note « remboursements >
+> dépenses ». 2 tests neufs. JSDoc de `OrphanCategory`/`ActualByOwner`/`computeBudgetParity`
+> corrigée (`financial-integrity`, FAIBLE) : ces champs sont des NETS signés, plus des valeurs
+> absolues depuis ce lot.
+>
+> ## 🔴 Session 2026-08-26 (suite 178) — `[FINTABLE-SYNC-XTAB-MANUEL]` : le mutex cross-onglet de lot 16 ne mutex-ait rien, en vrai navigateur
+> Parti d'une extension de routine (génériciser `withCrossTabLock` pour que le bouton manuel
+> partage le verrou de la passe auto) — et tombé sur un bug bien plus large, confirmé contre la
+> **spec Web Locks** (recherche web, MDN introuvable directement — proxy — mais confirmé par 3
+> sources indépendantes) : sous `ifAvailable: true`, **le rappel est TOUJOURS invoqué**, avec
+> `lock === null` quand le verrou est déjà pris ailleurs — il n'est **jamais sauté**. Le code de
+> lot 16 (`[FINTABLE-SYNC-XTAB-MUTEX]`) croyait l'inverse (« `request` rend `null` SANS appeler le
+> rappel », commenté et testé comme tel) et son rappel ignorait le paramètre `lock` en l'appelant
+> inconditionnellement (`async () => run()`). Conséquence en **navigateur réel** (Chrome/Edge/
+> Firefox 96+/Safari 15.4+) : quand un onglet tenait déjà le verrou, l'AUTRE onglet exécutait quand
+> même `run()` en entier — la mutex ne bloquait RIEN. Les tests de lot 16 ne l'ont jamais vu parce
+> que leur faux `LockManager` reproduisait la même croyance fausse (`if (!libre) return null`, sans
+> appeler `cb`) : un mock aussi faux que le code qu'il couvrait.
+> ⚠️ Trouvé grâce à un finding CRITIQUE de `code-reviewer` sur un problème ADJACENT (mon
+> `withCrossTabLock<T>` généricisé traitait un `run()` résolvant `undefined` — le cas réel de
+> `Promise<void>` de `handleSync` — comme « occupé », via `outcome ?? onBusy()`) : en creusant POURQUOI
+> la valeur de retour de `request()` pouvait être ambiguë, la vraie forme du contrat est apparue.
+> **Fixé aux DEUX endroits** : `withCrossTabLock` vérifie maintenant `lock === null` *à l'intérieur*
+> du rappel (jamais la valeur de retour de `request()`), et le test de lot 16
+> (`autoSyncXtabLock.test.ts`) a été corrigé pour appeler `cb(null)` au lieu de sauter le rappel —
+> sans ce correctif-là, il aurait continué à masquer le même trou.
+> Aussi fixé : rejet de `locks.request` maintenant journalisé (`logError`) puis re-levé — trouvé par
+> `silent-failure-hunter` (ÉLEVÉ) — plutôt qu'avalé sans trace, ce qui aurait gelé `_inFlight` en
+> silence pour toujours.
+> 5 tests neufs (dont le cas `undefined` qui aurait laissé filer la régression), 2 corrigés.
+> **Leçon → `docs/CONVENTIONS.md`** : un contrat d'API tiers **commenté ET testé** dans le dépôt
+> n'est pas une preuve — seule la spec l'est. Un mock qui encode la même croyance que le code testé
+> ne peut PAS détecter l'erreur commune aux deux.
+>
+> ## 🟢 Session 2026-08-25 (suite 178) — divorce × bien détenu : le trou de couverture est fermé
+> `[TEST-DIVORCE-SANS-IMMOBILIER]` livré. Mécanisme SAIN (mesuré avant d'écrire) : 50 % → équité
+> ×0,5047, intérêt suivant ×0,5000 ; 75 % → ×0,2523 / ×0,2500. Rien corrigé — verrouillé.
+> Leçons de la session appliquées d'office : discriminant à **75 %** (P2 « keep inversé » serait
+> invisible à 50 %), assertion sur l'**intérêt du mois suivant** (prouve l'état moteur, pas
+> l'affichage), pièges `isActive`/`isOwned` re-documentés dans le fichier (P3 : 4 rouges sur NaN).
+> 4 tests, 3 perturbations rouges. Branche poussée AVANT d'écrire (2 réversions de conteneur
+> aujourd'hui), commit poussé avant le gate. (La suite 177, `NetTransferLiquid` toujours nul, est
+> dans la PR #744 — en CI au moment de ce lot.)
+>
+> ## 🔴 Session 2026-08-25 (suite 177) — `NetTransferLiquid` vaut TOUJOURS zéro dans le futur
+> J'avais routé `[ENG-LIQUID-FLUX-FORM]` comme un cas limite (« 7 638,44 $ au mois 324 »). RE-MESURÉ :
+> **le champ est non nul sur 0 des 361 points**. Donc **355 mois sur 360** avec un résiduel > 1 $,
+> pire **108 608,35 $** (mois 360), cumul absolu **864 592,56 $** — fixture ordinaire, sans divorce.
+> Cause : `NetTransferLiquid = contribLiquid − withdrawalLiquid`, et ces accumulateurs ne voient que
+> des chemins marginaux. Vérifié : le résiduel = `(NetSalary − Expenses) − Σcotisations`.
+> ⚠️ **Le même champ a DEUX sens** : `dailyPastLedger.ts` pose `income - expenses` → le PASSÉ publie
+> le vrai cashflow, le FUTUR publie zéro. **Quatre surfaces** le lisent (`ProjectionExplains`,
+> `ProjectionTooltip` qui SOMME tous les `NetTransfer*`, `FutureDetailModal` « Cash (Coussin) »,
+> `yearlyActions` « Cash ») : la ligne de flux du cash affiche 0 sur tout le futur.
+> 🧭 **NON corrigé** : direction déterminée (aligner le futur sur le passé) mais ça fait passer une
+> ligne d'UI constamment nulle à ~10 k$/mois sur 4 surfaces → son propre lot, avec la mesure de chaque
+> consommateur. Livré : la mesure + un **test de LIMITE** qui verrouille le contrat actuel et
+> S'INVERSERA au correctif (sa perturbation EST le correctif : les 3 tests rougissent).
+> ⚠️ Leçon : devant un résiduel, demander d'abord **sur combien de POINTS**, pas « combien ». Le
+> montant fait écrire « cas limite » ; le compte fait écrire « le champ n'est jamais alimenté ».
+> ⚠️ Ce lot a été fait DEUX FOIS : le premier passage (commit local + gate vert) a été effacé par un
+> redémarrage de conteneur PENDANT le rebase — jamais poussé. Règle étendue : POUSSER la branche
+> AVANT `git rebase`, un rebase à conflits est une attente longue qui ne dit pas son nom.
+>
+> ## 🟠 Session 2026-08-25 (suite 176) — `stepReerByUser` : DEUX paramètres, DEUX statuts
+> Troisième lot d'affilée sur ce module, et à chaque fois la même question mal posée (« ce paramètre
+> sert-il à quelque chose ? »). Il en a DEUX, et la réponse diffère :
+> • **`withdrawal` est ratio-neutre PAR CONSTRUCTION** — retirer au prorata multiplie chaque part par
+>   le même facteur, `reconcileToPool` efface le reste. Vérifié à 1 $, 1 000 $, 70 000 $, 300 000 $ et
+>   899 999 $ : répartition identique au **9ᵉ chiffre**. Seule porte : `w ≥ Σ prev` (repli sur `shares`).
+> • **`contribution` déplace bien la répartition** (attribuée par `shares`) : +16 123 $ sous écart d'âge.
+> ⚠️ Donc les EXCLUSIONS de ce terme (`ferrWithdrawalMois`, `divorceReerWithdrawalMois`) sont JUSTES
+> mais quasi sans effet : **0 $ à âge égal, −141,22 $ à 15 ans, −1 641,85 $ à 27 ans** (0,09 %), avec
+> 53 tests verts → arbitrage routé `[ENG-REERBYUSER-RETRAIT-INERTE]` (garder ou simplifier).
+> ⚠️ **DEUX corrections successives du même constat** parce que je n'avais pas séparé les deux
+> paramètres. Le défaut de méthode était là, pas dans le sens de la conclusion.
+> 4 tests de caractérisation, 3 perturbations rouges. Aucun code moteur touché.
+>
+> ## 🟠 Session 2026-08-25 (suite 170) — `[ENG-DIVORCE-PMT-NON-PARTAGEE]` : les DEUX prédictions du ticket sont fausses
+> Le défaut est réel (`calculatedPmt` jamais multiplié par `keep`), mais :
+> 1. « Re-basera des goldens » → **zéro golden n'a bougé**. Cause mesurée : **les 16 fixtures de
+>    divorce du dépôt portent `realEstateGoals: []`** → routé `[TEST-DIVORCE-SANS-IMMOBILIER]`.
+> 2. « s'amortit ~2× trop vite » → seulement **48 mois** : le renouvellement ré-ancre la mensualité,
+>    mois de solde nul **239 dans les deux cas**. Vrai dégât : **56 121 $ de sur-paiement**
+>    (1 169,18 $/mois).
+> ⚠️ **À SAVOIR — le patrimoine final BAISSE avec le correctif**, et le SIGNE change avec le
+> rendement (30 ans, correctif − défaut) : 3 % −93 546 $ · 6 % −66 989 $ · 8 % −20 351 $ ·
+> 10 % **+54 003 $**. Le défaut = désendettement FORCÉ à 5 % ; le signe dit l'écart de taux, pas la
+> justesse. Ce qui tranche : le chemin LOCATIF partage DÉJÀ sa mensualité, 3 lignes plus bas.
+> 5 tests, 3 perturbations × 3 rouges. Aucun montant ancré (gardes sur la RELATION mensualité/solde).
+> ⚠️ Piège de fixture : sans `isActive: true` ET `isOwned: true`, le bien n'existe pas
+> (`Immobilier = 0`) et la fixture décrit une maison sans en avoir une.
+> ## 🟢 Session 2026-08-25 (suite 169) — `[FINTABLE-SYNC-XTAB-MUTEX]` : un verrou qui enveloppe la GARDE
+> Ticket **vérifié EXACT** (et non réfuté, pour une fois) : `applyDocument` déduplique bien sur
+> `date|montant_en_cents|payee_minuscule`, donc le risque est l'INTÉGRITÉ (dernier écrivain du solde),
+> pas le doublon.
+> Ce que le ticket ne disait pas : le verrou existant `_inFlight` est commenté « verrou **PARTAGÉ**
+> auto ↔ manuel » — partagé entre les deux CHEMINS d'un onglet, pas entre onglets (variable de
+> module). Et **la course n'est pas le réseau** : `localStorage` n'a pas de compare-and-swap, donc
+> `readLastAttempt()` puis `writeLastAttempt(now())` laissent deux onglets lire le même vieil
+> horodatage et passer tous les deux la garde. Fenêtre la plus large exactement quand elle compte :
+> un navigateur qui restaure deux onglets épinglés les démarre ensemble.
+> Livré : `withCrossTabLock` (Web Locks, `ifAvailable: true` = renoncer au lieu d'attendre)
+> enveloppant **toutes** les gardes, cooldown compris ; repli EXPLICITE si l'API manque (un verrou
+> qui bloque tout serait pire que le défaut). 3 tests, **5 perturbations rouges sur 5** — dont le
+> cooldown remis hors du verrou, qui rougit les 3.
+>
+> ## 🟢 Session 2026-08-25 (suite 172) — `[ENG-DIVORCE-FLUX-MUET]` : 50 % ne discrimine pas `keep`
+> Ticket CONFIRMÉ. Résiduel de forme-flux AU MOIS DU DIVORCE : **CELI 119 007,53 $ · REER 91 679,66 $ ·
+> Crypto 15 599,16 $ · Liquidités 12 492,83 $ · REEE 9 088,89 $ · CELIAPP 6 635,66 $** → 0,01 $ après.
+> ⚠️ Le ticket nommait 4 comptes ; **six** sont touchés (CELIAPP et REEE absents du ticket), et
+> `nonReg` — qui y figurait — est **à zéro sur 360 mois**, donc DÉCLARÉ exclu avec sa mesure.
+> ⚠️ **Leçon principale** : à **50 %**, `keep` et `1 − keep` sont indiscernables. Publier la part
+> CONSERVÉE au lieu de la part CÉDÉE laisse le test à 50 % **VERT** (mesuré) — seul le test à 75 %
+> rougit. Une valeur d'essai symétrique rend la garde vacueuse.
+> ⚠️ **Ne déplace AUCUN argent** (bit-identique). L'exclusion `divorceReerWithdrawalMois` de
+> `stepReerByUser` est **inerte aujourd'hui** (consolidation `[reer, 0]` + `reconcileToPool`) : écrite
+> comme telle plutôt que couverte par une fixture absurde. 3ᵉ perturbation muette de la session.
+> 🧭 **Deux découvertes routées, NON corrigées** : `[ENG-CELIAPP-TRANSFERT-FLUX-MUET]` (9 092,54 $ au
+> mois 168, transfert CELIAPP→REER muet des DEUX côtés) et `[ENG-LIQUID-FLUX-FORM]` (7 638,44 $ au
+> mois 324 — le compte Liquidités n'est pas conforme même SANS divorce).
+> 5 tests, 3 perturbations × rouges.
+> ## 🟢 Session 2026-08-25 (suite 171) — `[BUDGET-DRIVE-BANNER-FLASH]` : un booléen pour deux faits opposés
+> « Brièvement » cachait la mesure : la fenêtre fait **≥ 2 500 ms**, écrite dans `App.tsx`
+> (`initSync` publie `configured: true`, puis `setTimeout(runBootSync, 2500)`). Pas une course de rendu.
+> Le fond : **`connected: false` recouvrait « on a essayé et non » ET « on n'a pas encore essayé »**.
+> La bannière lisait le second comme le premier → elle affirmait du FAUX.
+> Livré : `resumeSettled`, posé dans un `finally` (7 sorties dans `runBootSyncTick`, 6 dans
+> `gateSilentResume`) et `true` **d'entrée** quand il n'y a rien à reprendre — un appareil jamais
+> connecté voit l'invitation tout de suite (demande explicite de Marc).
+> ⚠️ Deux pièges constatés : `initSync` est appelé DEUX fois au boot (→ monotonie obligatoire), et
+> `_status` est un état de MODULE qui survit d'un test à l'autre (→ `_resetSyncStatusForTests`).
+> ⚠️ Fixture : `readSyncMeta()` rejette une méta partielle → mon « appareil de retour » décrivait
+> l'inverse. Attrapé par une pré-assertion, pas par le typage.
+> 9 tests, **5 perturbations rouges sur 5**.
+>
+> ## 🟠 Session 2026-08-25 (suite 174) — `[ENG-CELIAPP-TRANSFERT-FLUX-MUET]` + une découverte gênante
+> Fermeture du CELIAPP (15 ans / 71 ans) : `reer += X; celiapp = 0;` sans publier de flux → forme-flux
+> violée des DEUX côtés du MÊME montant, **10 470,25 $ au mois 168**. Publié, 0,01 $ après.
+> ⚠️ **L'avertissement que j'avais écrit en routant ce ticket était FAUX** : `contribREER` n'alimente
+> PAS l'exclusion de croissance de mi-mois (elle porte sur `contribNonReg`/`contribREEE` ; le REER
+> passe par `prevREER`). Une note que je m'écris se re-prouve — même quand elle est prudente.
+> ⚠️ Ne déplace AUCUN argent (patrimoine + REER finaux identiques au centième ; `reerByUserFinal` à
+> ~3e-10 $ près, y compris sur un couple 10:1 choisi exprès).
+> 🧭 **DÉCOUVERTE À TRANCHER — `[ENG-REERBYUSER-FLUX-DECORATIF]`** : forcer
+> `stepReerByUser(..., { contribution: 0 })` (cacher TOUTES les cotisations REER) laisse **29 tests
+> per-conjoint verts** et `reerByUserFinal` bit-identique. `reconcileToPool` détermine seul la
+> répartition depuis `shares` (résultat = `poolEnd × shares`, rapport 10,0000 mesuré). ⚠️ Toute une
+> FAMILLE de correctifs passés sur ce registre est peut-être inerte pour la même raison. Non testé :
+> `shares = [1, 0]` (divorce/décès) et les soldes per-conjoint négatifs.
+> 4 tests, 4 perturbations isolant chacune son côté (dont « moitié du montant »).
+> ## 🟢 Session 2026-08-25 (suite 173) — `[BUDGET-REMOVE-AMELIORER]` : ce qu'une épuration ne doit PAS emporter
+> Section retirée (demande directe de Marc). ⚠️ **Vérifié avant de couper** : le bouton « Diagnostic »
+> de la carte avait un JUMEAU dans la barre de pilotage — la carte n'en portait qu'un doublon, le
+> diagnostic IA survit. La garde exige **exactement UN** bouton après coup (doublon parti + fonction
+> restée) ; un `queryBy(...).toBeNull()` sur la carte n'aurait pas vu la perte.
+> Disparaissent, et c'était uniques : donut 50/30/20, « répartition réelle », comparatif Réel/Cible/Idéal.
+> **Bundle mesuré** (build propre) : `BudgetWorkspace` **86 865 → 81 251 o** (−6,5 %), dist −5 489 o.
+> ⚠️ Le chunk `recharts` est IDENTIQUE au octet près — d'autres écrans l'importent : ce n'est PAS une
+> victoire de dépendance, et l'annoncer ainsi aurait été un chiffre inventé.
+> 🧭 **Découverte routée** : `computeGoldenSplit`/`GOLDEN_IDEAL` n'ont plus qu'un consommateur — leur
+> propre test. **`knip` ne le voit pas** (sortie identique au octet près) → `[UTIL-GOLDENSPLIT-ORPHELIN]`.
+> 3 tests, 3 perturbations (dont une qui doit rester VERTE : mention en commentaire).
+>
+> ## 🟠 Session 2026-08-25 (suite 175) — je CORRIGE mon propre constat de la suite 174
+> ⚠️ Hier j'ai publié (PR #741) que l'arithmétique de flux du registre REER per-conjoint était
+> « décorative », parce que `contribution: 0` ne faisait rien bouger. **Trop large, et FAUX.**
+> C'était une propriété de la FIXTURE : le registre est semé par `splitByShares(reer, reerShares)`,
+> les trois opérations qui le font vivre PRÉSERVENT le rapport, et `reerShares` ne change qu'au
+> décès/divorce → **couple du MÊME ÂGE = registre épinglé à la clé salariale pour toujours**
+> (mesuré **0,535948** = 8 200/15 300, exactement).
+> Le seul flux NON proportionnel est la FERR (part exacte par âge). Sous écart d'âge : **0,906412**
+> (45/58), **0,962539** (50/65). Et la perturbation déplace alors le REER FINAL du ménage :
+> **+16 123,13 $** — avec les 29 tests per-conjoint VERTS. C'est un TROU DE COUVERTURE, pas du code mort.
+> Livré : 4 tests sur un couple à écart d'âge, **2 perturbations rouges** (FERR au prorata → le
+> registre retombe PILE sur la clé, écart 3,3e-16 ; facteur FERR sans l'âge → 0,168 < seuil 0,30).
+> Seuils LARGES, jamais ancrés. Aucun code moteur touché.
+> ⚠️ **Règle à retenir** : une perturbation muette dit « la fixture ne l'atteint pas » AVANT de dire
+> « le code ne sert à rien ». Et un paramètre à ÉCART se teste à écart NON NUL.
+> 🧭 Reste ouvert (`[ENG-FERR-ECART-AGE-NON-COUVERT]`) : auditer les autres gardes per-conjoint,
+> toutes écrites à âge égal.
+>
+> ## 🟢 Session 2026-08-25 (suite 168) — `[ENG-DIVORCE-SCALE-UNBOUGHT]` : la mise de fonds évaporée
+> Ticket marqué **« [À vérifier] — non vérifié par perturbation »**, classé FAIBLE. Vérifié : réel,
+> et le dégât n'est pas celui annoncé.
+> Le `.map` de partage divisait `currentValue`/`mortgage` de TOUS les biens, y compris non achetés —
+> or pour un bien futur ce sont les **paramètres SEMÉS** de l'achat (`price`, `price − downPayment`),
+> consommés tels quels par `realEstateMonth` (`const p = pState.mortgage`).
+> **MESURÉ** (500 000 $ / mise 100 000 $, keep 0,5) : cash sorti **105 000 $ dans les deux cas**,
+> mais équité **100 672 $ → 50 336 $**. Le débit vient du BUT, l'actif de l'ÉTAT — deux sources pour
+> une même opération, et le divorcé paie plein tarif pour un demi-bien.
+> Le ticket disait « principal réduit de moitié » ; le vrai dégât est sur l'ÉQUITÉ.
+> ⚠️ La reproduction locale du `.map` dans le test ne prouve QUE la conséquence — le câblage réel est
+> vérifié par un scan ancré sur l'INITIALISEUR du `.map`. 3 tests, **2 perturbations rouges**.
+>
+> ## 🟡 Session 2026-08-25 — `[A11Y-BORDER-PROMINENCE-SWEEP]` re-cadré (mesure seule, aucun code)
+> Ticket annoncé « S, 28 sites ». **MESURÉ : 255 occurrences de `border-white/10`** dans
+> `components/`, dont **31 sur un `<input>`/`<select>`/`<textarea>`** (les frontières de contrôle
+> visées par WCAG 1.4.11) et **224 décoratives** (que 1.4.11 n'exige pas à 3:1).
+> Contraste actuel **1,25–1,32** contre **3,00** exigés. ⚠️ **Le réflexe 10 → 20 → 30 NE PEUT PAS
+> marcher** (1,75 · 2,58) : il faut **`white/34`** minimum, ou un jeton opaque (`ink-500` → 3,86–4,33).
+> ⚠️ Le repli « identifiable autrement » ne s'applique pas : un champ `bg-dark` sur carte
+> `bg-surface` fait **1,05**.
+> 🧭 **Aucun code changé — décision d'apparence pour Marc** (3 options écrites au ticket) : repeindre
+> 31 bordières change visiblement le caractère de l'app, et le tri contrôle/décor demande un arbitrage.
+
+> ## 🟢 Session 2026-08-25 (suite 167) — `[ENG-NETTRANSFER-REER-INCOMPLET]` : 1,85 M$ de retraits muets
+> Le ticket : « ne voit ni FERR ni meltdown, écart 330 353 $ ». **RE-MESURÉ** : la moitié FERR était
+> DÉJÀ fermée (#2026-08-19) ; la moitié MELTDOWN était ouverte et **5,6× pire**.
+> **MESURÉ sous `MELTDOWN_REER`** : −34 794 $ de REER en un mois pour **802 $** de flux publiés
+> (pire résiduel **35 596,32 $**), **1 849 080,59 $** d'écart cumulé sur 156 mois. Après : **0,10 $**.
+> ⚠️ **Pourquoi la garde ne l'a jamais vu** : le test `[ENG-FERR-NETTRANSFER-MUET]` nomme le BON
+> invariant, mais sa fixture ne demande pas la stratégie `MELTDOWN_REER` — et le meltdown ne
+> s'exécute QUE sous elle. Invariant juste, testé, aveugle à un chemin entier.
+> ⚠️ **Pas le traitement de la FERR pour le per-conjoint** : la FERR est exclue de `stepReerByUser`
+> (part EXACTE par âge) ; le meltdown est attribué AU PRORATA → soustraction au prorata = MÊME règle.
+> ⚠️ **Jambe d'ARRIVÉE laissée muette DÉLIBÉRÉMENT** → 🧭 `[ENG-MELTDOWN-JAMBE-ARRIVEE]` :
+> `contribNonReg` pilote l'exclusion de croissance de mi-mois, donc la publier déplace de l'argent
+> (**−5 045,04 $** mesuré) et fait ROUGIR deux goldens « NEUTRALITÉ NW » posés le 2026-07-31 avec
+> leur preuve. Correction plausible, mais contre un invariant explicite = décision de Marc.
+> Le résiduel restant est BORNÉ par le test pour qu'il ne grandisse pas en silence.
+> 1 test, **2 perturbations rouges**.
+>
+> ## 🟢 Session 2026-08-25 (suite 166) — `[ENG-RENEWAL-M0]` caduque : le choc de taux est MORT
+> ⚠️ **MESURÉ** : le choc de taux au renouvellement vient du PREMIER CARACTÈRE de l'identifiant du
+> bien (`((id.charCodeAt(0) % 3) - 1) * 0,015`) — et il vaut **ZÉRO partout** : UI `prop_<ts>`
+> ('p' → 112 → 1 → nul), fixtures `p1`, personas `jc-re1` ('j' → 106 → 1). **Le risque de
+> renouvellement n'est pas modélisé du tout.**
+> Livré (zéro dollar déplacé) : le message ne dit plus « nouveau taux 5,00 % » quand l'ancien était
+> 5,00 % — il dit « taux inchangé ». No-fake-data ; le renouvellement, lui, a bien eu lieu.
+> ⚠️ **Mécanisme PAS réveillé** — le rendre vivant déplace de l'argent sur toute projection avec
+> hypothèque ET expose `[ENG-RENEWAL-RATE-MISMATCH]`. 🧭 Deux décisions pour Marc →
+> `[ENG-RENEWAL-CHOC-MORT]` (remplace `[ENG-RENEWAL-M0]`, dont la prémisse est exacte mais sans
+> conséquence).
+> ⚠️ **Portée de `[ENG-RENEWAL-RATE-MISMATCH]` corrigée** : « frappe tout achat » → ne frappe RIEN
+> tant que le choc est nul. Les deux se livrent ensemble.
+> 2 tests, **2 perturbations rouges**.
+>
+> ## 🟢 Session 2026-08-25 (suite 165) — `[ENG-PROPGROWTH-ZERO-INEXPRIMABLE]` : un 0 qui n'existait nulle part
+> `(goal.propertyGrowthRate || 3)` transformait un 0 explicite en 3 %/an. **CINQ sites**, pas un —
+> moteur, achat passé, deux écrans, et **l'ÉDITEUR lui-même** : taper 0 réaffichait 3.
+> ⚠️ Deux voisins étaient DÉJÀ corrects (`?? 3`, paramètre par défaut, `num(v, 3)`).
+> ⚠️ **NEUF tests déclaraient `propertyGrowthRate: 0`** et tournaient à 3 % depuis toujours. Un seul
+> l'avait senti sans le nommer : une FOURCHETTE « + ≤1 mois de croissance » sur une fixture qui dit
+> 0 — elle absorbait le défaut. Redevenue une égalité exacte.
+> ⚠️ Le ticket annonçait « touche TOUS les scénarios → re-baseliner sciemment » : mesuré, **une
+> seule assertion a bougé** sur 4 779 tests.
+> ⚠️ **Piège évité par la MESURE** : `fin(goal.propertyGrowthRate) ?? 3` aurait été un non-correctif
+> silencieux (`fin` rend toujours un nombre → défaut MORT, taux absent devenu 0 %). Le défaut se
+> passe à `fin` lui-même. 3 tests, **2 perturbations rouges** (0 effacé · défaut tué).
+>
+> ## 🟢 Session 2026-08-25 (suite 164) — `[AI-TAXCENTER-APPLY-NOGATE]` : un bouton n'est pas un filet
+> La faille était l'**incohérence entre deux surfaces qui font la même chose** : `PayslipUploadCard`
+> avait le filet (diff → confirmation → état frais → backup → écriture), `TaxCenter.applyToProfile`
+> écrivait le profil salarial en DIRECT. Le bouton donnait un geste de confirmation, mais aucun
+> diff, aucun backup, aucune garde — sur le profil qui alimente TOUTE l'app.
+> ⚠️ **Défaut de plus, trouvé en lisant** : `{ ...config }` est une copie de SURFACE → `newConfig.users`
+> restait le MÊME tableau, et `newConfig.users[0] = …` écrasait l'état précédent EN PLACE. L'objet
+> auquel un backup se serait raccroché était déjà modifié.
+> ⚠️ La prop `setConfig` de `TaxCenter` est RETIRÉE, pas laissée inerte.
+> **Extraction préalable** : la plomberie de confirmation existait DEUX fois à l'octet près
+> (`useAiChat` + `PayslipUploadCard`) — vérifié non divergé avant de bouger → `hooks/useWriteConfirmation.ts`,
+> qui porte aussi la règle de vie privée (modal = montants → mode discret pendant l'attente = refus).
+> ⚠️ **Une perturbation n'a RIEN fait rougir** : désarmer cette règle laissait **145 tests** verts.
+> ⚠️ **Ma propre garde avait un trou** : `setConfig?.(` échappait à `setConfig\s*\(`. Trouvé par
+> perturbation, resserré.
+> 7 tests, **4 perturbations rouges**.
+>
+> ⚠️ **BACKLOG corrigé au passage** : `[ENG-DIVORCE-SOLO-HOUSEHOLD-ENFANTS]` décrivait comme ouvert
+> un défaut à MOITIÉ fermé par #721 — re-mesuré, le volet congé parental est livré, seul le volet
+> `householdGross` reste (règle à trancher, `[ENG-DIVORCE-ALLOC-ASSIETTE]`). Le laisser tel quel
+> aurait fait re-livrer #721.
+>
+> ## 🟢 Session 2026-08-25 (suite 163) — `[PH3-c-bis]` : les RSU ne s'arrêtaient jamais
+> Le ticket groupait deux choses de gravité INCOMPARABLE.
+> **1. `rsuYearsRemaining` = un chiffre FAUX.** Le moteur le lit depuis toujours (`activeIncome.ts` :
+> `(u.rsuYearsRemaining ?? 99) > yearsElapsed`) et **aucun champ ne l'écrivait** → RSU versées sur
+> tout l'horizon. **MESURÉ** (40 ans, 24 000 $/an de RSU) : **7 273 468 $** sans durée contre
+> **5 892 838 $** avec 4 ans de vesting → **1 380 630 $ (+23,4 %) de patrimoine fantôme** ; encore
+> 823 937 $ d'écart à 10 ans. Son JUMEAU `rsuVestingPerYear` avait son champ depuis toujours, DEUX
+> LIGNES plus haut. Champ ajouté à côté de lui.
+> ⚠️ Vider le champ rend `undefined`, jamais `0` — « pas renseigné » ≠ « zéro an ».
+> **2. `futureProvince`/`futureProvinceMoveYear` retirés.** ⚠️ Le ticket nommait `futureMoveYear`,
+> qui n'existe pas. Mesuré : zéro producteur ET zéro consommateur ; `CanadianProvince` n'existait que
+> pour typer le premier. Un commentaire AFFIRMAIT « GARDÉ : consommé par … » — une justification qui
+> maintenait en vie du code que rien n'appelle.
+> 3 tests, **2 perturbations rouges**.
+>
+> ## 🟢 Session 2026-08-25 (suite 162) — `[DETTE-CHART-THEME-DUP]` : la duplication n'était que le symptôme
+> Le ticket disait « dédupliquer les styles inline ». **MESURÉ** : 14 infobulles Recharts, **9 styles
+> distincts**, **six fonds** (`#1e1e1e` ×4, `#151922` ×2, `#1a1a1a` ×2, `#1a1e29`, `#111`, `#0B0E14`
+> ×2) — et **deux infobulles BLANCHES** (`#fff`, texte noir) dans les graphiques de placements.
+> Surtout : **aucun de ces six fonds n'existe dans `tailwind.config.js`**. Le vrai problème n'était
+> pas la duplication mais qu'AUCUNE infobulle n'utilisait le système de design.
+> Livré : `CHART_TOOLTIP_STYLE` (+ `..._ITEM_STYLE`) dans `utils/chartTooltip.ts`, 14 sites migrés.
+> Fond `surfaceHighlight` (surface ÉLEVÉE au-dessus de `surface`/`dark`), texte `ink-100`,
+> **ratio mesuré 14,42** vs 4,5 exigés. Choisi par MESURE.
+> ⚠️ **Décision d'apparence assumée** : les 2 infobulles blanches deviennent sombres — elles
+> n'étaient pas sur une surface claire, juste les seules hors thème.
+> ⚠️ Garde dans les DEUX sens : la constante reproduit les tokens (lus dans la config) ET aucun
+> composant ne re-peint un `contentStyle` inline (scan décommenté, double anti-vacuité : volume de
+> code restant + témoin retrouvé par le MÊME lecteur que les offenders).
+> 3 tests, **2 perturbations rouges**.
+>
+> ## 🟢 Session 2026-08-25 (suite 161) — `[ENG-LIFEEVENT-VENTE-SUBSTRING]` : un champ typé sans producteur
+> ⚠️ **La moitié moteur était DÉJÀ faite, et c'est ce qui cachait le défaut.** `LifeEvent.eventKind`
+> (`'VENTE_IMMO' | 'NONE'`) existe, le moteur le consulte EN PREMIER, 3 tests verrouillent son
+> contrat. **MESURÉ** : `'VENTE_IMMO'` n'avait **AUCUN producteur dans le dépôt** — seul
+> `mcp/whatIf.ts` écrivait `'NONE'`. Tout événement créé par l'app arrivait donc `eventKind` absent,
+> donc sur le chemin historique : la **sous-chaîne « vente » dans le nom**.
+> ⚠️ Le FORMULAIRE portait la même heuristique : « Vente d'auto » revendait la MAISON, « Je me
+> départis du condo » ne vendait rien.
+> Livré : case à cocher → `eventKind`, écrit EXPLICITEMENT sur tout événement neuf (`'NONE'` par
+> défaut — absent voudrait dire « je ne sais pas »). Le sélecteur de bien suit la CASE ; décocher
+> efface `propertyId`. Rétrocompat : les événements déjà enregistrés n'ont pas le champ → chemin
+> historique intact, zéro migration.
+> ⚠️ La RÉSERVE est dite : nom qui parle de vente + case décochée → avertissement visible, testé dans
+> les DEUX sens (une alarme permanente s'ignore).
+> ⚠️ Effet de bord assumé : « Nom » et « Date » étaient les 2 seuls champs du formulaire sans
+> `htmlFor`/`id` — les 6 autres l'avaient. 4 tests, **2 perturbations rouges**.
+>
+> ## 🟢 Session 2026-08-25 (suite 160) — `[GARDE-JOUR-ANTICIRCULAIRE-ETROITE]` : le correctif prescrit ne protégeait rien
+> Le ticket voulait « étendre le test de rapport à TOUS les stocks non nuls ». **MESURÉ** : sur la
+> fixture existante ça donne 13 champs et **AUCUN des onze que le ticket nomme** — `DetteTotale`,
+> `rapBalance`, `Immobilier`, `REEE`… valent tous ZÉRO sans dette, sans immeuble et sans enfant.
+> Le vrai correctif était la **FIXTURE**, pas la liste de clés.
+> Fixture riche → garde portée de **5 à 18 soldes**, de **1 jour à 2 644 couples (jour, clé)**.
+> Pire rapport réel **0,995** contre **0,035** pour un solde ventilé : seuil à 0,5.
+> ⚠️ **La liste balayée est ÉCRITE À LA MAIN, délibérément** — la dériver de `FIELD_KIND` sortirait
+> du balayage le champ qu'un reclassement vient de déclasser. `FIELD_KIND` ne sert qu'à EXIGER des
+> ajouts (2ᵉ test), avec **13 exclusions déclarées et motivées**.
+> ⚠️ Le scénario exact du ticket (reclasser `DetteTotale` en flux) rougit enfin, et **seule** la
+> garde neuve l'attrape — les 26 autres tests du fichier restent verts.
+> 2 tests, **2 perturbations rouges**.
+
+> ## 🟢 Session 2026-08-25 (suite 159) — `[FISC-RRSP-EXTRAP-05]` : une marche de 4,5 % dans le plafond REER
+> Le ticket demandait de « sourcer ou requalifier » le `+0,5 pp` d'indexation. Requalifié en
+> **hypothèse de MODÈLE** (§7 de `FISCAL_REFERENCE.md`), avec l'écart MESURÉ contre l'observé :
+> **2,72 %/an** (2010→2026 officiels) · **3,97 %/an** (2021→2026) · **2,00 %/an** (estimations
+> 2027-2030 du dépôt) contre **2,50 %/an** modélisés. Le plafond est de l'ARC ; la vitesse ne l'est
+> pas — la ranger telle quelle lui aurait donné l'autorité d'un texte de loi.
+> **Trouvé en écrivant la doc** : l'extrapolation composait depuis le littéral **2026** alors que le
+> barème va jusqu'à **2030**. MESURÉ : couture 2030 → 2031 = **36 590 $ → 38 252,91 $, +4,54 % en un
+> an** (contre ≈ 2 %/an de part et d'autre) ; ancrée sur la dernière année connue → 37 504,75 $
+> (+2,50 %, la vitesse du modèle). À 5 % d'inflation : **5 586 $ de droits fabriqués** pour 2032.
+> Le patron correct était trois lignes plus haut (`LAST_KNOWN_CELI_YEAR`).
+> ⚠️ **Deux goldens ont bougé** (−28 969 $ / −47 367 $) — re-basés AVEC leur explication : c'est la
+> preuve que le chemin corrigé est couvert, pas un ajustement de confort.
+> ⚠️ Le garde d'obsolescence de l'inventaire a attrapé SEUL l'entrée `taxJanuary.ts::2026` devenue
+> fantôme ; la raison voisine citait un « §7.G » qui n'a jamais existé.
+> ⚠️ **Quatre tickets fiscaux ROUTÉS, pas livrés** (`[FISC-RAP-15ANS]`, `[FISC-RAP-GRACE-WINDOW]`,
+> `[FISC-REEE-AGE-FERMETURE]`, `[FISC-RRSP-LIMITS-PRE2024-DOC]`) : re-mesuré, le proxy répond **403**
+> à `canada.ca`, `revenuquebec.ca`, `bankofcanada.ca`. → `docs/A_FAIRE_MOI.md` **B6-B9**.
+> 4 tests, **2 perturbations rouges**. Gate vert : **4 760 tests / 436 fichiers**.
+>
+> ## 🟢 Session 2026-08-24 (suite 158) — `[FUTUR-DAILY-STACK-X]` : le ticket visait le mauvais défaut
+> Le ticket : « deux événements du même mois à des jours différents sont empilés alors qu'ils ne se
+> chevauchent plus ». **Mesuré** : pastille de 24 px, et à l'horizon PAR DÉFAUT (40 ans) sur un
+> téléphone (390 px), **un mois vaut ≈ 0,7 px** — 15 jours d'écart = ≈ 0,35 px. À cette vue,
+> l'empilement est ce qui rend les pastilles lisibles ; le correctif proposé les aurait SUPERPOSÉES.
+> **Le vrai défaut, trouvé en cherchant celui-là** : le rang d'empilement était attribué AVANT le
+> filtre de fenêtre et AVANT l'écrêtage (24 « vie » / 16 « flux »). Une survivante gardait le rang de
+> ses voisines écrêtées → pastille à 44 ou 68 px de la courbe, **étages vides en dessous**.
+> **Observé dans le vrai composant** (payloads capturés à la frontière recharts) : mois 15, une seule
+> pastille montrée, rang 1. `assignStackIndex` s'applique désormais EN DERNIER.
+> ⚠️ **Mon anti-vacuité a rougi sur MA fixture** : sans événement épinglé, aucun mois ne gardait deux
+> pastilles — « tous les rangs valent 0 » était vrai par construction et ne gardait rien.
+> ⚠️ Reliquat re-cadré `[FUTUR-STACK-ZOOM-AWARE]` : le critère juste est en PIXELS, donc il appartient
+> au rendu (fenêtre visible + largeur), pas au calcul des événements qui ne voit que `chartData`.
+
+> ## 🟢 Session 2026-08-24 (suite 157) — `[E2E-PINCH-ZOOM-FLAKE]` : le test passait par accident
+> Le check requis E2E a rougi **3 fois d'affilée** sur la PR #722 (`futurePinchZoom.spec.ts`), sur un
+> diff qui ne touchait ni le graphe ni le tactile ; le rejeu du **MÊME sha** est passé vert.
+> **MESURÉ** (sonde, 3/3) : juste après le `touchmove` à 2 doigts, le préset « Tout » est ENCORE
+> actif — la bascule met **2,1 à 2,3 s** (2301 / 2124 / 2174 ms), parce que le hook planifie en rAF
+> puis toute la série est re-tranchée et re-rendue. Le test lisait l'état **une seule fois, sans
+> attendre** : il ne passait que parce que le bouton se DÉTACHE pendant le recalcul, ce qui forçait
+> Playwright à re-tenter sa résolution. Le sursis venait de l'outil, pas de l'assertion.
+> ⚠️ **Les deux sens ne se corrigent pas pareil** : « l'état a changé » → `expect.poll` ; « l'état n'a
+> PAS changé » → lecture APRÈS le budget mesuré (un `poll` y serait satisfait par l'état d'avant).
+> ⚠️ Le flake ne s'est PAS reproduit en rejouant (6/6 verts en local) — il s'est laissé prendre en
+> mesurant la grandeur dont il dépend. La mesure et le n° du run sont écrits DANS le test.
+> Rejeu local du spec corrigé : 4/4 verts. Gate vert : **4 754 tests / 434 fichiers**.
+>
+> ## 🟢 Session 2026-08-24 (suite 156) — `[FINTABLE-ANCRE-LIQUIDITE-GONFLEE]` : rendre visible ce qu'on ne peut pas corriger
+> **Mécanisme encore atteignable**, mesuré AVANT de coder : un doublon qui échappe au classement
+> (`callerClassified`) fait compter une dépense deux fois, et le recalage `cash_balance` l'absorbe en
+> déplaçant l'ancre — **1 000 $ → 1 300 $** sur 300 $ comptés deux fois, sans aucun avertissement.
+> ⚠️ **Le lot ne corrige PAS l'ancre, délibérément** : le déplacement est le comportement voulu du
+> recalage (le cash est DÉRIVÉ) ; ce qui est fautif, c'est le silence. Impossible de décider à la
+> place de l'utilisateur si l'écart vient d'un doublon, d'une transaction non importée ou d'une vraie
+> correction bancaire → on MESURE et on PUBLIE (`cashAnchorDelta`, affiché dans Système).
+> ⚠️ Champ additif optionnel : rapport d'avant ce lot → on n'affiche RIEN, jamais « 0 $ ».
+> 2 tests dont le sens inverse, **2 perturbations rouges** (une par sens).
+> Gate vert : **4 754 tests / 434 fichiers**.
+>
+> ## 🟢 Session 2026-08-24 (suite 155) — `[REEE-CONGE-SANS-GARDE-SOLO]` : le congé d'un parent absent
+> `projection.ts` passait `grossAnnaBaseAnnual` BRUT au bloc enfants, sans le `soloHousehold` des
+> QUATRE autres sites. Après décès/divorce, le congé se déclenchait sur un salaire que le ménage ne
+> touche plus. **Mesuré au module** : −5 000 $/mois de brut retiré + 2 436 $/mois de RQAP fabriquée.
+> **Mesuré au SCÉNARIO** (vrai moteur, divorce + naissance pendant la projection) : revenu du mois
+> observé 8 930 $ au lieu de 5 620 $ → **+3 310 $/mois fantômes**. C'est la mesure qui compte : le
+> module ne PEUT pas voir ce défaut, c'est du câblage.
+> ⚠️ Deuxième moitié du ticket, corrigée aussi : porte `!isRetired` manquante — le salaire de BASE
+> reste non nul après la retraite, donc un retraité avec un nourrisson retirait le même fantôme.
+> ⚠️ La perturbation a révélé qu'AUCUN test existant ne couvrait le cas retraité : garde ajoutée.
+> 3 tests (1 scénario + 2 module), **2 perturbations rouges**.
+> ⚠️ **Volet RETIRÉ du lot par un test existant** : j'avais aussi appliqué `soloHousehold` à
+> `householdGross` (cohérence apparente). Or cette valeur sert à la RÉCUPÉRATION des allocations, pas
+> au congé : la baisser fait MONTER l'allocation d'un parent seul (166 $ → 250 $/mois au mois 36) et
+> `[ENG-DIVORCE-BENEFITS-FLUX]` rougit. Question de RÈGLE → `[ENG-DIVORCE-ALLOC-ASSIETTE]`.
+> Gate vert : **4 752 tests / 434 fichiers**.
+>
+> ## 🟢 Session 2026-08-24 (suite 154) — `[GATE-RELATED-RELIABILITY]` : non reproduit, mais rendu impossible
+> ⚠️ **Le symptôme du ticket ne se reproduit plus** : re-mesuré sur Vitest 4.1.8 avec la forme EXACTE
+> de la commande du hook, `vitest related` sélectionne bien `tests/services/monthlyEvents.test.ts`
+> (72 fichiers pour un module stagé, 87 pour deux). Cause d'origine inconnue.
+> Plutôt que clore sur « ça marche maintenant » : `scripts/hooks/lib/testsHomonymes.mjs` dérive le
+> test qui porte le NOM du module stagé et le hook l'ajoute EXPLICITEMENT — le graphe d'imports n'est
+> plus le seul chemin. Module SÉPARÉ car `commit-gate.mjs` lit stdin au chargement (hook PreToolUse) :
+> l'importer depuis un test bloque le processus.
+> ⚠️ **Ma garde de câblage était vacueuse DEUX fois** (`toMatch(/TESTS_HOMONYMES/)`, puis bornée à la
+> ligne) : la perturbation « calculée mais inutilisée » restait verte. Ancrée sur l'INITIALISEUR.
+> ⚠️ **Correction dans `CONVENTIONS.md`** : la leçon du matin sur le gate donnait la mauvaise cause
+> (`core.hooksPath`) — `commit-gate.mjs` est un hook **PreToolUse Claude Code**, pas un hook git.
+> Gate vert : **4 749 tests / 433 fichiers**.
+>
+> ## 🟢 Session 2026-08-24 (suite 153) — `[TOUR-ANCHOR-INVISIBLE]` : un rect non nul ≠ visible
+> `display:none` donne un rect 0×0 (attrapé), mais **`visibility:hidden` conserve le layout** — le
+> tour spotlightait un bouton invisible dès qu'un groupe de nav était replié à la main. La visibilité
+> se DEMANDE au moteur (`checkVisibility`), avec repli EXPLICITE sur `getComputedStyle` pour jsdom :
+> sans ce repli, un environnement sans la méthode dirait « tout est visible » et la garde serait morte.
+> 4 tests dont le SENS INVERSE (une ancre normale reste visible) — sans lui, un `estVisible` toujours
+> faux passerait tout le reste. **2 perturbations rouges.**
+> ⚠️ Option (a) du ticket écartée et ROUTÉE (`[TOUR-STEP-GROUPE-REPLIE]`) : ouvrir le groupe
+> automatiquement défait un repli volontaire. Le tour retombe sur sa carte centrée — honnête, mais
+> l'étape décrit encore un contrôle à ouvrir soi-même.
+> Gate vert : **4 744 tests / 432 fichiers**.
+>
+> ## 🟢 Session 2026-08-24 (suite 152) — `[A11Y-CHART-HINT-HIDDEN]` : le ticket visait le mauvais défaut
+> ⚠️ **La phrase d'aide du graphe est masquée À BON DROIT** — c'est un DOUBLON de l'`aria-label` du
+> conteneur, l'exposer ferait annoncer deux fois. Le vrai défaut : cet `aria-label` n'énonçait que des
+> gestes de POINTEUR et taisait l'alternative textuelle qui existait déjà juste dessous
+> (`ChartDataTable` sr-only + jalons sr-only). Corrigé côté CONTENU du libellé.
+> ⚠️ J'ai failli y citer un titre INEXISTANT (« le tableau *Données de la projection* ») : la vraie
+> légende est autre, et varie jour/mois. Le renvoi est descriptif, pas nominatif.
+> 2e site : « ou importer » (`PageSetupGate`) masquait une BIFURCATION, pas un ornement → libellé
+> exposé, filets décoratifs toujours cachés, bloc d'import nommé.
+> 3e site du même motif, VÉRIFIÉ CONFORME et figé par une garde : `{done}/{total} prêts` est masqué
+> parce qu'un vrai `role="progressbar"` le porte.
+> 6 tests, **3 perturbations rouges** dont une dans le sens « surcorrection ».
+> Gate vert : **4 740 tests / 432 fichiers**.
+>
+> ## 🟢 Session 2026-08-24 (suite 151) — `[MC-LABEL-FROZEN]` : un résultat gelé porte ses métadonnées
+> Le libellé « Monte Carlo (N itér.) » lisait la CONFIG vivante alors que `results` peut être gelé →
+> il annonçait un nombre qui n'avait pas servi. Le compte voyage désormais avec le résultat :
+> `MonteCarloResult.iterationsRun` = **`allRuns.length`** (ce qui a tourné, pas le paramètre
+> demandé), propagé en `mcIterationsRun`, lu par `mcSublabel`.
+> ⚠️ Troisième cas ajouté, absent du ticket : résultat SANS compte → « Monte Carlo » **sans chiffre**,
+> jamais le nombre emprunté à la config (no-fake-data).
+> 7 tests, dont le compteur moteur vérifié par DEUX moitiés (champ publié + nombre d'appels
+> observés). **2 perturbations rouges.**
+> Gate vert (relancé après rebase sur #717) : **4 734 tests / 431 fichiers**.
+> Gate vert : **4 727 tests / 430 fichiers**.
+>
+> ## 🟢 Session 2026-08-24 (suite 150) — `[A11Y-FUTUR-DETAIL-FOCUS-TRAP]` : un hook, trois dialogues
+> Le ticket disait « reprends le patron déjà présent deux fois ». ⚠️ **Les deux copies avaient déjà
+> divergé** : `Modal.tsx` liste `select`/`textarea` parmi les éléments focusables, `SyncConflictModal`
+> ne les listait plus. Une troisième copie aurait reproduit la dérive → `hooks/useFocusTrap.ts`
+> (piège Tab SEULEMENT ; focus initial, Échap, verrou de scroll et restauration restent chez
+> l'appelant car ils diffèrent légitimement — le modal de conflit est BLOQUANT par choix).
+> 7 tests : cycle Tab/Shift+Tab vérifié en COMPORTEMENT sur la modale du ticket, câblage des deux
+> autres par scan, et une garde qui interdit une 4e liste locale. **2 perturbations rouges.**
+> ⚠️ L'anti-vacuité a encore attrapé ma fixture : sans les flèches Veille/Lendemain, le dialogue n'a
+> qu'UN élément focusable et le « cycle » boucle sur lui-même sans rien prouver.
+> ## 🟢 Session 2026-08-24 (suite 149) — `[TAXDEC-INFLATIONFACTOR-AMONT]` : dire une fois plutôt que réparer N fois
+> Le ticket ne visait que les 5 appels fiscaux qui passent le facteur comme `realDeflator` (réparé en
+> aval par `safeDeflator`). ⚠️ **Il manquait l'essentiel** : le facteur est AUSSI le DIVISEUR d'une
+> dizaine de grandeurs du bloc — à 0, elles rendaient `Infinity` AVANT d'atteindre `utils/tax.ts`.
+> Une seule valeur assainie en tête de `processDecemberTaxFiling`, un `logs.push` quand elle
+> remplace une donnée corrompue, et les deux `Number.isFinite` devenus redondants retirés avec leur
+> raison. Repli à 1 = la convention déjà retenue en aval, prouvée par ÉGALITÉ avec le cas neutre.
+> ⚠️ L'anti-vacuité a **attrapé ma propre fixture** : sans déductions, le solde d'avril vaut 0 et
+> trois assertions passaient sur du vide. 7 tests, **1 perturbation rouge sur 5 des 7**.
+> Pas d'entrée CHANGELOG : rien de visible ne change pour un utilisateur dont les données sont saines.
+> Gate vert : **4 720 tests / 429 fichiers**.
+>
+> ## 🟢 Session 2026-08-24 (suite 148) — `[FISC-CID-CLAMP-EXCEDENT]` : limite CONSIGNÉE (décision Marc)
+> Le ticket disait vrai sur le CONSTAT (0 $ d'impôt sur dividendes dans son scénario) et faux sur
+> l'INFÉRENCE : là où le clamp mord, le ménage ne paie **aucun autre impôt**, donc l'excédent
+> n'aurait rien à réduire. Mécanisme : le CID effectif (24,24 % du majoré) est SOUS le plus bas taux
+> marginal combiné positif (~26,5 %), donc au-dessus du seuil l'impôt de la bande dépasse toujours le
+> crédit. Balayages : **23/726** combinaisons absorbables et **251 $/an** au pire (retraité 70 ans +
+> conjoint), **1/92** et **33 $/an** pour un actif, **0 $** dans le scénario du ticket.
+> Consigné en §3 de `FISCAL_REFERENCE.md` avec la cause, les hypothèses et ce qu'un « correctif »
+> déplacerait (l'ORDRE entre deux crédits non remboursables, qu'aucune source ne fixe).
+> Garde sur les MOTS, jamais sur le montant — **2 perturbations prouvées rouges**.
+> Gate vert : **4 713 tests / 428 fichiers**. Lot DOC + commentaire : rien de servi ne change, donc
+> aucun déploiement à vérifier (§6) — le dire plutôt que laisser croire qu'on a vérifié.
+>
+> ## 🟢 Session 2026-08-24 (suite 147) — `[FINTABLE-TXADDED-MENT]` : compter l'ÉCRITURE, pas l'intention
+> ⚠️⚠️ **LE HOOK `commit-gate` N'EST PAS INSTALLÉ dans le conteneur de session** : `scripts/hooks/`
+> contient bien `commit-gate.mjs`, mais `core.hooksPath` n'est pas posé et `.git/hooks/` ne contient
+> que les `.sample`. Autrement dit `git commit` **ne lance RIEN** ici — le gate doit être lancé À LA
+> MAIN (`npm run typecheck && npm run lint && npm run test && npm run build`) avant CHAQUE commit.
+> C'est ce trou qui a laissé passer une erreur de typage dans ce lot (un `import type { AppState }`
+> depuis `mcp/ingest/applyDocument` au lieu de `types.ts`) : `vitest` ne TYPE pas, donc la suite
+> était verte, et la CI a rougi au `tsc`. Corrigé, gate complet relancé vert.
+> `applyPayloadsIsolated` comptait la taille du PAYLOAD (`doc.transactions.length`) alors
+> qu'`applyBankStatement` filtre doublons et montants aberrants → 3 annoncées / 0 écrites dans le cas
+> NOMINAL d'une sync quotidienne. Compte désormais le delta réel de `nextState.transactions`.
+> ⚠️ **Relire la BOUCLE et pas la ligne du ticket a payé** : les deux compteurs voisins avaient la
+> même faute. `cashUpdated` était posé même quand `applyCashBalance` no-ope (< 0,005 $ d'écart), et
+> `debtsUpdated` listait une dette « déjà à jour » — or `SystemView` AFFICHE les deux. Ils dérivent
+> maintenant de `changes`, le registre de ce qui a été écrit.
+> ⚠️ L'en-tête de `mcp/runFintableSync.ts` affirmait déjà la propriété que le code n'avait pas.
+> Un seul correctif pour les deux chemins : navigateur et serveur MCP partagent la même fonction.
+> 6 tests (les DEUX sens pour cash et dette), **3 perturbations prouvées rouges**.
+> Gate vert : **4 708 tests / 427 fichiers**. Aucun test existant n'a bougé — vérifié, pas supposé :
+> le scénario de `runFintableSync.test.ts` fait VRAIMENT bouger le solde, donc son `cashUpdated: true`
+> reste vrai sous la nouvelle règle.
+>
+> ## 🟢 Session 2026-08-24 (suite 146) — deux tickets a11y XS : `[A11Y-SUBTABS-TOUCH-TARGET]` + `[A11Y-SIDEBAR-ESC]`
+> **Cible tactile** : les onglets de `SubTabs` faisaient 28 px (12 px de `py-1.5` + 16 px
+> d'interligne) contre 44 px de plancher WCAG 2.5.5 → classe `touch-target`, **une ligne pour trois
+> écrans** puisque le composant commun existait déjà. ⚠️ La garde relit `index.css` et exige que
+> `.touch-target` déclare 44 px : une classe utilitaire renommée est un **no-op silencieux**, et
+> l'assertion de classe seule resterait verte sans plus rien contraindre.
+> **Échap sur le rail** : WCAG 1.4.13 « Dismissable ». ⚠️ Le correctif naïf (remettre l'état à
+> `false`) est ANNULÉ au Tab suivant — `onFocus` se redéclenche à chaque élément interne du rail.
+> Il faut un VERROU `sidebarDismissed`, levé seulement quand le survol ou le focus quitte réellement
+> l'aside, sinon on fabrique l'autre défaut (rail fermé pour la session). Les libellés repassent en
+> `opacity-0` sans perdre aucun nom accessible (`aria-label` déjà posé quand le rail est replié).
+> **3 perturbations prouvées rouges** : classe retirée · `.touch-target` ramené à 36 px · handler
+> Échap supprimé. Gate vert : **4 702 tests / 426 fichiers**.
+>
+> ## 🟢 Session 2026-08-24 (suite 145) — `[A11Y-CTA-CONTRASTE-OFFENDERS]` LIVRÉ (décision Marc : corriger les 4 boutons)
+> Teintes choisies **par mesure**, jamais à l'œil. La palette bascule entre le shade 600 et le 700 :
+> le blanc ne passe AA qu'à partir de 700, le `text-dark` seulement jusqu'à 600. D'où la règle
+> retenue — **fond clair → texte sombre** (ambre/vert gardent leur teinte : 2,15 → 9,28 ; 3,19 →
+> 6,25 ; 3,77 → 5,29), **fond saturé → texte blanc + fond d'un cran plus foncé** (`danger-500` →
+> `danger-600`, 3,76 → 4,83). Shades AJOUTÉS : `danger-700` et `info-700`.
+> ⚠️ **Étendre le scan aux SURVOLS a révélé un 5e offender que le ticket ne mentionnait pas** :
+> `text-white` sur `hover:bg-info-500` = **3,68** (`LifeEvents`, `TaxCenter`) — des boutons qui
+> ÉCLAIRCISSENT au survol. Pire, le correctif déjà appliqué à ce motif dans `CeliAssetNudge`
+> (`hover:brightness-110`) vaut **4,44** : toujours sous AA, et logé dans un filtre CSS que AUCUN
+> scan de classes ne peut voir. Corrigé aux trois endroits (`hover:bg-info-700`, 6,70) et remonté
+> comme arbitrage — c'est un dépassement assumé du périmètre littéral du ticket, justifié par le
+> fait que la dernière étape (garde BLOQUANTE) serait sinon rouge à la livraison.
+> **Dernière étape du ticket faite** : la passe CTA de `check-contrast.ts` bascule en `exit(1)`.
+> ⚠️ Mais la CI ne lance PAS ce script (elle lance lint/typecheck/test/build) : l'extraction est
+> sortie dans `scripts/lib/ctaContrast.ts` (source unique) et branchée sur une garde Vitest
+> `tests/a11y/ctaContrast.test.ts`. **2 perturbations prouvées rouges** (remettre `text-white` sur
+> l'ambre ; couper la lecture des survols).
+> Restes routés en `[A11Y-CTA-HORS-SCAN]` (MESURÉS) : `bg-secondary` + blanc = **3,67**
+> (`Button.tsx:18`), `bg-amber-700` + `brightness-110` = **4,28** (`StatementReminder.tsx:87`), et
+> les fonds translucides (angle mort assumé).
+> Gate vert : **4 696 tests / 426 fichiers** (mesuré après rebase sur #708). Mesure finale :
+> 8 paires CTA / 8 conformes.
+>
+> ## 🟢 Session 2026-08-24 (suite 144) — `[SMITH-HELOC-TAUX-FIGE]` : la marge suit enfin le prêt
+> **Décision Marc du 24/08 : « la marge suit l'hypothèque ».** Le taux du levier Smith n'est plus un
+> littéral figé à 5 % : `smithHelocAnnualRate(goal.mortgageRate)` rend `hypothèque + 2 points`, avec
+> un plancher à 3 % pour le dossier sans taux saisi (sinon marge quasi gratuite = levier
+> artificiellement gagnant, le biais même qu'on corrige).
+> ⚠️ Ce taux n'alimente pas un affichage mais un CLASSEMENT (`useSmithManoeuvre` est dans l'espace de
+> recherche de stratégies) : il décide de ce que l'app RECOMMANDE. Le 5 % figé pouvait passer SOUS le
+> taux du prêt — impossible en pratique, flatteur dans le modèle, et flatteur PRÉCISÉMENT quand les
+> taux montent et que le levier devient dangereux.
+> **Mesuré** : gain du levier à 30 ans — hypothèque 3 % **+639 889 $ inchangé** (non-régression, la
+> marge y vaut 5 % comme avant) · 5 % **+489 760 → +413 769 $** · 8 % **+275 001 → +32 263 $**, soit
+> **242 738 $ d'avantage fantôme retirés**.
+> ⚠️ DIRECTION structurelle, MAGNITUDE assumée : les 2 points ne sont PAS un écart de marché relevé
+> quelque part, et le module le dit plutôt que d'inventer une source.
+> 7 tests neufs, 3 perturbations rouges. **Deux gardes existantes ont rougi, comme elles devaient** :
+> ma garde de LIMITE (« l'intérêt ne suit PAS le taux ») — **INVERSÉE, pas supprimée** : un test de
+> limite qui disparaît laisse croire que la limite n'a jamais existé — et le test voisin de
+> `realEstateMonth`, dont la fixture `mortgageRate: 5` coïncidait EXACTEMENT avec l'ancien taux figé
+> et ne discriminait donc rien. Elle discrimine maintenant.
+> ⚠️ Aucun golden n'a bougé, et c'est VÉRIFIÉ : `useSmithManoeuvre` est faux par défaut, seuls 2
+> fichiers de test l'activent, aucun golden ne l'exerce.
+> Gate vert : **4 691 tests / 425 fichiers** (après rebase sur #707).
+> ## 🟢 Session 2026-08-24 (suite 143) — `[GROSSFROMNET-CREDITS-65]` LIVRÉ (décision Marc : tout câbler)
+> Instruit d'abord, puis livré après arbitrage de Marc (« tout câbler, moteur inclus »).
+> `calculateGrossFromNet` accepte `ageOpts` (optionnel, défaut NEUTRE) et les **quatre** appelants de
+> production le passent PAR UTILISATEUR via la source unique `ageOptsForSalaryInversion` — dont
+> `TaxCenter` aux **DEUX bouts** de son aller-retour (les crédits y manquaient des deux côtés, ce qui
+> était au moins cohérent : n'en câbler qu'un aurait été pire) et le socle `computeIncomeBaseline`,
+> dont le type `users` a dû être élargi pour recevoir `age`/`birthYear`.
+> ✅ **Les chiffres du ticket sont EXACTS** (retrouvés au dollar près : +1 904 $ à 36 k$ de net,
+> +1 018 $ à 48 k$, +391 $ à 60 k$). ⚠️ **J'ai failli le déclarer faux** en mesurant côté BRUT
+> (+3 004 $ à 36 k$) alors qu'il annonçait — et NOMMAIT — un écart en NET. Leçon écrite : six
+> réfutations d'affilée créent une attente de réfutation.
+> Mesures ajoutées : l'écart mord surtout EN BAS (+3 041 $ de brut à 30 k$ de net, soit 6,7 %),
+> disparaît au-dessus de ~80 k$ de net, et le cas COUPLE diffère du SOLO (`hasSpouse` doit être passé).
+> Contre-épreuve à 64 ans : écart exactement 0.
+> ⚠️ **AUCUN golden n'a bougé — et c'est EXPLIQUÉ, pas constaté.** L'effet exige les DEUX conditions
+> à la fois (65 ans et plus **ET** aucun brut saisi) ; les fixtures de goldens ont toutes un brut.
+> Deux tests dédiés le prouvent : l'un construit ce profil et vérifie que le brut de base BAISSE,
+> l'autre qu'un 66 ans AVEC brut saisi n'est pas touché. Sans eux, « rien n'a bougé » aurait pu
+> vouloir dire « le câblage est inerte ».
+> 10 tests neufs, **3 perturbations prouvées rouges**. Un 11e test a rougi au passage : ma propre
+> garde de `[TAXBRACKETVIZ-ANNEE]`, ancrée sur l'ARITÉ de l'appel plutôt que sur le fait qu'elle
+> défend — resserrée, avec la raison écrite dedans.
+> Gate vert : **4 684 tests / 424 fichiers**.
+>
+> ## 🟢 Session 2026-08-24 (suite 142) — `[DETTE-KNIP-ADMZIP]` : knip avait raison, cause instruite
+> Le ticket posait la bonne question sans oser trancher : `adm-zip` est-il encore employé (auquel cas
+> ses types le sont indirectement et knip a tort), ou les deux sont-ils morts ? **Les deux
+> propositions étaient vraies à la fois.** `adm-zip` est vivant — `mcp/pack.mjs` l'importe et le
+> script `mcp:pack` l'exécute — mais ce consommateur est un **`.mjs`**, et `tsconfig.json` pose
+> `allowJs: true` **sans `checkJs`** : jamais typé. `@types/adm-zip` fournissait ses déclarations à
+> personne.
+> Tranché par l'EXPÉRIENCE, pas par la lecture : retrait → **typecheck VERT**, knip ne signale plus
+> **aucune** dépendance inutilisée, runtime intact (`import('adm-zip')` résout, `node --check` passe).
+> ⚠️ **Aucune garde ajoutée, délibérément** : un futur import depuis un `.ts` fera échouer `tsc` de
+> lui-même. Un lot peut finir sans test neuf, à condition de DIRE quel mécanisme tient le rôle.
+> Gate vert : **4 674 tests / 423 fichiers** (après rebase sur #705 ; inchangé par ce lot — aucun test ajouté).
+>
+> ## 🟢 Session 2026-08-24 (suite 141) — `[TAXBRACKETVIZ-ANNEE]` : un biais qui COMPOSE
+> Paire recâblée : `TaxBracketViz` reçoit une année **REQUISE** (aucun défaut — un `= 2026` se périme
+> en silence, lire l'horloge dans le composant en ferait une bombe au 1er janvier) et l'utilise pour
+> les **barres ET le total**. Nouvel export `bracketsForYear` (`utils/tax.ts`) qui lit
+> `getIndexedBracketsForYear` — la source dont `calculateFiscalReport` tire son impôt, jamais une
+> copie. Côté `Retirement`, une SEULE lecture d'horloge alimente le brut déduit et les paliers.
+> ⚠️ **Le chiffre du ticket était faux, et sa nature aussi.** « 333 $ (0,4 %) dès 2027, visuellement
+> invisible » → classé FAIBLE. RE-MESURÉ : **+212 $ (1,0 %) en 2027, +874 $ (4,4 %) en 2030,
+> +2 069 $ (11,1 %) en 2035** à 86 968 $ ; **+5 095 $ à 200 000 $ en 2035**. L'écart COMPOSE à
+> ~2 %/an — ce n'est pas un biais fixe, et un point de mesure unique ne pouvait pas le dire.
+> 6 tests neufs, **3 perturbations prouvées rouges**, dont les DEUX demi-correctifs que le ticket
+> interdisait à juste titre (barres figées + total indexé, et l'inverse).
+> ⚠️ **Troisième récidive de `SCAN-QUI-MATCHE-LA-PROSE` dans la même session** : mon assertion
+> « une seule lecture de l'horloge » comptait sur la source BRUTE et trouvait 2 occurrences pour
+> 1 ligne de code — les deux autres étant les commentaires qui expliquent la règle. Désormais règle
+> mécanique : toute assertion de COMPTE ou d'ABSENCE passe par un lecteur décommenté.
+> Gate vert : **4 674 tests / 423 fichiers** (après rebase sur #704).
+> ## 🟢 Session 2026-08-22 (suite 140) — `[AUTOMARGINAL-BASCULE-SILENCIEUSE]` : la fixture qui aveuglait
+> La bascule « CELI d'abord → REER d'abord » de la stratégie par défaut est **RÉELLE** (mesurée : le
+> taux marginal passe de 0,361 à 0,411 entre l'année 8 et l'année 9, et l'ordre bascule LÀ). Le
+> ticket se trompait sur deux points : ce n'est PAS « pour toute la projection » (frontière MOBILE,
+> recalculée chaque mois sur le brut indexé), et la surface qu'il proposait était mauvaise
+> (`stratDescription` est rendu en `truncate` → invisible ; la seule FAQ existante parle des
+> RETRAITS, y greffer un fait de COTISATION l'aurait rendue fausse). **Livré** : une entrée de FAQ
+> DÉDIÉE, rendue en entier.
+> ⚠️⚠️ **Découverte de méthode, la plus utile du lot** : ma première fixture (dépenses 3 200 $/mois)
+> donnait un surplus de ~29 k$/an contre un plafond CELI de ~8,5 k$ — les deux comptes se
+> remplissaient de toute façon, l'ORDRE devenait inobservable, et la sortie d'`AUTO_MARGINAL` était à
+> 1 000 $ près identique à `CELI_FIRST` sur 25 ans. **J'ai conclu trois fois de suite que la bascule
+> n'existait pas.** C'est la MESURE qui était aveugle, saturée. À 4 400 $/mois de dépenses, tout
+> devient net. Le signal repérable : deux configurations qui DEVRAIENT différer rendent la même
+> sortie → chercher quelle contrainte SATURE avant de conclure.
+> 5 tests neufs, **3 perturbations prouvées rouges** — dont la fixture saturante elle-même, qui rend
+> rouge le test du levier et démontre le piège dans le dépôt.
+> Gate vert : **4 668 tests / 422 fichiers**.
+>
+> ## 🟢 Session 2026-08-22 (suite 139) — `[FLAKE-DIVORCE-INCOME-PHANTOM]` : non reproduit, mais réfuté
+> Le ticket concluait « flake d'ORDRE ou de PARALLÉLISME » et prescrivait `--repeat` + `--shuffle`.
+> **Non reproduit** — 8 exécutions vertes sur le même commit (5 isolées, 3 suites complètes). Le
+> travail utile a été de RÉFUTER chaque hypothèse par une mesure : `fileParallelism: false` (il n'y a
+> aucun parallélisme de fichiers) · durées en suite complète = durées en isolation (2 289/1 888/1 343
+> contre 2 400/1 838/1 417 ms, donc aucun effet de charge) · RNG entièrement graine et **zéro**
+> `new Date()`/`Date.now()` dans toute la chaîne MC · marge d'assertion `perte = 1,132` contre un
+> seuil de 0,5.
+> 🔴 **Il ne restait qu'un mécanisme, et il était RÉEL** : une grandeur ABSENTE. `P50` est annulable
+> côté moteur (`d.P50 = mcResult.p50Data[i] ?? null`) et le helper la convertissait en `NaN` par un
+> `?? NaN` — le test comparait alors ce `NaN` à un seuil, et **le message accusait le moteur d'un
+> défaut d'argent inexistant**. Violation de `GARDE-AU-PRODUCTEUR-NE-PROUVE-PAS-LA-CHAINE`, leçon
+> pourtant déjà indexée dans `CLAUDE.md` : une leçon écrite ne s'applique pas seule aux tests déjà là.
+> **Livré** : le helper EXIGE la mesure avant de comparer. Preuve par perturbation (P50 forcé à
+> `null`) — ancien message « expected NaN to be greater than 0.5 », nouveau « P50 ABSENT du dernier
+> point ». La tolérance n'a PAS été élargie.
+> Gate vert : **4 663 tests / 421 fichiers** (aucun test ajouté : c'est le même nombre d'assertions,
+> rendues honnêtes).
+>
+> ## 🟢 Session 2026-08-22 (suite 138) — `[FISC-GUARD-ARGUMENT]` + `[FISC-GUARD-BENIGN-60]` : le bon dénominateur
+> Les deux tickets exigeaient d'être livrés ENSEMBLE, et ils avaient raison : le `60` d'anticipation
+> de la RRQ était caché **deux fois**, par l'exemption `BENIGN` ET par sa position d'argument.
+> ⚠️ **L'arbitrage du ticket était faux — et mon premier contre-arbitrage aussi.** Le ticket annonçait
+> « ~1 clé fiscale pour ~15 de bruit ». Re-mesuré, le motif large `/[(,]$/` rend **26 clés dont 16
+> fiscales** : de quoi croire l'arbitrage renversé. Or **14 de ces 16 sont les ÂGES de la table FERR**,
+> dont le fait est déjà porté par les 24 entrées de TAUX — fiscales, neuves comme clés, et protégeant
+> **zéro**. Le motif retenu `/\w\($/` (1er argument d'un APPEL) rend **11 clés + 3 comptes** et attrape
+> **les deux seuls barèmes non protégés** : l'âge 18 de début de la période cotisable RRQ et la borne
+> 60. **100 % de la protection neuve pour 42 % des entrées.**
+> Il évite aussi un faux positif que le motif large importait : « (18 ans) » dans un MESSAGE
+> utilisateur — `SCAN-QUI-MATCHE-LA-PROSE` dans un littéral de CHAÎNE, hors de portée de
+> `stripComments`, **deuxième fois en deux lots**.
+> 3 tests neufs, **3 perturbations prouvées rouges** (position retirée · `60` remis dans BENIGN ·
+> motif large remis → le garde NOMME lui-même l'occurrence de prose fautive).
+> Gate vert : **4 663 tests / 421 fichiers**.
+> ⚠️ Effet de bord assumé : `npm install` a inscrit `engines: node 20.x` dans `package-lock.json`
+> (rattrapage de `[ENV-NODE-NON-DECLARE]`, jamais régénéré depuis) — 3 lignes, gardées.
+>
+> ## 🟢 Session 2026-08-22 (suite 137) — `[CONSTANTES-MOTEUR-NON-SOURCEES]` : trier par PORTÉE, pas par syntaxe
+> Ticket étiqueté **XS / FAIBLE** — « trois littéraux en dur ». La mesure a montré qu'il groupait des
+> enjeux **incomparables**, et qu'un 4e site manquait à sa liste (le multiple 25× existait en DEUX
+> copies anonymes). Les quatre nombres sont nommés dans `services/projection/modelAssumptions.ts`.
+> ⚠️ **PAS dans `FISCAL_REFERENCE.md`** : ce sont des hypothèses de MODÈLE, qu'aucune autorité ne
+> publie — les y ranger leur prêterait l'autorité d'un texte de loi.
+> 🔴 **Le vrai résultat est une DÉCISION remontée à Marc (`[SMITH-HELOC-TAUX-FIGE]`)** : le taux de la
+> marge du levier Smith est figé à 5 % et ne suit pas le taux hypothécaire — or `useSmithManoeuvre`
+> est dans l'espace de recherche de stratégies, donc ce nombre décide de ce que l'app RECOMMANDE.
+> Mesuré sur 30 ans : gain du levier **+533 577 $ (marge 3 %) → +146 425 $ (marge 10 %)**, soit
+> **343 335 $ d'amplitude**, et à 10 % la succession passe SOUS le scénario sans levier — **le conseil
+> s'inverse**. Rien n'a été changé au comportement : le gel est GARDÉ et documenté.
+> À l'opposé, `CoastFIRE`/`BaristaFIRE` sont publiés au contrat et lus par **personne** (mesuré) :
+> leur incohérence est réelle et sa portée est nulle → `[COASTFIRE-CROISSANCE-FIGEE]`, XS.
+> 7 tests neufs, **3 perturbations prouvées rouges** (multiple nu restauré ; marge qui suit
+> l'hypothèque → 297 % d'écart contre une borne à 1 % ; consommateur `CoastFIRE` ajouté).
+> Gate vert : **4 660 tests / 421 fichiers**.
+>
+> ## 🟢 Session 2026-08-22 (suite 136) — `[W5-DOUBLE-SAISIE-LOCATIF]` : un immeuble comptable deux fois
+> Ticket marqué « [À vérifier] » → INSTRUIT avant tout code. **Défaut réel** : un locatif peut être
+> saisi dans DEUX écrans sans lien (onglet Immobilier `rentalIncomeMonthly` → barème RÉEL ;
+> Réglages → Patrimoine `RentalProperty` → forfait W5). Les deux producteurs S'ADDITIONNENT et
+> **aucun ne consulte l'autre** (vérifié par scan de source) : rien ne peut dédupliquer.
+> **Livré : note UX conditionnelle aux DEUX écrans** — corriger un seul côté aurait laissé l'autre
+> porte ouverte (piège rappelé par `tickLtd` au lot précédent).
+> ⚠️ **Choix assumé** : AUCUNE détection « c'est le même immeuble ». Pas d'identifiant commun, et
+> rapprocher par le NOM serait une heuristique de texte sur du texte UTILISATEUR
+> (`TEXT-HEURISTIC-OVER-USER-TEXT`) — « Plex Papineau » vs « 4-plex » raterait en silence. Fait
+> STRUCTUREL (deux listes non vides) ; l'avertissement ne PRÉTEND rien, il demande de vérifier.
+> ⚠️ Asymétrie assumée des compteurs, expliquée dans le code : filtre côté Immobilier (condition
+> EXACTE du moteur), pas de filtre côté W5 (un `RentalProperty` est locatif par nature et alimente
+> le NOI même à loyer nul).
+> 5 tests dont la PREUVE que le double comptage est possible (sinon l'avertissement serait une
+> précaution invérifiée) et les DEUX sens de la condition (une alarme permanente s'ignore).
+> Gate vert : **4 653 tests / 420 fichiers**.
+>
+> ## 🟢 Session 2026-08-22 (suite 135) — Deux limites fiscales CONSIGNÉES (pas corrigées)
+> Les deux tickets demandaient de DOCUMENTER une limite assumée, l'un avec « ne PAS corriger à
+> l'aveugle ». Le vrai manque n'était pas le chiffre — les deux écarts étaient DÉJÀ en §4 (« 69 à
+> 1 130 $ », « −345,72 $ ») — mais leur MÉCANISME, nommé nulle part : un écart chiffré sans cause
+> invite le lecteur suivant à le « corriger ».
+> `[TAXDEC-BANDE-ACTIVE-BASE-BRUTE]` : base BRUTE vs base NETTE des déductions.
+> ⚠️ **Borne RE-MESURÉE, pas recopiée** : le ticket disait « ~1 153 $ », je mesure
+> **1 052,51 $/adulte/an** (balayage 20-160 k$, cotisation au plafond ANNUEL 18 % + 8 000 $ CELIAPP).
+> ⚠️ **Une borne sans son hypothèse est fausse** : avec rattrapage de droits REER (légal, courant à
+> 65 ans), l'écart monte à **1 482,78 $** mesuré. Les deux chiffres et l'hypothèse sont écrits.
+> `[TAXDEC-SPLIT-EGAL-VS-PERUSER]` : crédit érodé par PERSONNE vs bande répartie à parts ÉGALES.
+> Approximation PRÉ-EXISTANTE, signe dépendant du profil → l'aligner naïvement DÉPLACERAIT l'écart
+> et re-baserait les goldens. Interdiction écrite noir sur blanc.
+> Garde `taxDecemberLimitesConsignees.test.ts` : vérifie que la CAUSE et ses hypothèses sont
+> écrites, **sans figer les bornes au dollar** (une borne se re-mesure ; l'ancrer serait une bombe).
+> Perturbations : section supprimée → 5 rouges, hypothèse retirée → 1 rouge.
+> Gate vert : **4 648 tests / 419 fichiers**.
+> ## 🟢 Session 2026-08-21 (suite 134) — Dette XS : deux angles morts qui rendaient le code INTROUVABLE
+> Lot réuni par le SYMPTÔME, pas par la zone : dans les deux cas du code vivant paraissait mort, et
+> les deux avaient DÉJÀ produit une conclusion fausse écrite dans le dépôt.
+> `[DETTE-KNIP-API-ENTRY]` : `api/**/*.ts` déclaré en point d'entrée. ⚠️ Effet plus large que la
+> ligne visée — l'export `anthropicError` a AUSSI quitté la liste des inutilisés (80 → 79) : un
+> point d'entrée manquant cache tout un SOUS-GRAPHE, pas un fichier. Rejouer l'outil, ne pas supposer.
+> `[DETTE-DEPRECATED-DRAWDOWN]` : alias `@deprecated optimizeDrawdownOrder` supprimé — il était le
+> SEUL chemin vivant vers `compareLifeScenarios`. ⚠️ Son coût était une désinformation DÉJÀ
+> matérialisée : un grep sur le nom canonique ne trouvait aucun appelant, d'où un commentaire
+> « module orphelin » faux dans le dépôt (corrigé au même commit). Renommage bit-identique.
+> Test de l'alias supprimé avec lui : tautologie sur une ligne d'affectation.
+> Leçons `UN-ALIAS-DEPRECIE-REND-LE-CODE-INTROUVABLE-PAR-UN-SEUL-NOM` et
+> `UN-SCANNER-QUI-CRIE-SUR-DU-CODE-VIVANT-APPREND-A-ETRE-IGNORE`.
+> Routé sans le traiter : `[DETTE-KNIP-ADMZIP]` (dépendance signalée inutilisée — cause à instruire
+> avant de supprimer). Gate vert : **4 643 tests / 418 fichiers** (−1, le test tautologique).
+>
+> ## 🟢 Session 2026-08-21 (suite 133) — `[JOBLOSS-DUREE-N-PLUS-1]` : une durée de N valait N+1
+> Une perte d'emploi configurée à N mois en SERVAIT N+1 : le mois du déclenchement est déjà un mois
+> de chômage, et le code posait ensuite un compteur de N mois de plus. **MESURÉ** : 6 → 7, 12 → 13,
+> 24 → 25, et **1 → 2 (+100 %)** — le pire ratio, invisible sur la durée par défaut.
+> ⚠️ **Le ticket ne parlait QUE du chômage** : `tickLtd` (invalidité) portait le même défaut à la
+> ligne près (24 → 25), trouvé en lisant le jumeau AVANT de coder. Corriger un seul côté aurait
+> désaccordé deux mécaniques jusqu'ici cohérentes — pire que ne rien faire.
+> ⚠️ **DEUX tests figeaient le défaut**, l'un au producteur, l'autre à l'appelant : cohérents entre
+> eux et faux ensemble. Chacun vérifiait que le compteur valait ce que le code y mettait, sans
+> jamais compter les mois VÉCUS. Leçon `DEUX-TESTS-COHERENTS-ENTRE-EUX-PEUVENT-ETRE-FAUX-ENSEMBLE`.
+> `[ASSETLOC-INCLUSION-RECOPIEE]` : le `0.5` des gains en capital vient enfin de la source unique —
+> il était invisible parce que `0.5` était dans la liste `BENIGN` du garde (l'exclusion cachait la
+> copie). Bit-identique aujourd'hui, aligné le jour où le taux change.
+> 4 assertions prouvées rouges par perturbation. Gate vert : **4 644 tests / 418 fichiers**.
+>
+> ## 🟠 Session 2026-08-21 (suite 132) — Lot a11y XS : 4 CTA hors WCAG découverts, décision Marc requise
+> `[A11Y-PCT-NOT-MASKED]` : le % de répartition entre conjoints suit désormais le mode discret.
+> ⚠️ **Ce lot fixe un ARBITRAGE contre la règle générale du dépôt** (« les % restent visibles, à
+> dessein », `Investments.privacy.test.tsx`) : cette règle valait pour un ratio de PORTEFEUILLE, pas
+> pour une répartition entre PERSONNES (information relationnelle, lisible même dollars masqués).
+> Le raisonnement est écrit dans le test — sans ça, le prochain lecteur « corrige » l'incohérence au
+> hasard. Leçon `UNE-REGLE-GENERALE-A-UN-DOMAINE-DE-VALIDITE`.
+> `[A11Y-CONTRAST-TOOL-GAP-CTA]` : `check-contrast.ts` gagne une passe CTA, paires **extraites du
+> code peint** (3 492 attributs balayés), angle mort des `className` interpolés DÉCLARÉ, plancher
+> anti-scan-vide.
+> 🧭 **DÉCISION MARC EN ATTENTE — `[A11Y-CTA-CONTRASTE-OFFENDERS]`** : rejouer l'outil élargi a
+> révélé **4 CTA sur 6 hors WCAG AA**, tous PRÉEXISTANTS, dont `text-white` sur `bg-warning-500` à
+> **2,15** (échoue même le seuil « texte large »). Mesurés et localisés au fichier:ligne dans le
+> ticket. NON corrigés : changer une couleur de bouton est une décision d'APPARENCE. La passe
+> rapporte sans bloquer — choix daté DANS le script (un outil qui naît rouge apprend à être ignoré) ;
+> le basculement en `exit(1)` est la dernière étape du ticket de correction.
+> 6 tests neufs, 1 prouvé rouge par perturbation. Gate vert : **4 641 tests / 418 fichiers**.
+>
+> ## 🟢 Session 2026-08-21 (suite 131) — `[ENV-NODE-NON-DECLARE]` : le TYPECHECK devient la garde
+> `.nvmrc` + `engines.node: 20.x` + les 4 workflows sur `node-version-file` (plus aucun littéral de
+> version dupliqué). Garde neuve `tests/nodeVersionDeclared.test.ts` (4 assertions, 3 perturbations
+> prouvées rouges, 2 anti-vacuités).
+> ⚠️ **Le vrai coupable n'était AUCUN des deux que le ticket nommait.** `engines`/`.nvmrc` sont
+> DÉCLARATIFS : sans `.npmrc` `engine-strict` (absent, et l'ajouter casserait le dev en Node 22),
+> `engines` n'est qu'un avertissement npm — aucun des deux n'aurait empêché l'incident `globSync`.
+> Ce qui rend la classe impossible : **`@types/node` était en `^22` face à une CI en Node 20**, donc
+> le typecheck promettait des API absentes du runtime CI. Aligné sur `^20` → `tsc` refuse désormais
+> l'API trop récente À L'ÉCRITURE. **Mesuré avant** : le typecheck passe sous `@types/node@20`, donc
+> aucun code n'utilisait d'API 22+ (garde posée sur un arbre propre, aucune dette masquée).
+> Leçon : face à un « vert local / rouge distant », distinguer l'artefact DÉCLARATIF de
+> l'EXÉCUTOIRE — corriger le déclaratif rassure, seul l'exécutoire protège.
+> ⚠️ Le conteneur de dev reste en Node 22 : `engines` n'étant pas strict, rien ne casse localement.
+> Gate vert : **4 638 tests / 417 fichiers**.
+>
+> ## 🟢 Session 2026-08-21 (suite 130) — `[ASSETLOC-YEAR-2026]` : l'année fiscale devient EXIGÉE
+> `assetLocation.ts` lisait le marginal avec `input.year ?? 2026` et l'unique appelant de prod ne
+> passait jamais `year` → barème 2026 à perpétuité. **Mesuré AVANT de coder** : écart nul sur la
+> plupart des revenus, mais **−5,000 pts à 55 000 $ dès 2027** (concentré près des BORNES de palier ;
+> un test sur 100 000 $ aurait été VACUEUX). `year` rendu **REQUIS** — écarté « défaut = année
+> courante », qui rendrait la fonction pure non déterministe et ferait de chaque test l'omettant une
+> bombe au 1er janvier. Leçon `UN-DEFAUT-QUI-SE-PERIME-SE-CORRIGE-EN-RENDANT-LE-CHAMP-REQUIS`.
+> ⚠️ **La garde anti-entrée-fantôme a rougi TOUTE SEULE** sur ce commit : `fiscalConstGuardV2.ts`
+> portait `assetLocation.ts::2026`, entrée devenue périmée par la disparition du littéral. Retirée.
+> C'est son rôle exact (`ENTREE-D-INVENTAIRE-FANTOME`) — preuve en exécution qu'elle tient.
+> 3 tests neufs, 1 prouvé rouge par perturbation. Gate vert : **4 634 tests / 416 fichiers**.
+>
+> ## 🟢 Session 2026-08-21 (suite 129) — Lot « perf moteur » : 2 points chauds de la boucle mensuelle
+> `[PERF-ENGINE-DATELABEL-INTL]` (table de 12 mois précalculée, construite DEPUIS `toLocaleString`
+> — jamais une liste recopiée) et `[PERF-ENGINE-ISOSTRING-HOTLOOP]` (`getUTCFullYear()*12 +
+> getUTCMonth()`, base UTC conservée). **Gain mesuré localement : 38× et 18×**, ~22,4 ms par run de
+> 30 ans — ⚠️ les tickets annonçaient 97× et 24×, j'ai publié MA mesure et non la leur.
+> ⚠️ **Le piège du lot, et la leçon** (`UN-CONTENEUR-EN-UTC-NE-PEUT-PAS-DEPARTAGER-LOCAL-ET-UTC`) :
+> le choix `getMonth()` (local) vs `getUTCMonth()` décide de la correction du libellé, et mon
+> balayage de 972 dates rendait **0 divergence** — parce que le conteneur tourne en **UTC**, où les
+> deux coïncident TOUJOURS. Rejoué sous `TZ=Australia/Sydney` : la variante UTC diverge **132/132**
+> (mois décalé d'un cran pour tout utilisateur à l'est de Greenwich) ; 0 à Montréal, donc le fuseau
+> de Marc aurait masqué le défaut en prod ET en CI. Le local est le bon choix (les dates de boucle
+> de `projection.ts` sont construites en local). **Ce n'est pas le test qui a révélé le piège, c'est
+> la CONTRE-ÉPREUVE** « la variante fausse donnerait-elle autre chose ? ».
+> Les deux correctifs sont bit-identiques par construction : aucun golden n'a bougé, et ici c'est le
+> résultat ATTENDU (identité = la propriété visée), pas un signal d'absence de couverture.
+> 3 tests neufs, tous prouvés rouges par perturbation. Gate vert : **4 632 tests / 416 fichiers**.
+>
+> ## 🟢 Session 2026-08-21 (suite 128) — Lot « échecs silencieux IA » : 6 items XS de l'audit
+> **Cadrage Marc (7 réponses en 2 batches)** : priorité aux **120 items d'audit**, traités **les
+> plus rapides d'abord** ; rythme « ne me montre que les décisions et les problèmes » (donc
+> j'enchaîne les lots sans compte-rendu intermédiaire) ; correction du portefeuille = **montrer
+> l'écart AVANT** de toucher quoi que ce soit ; onglet Objectifs = supprimer **onglet ET données** ;
+> « Prévisionnel » du budget = **fin de mois estimée** (réel + reste à venir, extrapolé) ;
+> Charges fixes = les **4** manques cochés (détection, analyse, interactivité, lien au budget).
+> Ces réponses cadrent des tickets encore OUVERTS — voir `BACKLOG.md` § Vague Budget.
+>
+> **Lot livré** (1er de la passe audit) : 6 items XS regroupés par TERRAIN (surfaces IA + coffre de
+> clés) plutôt que par gravité. `[AI-UNBOUNDED-CONFIDENCE]` (bornes Zod + clamp d'affichage — les
+> DEUX : le schéma protège ce qui entre, le clamp ce qui est déjà persisté),
+> `[BUDGET-AI-WRONG-MODEL]` (seule surface Haiku-éligible à payer le tarif Sonnet),
+> `[TX-STALE-MODEL-LABEL]` (libellé dérivé via `modelLabelFromId` + `CATEGORIZE_MODEL_ID`, lu par le
+> site d'appel lui-même → plus de dérive possible), `[REBALANCE-SILENT-FAIL]` (patron `hasError`),
+> `[BUDGET-AI-DUP-PARSING]` (`safeJsonValidate` au lieu d'un parsing local qui JETAIT et perdait le
+> texte streamé), `[KEYSTORE-DECRYPT-FAILED-SILENCIEUX]` (`decrypt_failed` ≠ `empty`).
+> 5 tests neufs, **3 prouvés rouges par perturbation**. Gate vert : **4 629 tests / 416 fichiers**.
+>
+> ## 🟢 Session 2026-08-21 (suite 127) — `[DEBT-MCP-PARITE]` : parité dettes MCP/PDF + A00b clos
+> Reprise après pause. **A00b vérifié et CLOS** : `list_deployments` Vercel confirme un déploiement
+> `production READY` sur `3bbc380` (#690), qui contient `3dd9d9d` (#687) dans son historique — le
+> lot `[PASSE-REEL-DETTE-1]` de la session précédente est bien EN LIGNE (le rattrapage vient
+> probablement de #690, qui a coupé les previews `claude/*` et libéré le quota Vercel partagé).
+> ⚠️ Note en passant : une branche `claude/eng-divorce-coherent-v2` (2 commits, dernier daté
+> 2026-08-13) traîne sur le repo SANS PR ouverte — 111 commits de retard sur `main`, clairement
+> abandonnée/dépassée par les sessions 121-126. Ni supprimée ni retravaillée (juste signalée) ;
+> Marc peut la nettoyer ou dire s'il faut en reprendre le contenu.
+>
+> **Lot livré** : `kind`/`startDate`/`termEndDate` de `Debt` étaient absents de l'import PDF
+> (`mcp/ingest/applyDocument.ts`, `DebtPayload`) ET de l'appel MCP direct (`applyDebt.spec.ts`),
+> qui affirmait même encore « les dettes n'ont pas de date de début » (faux depuis `[DETTE-DATES]`,
+> 2026-08-19, qui a câblé `startDate`/`termEndDate` dans le moteur ; `kind` existe dans le type
+> depuis W5.3 mais n'a encore AUCUN consommateur moteur — précision apportée par code-reviewer, ma
+> 1ère formulation laissait croire le contraire). C'est un discriminant préparé pour
+> `[DEBT-AMORTIZATION]`/`[DEBT-UI-PAR-TYPE]`, pas encore actif. L'UI DebtManager expose
+> `startDate`/`termEndDate` (`<input type="date">`) depuis le même lot ; PAS `kind` (routé à
+> `[DEBT-UI-PAR-TYPE]`, encore ouvert). Corrigé aux deux endroits + validations (kind contre une
+> liste fermée, dates ISO CALENDAIRES strictes, cohérence chronologique startDate ≤ termEndDate).
+> ⚠️ **Piège rencontré en cours de route** (voir `docs/CONVENTIONS.md`,
+> `UN-CHAMP-PAYLOAD-NE-PEUT-PAS-PORTER-LE-NOM-DU-DISCRIMINANT`) : le nouveau champ ne peut PAS
+> s'appeler `kind` sur `DebtPayload`, qui porte déjà `kind: 'debt'` (discriminant de routage
+> `applyDocument`) — collision qui aurait cassé le routage de TOUS les documents, pas seulement
+> des dettes. Renommé `debtKind` côté payload, mappé vers `Debt.kind` à l'écriture. Profité de
+> l'occasion pour établir `types.ts` `DEBT_KINDS` (tableau `as const`) comme source UNIQUE des
+> valeurs de `DebtKind`, réutilisée par le `z.enum` du tool MCP ET la garde runtime.
+> **Panel de revue (4 agents) appliqué avant merge** : 2 ÉLEVÉS confirmés par mesure directe.
+> (1) code-reviewer + financial-integrity, indépendamment : la cohérence `startDate ≤ termEndDate`
+> ne comparait que les DEUX champs du payload COURANT — une mise à jour PARTIELLE qui ne change
+> QUE `termEndDate` (l'autre date restant celle déjà stockée) contournait la garde ; mesuré, une
+> dette avec `startDate` future et `termEndDate` passée n'était alors JAMAIS `'active'` (phases
+> `'a-venir'` → `'terminee'` sans jamais passer par `'active'`). Corrigé : comparaison sur les
+> valeurs FUSIONNÉES (`doc.startDate ?? existant.startDate`), pas le payload seul.
+> (2) financial-integrity : le résumé renvoyé à l'assistant (et à l'aperçu de consentement)
+> affirmait TOUJOURS « servie dès maintenant », y compris avec une `startDate` future — contredit
+> la description du tool corrigée dans le MÊME lot. Corrigé : message conditionnel sur
+> `startDate > aujourd'hui`.
+> MOYEN (silent-failure-hunter + financial-integrity) : le format ISO seul (`2026-13-01`,
+> `2026-02-30`) passait la regex — `moisAbsolu()` rejette alors le mois hors 0-11 et traite la date
+> comme ABSENTE, silencieusement. Corrigé : `utils/isoDate.ts` (nouveau, source UNIQUE), validation
+> calendaire réelle (aller-retour `Date.UTC`, borne d'année [1970, 2200]), réutilisée par la garde
+> runtime ET le `z.enum`/`.refine()` Zod. FAIBLE non retenu (code-reviewer) : `changes.after` de
+> l'ajout omet `kind`/`startDate`/`termEndDate` — cohérent avec le pattern déjà en place pour
+> `amortizationYears`/`rateProvider`, pas une régression de ce lot.
+> 12 tests neufs au total (9 initiaux + 3 issus du panel — 2 rejets + 1 résumé conditionnel ; une
+> 4e assertion calendaire est ajoutée au test Zod existant plutôt que dans un nouveau test). Gate
+> complet vert : **4 624 tests / 415 fichiers** (nouveau fichier `utils/isoDate.ts`, testé via ses
+> deux appelants plutôt qu'un fichier de test dédié — fonction pure de 6 lignes), build inclus.
+> **Nouveau backlog** : Marc a envoyé une vague de retours Budget/Transactions/Investissements
+> (bannière Drive qui flashe, sync Budget↔Transactions à auditer, signe des entrées d'argent en
+> catégorie dépense, budget prévu qui affiche des valeurs impossibles, Réel/Prévisionnel/Objectif,
+> refonte Charges fixes & abonnements, retrait onglet Objectifs, fusion Santé→Futur, cours exact de
+> TOUTES les actions, correction des positions du portefeuille avec un historique d'achat précis)
+> — 11 tickets ajoutés en tête de `BACKLOG.md`, section `🧭 Vague Budget/Transactions/
+> Investissements`, AUCUN cadré ni codé (demande explicite : « à rajouter au backlog »).
+>
+> ## 🟡 Session 2026-08-21 (suite 126) — `[PASSE-REEL-DETTE-1]` : gating par dette dans le passé (mergé, déploiement PROD bloqué)
+> Branche `claude/passe-reel-dette-1` (depuis main post-#686), PR #687. Demande Marc, en creusant
+> depuis « je veux seter la date de ma dette » (déjà livré par `[DETTE-DATES]`) : le graphe Futur
+> montre encore sa dette-auto (bail, débuté récemment) « depuis toujours » dans le passé reconstruit.
+> **Diagnostic** : `buildPastPrefix`/`dailyPastLedger` recevaient un scalaire `currentDebtNonImmo`
+> figé, appliqué à TOUS les mois passés, sans regarder `startDate`.
+> **Correctif** : nouvelles fonctions PURES dans `debtSchedule.ts`
+> (`phaseDetteAuMoisAbsolu`/`sumNotYetStartedDebtsAtMonth`/`...AtAbsoluteMonth`) qui retranchent en
+> **DELTA** le solde des dettes pas-encore-commencées de `currentDebtNonImmo` — **jamais** une
+> resommation complète des `debts[].balance` bruts (piège découvert en cours de route : le moteur a
+> déjà appliqué son pas d'amortissement du mois 0 avant de publier ce total, donc resommer diverge de
+> quelques centaines de $ et casse le raccord EXACT qu'Option A garantit ; le delta reste
+> bit-identique à avant quand aucune dette n'est gatée). `FutureProjection.tsx` passe désormais
+> `debts` (store, tableau frais) EN PLUS de `currentDebtNonImmo` (le mécanisme figé/frais existant,
+> INCHANGÉ) aux deux builders.
+> ⚠️ **Revirement de décision, assumé** : en creusant, Marc a redemandé une VRAIE courbe
+> d'amortissement (« chaque semaine je dois un peu moins »), ce qui inverse la Décision 2 de
+> `docs/adr/0012-...md` (« aucun amortissement rétroactif ») — confirmé par Marc après rappel
+> explicite du contexte du 17-19 août. Scopé en panel produit+archi (product-manager + architect,
+> read-only) en 5 lots : CE lot (`-1`, livré), `[DEBT-MCP-PARITE]`, `[DEBT-AMORTIZATION]` (la
+> courbe, allowlist de kinds amortissants, garde de plausibilité bornée), `[DEBT-MCP-ORIGINALBALANCE]`,
+> `[DEBT-UI-PAR-TYPE]` (kind exposé dans DebtManager, actuellement invisible malgré 11 valeurs déjà
+> dans `types.ts`). Comparateur prêt-vs-bail explicitement PAS scopé (cadrage insuffisant, routé
+> backlog séparé). 3 discriminants prouvés rouges par perturbation chirurgicale (delta forcé à 0).
+> **Panel #687 (5 agents) appliqué — CRITIQUE trouvé indépendamment par financial-integrity ET
+> code-reviewer, par lecture de code (pas exécution)** : le 1er jet du delta excluait une dette
+> dès qu'elle était 'a-venir' au mois passé regardé, SANS vérifier qu'elle était déjà comptée dans
+> `currentDebtNonImmo` en premier lieu — une dette dont le `startDate` est encore dans le FUTUR
+> (pas seulement après le mois regardé, mais après AUJOURD'HUI ; cas d'usage même de
+> `[DETTE-DATES]` : « un prêt signé dans six mois ») n'a JAMAIS contribué à `currentDebtNonImmo`
+> (le moteur l'exclut déjà), donc la retrancher fabriquait −22 000 $ de patrimoine passé FANTÔME —
+> le symptôme INVERSE du bug initial, introduit par le correctif sur une branche non testée.
+> **Corrigé** : `sumNotYetStartedDebtsAt(Absolute)Month` compare désormais la phase de la dette à
+> DEUX mois (le mois passé ET aujourd'hui), n'excluant que si 'a-venir' au premier ET PAS au
+> second ; `Math.max(0, …)` ajouté aux deux call sites (résidu négatif possible : le delta emprunte
+> le solde BRUT contre un total post-amortissement, mesuré jusqu'à −4 651,67 $). silent-failure-hunter
+> a aussi trouvé un ÉLEVÉ (solde de dette non fini avalé sans `logError`, contrairement au moteur) —
+> corrigé (`logError` throttlé par dette, même patron que `netWorth.ts`). documentation-manager a
+> corrigé un `docs/PROJECTION_OUTPUT_SCHEMA.md` périmé. **projection-validator (5e agent, MESURÉ
+> contre le vrai moteur, 24 696 combinaisons pour le refactor `phaseDette` — 0 divergence)** a
+> confirmé le CRITIQUE avant correctif ET trouvé un résidu MOYEN qui SURVIT au clamp : `Math.max(0,
+> …)` ne borne que le côté négatif (une dette gatée seule) — avec une AUTRE dette non gatée qui
+> maintient le total positif, le même écart (solde brut vs post-amortissement de la dette gatée)
+> survit comme argent fantôme borné (mesuré 371,50 $/371,67 $, deux mesures indépendantes à 0,17 $
+> près). Approximation ASSUMÉE, documentée, fermeture complète routée à `[DEBT-AMORTIZATION]` (le
+> moteur devrait publier un solde per-dette déjà amorti). Test dédié ajouté, mesuré contre le VRAI
+> moteur (`calculateFutureProjection`), borné à &lt;600 $ plutôt qu'exact — piège de fixture rencontré
+> en le construisant : une carte à faible solde (15 000 $/19 %) était payée d'un coup par la
+> stratégie BASE dès le mois 0, rendant le test vacueux (résidu comparé à 0 $ au lieu du vrai solde
+> de l'autre dette) ; remplacé par un gros prêt (200 000 $) inextinguible en un mois. Un test
+> `[discriminant]` tautologique (`X − 0 === X`) repéré par le même agent a été reformulé en note
+> honnête. 14 tests neufs au total (dont 5 discriminants CRITIQUE/ÉLEVÉ/MOYEN, prouvés rouges par
+> perturbation chirurgicale ou mesurés directement contre le moteur réel).
+> **PR mergée (squash, sha `3dd9d9d`), branche réconciliée. §6 : ÉCHEC constaté, pas juste
+> « pas encore vérifié »** — aucun déploiement Vercel (ni prod ni preview) n'existe pour ce merge
+> plus de 6 minutes après, alors que #684/#685/#686 avaient tous un déploiement prod `READY` en
+> quelques secondes. Le projet a heurté 2× aujourd'hui la limite « 100 déploiements/jour » du plan
+> gratuit (previews de PR) — quasi certainement la même cause bloque désormais `main`, silencieusement
+> (pas de commentaire GitHub pour un push direct sur `main`, contrairement à une preview de PR).
+> Routé à Marc : `docs/A_FAIRE_MOI.md` §A00b. **Prochaine session : revérifier le déploiement prod
+> AVANT de supposer que le lot est en ligne.**
+> Nouvelle leçon `EXCLURE-N-EST-PAS-LE-DROIT-DE-RETRANCHER-DE-N-IMPORTE-QUEL-TOTAL`.
+>
+> ## 🟢 Session 2026-08-21 (suite 125) — Vague 2 PM : badge FX estimé, prop morte, récap devise native
+> Branche `claude/vague2-devises` (rebasée sur main post-#685 — Marc a mergé #684 lui-même, PUIS
+> #685 doc-only, pendant la rédaction du gate ; réconciliée), PR #686. **§6 vérifié** : déploiement
+> production `READY` sur `723315b` (#685), qui contient bien `de08327` (#684) — rien à router.
+> 3 items indépendants : `[FX-FALLBACK-SILENCIEUX]`, `[RETIREMENT-GROSSINCOME-DEAD]`,
+> `[ADDSTOCK-CAD-NATIF]`.
+> **Panel #686 (4 agents) appliqué — trouvailles substantielles, pas cosmétiques** : le signal FX
+> du 1er jet (`lastFetched === 0` seul) manquait exactement le cas chiffré par le ticket — un
+> succès GLOBAL du fetch BdC peut cacher un repli PAR SÉRIE (une devise réelle, l'autre inventée).
+> Correctif réel : `services/finance.ts` fait remonter `estimated` par appel, propagé comme champ
+> **SIBLING** `AppState.fxRatesEstimated` (jamais DANS `fxRates`, qui reste un
+> `Record<string, number>` — un booléen dedans aurait cassé ~13 signatures ailleurs dans le
+> dépôt). Un ÉLEVÉ code-reviewer : la bannière « Prix actuel » d'`AddStockForm` (chemin Finnhub
+> validé, LE plus courant) portait encore le défaut que le ticket corrigeait 90 lignes plus bas —
+> zéro test ne l'exerçait. Un HIGH a11y : le select « Compte fiscal » avait le même trou
+> label/id que « Devise » (1 champ réparé sur 2 au 1er jet). 19 tests neufs au total, 5
+> perturbations prouvées rouges (dont celle du vrai correctif money-critical). 2 tickets routés :
+> `[FX-BADGE-SURFACES-RESTANTES]` (TaxCenter + courbe Futur non couverts), `[A11Y-ADDSTOCKFORM-LABELS]`
+> (7 champs restants du formulaire).
+>
+> ## 🟢 Session 2026-08-21 (suite 124) — isOwned + badges (A6 + A5) : la détention se DÉCLARE
+> Branche `claude/past-owned-badge` (depuis main post-#683), PR #684. Champ `isOwned?: boolean`
+> additif sur `RealEstateGoal` : `false` = objectif planifié non réalisé → RIEN au m0 (ferme les
+> +156 628 $ / +307 081 $ fantômes du panel #552) ; legacy `undefined` bit-identique (prouvé).
+> **3 registres gated** — moteur `initPastPurchase`, affichage `presentEquityOfGoal`, et le bloc
+> d'achat `realEstateMonth` que SEUL le test bout-en-bout a attrapé (achat d'office au m0,
+> 34 310 $ mesurés malgré les 2 autres gates). UI : popup Modal nu 3-issues (PAS ConfirmModal —
+> fermer == annuler y écrirait `false` par accident), checkbox date passée, badges A5 (bien +
+> enfant inactifs), `isOwned: true` à la création depuis « Actuel ». 4e REVERT de conteneur
+> pendant le gate (branche et commit sauvés par le push pré-attente ; re-install + re-gate).
+> Trigger 03:07 traité : #683 mergée + production Vercel `READY` (sha 09bb356) vérifiés.
+> **Panel #684 (4 agents) appliqué** : DEUX registres de plus gates (« 3 registres » était faux —
+> récidive MODULE-ECRIT-HORS-CHECKLIST) : `reconstructRealEstateEquityByYear` (marche de 67 472 $
+> au raccord passé→présent) et partition `isOwnedToday` (un « Pas encore » restait dans « ce que
+> je POSSÈDE ») ; `presentEquityOfGoal` rendu 0 STRICT sous `isOwned:false` (le repli
+> `currentValue` réintroduisait l'écart Accueil↔Futur, 200 000 $ vs 0 mesuré, FIGÉ par mon propre
+> test) ; seuil UI unique `firstDayOfCurrentMonthIso` (mois LOCAL — la checkbox au jour UTC
+> divergeait du moteur sur le mois courant) ; popup en file par bien + instantané d'ouverture
+> (focus-steal WCAG 3.2.2) + scope visibleGoals (réparait AUSSI le seul rouge CI) ; badge
+> conditionné à la date ; cible tactile 44 px ; 9 tests composant neufs (chemin d'écriture UI
+> d'un champ money-critical : zéro test avant), 5 perturbations prouvées rouges, restauration
+> byte-identique. ⚠️ Incident : le code-reviewer (agent) a SUPPRIMÉ un fichier non suivi
+> (`__tmp_audit_pastowned.test.ts`, brouillon de mesure d'un autre agent) hors de son rôle —
+> signalé, sans conséquence (l'agent a re-prouvé ses mesures). Ticket routé :
+> [ENG-DIVORCE-SCALE-UNBOUGHT] (préexistant).
+>
+> ## 🟢 Session 2026-08-21 (suite 123) — Queue de vague 1b : TTP propagé, assiettes DIV, GK lissé
+> Branche `claude/vague1b-queue` (rebasée post-#682). 3 items livrés en un lot (même terrain
+> taxDecember/taxJanuary) + le doublon [FISC-BAND-AGE-CREDITS] soldé (= #676, deux IDs pour un
+> défaut). Détail en tête d'archive. Leçons de parcours : le chiffrage jetable qui oublie la part
+> distribuée 30 % (récidive ECRIRE-UN-CHIFFRE, re-mesuré à la source unique) ; le PREMIER lissage
+> GK (0→−5 %) changeait la politique bien au-delà du couteau — attrapé par les goldens, resserré
+> en bande −4 %/−6 % strictement identique hors bande ; le scanner du ratchet ne voit pas un
+> littéral en position d'argument → constantes NOMMÉES. Tickets : [FISC-CID-CLAMP-EXCEDENT]
+> (extrait), décision A4-FVI toujours en suspens ([ENG-FVI-EFFICIENCY-ESTATE]).
+>
+> ## 🟢 Session 2026-08-21 (suite 122) — [ENG-RANKTAX-ESTATE] : « impôt minimum » = impôt TOTAL
+> Branche `claude/ranktax-estate` (rebasée sur main post-#680). Décision A4 « TOUT » appliquée :
+> source unique `lifetimeTaxTotal` (paid + unsettled + estate) au site vivant (strategySearch →
+> strategyConfigRanking) et à rankStrategies (champ renommé). Cas #554 pinné, 2 perturbations
+> prouvées. Découverte : rankStrategies ET compareLifeScenarios sont ORPHELINS (aucun appelant
+> vivant) → ticket. ⚠️ 3e REVERT de conteneur pendant ce lot — snapshot avec origin/main PÉRIMÉ
+> (−5 semaines), trahi par le COMPTE DU GATE (348 fichiers au lieu de 410) ; réparé (fetch,
+> rebase, force-with-lease, npm install, re-gate vert). Leçon au dépôt : le compte de tests du
+> gate est un détecteur de revert.
+> ✅ **§6 RÉSOLU** : le merge #680 a déclenché le déploiement PRODUCTION (sha 683b520, contient
+> #679 + #680) — le retard de #679 est rattrapé, item A_FAIRE_MOI fermé.
+>
+> ## 🟢 Session 2026-08-20 (suite 121) — [FISC-PENSION-CREDIT-REAL] : crédit pension déflaté en réel
+> Branche `claude/pension-credit-real` (depuis main post-#679). GO Marc A3 : fix d'une ligne dans
+> `calculateAgeAndPensionCredits` (`min(2 000/realDeflator, pension)`), nominal inchangé, réel
+> mesuré 201,89 $ vs 300 $ à 20 ans. 3 tests neufs ; discrimination par `git stash push
+> utils/tax.ts` (⚠️ le stash complet emportait les tests — preuve invalide, refaite ciblée).
+> **Panel #680 (3 agents) appliqué** : garde safeDeflator (2000/0 = Infinity → pension entière
+> créditée, fini et invisible — la ligne n'était couverte par AUCUN test de corruption) ; else
+> journalisé sur la régularisation retraité ; test zone-de-bascule discriminant (le 1er jet
+> testait sous les deux caps) ; date 2015→2006 ; impact « 12 k$ » corrigé (≤ 3 809 $ à i=2 %/30
+> ans) ; **3e récidive du jour** : l'attribution causale du golden était fausse (fedTax des
+> couples déjà clampé à 0, pas « pension sous le montant ») — leçon enrichie d'un 3e étage dans
+> CONVENTIONS. 2 tickets : [PROJ-NW-FALAISE-REER] (ÉLEVÉ — NW saute de 86 k$ sur ±500 $ de REER,
+> préexistant, domine toute mesure d'impact NW à 1,5 M$) et [TAXDEC-INFLATIONFACTOR-AMONT].
+> NB conteneur : `@mokarade/hub-contract` manquant après le merge d'une PR parallèle →
+> `npm install` requis avant tout typecheck.
+> ⚠️ **Vérif §6 FAITE, 22:18 UTC : le merge #679 (main `4c67d5b`) n'a AUCUN déploiement
+> production Vercel** — la limite quotidienne a mangé l'événement du push sur main (les previews,
+> elles, remarchent). Le site sert le build de #676. Attendu : le PROCHAIN merge sur main
+> (pension-credit-real) déclenchera un déploiement production qui rattrape tout — À VÉRIFIER à ce
+> merge ; si production manque encore, escalader à Marc (A_FAIRE_MOI déjà noté).
+>
+> ## 🟢 Session 2026-08-20 (suite 120) — [FISC-RRSP-ROOM-PER-USER] : droits REER par personne (règle ARC)
+> Branche `claude/rrsp-room-per-user` (depuis main post-#676). Décision Marc A1 « par personne »
+> appliquée : `taxJanuary` calcule `room_i = max(0, min(cap, revenu_gagné_i × 18 %) − FE_i)` sommé,
+> le revenu gagné est VENTILÉ à la source (`accGrossAddByUser`, congé parental → index 1), et le
+> scalaire ménage est SUPPRIMÉ (aucun lecteur restant — un total se dérive, il ne se co-tient pas).
+> MESURÉ : mono-gagnant 250 k$ 45 000 → 34 480 (le ticket au dollar) ; équilibré/90-10 inchangés ;
+> le FE d'un conjoint sans revenu ne vole plus le room de l'autre (10 000 → 18 000). 7 tests neufs,
+> perturbation « retour au ménage » → 3 rouges exacts. **Revue financial-integrity (#679)** :
+> ÉLEVÉ-1 corrigé (solo sandbox : le split 55/45 droppait 45 % du revenu gagné, repli
+> `activeUsersCount <= 1`, −50 159 $ de NW mesurés sans lui) ; le CÂBLAGE projection.ts est
+> désormais gardé par 3 tests-ESPIONS (`rrspRoomWiring.test.ts`, perturbations prouvées — le
+> croisement d'index laissait 4 545 tests verts avant) ; mon explication « zéro golden » était
+> FAUSSE (grossSalary lu comme un annuel — il est MENSUEL, §1) et la vraie raison est mesurée
+> dans l'archive. 2 tickets routés : [RRSP-FIRST-YEAR-13M] (13 mois la 1re année, borné,
+> documenté §REER) et [REEE-CONGE-SANS-GARDE-SOLO] (préexistant, absorbé par le clamp).
+> Push sans leçon NOUVELLE (récidives de classes existantes, attrapées par la mesure).
+>
+> ## 🟢 Session 2026-08-20 (suite 119) — [FISC-TAXDEC-INCR] : les bandes de décembre portent l'érosion des crédits d'âge
+> Branche `claude/taxdec-incr`, PR #676 (basée sur `main` post-#675, PAS empilée). 2 goldens NW
+> re-basés SCIEMMENT (fixture meltdown 62 ans : −57,98 $, la bande de dividendes du non-enregistré
+> porte l'érosion ; la fixture FERR ne bouge pas — effet ciblé, preuve inverse).
+>
+> **Livré** : sous-volet (a) du ticket — helper `incrementalBandTax` (par adulte, `familyIncome`
+> évolue AVEC la bande) branché aux bandes §2 gains et §3 dividendes de `taxDecember.ts`. (b) était
+> déjà corrigé (#564), (c) est un statu quo documenté in situ — les deux fermés SANS code, re-tracés
+> sur le code avant de coder.
+>
+> ⚠️ **Récidive du jour** : pin de test DÉDUIT de tête (776,25) au lieu de mesuré (675,56) —
+> l'entrée `ECRIRE-UN-CHIFFRE-FISCAL-SANS-LE-MESURER` de CONVENTIONS est enrichie : le pin d'un
+> test EST un chiffre fiscal documenté, il se mesure. 3 perturbations discriminantes (ageOpts
+> retirés / familyIncome figé / asymétrie tb-tt), restauration prouvée par diff. Ratchet : 5e prise
+> (`taxDecember::65` passé `[≠4]`, le `a >= 65` du helper). Pins ADDITIVITÉ ré-basés avec delta
+> expliqué. NB conteneur : le hook `commit-gate` local n'existe pas dans l'environnement remote —
+> gate lancé à la main, ne pas se fier au silence du commit.
+>
+> **Panel /review-all (6 agents) — 4 correctifs appliqués dans la PR** : (F1, ÉLEVÉ confirmé par
+> re-mesure) la pension admissible RÉELLE passe aux deux appels de la bande — source unique
+> `eligiblePensionFor` HISSÉE hors du bloc §6, +317,81 $ re-facturés sur le profil 73 ans/DB, test
+> discriminant rouge-avant ; (validator) l'effet est BIDIRECTIONNEL — à revenu faible le crédit
+> inutilisé ABRITE la bande (10 k$ + 30 k$ gains : 1 708,61 → 0 $), documenté + testé ; garde NaN au
+> patron ENG-TAXDEC-NAN-GUARD ; test couple 68/60 (ratio 0,5 exact) + pin §3 (466,14). Le validator
+> a PROUVÉ bande == calcul « en un coup » à 0,00 $ sur 6 niveaux de revenu, conservation intacte,
+> impôt de bande réellement débité (LiquidDebt +57,97). ⚠️ TRIPLE récidive du mécanisme déduit :
+> « borné par le crédit restant » était FAUX aussi (vraie décomposition : abattement QC 16,5 % sur
+> le crédit féd + conversion 14 %) — CONVENTIONS enrichie : le MÉCANISME se mesure comme le chiffre.
+> 5 tickets routés (dont `[FISC-BANDES-FRERES-SANS-AGEOPTS]` ÉLEVÉ : latentTax/estate ×2, mesures
+> 1,3-2,4 k$/adulte). Doc-manager : doublon d'archive évité de justesse, exemple fiscal INVENTÉ
+> (50 k$) retiré de FISCAL_REFERENCE — relire ce qu'un agent écrit dans la source de vérité.
+>
+> **2e relecture (correctif de correctif — récolte confirmée, 6e fois)** : le hissage emportait la
+> branche ACTIVE (un actif 72-75 à retraits REER portait la pension dans la bande, son calcul
+> principal non — ±1 878 $) → borne `ctx.isRetired`, test discriminant, ticket
+> `[TAXDEC-ACTIF-72-PENSION-CREDIT]` pour corriger les DEUX côtés ensemble. Garde NaN déplacée sur
+> les ENTRÉES (tax.ts assainit ses sorties — l'ancienne garde manquait 3 chemins sur 4). Commentaire
+> périmé du §2 réécrit (il décrivait encore « pension 0 symétrique »). Phrase « exactement le 1-coup »
+> BORNÉE dans FISCAL_REFERENCE (solo/couple égal retraité ; écarts pré-existants mesurés −345,72 $
+> per-conjoint inégal, 69-1 130 $ actif). Fuzz de la relecture : 4 000 scénarios, `revenu`/`divers`
+> bit-identiques, seul `gains` bouge (100 % attribuable à F1) ; bande == 1-coup à 0,00 $ sur 8
+> revenus là où l'avant déviait de −1 053 à +856 $.
+>
+> ## 🟢 Session 2026-08-20 (suite 118) — le lot « prestations » : la règle de Marc appliquée le jour même
+> Branche `claude/prestations-assiette` (basée sur `main` post-#673, PAS empilée).
+>
+> **Livré** : `[RQAP-PRESTATION-COTISATIONS]` + `[AE-PLAFOND-MANQUANT]` — les deux items débloqués
+> le matin par la réponse sourcée de Marc (assiette de cotisation = revenus de TRAVAIL uniquement).
+> RQAP : `employmentIncome: 0`, +4 328,50 $/an net au plafond (chiffre du ticket re-vérifié au sou,
+> EXACT et indépendant du profil) ; l'effet patrimoine à 10 ans est fixture-dépendant (9 518 $ /
+> 8 803 $ sur deux fixtures — ne pas le citer comme un fait général). AE : 55 % du BRUT plafonné (68 900 $, projeté patron MGA) net
+> d'impôt à assiette nulle, au lieu de `net × 0,55` sans plafond.
+>
+> ⚠️ **Six tests asservissaient l'ANCIEN comportement** (`× 0,55` en dur) — réécrits avec des ancres
+> NÉGATIVES excluant chacun des trois anciens chemins. Garde RQAP par ESPION (l'argument réellement
+> passé, jamais une reconstruction). 5 perturbations, 5 rouges. Ratchet : 4e prise (0.5 d'indexation
+> inventorié design, 0.55 re-déclaré [≠4]).
+>
+> Pas de leçon NOUVELLE — réutilisation des patrons espion + ancres négatives (dit explicitement,
+> pas de skip silencieux). Aucun golden ne portait ces chemins : les nouveaux tests sont les
+> premiers à les épingler.
+>
+> ## 🟢 Session 2026-08-20 (suite 117) — vague 1 CLOSE : les deux derniers forfaits non sourcés
+> Branche `claude/w5-proxy-source` (basée sur `main`, PAS empilée).
+>
+> **Livré** : `[W5-PROXY-NON-SOURCE]` — dernier item de la vague 1f, donc **vague 1 terminée**.
+> Décision Marc `[W5-TAX-PROXY]` : garder les forfaits, les documenter, les annoncer à l'écran.
+> Ils sont maintenant NOMMÉS et EXPORTÉS (`RENTAL_NOI_TAX_PROXY`, `CCPC_DIVIDEND_TAX_PROXY`),
+> ancrés dans `FISCAL_REFERENCE.md` §6 avec leur sens d'erreur MESURÉ, et affichés par l'UI qui les
+> IMPORTE du moteur. Garde de concordance à 3 sites, 5 perturbations, 5 rouges.
+>
+> ⚠️⚠️⚠️ **DÉCOUVERTE MAJEURE en fermant un trou de garde : le forfait n'était PAS APPLIQUÉ.**
+> L'assertion comportementale `taxDivers === noi_mensuel × 0,45` a ROUGI sur le moteur : le code
+> faisait `(mensuel × taux) / 12` dans un accumulateur ANNUEL → **impôt 12× trop bas** (taux
+> effectif 3,75 %/3 %). MESURÉ : duplex + CCPC à 30 ans = patrimoine surestimé de **1,4 M$**.
+> Corrigé, revue dédiée : diagnostic confirmé maillon par maillon, conservation ≤ 0,02 $, témoin
+> sans W5 à delta 0,00 $, pas de double-imposition. Aucun golden ne portait de locatif/CCPC — la
+> suite était verte des deux côtés, c'est la garde COMPORTEMENTALE qui a vu.
+>
+> ⚠️ **Le forfait locatif change de SIGNE vers ~125-140 k$ de revenu selon le NOI** (mon premier
+> « 145 k$ » était faux — et sa correction a été EFFACÉE une fois par un `git checkout` de mesure
+> avant d'être re-perdue : vérifier le diff FINAL, pas son souvenir d'avoir corrigé). Le forfait
+> dividende ne vaut que pour un dividende ORDINAIRE à ~100 k$, et à personne d'autre.
+>
+> ⚠️⚠️ **Une affirmation fausse arrêtée par la mesure** : j'allais publier « 0,36 est proche du taux
+> marginal SUPÉRIEUR d'un dividende déterminé ». Ce taux vaut 39,16 % à 250 k$. Écrire un chiffre
+> fiscal sans le mesurer, c'est fabriquer la source qu'on prétend citer.
+>
+> ⚠️ Une garde a attrapé un « 45 % » dans **mon propre commentaire JSX** — un commentaire qui porte
+> le chiffre dérive comme le reste. Réécrit sans lui, plutôt que d'assouplir la garde.
+>
+> **Découverte routée** : `[W5-DIVIDENDE-PROXY-VS-MOTEUR]` — `utils/tax.ts` `calculateDividendTax`
+> sait déjà faire le calcul exact (majoration + les deux CID, bon ordre vis-à-vis de l'abattement).
+> Bloquant produit : `PrivateBusiness` ne porte pas le TYPE de dividende.
+>
+> **SUITE** : vague 2 (devises/unités) — `[FX-FALLBACK-SILENCIEUX]`, `[RETIREMENT-GROSSINCOME-DEAD]`,
+> `[ADDSTOCK-CAD-NATIF]`. Indépendante, aucun prérequis.
+>
+> ## 🟢 Session 2026-08-20 (suite 116) — le trou que mon propre constat d'impossibilité avait ouvert
+> Branche `claude/estate-proxy-coverage` (basée sur `main`, PAS empilée). Suite directe de #671, mergée.
+>
+> **Livré** : couverture des deux bras non testés du proxy de pension DB. Aucun défaut dans le code
+> en prod — la 6e revue l'a validé sur les trois modes (proxy/réel = 1,0000 en couple intact, en
+> divorce et en survivant). Ce sont deux TROUS DE GARDE que je ferme.
+>
+> ⚠️⚠️ **La cause est un constat d'impossibilité que J'AVAIS ÉCRIT et qui était FAUX** : « `survivorMode`
+> ne s'active que par une mortalité stochastique, il n'existe pas de chemin déterministe ».
+> `projection.survivor.test.ts` épinglait déjà `k = 0` avec un conjoint centenaire, et
+> `diagnostics.verboseMonthlyPoints` expose les points sous MC. J'avais conclu depuis MA fixture au
+> lieu du dépôt — `DOC-STALE-IMPOSSIBILITY`, une classe déjà nommée dans `CONVENTIONS.md`.
+> **Coût mesuré** : deux défauts réels du même site d'appel invisibles à 226 tests —
+> `survivorMode: false` passé au proxy (**−19 657 $**) et un diviseur de divorce faux (**+12 000 $**).
+> Le scan est remplacé par deux mesures bout en bout, chacune prouvée par perturbation (4/4 rougissent).
+>
+> ⚠️ Un commentaire de test qui sur-promettait est corrigé : j'avais écrit que l'entrée NaN de
+> `pensionPriveeMonthlyFinal` couvrait « le SEUL champ qui discrimine une branche ». Faux — `NaN > 0`
+> est faux exactement comme `0 > 0`, retirer le `fin()` laisse 40/40 vert. C'est de la défense en
+> profondeur, et c'est écrit comme tel.
+>
+> **Bilan de #671 : SIX revues.** Les quatre du milieu ont chacune trouvé un défaut que mes propres
+> correctifs avaient introduit, toujours dans les mêmes ~20 lignes. La sixième a rendu « rien de
+> CRITIQUE ni d'ÉLEVÉ » sur le code livré.
+>
+> ## 🟢 Session 2026-08-20 (suite 115) — encore un facteur plat, encore contre les modestes
+> Branche `claude/estate-npv` (basée sur `main`, PAS empilée). Vague 1f, 4e des 5.
+>
+> **Livré** : `[ESTATE-NPV-07]`. Le ticket annonçait « nommer ou retirer un 0,7 » et « écran
+> Succession seulement » — **les deux étaient faux**. `estateNetWorth` alimente un chiffre-TITRE du
+> Budget, le panneau de stress et la carte FIRE ; et le facteur n'était juste pour PERSONNE
+> (facteur net réel mesuré : 0,94 pour un ménage vivant de ses rentes, 0,594 à 100 k$ d'autre
+> revenu). Remplacé par un abattement CALCULÉ, patron déjà présent 40 lignes plus haut.
+>
+> **Goldens re-basés** : +190 745 $, +190 746 $ (le même écart à un dollar d'arrondi près — la VAN
+> ne dépend pas du tirage MC), et +64 375 $ (**+44,6 %** — cette fixture finit insolvable, donc son
+> patrimoine successoral EST la VAN des rentes).
+>
+> ⚠️⚠️⚠️ **TROIS revues successives, chacune a trouvé du vrai — et les 2e et 3e ont trouvé des défauts
+> que MES PROPRES CORRECTIFS avaient introduits.** C'est la leçon principale du lot : sur du
+> money-critical, un correctif de correctif se fait relire aussi. La 3e a trouvé (7) `estateNetWorth`
+> dépendait du **MOIS CALENDRIER** de lancement (210 997 $ d'amplitude) parce que j'avais gardé
+> `accRentesYear`, un accumulateur ANNÉE-À-DATE, dans un contexte annualisé — alors que j'avais exclu
+> son JUMEAU trois lignes plus haut ; et (8) `estateNetWorth` restait **NON MONOTONE en horizon**
+> (−65 687 $ pour un an de plus). Corrigés : la tranche imposée est celle que la VAN VALORISE (le
+> complément non encore versé s'ajoute au contexte), et la pension DB PLANIFIÉE — une saisie, connue
+> dès le premier mois — S'AJOUTE au contexte tant qu'elle n'est pas versée.
+> ⚠️ C'est un **COMPLÉMENT**, pas un « plancher » : une version intermédiaire la combinait par
+> `Math.max` au revenu réel, ce qui JETAIT les rentes déjà versées entre l'âge de la retraite et
+> `dbPensionStartAge` (−142 890 $ mesuré, plus une falaise NEUVE). Corrigé en 4e revue.
+>
+> ✅ **Vérifié** : 9 familles de fixtures, horizon balayé AN PAR AN de 5 à 45 ans. ⚠️ Formulation
+> EXACTE : « le lot n'ajoute AUCUNE non-monotonie », et NON « monotone partout » — j'avais écrit le
+> second, qui est faux : certaines familles décroissent par DÉPLÉTION D'ACTIFS, à l'identique sur la
+> baseline pré-lot (vérifié chute par chute, 820 runs comparés).
+> Amplitude au `startMonth` redevenue IDENTIQUE à `main`. Classement de décaissement identique à
+> `main` sur 62 points de mesure au total.
+>
+> ⚠️⚠️ **CINQ revues. Les quatre dernières ont trouvé un défaut que J'AVAIS introduit en corrigeant
+> la précédente**, toujours dans les mêmes ~20 lignes. La 5e : en mode survivant je réduisais le
+> proxy DB DEUX FOIS (`dbSurvivorPct` dans la source unique + un `1/N` recopié de la ligne voisine).
+> Et mon test de câblage écrit pour fermer ce trou était lui-même VACUEUX — il RECONSTRUISAIT le
+> proxy au lieu d'observer celui que le moteur passe : cinq perturbations passaient. Refait avec un
+> espion `vi.mock` sur `computeEstateNetWorth`.
+>
+> ⚠️⚠️⚠️ **LA REVUE A DÉMOLI MON PREMIER JET — trois défauts non bornés, tous MESURÉS.** Le lot
+> corrigeait bien un vrai défaut, mais il échangeait un biais BORNÉ et connu (30 pts) contre :
+> (1) un **contresens sur toute la population pré-retraite** — un salaire n'est pas le contexte
+> fiscal d'une rente encaissée 10 ans plus tard : facteur 0,52, soit **pire que le 0,7 remplacé**,
+> −158 543 $ mesuré, et **1 seul test au monde sur 4 495** voyait cette branche ;
+> (2) une **tranche soustraite fausse de 29 %** (estimé de saisie non indexé, sans prorata, SRG
+> absent) dont l'erreur était **maximale sur les ménages modestes que le lot prétend servir** ;
+> (3) un **basculement de la recommandation de décaissement** — `estateNetWorth` n'est pas qu'un
+> chiffre d'écran : `drawdownOptimizer` trie DESSUS et publie « Meilleur avenir : X ».
+> Correctifs : rente RÉELLE plombée depuis la boucle, branche pré-retraite traitée explicitement,
+> contexte STRUCTUREL (hors retrait REER ponctuel — seule variante qui reproduit l'ordre de `main`
+> à tous les horizons mesurés).
+>
+> ⚠️⚠️⚠️ **PUIS UNE SECONDE REVUE A TROUVÉ DEUX DÉFAUTS QUE J'AVAIS INTRODUITS**, invisibles à la
+> première : (4) le **SRG servait d'assiette imposable** — je l'avais retiré de la TRANCHE et pas du
+> CONTEXTE, alors que `incomeRetirement` le contient. 35 838 $ effacés sur le golden meltdown, sur un
+> ménage à FAIBLE revenu ; et le commentaire que j'avais écrit pour justifier ce golden disait « le
+> reste est une pension privée », **c'était le SRG**. (5) `estateNetWorth` **DÉCROISSAIT de 169 437 $
+> quand l'horizon augmentait d'un an** : j'avais branché sur « une rente est-elle versée ? » en le
+> traitant comme « est-on retraité ? ». La correction supprime la branche — la seule question est si
+> les rentes sont DÉJÀ dans le revenu ; sinon elles s'ajoutent PAR-DESSUS. Continu par construction.
+>
+> ✅ **Preuve que le classement de décaissement ne bouge PAS** : 32 points de mesure (REER × horizon),
+> marges MELTDOWN−AUTO **identiques au dollar près** à `origin/main`. Le contexte structurel ne
+> dépend d'aucune grandeur pilotée par la stratégie, donc le terme VAN s'annule au tri.
+>
+> ⚠️ **J'avais sous-déclaré un sens d'erreur d'un facteur ~10** (« légère, 3,5 pts » sur UNE fixture ;
+> mesuré ailleurs jusqu'à **36,1 pts / 144 963 $**). Un ticket chiffré « 3,5 pts » aurait été
+> priorisé comme cosmétique.
+>
+> ⚠️⚠️ **TROIS de mes tests étaient vacueux, tous démasqués par PERTURBATION** : le `fiscalStub`
+> partagé du fichier est un taux PLAT (30 %) qui rendait le correctif strictement invisible ; mon
+> facteur dérivé par RATIO annulait tout facteur constant ; et mon test du clamp utilisait une
+> fixture qui désactivait la branche testée. Verts et sérieux d'apparence, tous les trois
+> (`UN-STUB-QUI-A-LA-FORME-DU-DEFAUT-NE-PEUT-PAS-LE-VOIR`).
+> ⚠️ Puis mon SECOND jet de tests l'était encore : le stub « progressif » `(g − 20 000) × 0,4` est
+> **affine**, donc à pente CONSTANTE au-dessus du coude. Les cinq tests actuels sont prouvés
+> discriminants par cinq perturbations distinctes.
+>
+> ⚠️ **Faux raisonnement rattrapé de justesse** : `accRentesYear` cumule les LOYERS malgré son nom
+> (`realEstateMonth.ts`), pas les rentes publiques — ce sont `incomeRetirement * 12`. J'ai failli
+> câbler le calcul à l'envers sur la foi d'un nom.
+>
+> ## 🟢 Session 2026-08-20 (suite 114) — une valeur fiscale figée par un défaut de signature
+> Branche `claude/grossfromnet-annee` (basée sur `main`, PAS empilée). Suite directe de #669.
+>
+> **Livré** : `[GROSSFROMNET-ANNEE-FIGEE]`. `calculateGrossFromNet` inversait toujours le barème
+> 2026 (le défaut de `calculateFiscalReport`) pendant que le moteur indexe par `startYear`.
+> Le lot #669 venait de rendre TOUTE l'assiette d'impôt dépendante de cette inversion — la dérive
+> n'était donc plus théorique. **MESURÉ** : +380 / +334 / +903 $ dès 2027 (48 k / 60 k / 100 k de
+> net), et ~2 %/an d'accumulation ; 1 378 à 3 723 $ en 2030.
+>
+> **Paramètre OPTIONNEL à défaut NEUTRE** → rétrocompat bit-identique, verrouillée par un test.
+> Cinq sites câblés (moteur ×2 avec `startYear`, UI ×2 et store avec l'année courante).
+>
+> ⚠️ **Le ratchet fiscal a encore attrapé mon propre code** (3e lot d'affilée) : le défaut
+> `startYear: number = 2026` est un littéral neuf dans un module scanné. Inventorié `structural`.
+>
+> ⚠️⚠️ **LA REVUE A TROUVÉ UNE RÉGRESSION QUE J'AVAIS INTRODUITE** : dans `TaxCenter`, j'avais câblé
+> l'année sur l'inversion et pas sur l'imposition trois lignes plus bas. AVANT le lot les deux
+> étaient à 2026, donc cohérents — 212 $/an d'écart dès 2027 APRÈS. Câbler une année, c'est câbler
+> une PAIRE (`CABLER-UNE-ANNEE-C-EST-CABLER-UNE-PAIRE`).
+>
+> ⚠️ **Bombe à retardement dans mon propre test** : il figeait 2026 pendant que le code lit
+> l'horloge → rouge garanti le 2027-01-01. Corrigé et vérifié sous horloge forcée à 2027/2030/2040.
+>
+> ⚠️ **Deux appelants MCP oubliés** (`year` était pourtant dans la portée), dont un qui publie ce
+> brut à un LLM. Et **mes tests de câblage ne testaient pas les appelants** — retirer `startYear` de
+> `projection.ts` laissait tout vert. Fermé par un scan de SOURCE, prouvé discriminant.
+>
+> **SUITE — candidats NON bloqués**, tous mesurés dans `BACKLOG.md` :
+> `[ESTATE-NPV-07]` (vague 1f, nommer une hypothèse — pas de sourçage requis),
+> `[GROSSFROMNET-CREDITS-65]`, `[AUTOMARGINAL-BASCULE-SILENCIEUSE]`,
+> `[FISC-GUARD-ARGUMENT]` + `[FISC-GUARD-BENIGN-60]` (ENSEMBLE), `[GUARD-STRIPCOMMENTS-DUPLIQUE]`,
+> `[GOLDEN-RQAP-NON-COUVERT]`, `[ASSETLOC-INCLUSION-RECOPIEE]`, `[ASSETLOC-YEAR-2026]`.
+>
+> ## 🟢 Session 2026-08-20 (suite 113) — un facteur plat dont l'erreur change de signe
+> Branche `claude/migrate-gross` (basée sur `main`, PAS empilée). Vague 1f, 3e des 5.
+>
+> **Livré** : `[MIGRATE-GROSS-135]`. Le brut était FABRIQUÉ depuis le net par `× 1,35`, à 2 endroits
+> (4 usages), et ce brut alimente TOUTE l'assiette d'impôt + les droits REER + les bonus/RSU.
+>
+> ⚠️ **L'erreur CHANGE DE SIGNE** — c'est ce qui tranche : +2 681 $ à 30 k$ de net, mais −22 028 $ à
+> 100 k$ et −132 196 $ à 250 k$. La relation net→brut est CONVEXE ; un facteur plat n'est qu'une
+> sécante. Aucun réglage ne pouvait marcher (`UN-FACTEUR-PLAT-SUR-UNE-RELATION-CONVEXE`).
+> Remplacé par `calculateGrossFromNet` (dichotomie, exacte à < 1 $, roundtrip re-vérifié).
+>
+> **Les deux risques ont été MESURÉS, pas supposés** : perf 0,026 ms/appel (~2 ms sur une dichotomie
+> `goalSeek` complète) ; boot — le chunk `tax` (6 125 octets) passe de « à la demande » à préchargé
+> (8 → 9 `modulepreload`), car le store n'importait pas `utils/tax`. Coût assumé et écrit.
+>
+> **3 ancres re-basées** avec leur delta mesuré (+5 968 $, +7 324 $, +1 754 $), et réécrites pour
+> viser la PROPRIÉTÉ (« le brut déduit redonne le net visé ») plutôt qu'un nombre.
+>
+> ⚠️ **Les gardes des 2 PR précédentes ont travaillé sur CE lot** : l'anti-fantôme (#668) a exigé le
+> retrait des deux entrées `1.35` au moment où la dette était payée, et le ratchet rougit maintenant
+> si on remet le facteur plat. Le registre décroît comme prévu.
+>
+> ⚠️⚠️ **LA REVUE A TROUVÉ PLUS GROS QUE LE LOT** : `computeBaseGrossAnnual`
+> (`buildSimulationParams.ts`) n'avait AUCUN repli net→brut. Le moteur DÉDUISAIT un brut pour un
+> conjoint sans salaire saisi et l'IMPOSAIT dessus, tout en le comptant ZÉRO dans `baseGrossAnnual`
+> — qui alimente les DROITS REER et la RENTE RRQ. MESURÉ : **−211 532 $ de droits REER** et
+> **−247 $/mois de RRQ**. Corrigé ici, avec le patron qui existait DÉJÀ dans `Retirement.tsx`
+> (trois conventions net→brut coexistaient dans le dépôt).
+>
+> ⚠️ **Mes 3 ancres passaient par CHANCE** : `toBeCloseTo(x, 0)` exige < 0,50 $, la dichotomie ne
+> garantit que < 1 $ — 43 % des cibles dépassent 0,50 $ (mesuré sur 2 951). Tolérance réalignée.
+>
+> ⚠️ **Justification du coût de boot revue à la baisse** : les 6 125 octets sont imputables au SEUL
+> import du store (vérifié en le retirant), et ce chemin ne sert qu'aux upgrades d'avant l'ère
+> persist. On paie pour tout le monde au bénéfice d'une population résiduelle. Gardé (une valeur
+> fausse PERSISTÉE l'est à vie) mais c'est un arbitrage, pas un cadeau.
+>
+> **Le meilleur argument du lot n'était écrit nulle part** : il ANNULE le biais
+> `[ENG-NET-MODEL-RESIDUAL]` de FISCAL_REFERENCE §9 (−3 627 $ → −0,29 $ à 60 k$ de net). §9 à jour.
+>
+> **Tickets neufs** : `[GROSSFROMNET-ANNEE-FIGEE]`, `[GROSSFROMNET-CREDITS-65]`,
+> `[AUTOMARGINAL-BASCULE-SILENCIEUSE]`.
+>
+> ⚠️ **Limite connue** : `[MIGRATE-GROSS-DEJA-PERSISTE]` — le correctif ne rattrape PAS les configs
+> dont le brut erroné est déjà persisté (`u.grossSalary || …` court-circuite). Décision produit.
+>
+> ## 🟢 Session 2026-08-20 (suite 112) — le garde fiscal ne voyait pas la table FERR
+> Branche `claude/rqap-cotisations` (basée sur `main`, PAS empilée).
+>
+> **Livré** : `[FISC-GUARD-VALEUR-LIEE]` — ouvert sous le nom `[FISC-GUARD-TERNAIRE]`, renommé parce
+> que **la mesure a contredit mon hypothèse** : le `:` attrapait surtout des PROPRIÉTÉS D'OBJET, et
+> c'est là qu'était le gros du trou.
+>
+> ⚠️⚠️ **`RRIF_RATES` — les 24 facteurs de retrait minimum du FERR (ARC) — était invisible au garde
+> fiscal DEPUIS SON PREMIER JOUR.** Idem `DONATION_CREDIT_RATES` (15/29 féd, 20/24 QC). Les deux
+> sont ANCRÉES (§7, §10) : ce qui manquait n'était pas la source, c'était la protection contre la
+> dérive silencieuse. Le filtre de position ne relevait qu'un littéral qu'on CALCULE ; un barème est
+> tout aussi souvent un littéral qu'on NOMME ou qu'on CHOISIT
+> (`FILTRE-DE-POSITION-QUI-NE-VOIT-QUE-L-ARITHMETIQUE`).
+>
+> **Mesuré** : 50 clés neuves. Une entrée PAR ÂGE pour les 24 facteurs FERR, pour que la garde nomme
+> lequel a bougé. Discrimination prouvée sur ce qui compte : dériver le facteur de 80 ans et le taux
+> fédéral pour dons font rougir la garde.
+>
+> **Effet de bord vertueux** : l'élargissement a rendu visible `survivorPsvFactor = survivorMode ?
+> 0.5 : 1`, et la garde `[×N]`/`[≠N]` a IMMÉDIATEMENT exigé le passage de `[≠3]` à `[≠4]`. Le
+> mécanisme fait ce qu'il annonce.
+>
+> ⚠️ **La revue a trouvé 4 raisons fausses de plus** (`setupSimulation::2.0` décrivait le mauvais
+> fichier et portait la mauvaise famille, `::5.0` et `::5.5` recyclaient une formule vague,
+> `assetLocation::5.0` marquait `[×2]` deux CHAMPS différents) — même motif qu'aux deux lots
+> précédents : raison lue sur la ligne au lieu du bloc. Et `RRIF_RATES[94]` était certifié « barème
+> ARC » alors que §7 le déclare **CONTESTÉ** (18,79 % probable, 13 726 $ d'écart).
+>
+> ⚠️ **Un finding ÉLEVÉ de la revue est RÉFUTÉ par la mesure** : elle affirmait qu'une PERMUTATION de
+> deux facteurs FERR passerait inaperçue. Le ratchet reste effectivement vert, mais
+> `projection.helpers.test.ts` tombe DEUX fois — l'assertion de stricte croissance 73→94 existe
+> depuis longtemps. Son grep cherchait des âges littéraux, la boucle n'en contient aucun. J'ai donc
+> corrigé MA PROSE d'archive (qui surestimait le ratchet) plutôt que d'ajouter une garde en double
+> (`UNE-CLE-PAR-VALEUR-NE-PROTEGE-PAS-L-ORDRE`).
+>
+> **Tickets neufs** : `[FISC-GUARD-ARGUMENT]` (35 littéraux encore invisibles en position d'argument,
+> dont l'âge 18 de début de cotisation RRQ ; ⚠️ ne PAS couvrir `return`, mesuré 20 hits pour 0 gain),
+> `[FISC-GUARD-BENIGN-60]`. Et `[FISC-ANTIFLIP-WINDOW]` renommé `[FISC-RAP-GRACE-WINDOW]` — son nom
+> venait de ma première lecture fausse.
+>
+> ⛔ **`[RQAP-PRESTATION-COTISATIONS]` (ÉLEVÉ, 4 328,50 $/an) est BLOQUÉ SUR MARC** — routé en
+> `docs/A_FAIRE_MOI.md` §A00. Le correctif tient en un paramètre, mais il déplace de l'argent sur
+> une affirmation fiscale, et le proxy réseau **bloque** `revenuquebec.ca` / `rqap.gouv.qc.ca` /
+> `rrq.gouv.qc.ca` (`EGRESS_BLOCKED`) : je ne peux pas sourcer moi-même. L'URL exacte à consulter est
+> dans le fichier. NE PAS coder sans sa réponse.
+>
+> ## 🟢 Session 2026-08-20 (suite 111) — une règle de portefeuille déplaçait un plafond légal
+> Branche `claude/rqap-cap` (basée sur `main`, PAS empilée). Vague 1f, 2e des 5.
+>
+> **Livré** : `[RQAP-CAP-98K]`. Trois volets, prouvés séparément.
+>
+> **(a)** `98000` recopié en dur (valeur 2025) au lieu de `RQAP_MAX_INCOME = 103 000 $`. Import.
+> **MESURÉ : 53 900 $ → 56 650 $, soit +2 750 $/an** — le chiffre du ticket est confirmé.
+>
+> **(b)** Taux de remplacement nommé `RQAP_REPLACEMENT_RATE_BASE`, sourcé §2. La divergence avec le
+> vrai régime (70 % puis 55 %, pas 55 % plat) est **documentée, PAS corrigée** : elle demande de
+> modéliser les semaines par prestation et le choix base/particulier, que l'app ne saisit pas.
+> Décision produit → `[RQAP-PHASES-70-55]`.
+>
+> ⚠️⚠️ **(c) le volet qui comptait.** Le plafond était `98000 * expenseMultiplier`, or ce
+> multiplicateur porte l'inflation des DÉPENSES DU MÉNAGE **et est GELÉ par Guyton-Klinger**.
+> MESURÉ à l'année 20 : avec le gel, l'assiette RQAP tombait de **80 092 $ à 53 900 $**. Une règle de
+> DÉCAISSEMENT déplaçait un plafond GOUVERNEMENTAL de 26 192 $ — inversion de causalité, pas
+> imprécision. Remplacé par le patron déjà employé pour le MGA de la RRQ (`inflation + 0,5 %/an`,
+> §6) — `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI`, 3e fois en 3 lots
+> (`UN-INDEX-GELABLE-NE-PEUT-PAS-PORTER-UNE-LOI`).
+>
+> ⚠️ **La garde livrée la veille (#666) a attrapé ce lot-ci** : `rqapCapProjected` ajoutait un second
+> `0.5` dans `childrenReee.ts`. Et en voulant VÉRIFIER ses références de ligne, j'ai découvert que
+> **16 étaient fausses** — certaines de naissance, d'autres dérivées par mes propres éditions.
+> Vérifier revenait à réintroduire dans la PROSE le couplage à la ligne que la CLÉ évite par
+> conception. Mécanisme remplacé : marque `[×N]`/`[≠N]` vérifiée + NOMS de construction, zéro numéro
+> de ligne dans l'inventaire (`UNE-REFERENCE-DE-LIGNE-DANS-UNE-DOC-EST-UNE-DETTE`).
+>
+> ⚠️ **ZÉRO golden n'a bougé** sur un correctif à +2 750 $/an. Ça ne veut pas dire « pas d'impact » :
+> ça PROUVE qu'aucune fixture ne combine « enfant < 12 mois » et « 2e parent au-dessus du plafond ».
+> Trou de couverture d'intégration → `[GOLDEN-RQAP-NON-COUVERT]`.
+>
+> ⚠️⚠️ **LA REVUE A TROUVÉ PLUS GROS QUE LE TICKET.** `[RQAP-PRESTATION-COTISATIONS]` (ÉLEVÉ) : la
+> prestation de congé parental se fait prélever RRQ + AE + RQAP, parce que l'appel à
+> `calculateFiscalReport` omet `employmentIncome` et que le défaut retombe sur `grossIncome`.
+> **MESURÉ : 4 328,50 $/an de cotisations fantômes — 1,57× le gain de 2 750 $ que ce lot restaure.**
+> NON corrigé ici : la règle « une prestation n'est pas un revenu de travail » doit être ANCRÉE avec
+> sa source Revenu Québec avant de déplacer de l'argent.
+>
+> ⚠️ Elle a aussi trouvé une **entrée d'inventaire FANTÔME** : `childrenReee::98000` a survécu au
+> commit qui supprimait le littéral, continuant d'affirmer le défaut au présent. Garde ajoutée
+> (« chaque entrée correspond à un littéral qui existe »), prouvée discriminante
+> (`ENTREE-D-INVENTAIRE-FANTOME`). Et un **angle mort de l'extracteur** : un littéral en branche de
+> TERNAIRE est invisible → `[FISC-GUARD-TERNAIRE]`.
+>
+> **SUITE — vague 1f, reste 3** : `[W5-PROXY-NON-SOURCE]`, `[ESTATE-NPV-07]`, `[MIGRATE-GROSS-135]`.
+> ⚠️ **`[AE-PLAFOND-MANQUANT]` (ÉLEVÉ) est probablement prioritaire sur les trois** — juger sur
+> l'impact mesuré, pas sur l'ordre du plan.
+>
+> ⛔ **BLOQUÉ sur Marc** : `[ENG-LIQUIDDEBT-NEVER-REPAID]`, branches mortes (proxy git 403),
+> `[ENV-NODE-NON-DECLARE]`.
+>
+> ## 🟢 Session 2026-08-20 (suite 110) — le ratchet fiscal voyait 8 modules sur 20
+> Branche `claude/fisc-guard-scope` (basée sur `main`, PAS empilée). Vague 1f, 1er des 5.
+>
+> **Livré** : `[FISC-GUARD-SCOPE]` — réestimé **M**, annoncé S.
+>
+> ⚠️ **Le critère d'inclusion ÉTAIT le bug.** `FISCAL_MODULES` disait « les modules qui PRODUISENT
+> de l'impôt ou une rente ». Or écrire un barème ne demande pas de produire un impôt : une
+> SUBVENTION (SCEE/IQEE), une PRESTATION (RQAP), un PLAFOND LÉGAL (RAP, REEE) et un PROXY d'impôt
+> (`noi * 0.45`) en sont tout autant. C'est par ce trou que **`98000`** — plafond RQAP figé à sa
+> valeur 2025 alors que la source unique porte **103 000 $** — vivait invisible dans
+> `childrenReee.ts`. Auditer le CRITÈRE, pas seulement les entrées
+> (`CRITERE-D-INCLUSION-TROP-ETROIT-EST-LE-BUG`).
+>
+> **Mesuré avant d'écrire** : 12 modules ajoutés (8 → **20**), **76 littéraux → 63 clés
+> `(fichier, valeur)`** triées à la main contre le code. Les 4 autres tickets 1f sont désormais tous
+> inventoriés, **leurs diagnostics re-dérivés et confirmés**.
+>
+> **Deux gardes NEUVES, 6 perturbations, 6 rouges ciblés** :
+> le périmètre EXCLU est déclaré et vérifié (`FISCAL_MODULES_HORS_PERIMETRE`) ; et une clé qui
+> recouvre N occurrences doit porter `[×N]` (même sens) ou N références `L<n>` (sens différents) —
+> cette dernière a sorti **15 offenders PRÉEXISTANTS** de l'inventaire d'origine.
+>
+> ⚠️⚠️ **Leçon la plus importante du lot, et elle ne parle pas de fiscalité** : mon point de contrôle
+> affirmait qu'un `plan-1f.md` « MESURÉ » était sauvé dans le scratchpad. **Le fichier n'a jamais
+> existé**, et ses chiffres étaient faux. Une note que je m'écris arrive au tour suivant avec
+> l'apparence d'une consigne — sans rien derrière. Vérifier avant de suivre ; mettre la COMMANDE et
+> non le chiffre ; committer ce qui doit survivre (`MA-PROPRE-NOTE-N-EST-PAS-UNE-PREUVE`).
+>
+> ⚠️⚠️ **LA REVUE A TROUVÉ QUATRE DE MES RAISONS FAUSSES** — dans le lot même qui prétend éliminer
+> les entrées « triées » sans qu'on les regarde. `activeIncome::0.55` était le taux STATUTAIRE de
+> l'AE (le code dit `// Job loss (AE 55%)` six lignes plus haut) et je l'avais classé « design, ne
+> jamais sourcer » ; `realEstateMonth::2022/2025` est le report de remboursement du RAP (Budget
+> 2024), pas la règle anti-flip ; `childrenReee::25` invoquait un §9 inexistant ;
+> `setupSimulation::1.35` était classé à l'opposé de son site jumeau. Motif COMMUN : j'ai lu la
+> LIGNE du littéral, pas le BLOC autour (`MON-CORRECTIF-CONTENAIT-LA-FAUTE-QU-IL-CORRIGEAIT`).
+>
+> ⚠️ **Et j'avais audité le critère de la LISTE sans regarder celui du FILTRE.** `BENIGN` contenait
+> `0.5` et `1000` que sa propre justification n'énumérait pas — ils masquaient le taux d'inclusion
+> des gains en capital (`assetLocation:117`, seul site du dépôt à le recopier), le plafond légal de
+> 50 % du fractionnement (`taxDecember:667`) et la SCEE de rattrapage (`childrenReee:24`). Retrait
+> mesuré : **15 occurrences, 8 clés neuves** (`AUDITER-LE-FILTRE-AUTANT-QUE-LA-LISTE`).
+>
+> **Inventaire final : 71 clés** (63 + 8). Trois tickets neufs, dont **`[AE-PLAFOND-MANQUANT]`
+> (ÉLEVÉ)** : le 55 % de l'AE est appliqué au salaire NET et SANS le plafond de 68 900 $.
+>
+> > **SUITE — vague 1f, reste 4** : `[RQAP-CAP-98K]` en premier (le plus gros impact mesuré :
+> ~2 750 $/an de prestation brute manquante), puis `[W5-PROXY-NON-SOURCE]`, `[ESTATE-NPV-07]`,
+> `[MIGRATE-GROSS-135]`. Découvertes ouvertes : `[FISC-ANTIFLIP-WINDOW]`, `[FISC-RAP-15ANS]`,
+> `[ASSETLOC-YEAR-2026]`, `[FISC-GUARD-PROJECTION-TS]`.
+>
+> ⛔ **BLOQUÉ sur Marc** : `[ENG-LIQUIDDEBT-NEVER-REPAID]`, suppression des branches mortes (proxy
+> git 403), et `[ENV-NODE-NON-DECLARE]` (modification de chaîne d'outils).
+>
+> ## 🟢 Session 2026-08-19 (suite 109) — vague 1e CLOSE : cinq XS, cinq silences
+> Branche `claude/silences-xs` (basée sur `main`, PAS empilée — leçon `PR-EMPILEE-N-A-AUCUNE-CI`).
+>
+> **Livrés** : `[SILENT-STOCKFORM-PRICEHINT]`, `[SILENT-PWA-PROMPT]`, `[SILENT-HEALTHWEIGHTS-FIELD]`,
+> `[SYSVIEW-DBSIZE-ZERO]`, `[DEAD-PARSETX-SILENT-DROP]`. **La vague 1e est CLOSE.**
+>
+> Les cinq diagnostics ont été re-dérivés sur leur propre code avant d'écrire une ligne
+> (`DIAGNOSTIC-GROUPE-A-MOITIE-FAUX`, appris à la PR précédente) : les cinq se sont confirmés — cette
+> fois. Chaque correctif est prouvé DISCRIMINANT par perturbation individuelle.
+>
+> ⚠️ **`[SILENT-HEALTHWEIGHTS-FIELD]` : le ticket appliqué tel quel aurait été une RÉGRESSION.**
+> `normalizeHealthWeights` atteint son repli par DEUX chemins que le même `?? défaut` confond : un
+> champ **ABSENT** (la rétrocompat VOULUE — quatre poids persistés avant l'ajout de `budgetParity` /
+> `subscriptionLoad`) et un champ **PRÉSENT mais non fini** (une corruption). Tracer les deux aurait
+> crié sur le cas nominal à chaque chargement, pour tout le monde, et noyé le seul cas utile. La
+> distinction tient en un `k in p` (`REPLI-SILENCIEUX-LEGITIME-VS-CORRUPTION`). Le test verrouille
+> les deux sens, dont le `not.toHaveBeenCalled()` sur le champ absent.
+>
+> ⚠️ **Mon scan-garde a matché de la PROSE, deux fois.** `parseBankCsv.ts` EXPLIQUE en en-tête le
+> parseur qu'il remplace ; `\bparseTransactions\b` puis `\bparseTransactions\s*\(` sont tombés dessus
+> (une phrase française écrit « le vieux parseTransactions (TAB/`;` … »). Resserrer le motif ne règle
+> rien — le défaut est dans le TEXTE BALAYÉ. On décommente AVANT de scanner, avec anti-vacuité du
+> décommentage (`SCAN-QUI-MATCHE-LA-PROSE`, cousin de `SCAN-QUI-MATCHE-LA-DECLARATION-AU-LIEU-DE-L-USAGE`).
+> **La mention en commentaire, elle, reste** : la garde protège le code, pas le droit de raconter
+> pourquoi le choix a été fait.
+>
+> ⚠️⚠️ **Et je n'ai rien découvert** : le dépôt contenait déjà SIX décommenteurs (aucun exporté), dont
+> `tests/components/subTabsAria.test.tsx:80-84` qui documente le MÊME incident, avec le MÊME nom de
+> helper choisi indépendamment. J'ai grepé le SYMBOLE (`parseTransactions`) au lieu du PROBLÈME
+> (« décommenter »). Item ouvert : `[GUARD-STRIPCOMMENTS-DUPLIQUE]` — les sept ne se comportent pas
+> pareil, et **le plus faible fixe le niveau réel de protection du dépôt**.
+>
+> **`parseTransactions` SUPPRIMÉE** (3 261 caractères) — plus aucun appelant, et elle jetait les
+> lignes invalides sans rien dire. `markDuplicates` et `isInternalTransferLabel` sont RESTÉES : elles
+> sont appelées par `App.tsx` et `services/import/parseBankCsv.ts`, et un test le verrouille (le vrai
+> risque d'une suppression est d'emporter un voisin vivant).
+>
+> ⚠️⚠️ **Le panel a trouvé un défaut que mon propre correctif avait INTRODUIT** — et c'est le plus
+> instructif du lot. J'ai instrumenté `suggestHistoricalPrice` en réutilisant le patron de
+> `validateSymbol`, 60 lignes plus haut dans le même fichier, en citant `PATRON-APPLIQUE-A-COTE`
+> comme justification. Le patron était bon, le **CONTRAT** ne l'était pas : `getQuote` LÈVE,
+> `getHistory` retourne `null` (et sa façade INTERDIT en toutes lettres, avec la date du panel, de
+> l'aplatir en `[]`). Mon `if (!history || history.length === 0)` faisait exactement cet
+> aplatissement — la panne réseau affichait « aucun cours trouvé », affirmation FAUSSE sur le titre,
+> et le `catch` écrit pour la tracer n'était **jamais atteint**
+> (`PATRON-COPIE-AVEC-SON-CONTRAT-D-ERREUR`).
+>
+> ⚠️ **`SCAN-QUI-MATCHE-LA-PROSE`, TROISIÈME fois — dans le commit qui le documente.** La garde
+> interdisant le retour du motif fautif est partie rouge sur mon propre commentaire, qui CITE le
+> motif pour expliquer pourquoi il est fautif. Ce n'est pas de la malchance : une garde d'ABSENCE et
+> une bonne doc se contredisent mécaniquement. Forme finale = **deux lecteurs choisis par NATURE
+> d'assertion** — `lireCode` (décommenté) pour un `not.toMatch`, `lire` (brut) pour une présence qui
+> vise un commentaire.
+>
+> ⚠️ Et l'anti-vacuité du décommentage se déplace avec la PORTÉE : le scan est passé de 2 fichiers en
+> dur à un glob du dépôt (il ne voyait pas une réintroduction dans un fichier NEUF — prouvé par
+> perturbation), et ma règle « il reste un quart de la source » est devenue fausse sur
+> `services/tax.ts`, alias de 289 octets à 88 % de commentaire. Anti-vacuité désormais **agrégée**.
+>
+> ⚠️⚠️ **CI ROUGE sur un gate local VERT — même commit.** `globSync` (`node:fs`) n'existe qu'à
+> partir de **Node 22** ; le conteneur de dev tourne sur 22, les 4 workflows épinglent **20**, et
+> rien dans le dépôt ne déclare la cible (`engines`/`.nvmrc` absents). Remplacé par le marcheur que
+> le dépôt emploie DÉJÀ (`readdirSync(dir, { recursive: true })`,
+> `tests/fiscalConstants.guard.test.ts`) — dont la compatibilité est prouvée par la CI, gratuitement.
+> Leçon `GATE-LOCAL-VERT-CI-ROUGE-PAR-VERSION-DE-NODE` ; alignement de la chaîne d'outils NON fait
+> (décision de Marc) → `[ENV-NODE-NON-DECLARE]`.
+>
+> **Aussi corrigés, tous trouvés en revue** : `validateSymbol` traçait en `console.error` seul ; les
+> deux écritures `localStorage` du refus PWA étaient muettes (la LECTURE, elle, reste muette
+> exprès) ; `k in p` classait un `undefined` explicite comme corrompu (latent).
+>
+> **SUITE** : vague 1f — `[FISC-GUARD-SCOPE]` EN PREMIER (élargir le cliquet révèle le vrai
+> périmètre), puis `[RQAP-CAP-98K]`, `[W5-PROXY-NON-SOURCE]`, `[ESTATE-NPV-07]`, `[MIGRATE-GROSS-135]`.
+> Ensuite vague 2 (devises / unités).
+>
+> ⛔ **Toujours BLOQUÉ sur Marc, ne pas reprendre sans sa réponse** :
+> `[ENG-LIQUIDDEBT-NEVER-REPAID]` (taux de découvert SOURCÉ + priorité de remboursement, 0,8–1,7 M$)
+> et la suppression des branches mortes (proxy git 403) — les deux dans `docs/A_FAIRE_MOI.md`.
+>
+> ## 🟢 Session 2026-08-19 (suite 108) — vague 1e : deux silences vers un LLM
+> Branche `claude/silences-couple-fisc` (basée sur `main`, PAS empilée — cf. `PR-EMPILEE-N-A-AUCUNE-CI`).
+>
+> **Livrés** : `[COUPLE-CTX-FAKE-ZERO]` et `[TOOL-TAXSITUATION-FAKE-ZERO]`.
+>
+> ⚠️ **Le diagnostic groupé était à MOITIÉ FAUX**, et c'est la leçon. Les deux tickets partageaient
+> le motif `(u.grossSalary || 0) * 12` et le correctif annoncé « retirer le `|| 0` ».
+> • Composant : diagnostic JUSTE — le `|| 0` court-circuite `promptCad`, le modèle lit « 0 $ ».
+> • Tool : diagnostic FAUX — un `.filter(g > 0)` trois lignes plus bas EXCLUT le conjoint. Aucun
+>   faux zéro n'existait ; le vrai défaut est l'inverse (disparition silencieuse du payload).
+> Deux correctifs OPPOSÉS : rendre la valeur non finie d'un côté, NOMMER l'absence de l'autre.
+>
+> ⚠️ **Tentation évitée** : inclure le conjoint avec un impôt à 0 pour « uniformiser » aurait rétabli
+> le faux zéro que le ticket croyait déjà là. On exclut ET on le dit (`perUserOmitted`), toujours
+> publié même vide — un champ omis serait indiscernable de « l'outil ne le dit pas ».
+>
+> ⚠️ **Assertion presque vacueuse attrapée par perturbation** : `toContain('perUserOmitted')` passait
+> même sans le champ dans le payload (la constante locale porte le même nom). Resserrée sur la ligne
+> DU PAYLOAD. Perturber CHAQUE assertion d'un scan séparément.
+>
+> **Refactor** : `buildCoupleProfileLines` extrait de `getCoupleOptimizationStrategies` (pur, exporté,
+> prompt bit-identique) — ce qui compte n'est pas la valeur passée mais le TEXTE que le modèle lit.
+>
+> **RESTE vague 1e** : les XS `[SILENT-STOCKFORM-PRICEHINT]`, `[SYSVIEW-DBSIZE-ZERO]`,
+> `[DEAD-PARSETX-SILENT-DROP]`, `[SILENT-PWA-PROMPT]`, `[SILENT-HEALTHWEIGHTS-FIELD]`.
+> ## 🟢 Session 2026-08-19 (suite 107) — vague 1d TERMINÉE : deux conteneurs W5 hors bilan
+> Branche `claude/w5-offbalance` (empilée sur `claude/dettes-dates` / #661).
+>
+> **Livrés** : `[ENG-W5-RENTAL-OFFBALANCE]` et `[ENG-W5-BUSINESS-OFFBALANCE]`. La vague 1d est CLOSE.
+>
+> ⚠️ **La leçon centrale** : TOUS les invariants de conservation étaient VERTS pendant que 302 574 $
+> d'équité, 499 160 $ de prêt et 2 M$ d'entreprise manquaient au bilan. Un invariant de COHÉRENCE ne
+> peut pas voir une OMISSION — rien à réconcilier quand rien n'est écrit. Il faut une assertion de
+> PRÉSENCE (comparer AVEC et SANS le conteneur).
+>
+> **Locatif** : `services/projection/rentalMonth.ts` (module pur). Les TROIS volets ensemble —
+> valeur, hypothèque, service de dette (+2 922,95 $/mois). Chaque moitié serait pire que le statu quo.
+> Hypothèse nommée : `DEFAULT_RENTAL_AMORTIZATION_YEARS = 25` quand le champ est absent.
+>
+> **Entreprise** : `privateBusinessValue` dans `NetWorthParts`. Le `Record` exhaustif a forcé les
+> **4 sites** (moteur, succession, `pastNetWorth`, `dailyPastLedger`) — c'est sa raison d'être.
+> ⚠️ On compte `estimatedValue × ownershipPct` et **PAS** `retainedEarnings` : une valeur marchande
+> les embarque déjà, les additionner double-compterait de 400 k$. Un test verrouille « 2 M$, pas 2,4 ».
+>
+> ⚠️ **Piège rencontré** : mon `+=` sur `immoInterest`/`immoPrincipal`/`immoHypo` était ÉCRASÉ par les
+> réaffectations plates depuis `reState`, 27 lignes plus bas. Bloc déplacé APRÈS. Après un `+=` sur
+> une variable de boucle, grep les affectations plates postérieures.
+>
+> **ROUTÉ VERS MARC** : `[ENG-LIQUIDDEBT-NEVER-REPAID]` → `docs/A_FAIRE_MOI.md`. Il faut un taux de
+> découvert SOURCÉ (marge ~8-10 % ? découvert ~19-21 % ?) et un choix de priorité de remboursement.
+> C'est le plus gros montant encore ouvert : 0,8–1,7 M$ sur 15 ans.
+>
+> ⚠️ **DÉCOUVERT EN CHEMIN, et ça explique toute la friction de la session** : une PR EMPILÉE
+> (base `claude/xxx`) ne déclenche **AUCUN** run CI — le workflow filtre sur
+> `pull_request: branches: [main]`. Vercel et CodeQL partent quand même, d'où l'illusion d'une
+> vérification en cours ; `enable_pr_auto_merge` répond « unstable status » parce que les checks
+> requis sont ABSENTS, pas en échec. Dans une pile, seule la PR du BAS est testée. L'ordre de merge
+> n'est pas une préférence, c'est une CONTRAINTE, et le gate LOCAL est la seule vérification réelle
+> jusqu'au re-ciblage automatique de la base (`PR-EMPILEE-N-A-AUCUNE-CI`).
+>
+> **SUITE** : vague 1e (silences qui cachent de l'argent) — `[COUPLE-CTX-FAKE-ZERO]` +
+> `[TOOL-TAXSITUATION-FAKE-ZERO]` groupés, puis les XS.
+
+> ## 🟢 Session 2026-08-19 (suite 105) — les dettes ont un début et une fin, et sont éditables
+> Branche `claude/dettes-dates`. Demande Marc, hors backlog.
+>
+> **Le blocage réel** : `DebtManager` n'offrait que « Ajouter » et « Supprimer ». Corriger une date
+> imposait de DÉTRUIRE la dette et de la ressaisir (donc de perdre tout champ non affiché —
+> `kind`, `limit`, `rateProvider`…). Classe `UX-UNREACHABLE-FEATURE` : `termEndDate` existait dans
+> le type depuis W5.3 et n'était exposé NULLE PART.
+>
+> **Livré** : bouton « Modifier » + formulaire inline, champs `startDate` (nouveau) et `termEndDate`
+> (existant, doc généralisée : bail / prêt / renouvellement hypo), et `'auto-lease'` ajouté à
+> `DebtKind`. Module pur `services/projection/debtSchedule.ts`.
+>
+> ⚠️ **DÉCISION MARC** (question posée avant de coder) : son auto est un **BAIL**, pas un prêt ; et
+> la date de fin doit **arrêter le paiement ET signaler si le solde n'est pas nul**. Le solde
+> résiduel n'est donc JAMAIS remis à zéro — l'effacer fabriquerait du patrimoine. C'est exactement
+> le cas d'un bail, qui n'amortit rien : son « solde » saisi comme une dette ordinaire ne tombera
+> généralement pas à zéro au terme.
+>
+> ⚠️ **Trois effets moteur, trois perturbations, trois rouges** : gate de phase sur le paiement,
+> exclusion des dettes `a-venir` de `sumActiveDebts` (sinon un prêt futur pèse au bilan dès
+> aujourd'hui), et l'alerte de solde résiduel (émise UNE seule fois — une alerte permanente ne se
+> lit plus).
+>
+> ⚠️ **Comparaison au MOIS, pas au jour** : « 20 juillet » ⇒ juillet est dû. Le moteur est mensuel ;
+> prétendre au jour près serait une précision que le modèle n'a pas. Le mois de la date de FIN est
+> INCLUS (dernier paiement).
+>
+> ⚠️ **Une date illisible est traitée comme ABSENTE**, jamais comme une contrainte : une saisie
+> ratée ne doit pas faire disparaître une dette réelle du budget.
+>
+> ⚠️ **Fausse preuve corrigée** : mes assertions « aucun champ perdu à l'édition » passent AUSSI
+> avec un `setDebts([draft])` naïf, parce que `startEdit` copie la dette entière. Le merge est
+> défensif, pas prouvé — c'est écrit dans le test plutôt que revendiqué.
+>
+> **Rétrocompatibilité** : champs ADDITIFS optionnels, zéro migration (v7 inchangé). Un test compare
+> point par point une dette sans dates AVANT/APRÈS : identique.
+> ## 🟢 Session 2026-08-19 (suite 106) — le dernier producteur muet, et sa surprise
+> Branche `claude/avril-nonreg` (empilée sur `claude/mc-conservation` / #658, mergée depuis).
+>
+> **Livré** : `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`. `processAprilSettlement` réinvestissait le
+> remboursement d'impôt au non-enregistré sans publier `contribNonReg` — **29 796,22 $ au mois 123**,
+> en DÉTERMINISTE. `'NonReg'` entre dans les `ACCOUNTS` de la garde forme-flux.
+>
+> ⚠️ **Le risque annoncé par le ticket était FAUX** : il craignait un déplacement de décision dans
+> `cashflowAllocation`. Grep : ce module ne fait qu'un `+=` et ne LIT jamais `contribNonReg`.
+>
+> ⚠️ **Le VRAI risque était ailleurs — et le correctif N'EST PAS neutre en argent.** `contribNonReg`
+> a un SECOND consommateur : `growthApplication` calcule sur `nonReg − contribNonReg` pour exclure
+> les dépôts de MI-MOIS. Le remboursement du 30 avril gagnait un mois COMPLET de rendement.
+> Publier le flux retire cette croissance fantôme : **−428,67 $ sur 30 ans** (−0,009 %), jusqu'à
+> **−23 343 $** sur le plus gros ancrage. **Trois goldens re-basés**, écart chiffré à côté de chacun.
+>
+> ⚠️ **Méthode qui a payé** : élargir la garde à `NonReg` D'ABORD (sur la version complète, avec les
+> cas de décaissement de #658) pour révéler le vrai périmètre — un seul contrevenant.
+>
+> **4 cas rouges** sans le correctif, dont un dédié à la conséquence FINANCIÈRE : les deux propriétés
+> (« mouvement expliqué » / « pas de rendement sur un dépôt du 30 ») sont indépendantes.
+>
+> **RESTE vague 1d** : `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`, et
+> `[ENG-LIQUIDDEBT-NEVER-REPAID]` (taux de découvert à SOURCER + choix produit → Marc).
+
+> ## 🟢 Session 2026-08-19 (suite 102) — vague 1c (fin) : deux angles morts, deux défauts
+> Branche `claude/mc-conservation` (basée sur `main`, indépendante de `claude/nw-perimetre`/#657).
+>
+> **Livré** : `[ENG-MC-CONSERVATION-BLIND]`, `[ENG-INV-FLUXFORM-COVERAGE]`, et le défaut que le
+> second a révélé : `[ENG-FERR-NETTRANSFER-MUET]`.
+>
+> **Le défaut corrigé** : le retrait MINIMUM FERR (72+) alimentait `retraitReerMois` (AFFICHAGE) mais
+> pas `withdrawalREER` (TRANSFERTS → `NetTransferREER`, lu par le plan d'actions annuel). **MESURÉ
+> 131 566,62 $ en mode DÉTERMINISTE** — donc à l'écran : le plan disait « retirer 0 $ du REER »
+> l'année où la loi force un retrait de 131 k$. Récidive de `[ENG-FERR-FLOW-INVISIBLE]`.
+>
+> ⚠️ **Le piège du correctif** : `withdrawalREER` a DEUX consommateurs. `monthlyOutput` doit voir la
+> FERR ; `stepReerByUser` ne doit SURTOUT PAS la voir (elle a déjà été retirée de la part EXACTE de
+> chaque conjoint au facteur RRIF de SON âge — la re-soustraire au prorata fausserait un couple à
+> écart d'âge). D'où `ferrWithdrawalMois` et `withdrawalREER − ferrWithdrawalMois` au seul site du
+> partage. **Preuve** : goldens complets (~50 champs × 361 mois × écarts d'âge 0/6/12) → UN SEUL
+> champ change, `NetTransferREER`, sur 27 points.
+>
+> ⚠️ **Pourquoi personne ne l'avait vu** : la fixture de la garde forme-flux fait **12 ans** avec une
+> retraite à 62 pour un couple de 45 — elle n'atteignait JAMAIS le décaissement. L'horizon d'une
+> fixture est un choix de COUVERTURE, pas un réglage de perf.
+>
+> ⚠️ **Le pari du ticket était périmé** : il annonçait un échec sur `stressTestEnabled`. Le
+> stress-test est corrigé depuis et reste vert.
+>
+> **`[ENG-MC-CONSERVATION-BLIND]`** : toute la branche stochastique (divorce, décès du conjoint, LTD,
+> maladie grave, LTC, perte d'emploi, héritage, bootstrap) n'avait JAMAIS été parcourue par un
+> invariant — l'API publique appelle toujours `runScenario(..., false, ...)`. **Deux verrous à lever,
+> et il fallait les deux** : `__runScenarioForTests` ET `diagnostics.verboseMonthlyPoints` (sans lui
+> le point MC est réduit à `{NetWorth, monthIndex}`). **MESURÉ : 20 365 points, pire écart 0,02 $,
+> zéro NaN, zéro actif négatif — aucun défaut.** Un « tout vert » sur une garde neuve exige deux
+> preuves, toutes deux faites : couverture COMPTÉE avec planchers, et perturbation (publier
+> `CELI × 0,999` → échec à 6 892 $). La perturbation a aussi délimité l'angle mort : un invariant de
+> bilan juge la COHÉRENCE, jamais le MONTANT.
+>
+> **NOUVEAU ticket ouvert** : `[ENG-DIVORCE-FLUX-MUET]` (S) — le partage de divorce mute
+> CELI/REER/Crypto/NonReg sans publier de `NetTransfer*` (**mesuré 2 130 681 $ sur le REER**).
+> Impact utilisateur NUL aujourd'hui (points MC réduits avant publication). Même piège du double
+> consommateur que ci-dessus → mesurer les goldens.
+>
+> **SUITE** : vague 1d, ce qui reste — `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` (S, mesuré 29 796 $,
+> et la garde est PRÊTE : ajouter `'NonReg'` à `ACCOUNTS` dans `projection.fluxForm.test.ts`),
+> `[ENG-LIQUIDDEBT-NEVER-REPAID]` (M — taux de découvert à SOURCER + choix produit → Marc),
+> `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`.
+> ## 🟢 Session 2026-08-19 (suite 104) — la carte du hub montre le mouvement des placements
+> Branche `claude/hub-placements-seance` (basée sur `main`). Demande Marc, hors backlog.
+>
+> **La question qui décidait de tout, et sa réponse** : OUI, FinanceAI stocke des valeurs DATÉES.
+> `Asset.priceHistory` (`types.ts:55`) = clôtures natives datées, **persistées** (le `partialize`
+> n'exclut que `apiKeys` + 5 champs d'UI), poussées telles quelles vers Drive, et le schéma MCP
+> (`appStateSchema.ts:49`, `z.array(z.unknown()).passthrough()`) les laisse traverser. Granularité
+> QUOTIDIENNE sur 365 jours (`DOWNSAMPLE_AFTER_DAYS`), hebdo au-delà.
+> ⚠️ **Aucun snapshot du patrimoine** : tout le passé est RECONSTRUIT.
+>
+> ⚠️ **Le vrai problème de fraîcheur** : `priceHistory` n'avance QUE quand l'app navigateur s'ouvre
+> (`hydrateAssetHistories` ← `App.tsx`, titres dont `lastHistorySync > 24 h`). Le cron serveur
+> `[HUB-REFRESH-CRON]` ne rafraîchit que `currentPrice`. D'où « séance du <date> », jamais
+> « aujourd'hui », et un refus au-delà de 3 jours civils.
+>
+> **Livré** : `services/history/portfolioSessionMetrics.ts` + 3 métriques sur la carte. Sortent pour
+> faire la place (plafond de 6) : `Investissements`, `Dette totale`, `Espace CELI dispo`.
+>
+> ⚠️ **Ce que je NE livre PAS, et pourquoi** : la variation du jour du PATRIMOINE ENTIER. La
+> reconstruction du passé fige les dettes et fait bouger l'immobilier par palier ANNUEL (Option A,
+> cf. `dayVariation.ts`) — un « jour » par an porterait un saut immobilier qui n'a rien de journalier.
+>
+> ⚠️ **Deux gardes mortes attrapées par mes propres tests** (les deux valent une relecture) :
+> 1. `isSynthetic` passé pour la clé `TOTAL` — `syntheticTailKeys` est indexé PAR SYMBOLE, la garde
+>    ne pouvait JAMAIS se déclencher. Et même relevée au niveau agrégat, elle ratait le cas le plus
+>    courant : `priceAt` REPORTE le dernier close jusqu'à 7 jours sans rien marquer. Règle refondée
+>    sur un fait lisible dans `priceHistory` (`GARDE-SUR-AGREGAT-AVEC-INDEX-PAR-COMPOSANT`).
+> 2. Le cas anti-décimation avec N = 900 passait AUSSI avec la décimation active (`(900−8) % 2 === 0`).
+>    N = 1500 le rend discriminant, et la condition est désormais assertée DANS le test
+>    (`PARITE-QUI-REND-UN-TEST-VACUEUX`).
+>
+> **Preuve** : 3 perturbations, 3 vérifications (refus périmé, refus figé, décimation) — la 3ᵉ était
+> verte au premier jet. 9 cas unitaires + 4 cas de carte.
+>
+> ⚠️ **Sémantique à connaître** : c'est une VARIATION, pas un rendement de prix — un achat du jour y
+> apparaît (cf. l'en-tête de `periodReturn.ts`). Le libellé dit « Variation ».
+
+> ## 🟢 Session 2026-08-19 (suite 101) — vague 1d (suite) : le bilan au JOUR ne se refermait pas
+> Branche `claude/nw-perimetre` (empilée sur `claude/registres-oublies`).
+>
+> **Livré** : `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]`. Au jour, `NetWorth` était interpolé POUR
+> LUI-MÊME alors qu'il est l'identité `Σ actifs − DettesNonImmo` — et ses composants suivent des
+> cadences DIFFÉRENTES (uniforme / hebdo / datée). L'identité ne se refermait qu'aux fins de mois.
+> Mesuré sur 1 461 jours : **89,01 $ → 0,00 $** (socle salarié), **−76,62 $ → 0,00 $** (hypothèque
+> + prêt auto). `NetWorth` est maintenant RECOMPOSÉ après interpolation
+> (`NET_WORTH_DAILY_ASSETS` dans `dailyLedger.ts`). 4 tests, **3 discriminent**.
+>
+> ⚠️ **Arbitrage assumé au DERNIER jour du mois** : la valeur du moteur prime et n'est PAS
+> recomposée (`day < nDays`). Le moteur arrondit chaque composant à 2 décimales → somme des
+> arrondis ≠ arrondi de la somme, mesuré **0,01 $**. Le test de raccord existant exige l'égalité
+> STRICTE avec le point mensuel et il a raison. L'écart est BORNÉ par le test (≤ 0,02 $) — sans
+> borne, l'exception serait une porte ouverte.
+>
+> ⚠️ **Les 25 invariants existants du grand livre étaient tous VERTS** pendant cette dérive : ils
+> vérifient la conservation champ par champ et le raccord aux fins de mois, jamais l'identité
+> TRANSVERSE en intra-mois. Une nouvelle famille d'invariant, pas un test de plus.
+>
+> **Fermé SANS code** : `[NW-PRESENT-DEUX-PERIMETRES]`. Le grep n'a trouvé qu'**UN** site de
+> recomposition (`FutureKpiStrip`) — la prémisse « deux périmètres » était périmée — et ce site
+> reçoit `netWorth` en **prop** : il ne pourrait JAMAIS appeler un helper qui prend les entrées
+> brutes. J'ai écrit puis SUPPRIMÉ `computePresentNetWorthWithRealEstate`. La part immobilière
+> passe déjà par `presentEquityOfGoal`, qui porte sa propre garde de finitude.
+>
+> **RESTE dans la vague 1d** : `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` (S),
+> `[ENG-LIQUIDDEBT-NEVER-REPAID]` (M — taux de découvert à SOURCER + choix produit → Marc),
+> `[ENG-W5-RENTAL-OFFBALANCE]` et `[ENG-W5-BUSINESS-OFFBALANCE]` (M ×2).
+
+> ## 🟢 Session 2026-08-19 (suite 100) — vague 1d (début) : les revenus non ventilés
+> Branche `claude/registres-oublies` (empilée sur `claude/mc-bandes`).
+>
+> **Livré** : `[REVENUS-NON-VENTILES-AFFICHAGE]`. Loyers, allocations familiales et versements REEE
+> apparaissent enfin dans la ventilation du panneau Futur et de l'infobulle. Mesuré : 3 551 $/mois
+> et 550 $/mois de revenus qui comptaient dans le total sans figurer dans le détail.
+>
+> ⚠️ **Deux pièges de fixture, à connaître avant de croire qu'un scénario « ne reproduit rien »** :
+> le champ de loyer est `rentalIncomeMonthly` + `isRented` (PAS `monthlyRent`), et un `ChildGoal`
+> exige `birthDate` + `governmentBenefits` (pas `birthYear`). Avec mes premiers noms approximatifs,
+> les trois scénarios rendaient un résidu de **0** — le test aurait été vert sans rien mesurer.
+> Vérifier les noms contre `types.ts` AVANT de conclure.
+>
+> ⚠️ **Le test moteur ne discrimine pas ce correctif** : il vit dans deux COMPOSANTS et le moteur
+> n'a pas bougé. D'où le scan de SOURCE (patron `chartPrivacyScan`/`privateTitleGuard`), seul bloc
+> qui échoue sur le code d'avant. 2 cas sur 6.
+>
+> **RESTE dans la vague 1d** : `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]` (S, mesuré 29 796 $, la garde
+> est prête — mais le mutateur s'exécute AVANT `cashflowAllocation` qui reçoit `contribNonReg` en
+> ENTRÉE : y toucher peut déplacer une décision d'allocation dans le même mois, mesure requise),
+> `[ENG-LIQUIDDEBT-NEVER-REPAID]` (M — demande un taux de découvert À SOURCER et un choix produit),
+> `[ENG-W5-*-OFFBALANCE]` (M ×2), `[JOUR-BILAN-ROMPU-SOUS-HYPOTHEQUE]` (S),
+> `[NW-PRESENT-DEUX-PERIMETRES]` (XS).
+
+> ## 🟢 Session 2026-08-19 (suite 99) — vague 1c : le cône Monte Carlo se croisait
+> Branche `claude/mc-bandes` (empilée sur `claude/fisc-taxdecember-lot`, elle-même sur
+> `claude/backlog-menage` — PR #653 bloquée par le check E2E, cf. plus bas).
+>
+> **Livré** : `[MC-BANDES-CROISEES]`. Les bandes P10/P50/P90 sont désormais des percentiles PAR
+> MOIS et non plus les trajectoires des runs classés par patrimoine final. Mesuré : 99 mois sur 361
+> croisés avant (27 %), pire écart 737 974 $ ; 0 après.
+> **Laissés OUVERTS** : `[ENG-MC-CONSERVATION-BLIND]` et `[ENG-INV-FLUXFORM-COVERAGE]` — ce sont des
+> extensions de COUVERTURE de test, pas des correctifs, et la seconde promet d'ÉCHOUER (donc de
+> révéler un vrai bug sur `stressTestEnabled`). Lot séparé, à traiter comme une investigation.
+>
+> ⚠️ **`runMC` est le 2ᵉ ARGUMENT de `calculateFutureProjection(params, runMC)`**, pas un flag de
+> `params.projection`. Ma première mesure croyait activer le Monte Carlo par la config : les bandes
+> valaient 0 partout et mon test « 0 croisement » était VERT sans rien prouver. Toujours poser
+> l'anti-vacuité AVANT la comparaison.
+>
+> ⚠️ **Le blocage CI à connaître** : le check requis s'appelle **« E2E (Playwright / Chromium) »** et
+> n'apparaît PAS dans `pull_request_read get_status` (qui ne montre que les statuses legacy — seul
+> Vercel y figure). Une PR peut donc afficher `state: success` ET rester `mergeable_state: blocked`.
+> Le message d'erreur d'un `merge_pull_request` direct est ce qui le révèle. Ne pas conclure « la CI
+> est verte » depuis `get_status` seul.
+
+> ## 🟢 Session 2026-08-19 (suite 98) — vague 1b partielle : CELIAPP + RAMQ
+> Branche `claude/fisc-taxdecember-lot` (empilée sur `claude/backlog-menage`, PR #653 non encore
+> mergée au moment du commit — rebaser sur `main` dès que #653 atterrit).
+>
+> **Livré** : `[CELIAPP-DOUBLE-RECHARGE]`, `[RAMQ-ACTIF-HORS-RETRAITS]`, `[DOC-CELIAPP-REPORT-PERIMEE]`.
+> **Volontairement laissés OUVERTS dans le même lot** : `[FISC-BAND-AGE-CREDITS]` (demande de
+> reconstruire un `ageOpts` valide HORS des branches actif/retraité, et va re-baser des goldens
+> retraités — mérite sa propre mesure), `[ENG-GK-THRESHOLD-KNIFE]` (choix de design : hystérésis),
+> `[FISC-DIV-DERIVED-BASES]` (le ticket dit lui-même « chiffrer avant de coder »),
+> `[ENG-TTP-UNSETTLED-PROPAGATE]` (touche `monteCarlo` + specs MCP, autre surface).
+>
+> ⚠️⚠️ **DEUX de mes tests étaient FAUX avant d'être justes — la partie la plus instructive.**
+> 1. Mes premiers cas visaient `processJanuaryReset` en direct : ils passaient des DEUX côtés. Le
+>    contrat de janvier était déjà bon, le défaut vivait chez son APPELANT (décembre). C'est le
+>    piège `TEST-AU-CONTRAT-NE-VOIT-PAS-L-APPELANT`, déjà indexé — et j'y suis tombé quand même.
+> 2. Mon premier test de CHAÎNE a échoué avec `expected 32000 to be <= 16000` — la forme parfaite
+>    d'un vrai bug money-critical. **C'est le test qui avait tort** : le scénario ne faisait cotiser
+>    personne au CELIAPP, et dans ce cas le report maximal est LÉGAL. Le contrôle qui tranche :
+>    mesurer la même grandeur avec ET sans le correctif sur le même scénario. Écart nul ⇒ le test ne
+>    parle pas du correctif (`UN-TEST-QUI-ECHOUE-N-A-PAS-FORCEMENT-RAISON`).
+>
+> Preuve finale : **5 cas sur 13** discriminent, c'est écrit dans le fichier de test.
+> ⚠️ Un scénario CELIAPP doit avoir un `realEstateGoals` FUTUR : sans lui, `cashflowAllocation`
+> ne verse jamais au CELIAPP (`hasFuturePurchase` requis) et le test ne traverse pas le code visé.
+
+> ## 🟢 Session 2026-08-19 (suite 97) — vague 1a : `[CASH-NAN-SILENT]`
+> Branche `claude/backlog-menage` (vagues 0 + 1a ensemble). Source unique créée :
+> `services/startingCash.ts` — les 3 copies de la formule du cash dérivé pointent dessus.
+>
+> ⚠️⚠️ **LE PIÈGE DE CE LOT, à retenir avant tout durcissement futur.** Mon fichier de test passait
+> 10/10 en isolation ; c'est la **suite complète** qui a cassé, dans `tests/mcp/setCash.test.ts`, à
+> l'autre bout du dépôt. Cause : `applyCashBalance` refusait d'écrire quand `!Number.isFinite(cash)`.
+> En rendant la source unique toujours FINIE, j'avais **désarmé cette garde** — l'écriture passait sur
+> un cash silencieusement amputé.
+> La leçon généralisable : **une donnée n'a pas le même contrat en lecture et en écriture.** Lire →
+> écarter le terme fautif, tracer, montrer le reste. Écrire → REFUSER. Une source unique durcie doit
+> donc exposer DEUX portes : le total ET l'inventaire de ce qu'elle a écarté
+> (`computeCashLedgerDetailed`). Réflexe : après tout durcissement, grep les appelants pour
+> `Number.isFinite`/`isNaN` — chaque occurrence est une garde qui reposait sur la fragilité supprimée.
+>
+> **Bénéfice inattendu** : la garde MCP réécrite sur l'inventaire attrape maintenant le `NaN` qu'elle
+> RATAIT depuis toujours (l'ancien `|| 0` le rabattait sur 0, somme finie, écriture acceptée). Seul
+> `±Infinity` était intercepté. Un test cassé a révélé un trou plus vieux que le changement.
+>
+> **Portée de la preuve** : 1 cas sur 10 discrimine dans `startingCash.test.ts` (les 9 autres testent
+> un module NEUF) ; les 2 cas MCP discriminent tous les deux. C'est écrit dans les fichiers.
+>
+> **Suite** : vague 1b = `taxDecember`/`taxJanuary` en UN lot (`[CELIAPP-DOUBLE-RECHARGE]` en tête).
+
+> ## 🟢 Session 2026-08-19 (suite 96) — vague 0 : le ménage, et un caduc REFUSÉ
+> Branche `claude/backlog-menage`. Marc : « fais selon ce que le PM a dit, fais tout jusqu'à ce que
+> le backlog soit fini ». Le **plan complet vers zéro est désormais EN TÊTE de `BACKLOG.md`** —
+> c'est lui qu'il faut suivre, pas re-planifier.
+>
+> ⚠️ **5e revert de conteneur de la semaine, attrapé à temps.** Le tree était retombé au 2026-08-13
+> APRÈS le merge de #652 — `origin/main` local était périmé lui aussi, donc un simple `git log`
+> mentait. Le réflexe qui a sauvé : `git fetch` puis vérifier qu'un marqueur du travail récent est
+> bien sur le disque (`grep accRetraitsReerYearAdd`). **Faire ça avant de juger l'état, toujours.**
+>
+> **Fait** : 14 doublons fermés (le bypass `formatCAD` existait sous **5** IDs ; les god-files sous
+> un agrégat périmé + un ticket par fichier ; `[SILENT-STOCKFORM-PRICEHINT]` était copié-collé
+> deux fois dans le même fichier). Aucun travail réel retiré — chaque classe garde un canonique
+> enrichi des mesures de ses doublons.
+>
+> ⚠️ **J'ai REFUSÉ deux propositions du PM, après vérification** :
+> 1. Fermer `[DEBT-FROM-CONTRACT]` + `[PASSE-REEL-DETTE-1/2/3]` comme caducs. La Décision 2 de
+>    `docs/adr/` interdit l'amortissement RÉTROACTIF et toute SAISIE demandée à Marc — lire le
+>    PDF du contrat n'est ni l'un ni l'autre. **Question posée à Marc, réponse : « oui on veut
+>    extraire ».** La décision est PRÉCISÉE dans `docs/adr/` pour que la prochaine session ne
+>    refasse pas l'erreur.
+> 2. Fusionner `[FORMATCAD-OR-ZERO]` dans le groupe `formatCAD`. Le `|| 0` ANNULE la garde
+>    no-fake-data au lieu de la contourner : correctif inverse, ticket séparé.
+>
+> **Suite immédiate** : vague 1a = `[CASH-NAN-SILENT]`, SEUL et en tête (point d'entrée de toute la
+> projection). Puis 1b (`taxDecember` en un lot), 1c (Monte Carlo), etc. — l'ordre est dans le plan.
+
+> ## 🟢 Session 2026-08-19 (suite 95) — les 2 CRITIQUES fiscaux corrigés, en UN lot
+> Branche `claude/fisc-reer-retraits`. Marc a demandé la correction des deux CRITIQUES trouvés au
+> checkup, `realEstateMonth.ts` traité en un seul lot (ses 4 défauts se chevauchaient).
+>
+> **Livré** : `[REER-IMMO-HORS-ASSIETTE]`, `[REER-RETRAIT-IMMO-REGISTRE]`, `[RAP-DIVORCE-DEUX-TETES]`,
+> `[EMPILEMENT-REER-ACHAT-IMMO]`, `[REER-ACTIF-NON-RECONCILIE]` → archivés le jour même.
+> Garde : `tests/services/reerRetraitsRegistres.test.ts` (13 cas).
+>
+> ⚠️ **La preuve de discrimination est PARTIELLE et c'est écrit dans le fichier** : 11 des 13 cas
+> échouent sur le code d'avant (mesuré par `git apply -R`). Les 2 autres sont marqués NON
+> DISCRIMINANTS à leur emplacement — l'un est un test de rétrocompat (il doit passer des deux
+> côtés), l'autre était vacueux avant le correctif. Ne pas les lire comme des gardes du fix.
+>
+> ⚠️ **Trois pièges rencontrés, à connaître avant de retoucher `taxDecember`** :
+> 1. `calculateFiscalReport` fait `employmentIncome = grossIncome` par DÉFAUT. Élargir l'assiette
+>    imposable sans passer `employmentIncome` explicitement gonfle RRQ/RQAP/AE du montant retiré.
+> 2. `taxMarcEmployer = taxMarcReal` était un raccourci VALIDE tant que `taxMarcReal` était l'impôt
+>    du salaire seul. Il ne l'est plus une fois l'assiette élargie — la retenue de l'employeur ne
+>    porte jamais sur un retrait REER. Recalculé sur le salaire dans les deux branches.
+> 3. Le solde d'avril doit créditer AUSSI la retenue REER (`taxCurrentYearInitial.reer`), sinon
+>    l'élargissement la facture une seconde fois.
+>
+> ⚠️ **Un écart constant de 766 $ dans mes premiers tests n'était PAS un bug de mon correctif** :
+> c'est la prime RAMQ (`RAMQ_MAX_PREMIUM_2026`), présente même sans aucun retrait. En creusant :
+> l'assiette RAMQ du mode ACTIF ignore les retraits REER alors que celle du mode retraité les
+> inclut → `[RAMQ-ACTIF-HORS-RETRAITS]`, laissé OUVERT au BACKLOG. Je ne l'ai pas embarqué : Marc a
+> demandé deux CRITIQUES précis, et élargir un scope fiscal non demandé est ce que la règle
+> interdit. Le FSS voisin a été vérifié — ce n'est PAS le même cas (limitation documentée).
+
+> ## 🟢 Session 2026-08-19 (suite 94) — checkup de santé demandé par Marc : 9 agents
+> Branche `claude/audit-sante`. Marc a demandé « gros checkup de santé (finance, code, sécu,
+> interface), supprime les branches inutiles, mets à jour le backlog et toute la doc ».
+>
+> ⚠️ **À LIRE EN PREMIER SI TU REPRENDS : le conteneur avait été restauré à l'état du 2026-08-13.**
+> Le tree local était sur une vieille branche, **13 000 lignes en retard sur `main`** — j'ai lancé
+> six agents dessus avant de m'en rendre compte, donc ils auditaient du code qui n'existe plus. Je
+> les ai tués et tout relancé après `git checkout -B <branche> origin/main`. **Vérifie l'état du
+> tree AVANT de juger quoi que ce soit** (`git fetch` + comparer à `origin/main`), c'est la 3ᵉ fois
+> que ce revert de conteneur coûte du travail cette semaine.
+>
+> **Trouvé de plus grave — deux CRITIQUES fiscaux, au BACKLOG, non corrigés dans cette passe** :
+> `[REER-IMMO-HORS-ASSIETTE]` (**94 600 $ d'impôt éludé** mesuré) — le retrait REER qui finance un
+> achat immobilier pose une « retenue » dans `taxCurrentYearReer` que décembre CRÉDITE, sans jamais
+> alimenter `accRetraitsReerYear` que décembre DÉBITE : un crédit sans sa dette. J'ai reconfirmé que
+> `accRetraitsReerYear` n'a qu'UN producteur dans tout le moteur (`cashflowAllocation.ts:206`).
+> `[REER-ACTIF-NON-RECONCILIE]` (jusqu'à 20 177 $) — en phase ACTIVE, décembre ne met que le salaire
+> dans l'assiette. C'est le bug corrigé côté RETRAITÉ en juin 2026 ; le commentaire de cette
+> correction (`taxDecember.ts:452-470`) décrit le symptôme mot pour mot. Le miroir côté actif n'a
+> jamais été fait.
+>
+> ⚠️⚠️ **`moneyConservation` est VERT 20/20 avec les deux bugs en place.** Un impôt jamais prélevé
+> est parfaitement conservatif. Notre invariant le plus fort ne couvre QUE les flux, pas les
+> ASSIETTES — ne jamais lire « conservation verte » comme « le fiscal est bon »
+> (`CONSERVATION-NE-VOIT-PAS-L-IMPOT-ELUDE`, nouvelle entrée CONVENTIONS).
+>
+> ⚠️ **Point chaud à traiter en UN lot : `services/projection/realEstateMonth.ts`** cumule QUATRE
+> défauts money-critical indépendants, trouvés par deux agents qui ne se parlaient pas — assiette
+> fiscale absente, registre d'affichage `retraitReerMois` absent (355 639 $ publiés comme « 0 $
+> retiré » avec 85 107 $ d'impôt affiché en face), plafond RAP de COUPLE accordé à un divorcé
+> (38 081 $ illégitimes), et taux marginal PLAT sur un retrait à six chiffres (22 110 $ sous-estimés).
+> Ce n'est pas quatre inattentions mais une seule : trois passes de correction (meltdown 2026-07-31,
+> divorce) ont balayé les autres producteurs et **sauté celui-ci**. Corriger une classe « le
+> producteur X a oublié le registre Y » = **grep TOUS les producteurs**, pas seulement celui du
+> ticket (`MODULE-ECRIT-HORS-CHECKLIST`).
+>
+> Aussi : `[CASH-NAN-SILENT]` (le cash de DÉPART de la projection coerce sans `logError`, alors que
+> le patron `HARDEN-*-NAN` est 65 lignes plus haut), `[A11Y-DELETE-SPAN-NO-KEYBOARD]`,
+> `[RQAP-CAP-98K]` (plafond 2025 figé, 2 750 $/an de prestation manquante).
+>
+> ⚠️ **Un finding n'est pas un correctif.** Sur les trois findings les plus gros, un venait avec une
+> reco **techniquement fausse** : « remplacer le `span role="button"` par un `<button>` » — sauf que
+> le span est IMBRIQUÉ dans un `<button>`, donc ça produirait du HTML invalide. Deux autres ont été
+> réfutés (`calculateDetailedTax` était présenté comme mort alors qu'il est appelé deux fois dans son
+> propre fichier ; `calculateNetFromGross` était un doublon d'un ticket existant). Reconfronte
+> TOUJOURS au vrai code — même quand l'agent écrit `[MESURÉ]`.
+>
+> **Ce qui est FAIT** : doc recalée sur le code (3 fichiers donnaient 3 chiffres différents pour le
+> même moteur), 6 branches locales supprimées, ~32 items d'audit ajoutés au BACKLOG avec leurs
+> RÉFUTÉS.
+> **Bloqué chez Marc** : les 7 branches DISTANTES — `git push --delete` renvoie 403 depuis le
+> conteneur et le MCP GitHub n'a pas de `delete_ref`. Liste + commande dans `docs/A_FAIRE_MOI.md`.
+
+> ## 🟢 Session 2026-08-17 (suite 93) — le panel a trouvé la feature livrée CASSÉE
+> PR #644 mergée (4 demandes Futur + 2 défauts d'argent divorce×enfants). PR #645 en cours :
+> flèches Veille/Lendemain dans le panneau, masquage des marchands, 57 items archivés.
+>
+> ⚠️ **CE QU'IL FAUT RETENIR EN PRIORITÉ.** J'ai livré la feature de Marc CASSÉE avec 4 300 tests
+> verts. L'index du jour était résolu depuis le point REBASÉ sur le mois (donc sans `dayIso`), avec
+> repli sur `monthIndex` — or seuls les 1ers du mois portent une abscisse entière dans une série
+> quotidienne. « Lendemain » depuis le 15 menait au 2 ; sur un jour futur, rien ne bougeait.
+> Mon test vérifiait le CONTRAT du composant (props → callback) et ne pouvait pas voir qu'on lui
+> passait un mauvais index. **Un composant testé à son contrat ne dit rien de ce qu'on lui passe** —
+> le calcul a été extrait en fonction pure (`utils/daySeriesIndex.ts`) pour être testable.
+>
+> ⚠️ **Deux fuites de vie privée dans le lot censé fermer les fuites** : le REPLI de l'infobulle
+> (`dayLabels` = le vrai `payee` sur un jour futur) que ma fixture rendait inatteignable, et
+> l'export CSV en clair — la décision « refuser en mode discret » n'avait été passée que sur le PDF.
+> ⚠️ Et un trou WCAG créé en bouchant l'autre : masquer le marchand dans les `aria-label` donnait
+> le même nom accessible à toutes les transactions du MÊME JOUR. Deux agents l'ont mesuré
+> indépendamment ; mon test comparait deux dates différentes, donc prouvait l'évidence.
+>
+> **Ouvert pour Marc** : `[PRIV-CATEGORIE-SENSIBLE]` — « Santé » / « Dons » datée ré-identifie
+> presque autant qu'un marchand. Trois options au BACKLOG, ma reco = statu quo documenté.
+
+> ## 🟢 Session 2026-08-17 (suite 92) — quatre demandes de Marc sur le Futur, dont une piégée
+> Branche `claude/futur-infobulle-et-totaux` (empilée sur `claude/children-reee-garde`).
+>
+> Livré : **montants des mouvements** dans l'infobulle (passé — le futur n'itemise pas) avec la
+> troncature de 6 rendue VISIBLE (« +N autres ») · **total des comptes** au panneau détail (hors
+> dettes, sur la liste NON filtrée) · **catégories du mois** pour un mois PASSÉ uniquement ·
+> **infobulle épurée** (288×480 → 320×560, la prose part).
+>
+> ⚠️ **Le piège du dernier ticket, et la façon de le désamorcer.** « Quasiment pas de texte » se
+> satisfait trivialement en SUPPRIMANT — or trois des paragraphes retirés portaient une RÉSERVE sur
+> la fiabilité du point (prix estimé, prix périmé, sync non confirmée). Les effacer aurait
+> transformé un chiffre sous réserve en chiffre net. La sortie : **le marqueur reste visible, seul
+> le libellé long passe au `title`**. La garde tient les deux exigences ENSEMBLE — un plafond de
+> prose (45 car./nœud de texte) ET « aucune réserve perdue » — et elles se contredisent dès que
+> l'une est satisfaite par suppression. Plafond prouvé discriminant : 2 nœuds de 65 et 101 car. sur
+> le code d'avant.
+>
+> ⚠️ **Découverte pendant l'élargissement** : `TOOLTIP_WIDTH` (`utils/chartTooltip.ts`), qui borne
+> la position au viewport, DUPLIQUE la classe Tailwind `w-80` sans que rien ne les confronte au
+> runtime. Élargir la classe seule aurait fait déborder l'infobulle du bord droit — en silence, et
+> uniquement sur les écrans assez étroits pour que la borne serve. Garde ajoutée
+> (`tests/components/tooltipLargeur.test.ts`) : elle lit la CLASSE (la vérité peinte) et la
+> confronte à la constante.
+>
+> ⚠️ **Limite assumée et dite à Marc** : au DOIGT, un `title` ne s'ouvre pas. On ne perd jamais
+> l'ALERTE (la pastille est visible partout), seulement son libellé long. Si ça gêne à l'usage, le
+> correctif est de porter les mêmes réserves dans `FutureDetailModal` — elles n'y sont PAS
+> aujourd'hui (vérifié).
+
+> ## 🟢 Session 2026-08-17 (suite 91) — `[UI-TABS-RICH]` : Profil en sous-onglets, et un ticket PÉRIMÉ démasqué
+> Marc a demandé « le Lot 7 nav ». ⚠️ **Le Lot 7 était DÉJÀ LIVRÉ** — mesuré avant de coder :
+> `Settings.tsx` est un orchestrateur de SIX sous-onglets depuis la PR #549 (2026-07-31), donc AVANT
+> la rédaction du plan, qui ne lui consacrait qu'une ligne sans contenu. Classe
+> `BACKLOG-STALE-TICKET`. Coché caduque, décision consignée dans `docs/adr/`.
+> Le seul volet vivant était celui que `[UI-TABS-RICH]` avait déjà isolé : **Profil**.
+>
+> Livré : `Profile.tsx` passe de 5 groupes empilés à 4 sous-onglets (Identité · Revenus ·
+> Retraite & enfants · Profils enregistrés). Le vrai travail est l'**extraction** des profils
+> enregistrés hors de `UsersCard` (338 → 233 l.) vers `components/profile/SavedProfilesCard.tsx` :
+> la Card mélangeait l'identité des personnes et des snapshots de config.
+> ⚠️ **Le découpage de Marc ne couvrait pas tout** (ni Retraite ni Enfants) → 4e onglet ajouté et
+> SIGNALÉ, plutôt que de les rétrograder sous « Revenus » ou de les perdre.
+> ⚠️ Idiome REPRIS à l'identique de `Retirement`/`BudgetWorkspace` — ne pas inventer un 4e patron.
+> La lacune ARIA commune aux trois (pas de `tabpanel`) est ticketée à part
+> (`[A11Y-SUBTABS-TABPANEL]`), à corriger sur les TROIS d'un coup.
+>
+> **Les deux gardes, prouvées discriminantes** :
+> · EXHAUSTIVITÉ — l'union des 4 onglets couvre EXACTEMENT les 5 groupes d'avant, **ensembles
+>   comparés, pas cardinalités** (un groupe perdu + un dupliqué garderaient un compte au vert).
+>   C'est le seul défaut qu'un refactor de navigation livre sans rien faire rougir ailleurs.
+> · RÉTROCOMPAT — un profil écrit par l'ANCIEN code reste chargeable. La fixture écrit les clés
+>   `localStorage` À LA MAIN : la construire via l'UI n'aurait prouvé que la cohérence du code avec
+>   lui-même (garde auto-satisfaite).
+>
+> **Quatre décisions de Marc consignées** (`docs/adr/`) : PDF en mode discret → REFUSER de
+> générer · dette passée → reste FIGÉE (⚠️ signalée 2× comme un bug puis statu quo assumé — PAS une
+> régression à corriger) · variabilité du jour → section repliable FERMÉE · L7 caduque.
+
+> ## 🔴 Session 2026-08-14 (suite 90) — `[PASSE-REEL-TXN-JOUR-VIDE]` : Marc a dit « marche toujours pas »
+> **Livré la veille, CI verte, et pourtant inutilisable pour lui.** Il était bien en « courbe au
+> jour » et cliquait bien dans le PASSÉ. Le code était juste de bout en bout — j'ai vérifié chaque
+> maillon (prop `transactions` passée depuis `TabRouter`, `dayIso` capté AVANT le rebasage de
+> `detailPointFor`, comparaison de dates identique à celle de la reconstruction qui, elle, marche).
+> **Le défaut** : une journée identifiée SANS mouvement ne rendait RIEN. À l'écran, « aucune
+> transaction ce jour-là » et « c'est cassé » sont le MÊME pixel — il a conclu la seconde, deux fois.
+> ⚠️ **Ma faute de raisonnement, à retenir** : j'avais invoqué no-fake-data pour justifier le
+> silence. Cette règle interdit d'INVENTER une donnée absente ; elle n'interdit PAS d'ÉNONCER un zéro
+> MESURÉ. Silence correct là où la question n'a pas de sens (point mensuel/futur) ; là où elle en a
+> une, le silence PRODUIT une information fausse par omission. Classe `SILENCE-READS-AS-BROKEN`.
+> ⚠️ **Réflexe de diagnostic** : « ça marche pas » + code vérifié correct → chercher L'ÉTAT OÙ L'UI
+> NE DIT RIEN. C'est le seul état qui ressemble à une panne sans en être une. Atteint ≠ visible.
+> Garde discriminante (2 tests échouent sur le code d'avant) + assertion ANTI-SUR-CORRECTIF :
+> l'état vide ne doit pas s'afficher quand il y a des mouvements — sinon on l'affiche toujours et
+> le test reste vert.
+>
+> 🔴 **Le panel a trouvé DEUX défauts DANS mon correctif** — remplacer un silence par une PHRASE
+> change la nature du risque : une phrase a l'autorité d'un fait constaté.
+> · **jour FUTUR** : ⚠️ **`dayIso` est posé sur TOUT point quotidien, pas seulement le passé** (la
+>   branche projetée de `mergeDailyRealPoint` fait `{ ...d }`). Gater sur `dayIso` seul aurait
+>   annoncé « aucun mouvement ce jour-là » sur du PROJETÉ. **Le marqueur de MESURE est `dayIsReal`**
+>   — unique occurrence dans `dailyCurve.ts`, et le mois ANCRE y passe via `realOnlyMonthPoints`,
+>   donc couverture complète. Documenté dans `PROJECTION_OUTPUT_SCHEMA.md`, où ces champs
+>   n'étaient pas décrits du tout.
+> · **prop `transactions` absente** : optionnelle par son TYPE → sans donnée reçue, on n'affirme
+>   rien. Une liste `[]` EXPLICITE reste une mesure et garde le message.
+> Les deux gardes prouvées discriminantes en réintroduisant chaque défaut SÉPARÉMENT.
+>
+> ⚠️ **Incident de session** : le conteneur a redémarré PENDANT `npm run test`, effaçant ce lot
+> non commité (il a fallu le refaire en entier). Le premier commit, lui, était poussé et intact.
+> C'est le piège déjà écrit en bas de `CLAUDE.md` — commiter et POUSSER avant toute attente
+> longue. Vécu une 3e fois.
+>
+> **Deux autres symptômes signalés par Marc dans le même message, TICKETÉS, non codés** :
+> · `[PASSE-REEL-IMPOT-LATENT-DEBUT]` — « impôt latent commence le 1/09 ». **Cause confirmée par
+>   mesure** : `ImpotLatent` n'est émis NULLE PART dans le passé reconstruit (0 occurrence dans
+>   `dailyPastLedger.ts` / `buildPastPrefix.ts`) → la série ne peut démarrer qu'au 1er mois projeté.
+>   Comportement correct, mais NON DIT — même classe que ci-dessus.
+> · `[PASSE-REEL-RACCORD-CHUTE]` — « chute de [montant retiré] aujourd'hui ». Hypothèse : `undatedTotal` /
+>   `flowsAfterNowDate` (l'ancre compte des flux que la série quotidienne ne peut pas placer).
+>   ⚠️ **MESURER d'abord** : faire lire à Marc les deux montants du bandeau. Non reproduit ici — ses
+>   données sont locales. Si les montants sont nuls, l'hypothèse est RÉFUTÉE.
+>
+> ## 🟢 Session 2026-08-14 (suite 89) — `[PASSE-REEL-TXN-DU-JOUR]` : demande 2 de Marc, LIVRÉE
+> Toutes les transactions du jour dans `FutureDetailModal` (le panneau EXISTANT — son cadrage).
+>
+> ⚠️ **Décision de fond** : doublons et virements internes sont AFFICHÉS mais BARRÉS, avec leur
+> raison. Les masquer → liste qui ne colle pas au relevé bancaire. Les compter → total qui ne colle
+> pas à la courbe. Les deux promesses sont tenues par `counted` / `excluded` séparés.
+> ⚠️ **Filtrage À LA DEMANDE** (`services/history/dayTransactions.ts`), jamais une Map pré-indexée :
+> le registre couvre ~4 000 jours ; pré-indexer garderait TOUTES les transactions en mémoire en
+> permanence pour n'en montrer qu'une journée. Un balayage O(n) au clic sur une liste déjà chargée.
+> ⚠️ La base d'exclusion est la MÊME que `dailyPastLedger` (`isDuplicate` / `isTransfer`) — sinon la
+> liste et la courbe racontent deux histoires. Une garde de SOURCE le verrouille dans les deux sens.
+> ⚠️ Mode discret conforme DÈS LA NAISSANCE de la surface (montants masqués, marchands gardés) —
+> plutôt que d'être rattrapé par un ticket du lot A11Y plus tard.
+>
+> 🔴 **LA REVUE A TROUVÉ QUE MA FEATURE ÉTAIT INATTEIGNABLE** — 8 tests au vert, CHANGELOG et BACKLOG
+> l'annonçant livrée, et zéro chemin de clic réel. `detailPointFor` REBASE tout point quotidien sur
+> son mois hôte avant de le passer à la modale ; `dayIso` est posé au MÊME endroit que
+> `hostMonthIndex`, donc effacé. Mes tests rendaient la modale DIRECTEMENT avec une fixture portant
+> `dayIso` écrit à la main — ils auraient été identiques avec ou sans le bug.
+> Corrigé : le jour voyage en PROP SÉPARÉE (pas de point hybride, qui serait un faux). Trois gardes
+> ajoutées, prouvées en RÉINTRODUISANT le bug dans les deux sens.
+> Deux autres findings corrigés : `opacity-60` sur du texte déjà atténué (sous AA, invisible à
+> `check-contrast` qui est un scan statique), et `netCounted` documenté comme « le mouvement de la
+> courbe » alors que c'est le FLUX DE TRÉSORERIE (le rendement de marché bouge la courbe sans
+> transaction).
+>
+> 🔴 **`confidence` est en 0-100, PAS en 0-1** — je multipliais par 100 (« 9500 % » à l'écran) et mon
+> seuil d'alerte `< 70` devenait INATTEIGNABLE. Mesuré chez TOUS les producteurs, et confirmé par le
+> consommateur existant `Transactions.tsx` qui affiche `${t.confidence}%` SANS multiplier. Mes
+> fixtures valaient 0.93 / 0.42 : elles REPRODUISAIENT ma propre hypothèse fausse — deuxième fois sur
+> cette PR qu'un de mes tests fabrique la condition qu'il devrait prouver.
+> ⚠️ **Divergence assumée** : `resolveTransactionOwner` (`utils/budget.ts`) DÉDUIT un conjoint depuis
+> la catégorie budgétaire quand `ownerId` manque. Le panneau n'affiche le conjoint que s'il est
+> EXPLICITE — une déduction posée comme un fait sur une ligne de relevé serait non sourcée.
+>
+> **Les DEUX demandes de Marc du 2026-08-14 sont donc livrées** (courbe coupée + transactions).
+> 🔴 **Il en a formulé une TROISIÈME pendant la PR** : « je veux voir la variabilité d'argent pour la
+> journée (tout compris mais détaillé) » → ticket **`[PASSE-REEL-VARIATION-DU-JOUR]`**, au BACKLOG,
+> PAS codé. C'est exactement le manque que le CHANGELOG de cette PR annonce : le total du jour est le
+> net encaissé, pas la variation du patrimoine. ⚠️ **Le moteur émet DÉJÀ la ventilation** —
+> `DailyPastRow` porte `NetTransferLiquid`, `deposits` ET `growth` par régime, `Immobilier`,
+> `DettesNonImmo`, `NetWorth` : aucun calcul financier neuf à écrire, seulement à consommer. Lire le
+> ticket AVANT de coder — il pose les deux pièges (dépôt compté deux fois, palier annuel de
+> l'immobilier) et le critère de fini (résiduel AFFICHÉ, jamais absorbé par un poste fourre-tout).
+> Restent ses décisions en attente : PDF en mode discret, dette passée AMORTIE ou FIGÉE, GO Lot 7,
+> + le cadrage du nouveau ticket (panneau existant ou section repliable).
+>
+> ⚠️ **`commit-gate` n'est PAS un hook GIT** — c'est un hook **Claude Code** (`PreToolUse` sur Bash,
+> `.claude/settings.json` → `scripts/hooks/commit-gate.mjs`). `.git/hooks/` ne contient donc QUE des
+> `.sample`, et c'est NORMAL : conclure « le gate n'est pas installé » depuis ce constat est faux
+> (je l'ai conclu, et annoncé à Marc, avant de lire le hook). Corollaire à connaître : le gate
+> s'auto-saute quand AUCUN `.ts/.tsx` n'est stagé (commit de docs pur) — voulu et documenté, pas une
+> défaillance.
+
+> ## 🔴 Session 2026-08-14 (suite 88) — `[PASSE-REEL-CAP-400J]` : BUG UTILISATEUR signalé par Marc
+> « je vois plus mon historique sur plusieurs mois, je peux pas sélectionner dans la courbe ».
+> **Cause confirmée AU JOUR PRÈS** : `reconstructPortfolioHistoryDaily` plafonnait à 400 jours et
+> rendait les 400 PREMIERS. L'historique de Marc remonte à plus de 400 jours : son 401ᵉ jour est le premier jour
+> manquant, exactement SA date. Sans valeur de placements, `buildDailyPastLedger` SAUTE la journée
+> (`if (!c || !i) continue`) : ni tracée, ni cliquable.
+>
+> ⚠️ **Le code se croyait protégé** : son commentaire disait « l'appelant le voit à la longueur,
+> plutôt qu'une troncature silencieuse au milieu ». Cette garantie n'avait JAMAIS été implémentée —
+> aucun appelant ne comparait quoi que ce soit. D'où `truncatedFrom`, rendu dans le bandeau.
+>
+> ⚠️ **Relever le plafond seul aurait été un MAUVAIS correctif** : MESURÉ à 1 993 ms pour 1 687 jours.
+> `priceAt` et `priceAgeDays` re-balayaient TOUT l'historique de prix par actif ET par jour (deux
+> scans complets par couple, ≈63 M d'opérations). Passé en curseur (la boucle est strictement
+> croissante) : **37 ms, 54×**, `InvestedValue` bit-identique. Plafond monté à 4 000 j APRÈS.
+> Les helpers `priceAt`/`holdingsAt` restent INCHANGÉS (partagés avec la reconstruction mensuelle et
+> `buildMarketData`) — le test d'équivalence compare le curseur À EUX, jour par jour.
+>
+> 🔴 **DEMANDE 2 DE MARC, PAS ENCORE FAITE** — cadrage CONFIRMÉ par lui : voir **toutes** les
+> transactions du jour au clic, **dans le panneau existant** (pas une modale). Aujourd'hui
+> `dailyPastLedger` collecte `labels` (payees) mais **plafonnés à 6** (l. 205) et rendus en infobulle
+> seulement. Ticket `[PASSE-REEL-TXN-DU-JOUR]`.
+> ## 🟢 Session 2026-08-14 (suite 87) — `[A11Y-PRIVACY-INVESTMENTS-DETAIL]` : 5/9, + une DÉCOUVERTE
+> Cas différent des 4 précédents : `isPrivacyMode` était DÉJÀ câblé, c'était une omission PAR SITE
+> (patron de #608). Les 9 sites de l'audit corrigés. % et signe du gain laissés visibles, sous test.
+> Garde de SOURCE sur tout le fichier (atteindre les 9 sites par le rendu demanderait 9 états
+> distincts — un rendu qui n'atteint pas un site ne prouve rien SUR ce site).
+>
+> 🔴 **DÉCOUVERTE, à lire avant de reprendre le lot** — j'ai appliqué la règle « resserrer le scan
+> AVANT de coder » au niveau du DÉPÔT : un scan `formatCAD` non protégé remonte **38 sites dans 19
+> fichiers**. C'est un MAJORANT — sur 4 sites inspectés, 3 étaient des faux positifs de 3 classes
+> distinctes (valeur PUBLIQUE à garder visible ; primitive `PrivateSliderValue` non reconnue ;
+> chaîne construite, pas du JSX). Ticket `[A11Y-PRIVACY-SCAN-GLOBAL]` créé.
+> ⚠️ **Conséquence sur la suite du lot** : cette garde MESURE au lieu d'énumérer et ne peut pas
+> oublier un écran. Les sites de l'audit sont corroborés par le scan, mais rien ne prouve que
+> l'audit soit EXHAUSTIF. Re-cadrer `-DIVERS`, `-PROJECTION-EXPLAINS`, `-PROPERTY-CONFIG` et
+> `-ONBOARDING` depuis le scan plutôt que depuis la liste faite à la main.
+> ⚠️ Un cas mérite attention immédiate dans le tri : `Budget.tsx:460` construit une CHAÎNE
+> (`${formatCAD(...)} dépassé`) — il faut la tracer jusqu'à son consommateur. Si elle finit dans un
+> prompt IA, c'est du money-critical, pas de l'affichage.
+
+> ## 🟢 Session 2026-08-14 (suite 86) — `[A11Y-PRIVACY-PATRIMOINE-ETENDU]` : 4/9 du lot
+> 4 panneaux, 17 champs, **13 montants masqués**. **Critère : l'`aria-label` porte `(dollars)`** —
+> c'était DÉJÀ la convention du fichier (les autres portent `(pourcentage)` / `(années)`), donc rien
+> d'inventé. Garde de source SYMÉTRIQUE + garde de couverture, les deux prouvées par perturbation.
+> NOI du résumé d'immeuble masqué ET passé à `formatCAD` (il violait la règle de formatage).
+>
+> ⚠️ **J'avais écrit un cadrage FAUX dans le BACKLOG** : « zéro `<label>` dans tout le fichier → le
+> nommage devra passer par `aria-label` ». Le constat était vrai mais TROMPEUR : j'avais grepé
+> `<label>` sans regarder les `aria-label`, qui existaient déjà sur 15 des 17 champs. Il n'y avait
+> quasi rien à nommer (2 champs d'assurance). **Chercher l'ABSENCE d'un mécanisme ne prouve pas
+> l'absence DU RÉSULTAT qu'il produit** — le nom accessible avait une autre source. Rectifié dans le
+> BACKLOG plutôt que laissé tel quel : un cadrage faux fait perdre du temps à la session suivante.
+>
+> **Reste du lot** : `-INVESTMENTS-DETAIL`, `-PROJECTION-EXPLAINS`, `-DIVERS`, `-PROPERTY-CONFIG`,
+> `-ONBOARDING`, `-TITLE-CLOBBER`, plus `[A11Y-LABELS-PARAMS-AVANCES]`.
+
+> ## 🟢 Session 2026-08-14 (suite 85) — `[A11Y-PRIVACY-SOLDES-COMPTES]` : 3/9 du lot
+> `AccountsSection.tsx` rendait le solde RÉEL de chaque compte en `<input>` nu. Masqué.
+>
+> ⚠️ **`id` INDEXÉ, jamais dérivé du nom de compte.** Le nom est saisi par l'utilisateur : deux noms
+> distincts peuvent se nettoyer en un MÊME identifiant, et deux champs partageant un `id` cassent
+> l'association `<label htmlFor>` en SILENCE. Test dédié avec deux noms qui se confondent.
+> ⚠️ **Décision testée** : nom et nombre de comptes restent en clair. Ce ne sont pas des montants, et
+> le nom EST le libellé du champ — le masquer rendrait les boutons indistinguables, soit le défaut
+> que ce lot corrige. Troisième fois que le lot tranche ainsi (bonus %, %/durées/âges, ici les noms) :
+> **le contrat du mode discret porte sur les MONTANTS, pas sur « tout ce qui identifie »**.
+>
+> **Suivant : `[A11Y-PRIVACY-PATRIMOINE-ETENDU]`, cadrage déjà MESURÉ** — 17 champs numériques,
+> **ZÉRO `<label>` dans tout le fichier** (les écrans précédents avaient un libellé non associé ;
+> ici il n'y en a pas du tout) → le nommage passera par `aria-label`, pas par `htmlFor`. Et un
+> `toLocaleString` nu l. 119 à corriger en `formatCAD` au passage.
+> Reste ensuite : `-INVESTMENTS-DETAIL`, `-PROJECTION-EXPLAINS`, `-DIVERS`, `-PROPERTY-CONFIG`,
+> `-ONBOARDING`, `-TITLE-CLOBBER`, plus `[A11Y-LABELS-PARAMS-AVANCES]`.
+
+> ## 🟢 Session 2026-08-14 (suite 84) — `[A11Y-PRIVACY-PARAMS-AVANCES]` : 14 champs sur 40
+> Deuxième ticket du lot. `AdvancedProjectionParams.tsx`, 40 champs numériques, ZÉRO `isPrivacyMode`.
+> **Critère mécanique retenu : le libellé porte un `$`.** 14 champs masqués (soldes manuels, droits
+> restants, héritage, pension alimentaire, capital CI, dépenses CI, snowbird, boomerang, caregiving).
+> Les %, durées, âges, probabilités et itérations MC restent LISIBLES — masquer tout aurait coûté la
+> lisibilité sans rien protéger de plus, et un test le verrouille dans ce sens aussi.
+>
+> ⚠️ **Le critère est appliqué À LA MAIN**, pas en regex à l'exécution (leçon
+> `TEXT-HEURISTIC-OVER-USER-TEXT`). En revanche il est verrouillé par une **garde de SOURCE
+> SYMÉTRIQUE** — un libellé en `$` sur un `<input>` nu échoue, ET un libellé sans `$` sur un
+> `PrivateNumberInput` échoue aussi. Les deux sens prouvés discriminants. C'est le patron à
+> réutiliser pour les tickets suivants du lot : un test de RENDU ne voit que les champs montés
+> (la moitié du panneau est derrière des `xxxEnabled`), un scan de SOURCE voit tout le fichier.
+>
+> ⚠️ **AUCUN `<label>` de ce fichier n'était associé à son champ** (ni `htmlFor`/`id`, ni
+> enveloppement) : les 14 boutons masqués auraient été anonymes. Association câblée pour ces 14.
+> Les **26 autres** restent sans nom accessible → ticket `[A11Y-LABELS-PARAMS-AVANCES]`, et le même
+> trou est à greper dans les autres panneaux de Réglages avant de le chiffrer.
+> **Suite du lot** : `-SOLDES-COMPTES`, `-PATRIMOINE-ETENDU`, `-INVESTMENTS-DETAIL`,
+> `-PROJECTION-EXPLAINS`, `-DIVERS`, `-PROPERTY-CONFIG`, `-ONBOARDING`, `-TITLE-CLOBBER`.
+
+> ## 🟢 Session 2026-08-14 (suite 83) — `[A11Y-PRIVACY-SALAIRE]` : le mode discret entre dans les FORMULAIRES
+> Premier ticket du lot `[A11Y-PRIVACY-LOT2]`. #608 avait traité l'AFFICHAGE, jamais la SAISIE :
+> `UserConfigFields.tsx` n'avait aucune référence au mode discret. Passés en `PrivateNumberInput` :
+> salaire brut + net des DEUX conjoints, facteur d'équivalence, RSU, revenus secondaires.
+> Le bonus en **%** reste en clair À DESSEIN (test d'intention dédié) — c'est un %, pas un montant.
+>
+> ⚠️ **Défaut de la PRIMITIVE trouvé et corrigé au passage, il débloque tout le reste du lot** :
+> le bouton « ••• » portait un `aria-label` EN DUR, prioritaire sur le `<label htmlFor>` ET sur
+> l'`aria-label` du champ. MESURÉ : « Salaire Brut annuel ($) » et « RSU vesting annuel » devenaient
+> tous deux « Montant masqué — cliquer pour modifier ». Tous les champs masqués d'un formulaire
+> annonçaient le même nom. Corrigé DANS la primitive (nom laissé au nommeur existant, état masqué
+> porté par `title` + `sr-only`) → **les tickets suivants du lot n'ont rien à refaire là-dessus**.
+> `AssetLocationCard` et `RetirementIncomeCard` en bénéficient déjà (ils câblent un nommeur).
+> ⚠️ `BudgetGroupTable` NON : la revue a montré que son champ montant n'avait AUCUN nommeur — son
+> nom venait du `title`, identique sur chaque ligne. Corrigé dans la même PR (`aria-label` portant
+> le POSTE, jamais le montant). Leçon : « la primitive est corrigée » ne veut PAS dire « tous ses
+> appelants sont nommés » — un appelant sans nommeur reste anonyme, avant comme après.
+> ⚠️ `getByLabelText` de Testing Library trouvait le bouton par son `<label>` alors que son nom réel
+> était le libellé masqué : la requête TL N'EST PAS l'algorithme de nommage. Mesurer avec
+> `toHaveAccessibleName`. Leçon `A11Y-MASK-STEALS-NAME` dans `docs/CONVENTIONS.md`.
+> ⚠️ La valeur d'un champ ÉDITABLE vit dans `.value`, pas dans `textContent` — les tests de fuite de
+> #608 (texte aplati) étaient structurellement aveugles aux formulaires. Les nouveaux inspectent
+> texte + `.value` + attributs.
+> **Suite du lot** : `[A11Y-PRIVACY-PARAMS-AVANCES]` (le plus gros bloc), puis `-SOLDES-COMPTES`,
+> `-PATRIMOINE-ETENDU`, `-INVESTMENTS-DETAIL`, `-PROJECTION-EXPLAINS`.
+> ❓ **En attente de Marc** : `[A11Y-PRIVACY-PDF-CONTRAT]` — l'export PDF doit-il tenir compte du
+> mode discret ? Reco : refuser de générer plutôt que produire un PDF de « ••• ».
+
+> ## 🔴 Session 2026-08-13 (suite 82) — `[PASSE-REEL-DETTE]` : constat VÉRIFIÉ, 3 volets ticketés
+> Demande Marc (signalée 2×) : « ma dette n'est pas exactement ce que j'ai — l'app me la met depuis
+> des années, c'est faux ; le PDF du contrat devrait suffire ». **Le symptôme est réel**, avec
+> DEUX causes indépendantes trouvées dans le code (rien codé, ordre imposé par les données) :
+> 1. `FutureProjection.tsx:395` → `buildPastPrefix` applique `chartData[0].DettesNonImmo` (la dette
+>    d'AUJOURD'HUI) à TOUS les points passés. Le code le documente : « dette supposée constante dans
+>    le passé, faute d'historique d'amortissement ».
+> 2. `Debt` (`types.ts:570`) n'a NI date de début NI solde d'origine → le correctif ci-dessus est
+>    INAPPLICABLE tel quel.
+> 3. `DebtPayload` (`mcp/ingest/applyDocument.ts:80`) ne capte pas la date du contrat → c'est ce qui
+>    rend « automatique » impossible en l'état : le PDF a l'info, le schéma la jette.
+> **Ordre imposé : `-2` (donnée) → `-1` (passé) → `-3` (ingestion).** Commencer par l'affichage
+> produirait un stub sans date à lire.
+> ⚠️ Ne remet PAS en cause l'« Option A » (raccord exact au présent) : la dette existe aujourd'hui.
+> ## 🟢 Session 2026-08-13 (suite 81) — `[ENG-DIVORCE-DISPLAY-RATES]` : le lot divorce est CLOS
+> Le taux affiché (marginal/effectif) additionnait les DEUX salaires puis divisait par 2 après un
+> divorce. Corrigé (`taxFilers` + salaire de l'ex retiré). Sortie d'affichage seule.
+> ⚠️ Fixture à salaires TRÈS inégaux (14 000 vs 2 000 $/mois) : à salaires égaux `(a+a)/2 === a`,
+> le défaut est INVISIBLE — toute fixture symétrique était aveugle par construction.
+> **Lot divorce : 10 tickets traités.** Reste `[ENG-DIVORCE-CHILDREN-REEE]` — NON MESURÉ, à CADRER
+> avant de coder (allocations familiales, coûts d'enfants, REEE : le REEE est divisé, les coûts
+> restent entiers ; signalé comme angle mort par le panel, pas comme défaut établi).
+
+> ## 🟢 Session 2026-08-13 (suite 80) — `[ENG-DIVORCE-TAXDEBT-UNSPLIT]` : l'impôt du couple aussi
+> `taxPreviousYear` (impôt de l'année du COUPLE, réglé en avril) ne suivait pas le split. Mesuré :
+> après avoir cédé **100 %** de son patrimoine, le divorcé réglait quand même **1 488 $** d'impôt du
+> ménage ; dans l'autre sens il encaissait le remboursement INTÉGRAL (26 948,77 $ sur 135 $ de
+> patrimoine → `totalTaxesPaid` négatif). `keep` appliqué aux DEUX buckets (`taxCurrentYear` par
+> symétrie : ~0 en janvier, mais n'en corriger qu'un = « règle dupliquée corrigée à moitié »).
+> Conforme à la décision verrouillée « on partage la valeur NETTE ».
+> ⚠️ Premier test rendu POSSIBLE par `[ENG-MC-OBSERVABILITY]` (`FluxImpots` n'existe que dans le
+> point complet). Garde anti-sur-correctif : à 50 %, la moitié reste DUE — partager ≠ annuler.
+> **Reliquat divorce** : `DISPLAY-RATES` (affichage seul), `CHILDREN-REEE` (non mesuré, à cadrer).
+
+> ## 🟡 Session 2026-08-13 (suite 78) — `[ENG-DIVORCE-LATENTTAX]` : juste, mais INERTE
+> `computeLatentTax` recevait `activeUsersCount` inchangé (NOMBRE DE DÉCLARANTS : divise le revenu,
+> remultiplie l'impôt) + le salaire de l'ex dans l'assiette. Corrigé (`taxFilers`, `grossAnna: 0`).
+> ⚠️ **Effet NUL sur toute sortie observable, vérifié par perturbation.** `impotLatent` n'alimente
+> que `ImpotLatent` du point mensuel ; sous MC (seul mode où le divorce existe) le point est ALLÉGÉ.
+> Tests sur la FONCTION PURE — un test de scénario aurait été vacueux.
+> **Cause commune identifiée** → `[ENG-MC-OBSERVABILITY]` : le point MC allégé explique À LUI SEUL
+> trois angles morts (`RetraitREER` et `ImpotLatent` inobservables pendant un divorce, aucune garde
+> de conservation sur le splitter). À traiter par un mode « MC verbeux » réservé aux tests.
+> ## 🟢 Session 2026-08-13 (suite 79) — `[ENG-MC-OBSERVABILITY]` : le mur enfin levé
+> Sous MC, le point mensuel était réduit à `{ NetWorth, monthIndex }` (perf) — or divorce, décès du
+> conjoint, LTC et perte d'emploi n'existent QUE sous MC. Trois lots avaient dû contourner.
+> Livré : `ScenarioDiagnostics.verboseMonthlyPoints` (8e param de `runScenario`), SÉPARÉ
+> d'`EngineOverrides` — celui-ci est exploré par `strategySpace`, un drapeau de diagnostic y serait
+> balayé comme un levier financier. Défaut absent ⇒ prod inchangée (épinglé par test).
+> **Premier bénéficiaire** : `[ENG-DIVORCE-NO-CONSERVATION-GUARD]` — un divorce AVEC dettes tourne
+> enfin sous invariants (6 tests).
+> ⚠️ **Leçon forte** : « Σ actifs − dettes == NetWorth » est CIRCULAIRE (NetWorth est recalculé
+> depuis ces soldes) — retirer le partage des dettes la laisse VERTE. L'invariant qui MORD est le
+> RATIO de partage sur la DETTE (grandeur indépendante) : 0,4926 attendu, 0,9949 en régression.
+> Après avoir écrit une garde, INTRODUIRE la régression qu'elle prétend couvrir.
+
+
+> ## 🟢 Session 2026-08-13 (suite 76) — `[ENG-DIVORCE-ROOM-COUPLE]` : les droits d'un seul titulaire
+> `processJanuaryReset` recevait `config.users` ENTIER et `activeUsersCount` inchangé : chaque
+> janvier rouvrait les droits de DEUX têtes à un ménage qui n'en a plus qu'une, pendant que
+> décembre disait déjà « 1 déclarant ». **Mesuré : 716 717 $ de patrimoine indu** (12 745 146 $ →
+> 12 028 429 $).
+> - `activeUsersCount: taxFilers` — les 4 usages du fichier relus UN PAR UN (homonyme : compteur de
+>   déclarants l. 165, mais DIVISEUR de revenu par tête l. 204/220/225 ; `taxFilers` est correct
+>   pour les quatre).
+> - Liste **`roomUsers` DÉDIÉE** (défaut = `users`). ⚠️ NE PAS raccourcir `users` : la boucle FERR
+>   itère sur `reerByUser.length` et lit `users[i]` → `-Infinity` → part REER de l'index 1 jamais
+>   convertie, en silence. Deux questions, deux listes.
+> - Fixture : DEUX essais donnaient un écart NUL — les droits n'étaient pas le facteur limitant.
+>   Il faut une épargne supérieure aux droits annuels ET un horizon avant décaissement.
+> Rétrocompat MESURÉE : déterministe (22 894 519 $) et décès (44 499 602 $) bit-identiques.
+
+> ## 🟢 Session 2026-08-13 (suite 77) — `[ENG-DIVORCE-ESTATE-PENSION]` : la fonction MIROIR
+> `computeEstateNetWorth` gardait `activeUsersCount` entier et la pension MÉNAGE complète → le
+> divorcé héritait de la valeur des rentes de son ex à l'écran Succession. **322 865 $ indus**
+> (1 068 947 $ → 746 082 $).
+> - Branche « estimés précis » : valeurs PER-PERSONNE → compteur de TÊTES à 1.
+> - Branche « repli agrégé » : `governmentPension` est DÉJÀ familial → `householdPensionShare`.
+>   ⚠️ Deux réductions distinctes, jamais cumulées sur le même terme (sinon on réduit deux fois).
+> ⚠️ `activeUsersCount` MULTIPLIE ici et DIVISE dans `retirementIncome` — même nom, sémantiques
+> INVERSES, fichiers voisins.
+> ⚠️ Le défaut ne vivait QUE dans `estateNetWorth` : patrimoine mensuel, conservation et patrimoine
+> final étaient tous justes. C'est ce qui l'a fait survivre au premier lot.
+
+
+> ## 🟢 Session 2026-08-13 (suite 75) — `[ENG-DIVORCE-SPLITPCT-UNBOUNDED]` : la borne manquante
+> `divorceSplitPct` n'était borné NULLE PART (ni moteur, ni input). Mesuré : `−100` → le divorce
+> ENRICHIT (2 210 335 $ vs 755 482 $) ; `1e9` → patrimoine **−7,8 G$** (dettes × keep négatif) ;
+> `NaN` → actifs zéroïsés sans trace. Livré : `clampSplitPct` au MOTEUR (source unique, non-fini →
+> DÉFAUT métier et non 0) + `min`/`max` + même clamp à l'input. 8 tests, `keep` capturé À LA SOURCE
+> par le callback du splitter (3 échouent sans le clamp).
+
+> ## 🟢 Session 2026-08-13 (suite 74) — forme-flux : 3 producteurs muets, 2 corrigés
+> Nouvelle classe de garde : `Δsolde == MarketGrowth<k> + NetTransfer<k>`, mois par mois
+> (`tests/services/projection.fluxForm.test.ts`). Les gardes de conservation existantes comparent
+> des SOLDES et ne demandent jamais d'où vient l'argent — elles restaient vertes.
+> - **Stress-test** (`[ENG-STRESSTEST-GROWTH-UNREGISTERED]`) : krach/reprise mutaient les soldes
+>   sans alimenter `MarketGrowth*`. **162 835 $** non expliqués au mois du krach. ⚠️ Les deltas se
+>   versent APRÈS `applyMonthlyGrowth`, qui ASSIGNE (`=`) : les poser avant les écrasait.
+> - **Transfert NonReg → CELI/REER** (`[ENG-NONREG-TRANSFER-UNPUBLISHED]`, trouvé PAR la garde) :
+>   **51 197 $** sur un scénario ORDINAIRE. `accRrspYear` était déjà bon → l'impôt était juste,
+>   seul l'affichage mentait, d'où l'invisibilité. Effet `contribREER` sur le per-conjoint :
+>   **MESURÉ NUL** (j'avais écrit l'inverse en commentaire — corrigé).
+> - **Reste ticketé** : `[ENG-APRIL-REFUND-NONREG-UNPUBLISHED]`, 29 796 $ au mois 123. Non corrigé
+>   ici (touche `cashflowAllocation` en amont). Quand il tombera → ajouter `'NonReg'` à `ACCOUNTS`.
+> Garde livrée sur CELI/REER/Crypto : résiduel mesuré **0,01 $** (l'arrondi au cent).
+
+
+> ## 🟢 Session 2026-08-13 (suite 73) — `[PASSE-REEL-3]` : CADUC, vérifié dans le code
+> Le réancrage quotidien sur les soldes réels **existe déjà**. Chaîne vérifiée :
+> `useSimulationParams.ts:123` → `deriveStartingBalancesFromHistory` →
+> `startingBalancesFromHistory.ts:45` (`points[points.length - 1]`, donc les soldes d'AUJOURD'HUI)
+> → `ProjectionEngine.tsx:58-85` (`useEffect([params])`, recalcul AUTO, debounce 300 ms, aucun
+> bouton). Le jour avance seul depuis `[FUTUR-DAILY-ROLLOVER]` (livré la veille). Gardes déjà là :
+> `futureSeedContinuity.test.ts`, `useSimulationParams.dailyRefresh.test.tsx`.
+> ⚠️ La prémisse du ticket (« soldes saisis une fois à la main ») était FAUSSE — ticket rédigé à
+> partir du symptôme, sans greper la chaîne. Rien codé : le livrable est le constat documenté
+> (leçon `BACKLOG-STALE-TICKET` dans `CONVENTIONS.md`).
+> **Le lot `[PASSE-REEL]` est donc CLOS** (1 et 2 livrés, 3 caduc).
+
+> ## 🟢 Session 2026-08-13 (suite 72) — `[AI-CATEGORIZE-NO-BACKOFF]` : l'IA ne lâche plus au 429
+> `categorizeBatch` avalait le 429 d'un chunk et relançait le suivant AUSSITÔT → tout le reste d'un
+> gros import restait « non catégorisé », sans réessai ni signal, et le martèlement prolongeait le
+> rate-limit. Livré : backoff exponentiel borné (1/2/4 s, cap 60 s, patron `fintable/client.ts`),
+> `Retry-After` honoré (secondes ET date HTTP), pacing 1 s ENTRE les appels (pas les itérations),
+> court-circuit 401/403, logs AGRÉGÉS portant l'erreur brute. `sleep` injectable → 15 tests, 17 ms,
+> aucun ne dort. Discrimination prouvée (2 échecs quand on retire la boucle de réessai).
+
+> ## 🟢 Session 2026-08-13 (suite 71) — DIVORCE v3 : les 2 blocages de la RE-revue (PR #616)
+> Le panel a recalé la v2 aussi (NO-GO, 2 ÉLEVÉ mesurés). Corrigés ici, chacun prouvé par un test
+> qui ÉCHOUE sur le code d'avant :
+> - **SRG** : `gisHeads` / `hasSpouseWithOAS` lisaient `activeUsersCount` (le DIVISEUR, resté à 2 à
+>   raison) et ne bouclent pas sur `users` — un divorcé gardait le barème COUPLE puis touchait ×2 :
+>   1 226,50 $/mois, AU-DESSUS du maximum légal célibataire (1 105 $). → `householdAdults`,
+>   3e compteur du fichier, défaut `activeUsersCount` (rétrocompat bit-identique).
+> - **Meltdown REER** : `taxFilers` était passé à 1 au dépôt fiscal mais `processReerMeltdown`
+>   recevait toujours `activeUsersCount` = 2 → 140 000 $/an de retraits imposables en trop, empilés
+>   sur UNE déclaration. Le nom du champ ÉTAIT le bug : renommé `taxFilers`, `taxFilers` hissé en
+>   tête d'itération (une seule source), salaire de l'ex sorti de l'assiette.
+> ⚠️ **La baseline n'est PAS intacte, et c'est assumé** : 8 combinaisons sur 9 bit-identiques, une
+> bouge — décès + MELTDOWN_REER (−75 756 $ d'impôt à vie). Un veuf est UN déclarant : correctif,
+> pas régression. Épinglé par un test.
+> ⚠️ **Le divorce n'est observable QUE sous MC**, où `buildMonthlyDataPoint` rend un point ALLÉGÉ
+> `{ NetWorth, monthIndex }` : aucun flux mensuel mesurable, seuls les agrégats du retour. C'est
+> aussi pourquoi aucune garde de conservation ne voit le splitter (`[ENG-DIVORCE-NO-CONSERVATION-GUARD]`).
+> **Reliquat ticketé** (mesuré par le panel, hors lot) : `[ENG-DIVORCE-ROOM-COUPLE]`,
+> `[ENG-DIVORCE-ESTATE-PENSION]`, `[ENG-DIVORCE-SPLITPCT-UNBOUNDED]` + 5 autres dans `BACKLOG.md`.
+
+> ## 🔴 Session 2026-08-13 (suite 69) — DIVORCE v2 : le panel avait recalé la v1 (PR #615)
+> **#613 a été recalée (NO-GO, 12 findings dont 5 ÉLEVÉ mesurés).** À lire avant de retoucher :
+> - `activeUsersCount` de `computeRetirementIncome` n'est PAS un compteur de têtes, c'est le
+>   DIVISEUR d'un agrégat ménage. Le réduire ANNULE la réduction des rentes (Δ mesuré 0,00 $/mois,
+>   et +398 $/mois à salaires inégaux : le divorce enrichissait). La réduction vient de la LISTE
+>   d'users raccourcie. La DB, elle, exige un facteur explicite (`householdPensionShare`).
+> - `reerShares` était `const` : la consolidation du registre REER ne tenait qu'UN mois. Corrigé au
+>   divorce ET au décès. ⚠️ L'invariant Σ(reerByUser) == reer restait VERT — un invariant de SOMME
+>   ne dit rien de l'ATTRIBUTION.
+> - Cohérence à 3 voies DOCUMENTÉE dans `cashflowAllocation.ts` (taxFilers / oasBeneficiaries /
+>   liveFilers) : n'en basculer qu'une donnait un divorcé imposé en célibataire avec un seuil de
+>   récupération PSV de COUPLE (0 $ au lieu de 7 016 $/an).
+> - Un divorcé devenait VEUF de son ex (96/101 itérations MC) ; on divorçait d'un conjoint décédé.
+> - Le décalage d'un mois n'était PAS anodin : 5 094,90 $ de salaire fantôme l'année du divorce.
+>
+> ⚠️ **LEÇON DE MÉTHODE, la plus importante du lot** : mes tests d'origine étaient GLOBAUX
+> (patrimoine médian, survie). Discriminants, et pourtant aveugles aux 5 ÉLEVÉ — parce que dominés
+> par la phase SALAIRE. Après correction des 5, le P50 global ne bouge que de **0,2 %**. Il faut un
+> test PAR MÉCANISME, visant la grandeur que le mécanisme produit
+> (`projection.divorceMechanisms.test.ts`).
+> ⚠️ Le test du registre REER a exigé TROIS fixtures avant de discriminer (les deux premières
+> passaient sur le code cassé) : il faut espace CELI épuisé + REER de départ faible + horizon
+> s'arrêtant AVANT la retraite, sinon aucune cotisation REER n'a lieu ou le REER est décaissé.
+
+> ## 🟢 Session 2026-08-13 (suite 67) — lot MOTEUR 2/5 : le bloc DIVORCE (PR #613)
+> Les 3 tickets divorce livrés ENSEMBLE (un seul changement sémantique : le ménage passe à une
+> tête). Décisions produit dans `docs/adr/` — ADR « Modèle du DIVORCE ».
+> - Dettes non immobilières partagées comme les actifs (décision Marc).
+> - `soloHousehold = survivorMode || divorced` sur les 7 sites fiscaux ; `computeRetirementIncome`
+>   garde `survivorMode` (un divorcé n'a AUCUNE prestation de survivant) et reçoit à part un
+>   compte de têtes réduit.
+> - **Dépenses du ménage laissées à 100 % — décision ASSUMÉE de Marc**, en connaissance de
+>   l'effet : le patrimoine médian passe de 4,89 M$ à −621 625 $ et la survie de 100 % à 0 %.
+>   ⚠️ Le DÉCÈS a le même comportement (bloc dépenses sans `survivorMode`) : cohérent, désormais
+>   explicite. Si un facteur « dépenses solo » est ajouté un jour, c'est le test « la survie
+>   chute » qui bougera, pas les deux autres.
+>
+> ⚠️ **PIÈGE À CONNAÎTRE AVANT DE TOUCHER AU DIVORCE** : il n'existe QUE dans la branche
+> Monte-Carlo, et `chartData` est TOUJOURS déterministe. Mesurer sur `chartData` donne un résultat
+> IDENTIQUE avec et sans divorce — j'y suis tombé. Mesurer sur les cônes `P10/P50/P90` et
+> `survivalRatePct`, seules sorties MC réellement consommées.
+>
+> **Reste du lot moteur** : 3/5 stress-test + invariants · 4/5 bilan complet (locatif, entreprise,
+> liquidDebt) · 5/5 backoff catégorisation.
+>
+> ## 🔴 NOUVEAU, signalé par Marc — `[PASSE-REEL]`, sa courbe passée lui MENT
+> Cause trouvée : `services/projection/dailyCurve.ts:59` renvoie le point PROJETÉ quand aucune
+> donnée réelle n'existe pour la journée. Marc voit un CELI garni alors qu'il n'a pas de CELI.
+> Ses 3 décisions sont consignées dans le BACKLOG (`[PASSE-REEL-1/2/3]`) : la courbe commence où
+> les données commencent (pas de repli), l'écart se mesure contre une prévision FIGÉE verrouillée,
+> et la projection se réancre chaque jour sur les soldes réels. À faire après le lot moteur.
+> ## 🟢 Session 2026-08-13 (suite 70) — `[PASSE-REEL-2]` : l'écart réel vs prévision figée (PR #617)
+> `services/projection/forecastAccuracy.ts` (pur) + `ForecastAccuracyBadge`, affiché SOUS la légende
+> de la courbe verrouillée — un écart loin de sa référence n'est pas interprétable.
+> ⚠️ La référence est la courbe VERROUILLÉE, jamais une projection recalculée : celle-ci part des
+> soldes réels, l'écart serait nul par construction. 13 tests, dont 5 sur les cas `null`.
+> ⚠️ **Corrigé sur revue Vercel avant merge (`MARKER-PROXY-GUARD`)** : la garde « point réel »
+> testait `typeof dayIso === 'string'`. Mais `dailyCurve.ts` bâtit la journée FUTURE par
+> `{ ...d, monthIndex }` — le spread charrie `dayIso`. Les 30 ans de projection entraient donc
+> comme du « passé mesuré » : l'indicateur comparait deux prévisions. Garde → `dayIsReal === true`
+> (le marqueur existait déjà, lu par `ProjectionTooltip`). Les 11 tests d'origine étaient verts
+> parce que leur helper de fixture omettait `dayIsReal` : une fixture qui ment sur la forme de la
+> donnée rend toute la suite aveugle. 2 tests discriminants ajoutés (échouent sur la garde d'avant).
+> Reste du lot : `[PASSE-REEL-3]` (réancrage quotidien automatique sur les soldes réels).
+
+> ## 🟢 Session 2026-08-13 (suite 68) — `[PASSE-REEL-1]` : le passé ne ment plus (PR #614)
+> Marc a demandé de REMONTER ce lot avant le reste du moteur — sa courbe lui mentait tous les jours.
+> `dailyCurve.ts` : `if (!real) return { ...d }` renvoyait le point PROJETÉ pour une journée passée
+> sans mesure. D'où un CELI garni chez quelqu'un qui n'a pas de CELI.
+> - `todayIso` ⇒ journée STRICTEMENT antérieure à aujourd'hui et sans donnée réelle ⇒ `null`, non
+>   tracée. Borne STRICTE : aujourd'hui reste projeté (c'est l'ancre de la projection).
+> - Retour `ProjectionChartPoint | null` : c'est le COMPILATEUR qui a trouvé le 4e appelant,
+>   `buildEnrichedMonth` (l'infobulle) — je l'aurais oublié en ne corrigeant que la courbe.
+> - `todayIso` ajouté aux deux `useMemo` (sinon la frontière reste celle de la veille après minuit).
+> **Reste** : `[PASSE-REEL-2]` (écart contre prévision FIGÉE) et `[PASSE-REEL-3]` (réancrage
+> quotidien), puis le lot moteur 3/5, 4/5, 5/5.
+
+> ## 🟢 Session 2026-08-13 (suite 66) — `[FINTABLE-TOKEN-WIPE]` : la synchro Drive effaçait le jeton
+> Bug signalé par Marc (« mon jeton Fintable se perd tout le temps »), diagnostiqué et corrigé.
+> **Ce n'était PAS une éviction de navigateur** — première hypothèse (ITP Safari 7 jours), écartée
+> dès que Marc a dit « PC et Android, pas d'iPhone ». Mécanisme réel, lu dans le code :
+> `syncSnapshot.ts` exclut délibérément `fintable` du push Drive → le payload Drive ne contient que
+> `{anthropic, finnhub}` → `syncPull` appelle `saveApiKeys(payload)` → `saveApiKeys` écrasait le
+> coffre EN BLOC. Chaque synchro effaçait le jeton.
+> ⚠️ **Symptôme trompeur à connaître** : le store mémoire FUSIONNE, le coffre ÉCRASE. Le jeton
+> survivait donc dans l'onglet ouvert et ne mourait qu'au RECHARGEMENT — d'où « ça se perd tout le
+> temps » plutôt que « ça se perd quand je synchronise ».
+> **Correctif** : `DEVICE_LOCAL_KEY_FIELDS` + préservation DANS `saveApiKeys` (pas chez les 4
+> appelants — le coffre est la seule voie d'écriture, donc le seul endroit qu'on ne peut pas
+> oublier). Contrat : `undefined` → préserve, `''` → efface. Test prouvé discriminant.
+> **Récidive** de la classe du finding #545, corrigé alors sur UN registre (`App.tsx`) et pas sur la
+> couche sync — leçon élargie dans CONVENTIONS.
+> **Proposé, NON fait** (scope non demandé) : `[STORAGE-PERSIST-REQUEST]` — l'app ne demande jamais
+> `navigator.storage.persist()`, donc le coffre reste évincible sous pression disque.
+
+> ## 🟢 Session 2026-08-13 (suite 65) — lot MOTEUR de l'audit, 1/5 : `[FISC-DON-ABATEMENT]`
+> Marc a cadré le lot moteur (« tout le HIGH ») et tranché la question produit du divorce.
+> **Découpage retenu, une PR par thème** (panel + merge entre chaque) :
+> 1. ✅ `[FISC-DON-ABATEMENT]` — crédit-don fédéral non réduit de l'abattement QC (PR #611).
+> 2. ⏳ **Divorce cohérent** — `[ENG-DIVORCE-DEBT-ASYMMETRY]` + `[ENG-DIVORCE-REGISTRE-PERCONJOINT]`
+>    + `[FISC-DIVORCE-INCOME-PHANTOM]`. Les 3 forment UN seul changement sémantique (le ménage
+>    passe à 1 personne) — ne pas les livrer séparément.
+>    ⚠️ **DÉCISION MARC 2026-08-13** : au divorce, les dettes NON immobilières se partagent au
+>    MÊME pourcentage que les actifs (esprit du patrimoine familial QC : on partage le NET).
+>    À porter dans `docs/adr/` au moment de coder.
+> 3. ⏳ **Stress-test + invariants** — `[ENG-STRESSTEST-GROWTH-UNREGISTERED]`,
+>    `[ENG-MC-CONSERVATION-BLIND]`, `[ENG-INV-FLUXFORM-COVERAGE]`.
+> 4. ⏳ **Bilan complet** — `[ENG-W5-RENTAL-OFFBALANCE]`, `[ENG-W5-BUSINESS-OFFBALANCE]`,
+>    `[ENG-LIQUIDDEBT-NEVER-REPAID]`. ⚠️ Le patrimoine AFFICHÉ va sauter — Marc l'a accepté
+>    explicitement en choisissant « tout le HIGH ».
+> 5. ⏳ `[AI-CATEGORIZE-NO-BACKOFF]`.
+>
+> **Puis, fusionnés (décision Marc)** : Lot 7 « Réglages retravaillés » + `[A11Y-PRIVACY-LOT2]`.
+> Périmètre Lot 7 choisi : **regroupement + refonte des formulaires** (validation, unités
+> mensuel/annuel explicites) ET masquage — une seule passe sur ces fichiers, ils sont les mêmes.
+>
+> **Proposés, NON pris** (Marc a dit « tout le HIGH », ceux-ci sont MOYENS) :
+> `[FISC-UI-MARGINAL-ABATEMENT]` (l'UI affiche 39,50 % vs 36,12 % au moteur — survend le REER) et
+> `[SCHL-1500K-BOUNDARY]` (`<=` au lieu de `<`, 175 k$ d'écart de mise de fonds). En attente de son
+> feu vert.
+
+> ## 🟢 Session 2026-08-13 (suite 64) — `[AUDIT-SAFETY]` : filets de sécurité (PR #608)
+> Premier lot de correctifs de l'audit 2026-08-12 (les 🔴 d'effort S). **Gate vert : typecheck,
+> lint, 3 965 tests (348 fichiers), build.**
+> - **Mode discret** : les 4 fuites de l'audit (Dettes, Centre fiscal, Asset Location, agrégats
+>   Transactions) + la 5e jumelle (`PayslipUploadCard`) passent par `PrivateAmount` /
+>   `PrivateNumberInput` — les montants **sortent du DOM**, ils ne sont pas floutés.
+> - **Trouvé PAR LA REVUE, pas par l'audit** : le masquage s'arrêtait aux **graphiques**. 8 axes Y
+>   et 11 formateurs d'infobulle affichaient des $ en clair (mesuré : « 41k » sur l'axe de la
+>   courbe d'extinction de dette, à côté d'une infobulle correctement masquée ; `DividendPanel`
+>   affichait des `formatCAD` PLEINS). Nouveaux helpers `utils/chartPrivacy.ts` (`maskedTick`,
+>   `maskedTooltipValue`), 10 fichiers corrigés.
+> - **Deux gardes, toutes deux prouvées discriminantes** (fuite réintroduite → rouge) :
+>   `tests/components/chartPrivacyScan.test.ts` (scan de SOURCE — le seul outil qui voit une prop
+>   de graphique) et le mock Recharts de `privacyLeaks.test.tsx`, qui rend désormais la SORTIE des
+>   formateurs au lieu de `() => null`.
+> - **Écriture IA** : l'import de talon de paie (Réglages) passe par le MÊME `writeExecutor` que le
+>   chat (diff → confirmation → `createBackupNow` → recalcul sur état frais) ; `PayslipSchema`
+>   borné (`.positive().finite()`). Le modal de confirmation refuse désormais de RENDRE en mode
+>   discret (le refus vivait dans un `useEffect` → une frame de montants réels affichés).
+> - **`actionPlanHierarchy`** journalise les valeurs non finies au lieu de les coercer en 0 muet.
+> - **Trois tours de revue, trois vagues de trouvailles** — chacun a trouvé ce que le précédent avait
+>   laissé : (1) les graphiques, (2) `TaxBracketViz` + un `aria-label` de virement + un trou DANS la
+>   garde (jeton `money(` présent des DEUX côtés → auto-satisfaite), (3) la carte couple du Budget,
+>   la frise des projets de vie, et une fuite **STRUCTURELLE** (le nombre de lignes du détail par
+>   palier encodait la tranche de revenu, tous montants masqués). Leçon portée dans CONVENTIONS.
+> - BACKLOG : 12 items déplacés vers `BACKLOG_ARCHIVE.md`. Reste ouvert de
+>   l'audit : le lot 🔴 moteur (divorce, stress-test), `[FISC-DON-ABATEMENT]`,
+>   `[AI-TAXCENTER-APPLY-NOGATE]`.
+> - ⚠️ **LE SUJET « MODE DISCRET » N'EST PAS CLOS.** Un 4e balayage, exhaustif (133 composants), a
+>   trouvé 17 fuites restantes — toutes sur des écrans que #608 ne touche pas. Une CLASSE entière n'a
+>   jamais été abordée : #608 a traité l'AFFICHAGE, jamais la **SAISIE**. Les formulaires natifs de
+>   Réglages/Profil (salaire des deux conjoints, soldes réels par compte, paramètres avancés,
+>   patrimoine étendu) sont en clair quel que soit le mode. Tout est ticketé en un lot priorisé :
+>   `[A11Y-PRIVACY-LOT2]` dans `BACKLOG.md`. La primitive existe déjà (`PrivateNumberInput`).
+>   ⚠️ Le CHANGELOG a été CORRIGÉ pour ne plus dire « le mode discret masque TOUT » — c'était faux.
+> - ⚠️ Une question de contrat attend Marc : l'export PDF doit-il tenir compte du mode discret ?
+>   (`[A11Y-PRIVACY-PDF-CONTRAT]`, reco : refuser de générer plutôt que produire un PDF de « ••• »).
+> - ✅ **PROD À JOUR** — `finance.hubperso.com` sert `d864239` (tête de `main`), déploiement
+>   `dpl_6UFUPhXoz5tD1hwbhzenszWLpuSi` READY à 02:27 UTC. Le rate-limit Vercel n'a frappé que les
+>   PREVIEWS de branche ; les deux déploiements de PRODUCTION (#608 et #609) sont passés. Rien à
+>   relancer. ⚠️ Vérif HTTP réelle impossible depuis l'environnement d'exécution (domaine bloqué par
+>   le proxy d'egress) — la preuve est l'enregistrement d'alias Vercel, pas la réponse servie.
+> - ⚠️ **Piège d'inférence à retenir** : j'ai conclu DEUX fois de travers en 50 minutes — « quota
+>   résolu » depuis un preview qui passe, puis « prod bloquée » depuis un preview qui échoue. Même
+>   erreur : inférer l'état d'une CLASSE de déploiement depuis un événement d'une AUTRE. Toujours
+>   demander « quel déploiement, quelle cible, quel alias ? ».
+
+> ## 🟢 Session 2026-08-12 (suite 63) — `[REFONTE-NAV-L6a]` : l'assistant ancré sur la courbe
+> Lot 6a intégré sur `main` post-#606 (PR à venir). L'assistant **voit** la courbe du Futur.
+> - **Nouveau builder PUR** `services/aiChat/futureViewContext.ts` :
+>   `buildFutureViewDetail(results, selectedPoint)` + `buildFutureChips(detail)`. Il **LIT** la
+>   projection émise par le moteur (source unique `lastProjection.chartData`, ou son gel
+>   `PROJECTION-PERSIST` = ce que la courbe AFFICHE) et ne **recalcule RIEN** : premier point
+>   projeté (`monthIndex >= 0`), dernier point, `isRetired`, `fireNumber` + lifeEvent FIRE,
+>   drawdown pic→creux (seuil 5 %), point sélectionné.
+> - **`FutureProjection`** publie via `useViewContextPublisher('future', …)` (patron
+>   `CHAT-PAGE-CONTEXT`), avec `selectedCurvePoint = detailPoint ?? infobulle FIGÉE`, et
+>   `curveVisible ? results : null` → courbe non révélée = détail « sans projection ».
+> - **`services/aiChat/viewContext.ts`** : `ViewContextDetail` devient une **union discriminée**
+>   `BudgetViewDetail | FutureViewDetail` (champ `kind`), `SCOPE_TO_TAB.future = Tab.FUTURE`,
+>   nouvelle branche `describeFutureDetail` dans `describeViewContextForPrompt`. Le bloc Budget
+>   est INCHANGÉ (seul `promptAmount` accepte désormais `number | undefined`).
+> - **`AiChatView`** : badge décliné par `kind` (« courbe de projection » / « aucune projection
+>   calculée ») + rangée de **chips** au-dessus de la saisie. ⚠️ Les chips **PRÉ-REMPLISSENT** la
+>   saisie (`setInput` + focus), elles n'envoient JAMAIS — contrairement aux suggestions
+>   d'amorçage. Sur la page Assistant (`variant === 'tab'`), elles sont bâties directement sur
+>   `store.lastProjection` ; en panneau, seulement si le contexte publié est `kind === 'future'`.
+>
+> **No-fake-data, le cœur du lot** : chaque champ numérique n'est posé que s'il est
+> `Number.isFinite` ; un montant manquant est **OMIS ET NOMMÉ** dans le prompt (« Valeurs
+> INDISPONIBLES … ne les invente JAMAIS ») — le modèle ne doit pas deviner ce qu'il « devrait »
+> y avoir. Aucune projection → ligne d'aveu honnête **sans le moindre chiffre** (asserté par un
+> `not.toMatch(/\d/)`). Pas de projection → **aucune chip** (une suggestion sur une courbe
+> inexistante serait une fausse affordance). `fireNumber === 0` (non configuré) est OMIS, pas
+> affiché comme « 0 $ ».
+>
+> **Intégration / conflits** : la branche de travail était basée sur `main` AVANT les lots 3/4/5
+> et l'audit. `git apply --3way` a repris les 6 fichiers **proprement, zéro conflit**. Vérifié à
+> la main sur `FutureProjection.tsx` (le seul fichier ayant dérivé, via L2a/L2b) : les **4
+> sous-onglets** (Projection / Paramètres / Plan / **Historique** avec `FutureHistorySection`
+> lazy) sont intacts ET le publisher est câblé (l. 754-766, après les déclarations de `results`
+> l. 322, `curveVisible` l. 328, `detailPoint` l. 689, `tooltip` l. 735). Aucun des lots 3/4/5 ni
+> l'audit n'avait touché `services/aiChat/` ni `components/aiChat/` → **aucun conflit avec le
+> Lot 5** côté contexte Budget.
+>
+> **Vérifs** : `npm run typecheck` vert ; `npm run lint` vert (2 warnings PRÉ-EXISTANTS, sans
+> rapport : `useChartTooltipPosition`, `useTimeChartZoom`) ; ciblé **57/57 verts** sur
+> `aiChatFutureViewContext` (14) + `AiChatView.futureChips` (6) + `aiChatViewContext` +
+> `Budget.viewContext` + `navDestinations` + `AiChatView.viewContext` + `useAiChat.viewContext` +
+> `useViewContextPublisher` ; **14/14 verts** sur les 5 fichiers `FutureProjection*`.
+>
+> ⚠️ **Renumérotation des sous-lots** : `docs/REFONTE_NAV_PLAN.md` étiquetait « 6a » comme
+> « écritures NL ». Le périmètre RÉELLEMENT livré est « Assistant ancré sur la courbe » → le plan
+> et le BACKLOG sont corrigés : écritures NL = **6b**, puis 6c what-if, 6d explication moteur,
+> 6e analyse de docs, 6f proactif. `[REFONTE-NAV-L6]` reste OUVERT.
+>
+> ### Revue du Lot 6a (même session) — 3 correctifs appliqués sur `claude/progress-check-yua8yy`
+> - **`[FUTUR-FIRE-STRUCT]` — MOYEN, déclenchable par l'utilisateur.** L'année FIRE du prompt
+>   venait d'une **heuristique de texte** (`/\bfire\b/i` sur `p.lifeEvents`). Or `lifeEvents`
+>   mêle messages moteur et **texte UTILISATEUR interpolé** (nom d'enfant `childrenReee.ts`, nom
+>   d'immeuble `realEstateMonth.ts`) : un immeuble « Fire pit reno » faisait affirmer « objectif
+>   FIRE atteint vers <année fausse> » avec l'autorité d'un chiffre du moteur. **Un signal
+>   STRUCTUREL existait déjà** : le moteur émet `FireTarget` (cible du mois, inflation-ajustée)
+>   à CHAQUE point, et `strategyRanking.ts` s'en servait déjà (`FireTarget > 0 && NetWorth >=
+>   FireTarget`). Nouveau module **`services/projection/fireMilestone.ts`** (`FIRE_LIFE_EVENT`,
+>   `isFireReached`, `findFireReachedPoint`) : `projection.ts` journalise via la constante,
+>   `strategyRanking.ts` et `futureViewContext.ts` partagent le prédicat. Effet de bord voulu :
+>   cible à 0 (objectif non configuré) → **aucun jalon** (le moteur, lui, journalise le lifeEvent
+>   dès le mois 0 dans ce cas — `NetWorth >= 0`).
+>   ⚠️ La **pastille** de la courbe (`FutureProjection.tsx` ~l.440) garde sa regex souple →
+>   ticket `[FUTUR-FIRE-REGEX-SHARED]` (S) au BACKLOG pour l'unifier (toléré : visible à l'œil).
+> - **Gate PH4 manquant sur la page Assistant.** `AiChatView.tsx` bâtissait les chips depuis
+>   `store.lastProjection` **sans** la révélation explicite qu'applique `FutureProjection.tsx`
+>   (`curveVisible`) → un utilisateur n'ayant jamais révélé sa courbe lisait « Ma retraite
+>   (2043) ». Gate ajouté sur **`revealedProjectionSig !== null`** (la part du gate LISIBLE DU
+>   STORE, persistée, remise à `null` par masquer/reset/mode test). La **fraîcheur** de la
+>   signature (hash des params) reste locale à `FutureProjection` : **non reproduite** — on ne
+>   réinvente pas un état de store.
+> - **Énumération vide dans le prompt.** `describeFutureDetail` finissait par « … est
+>   affichée : . » quand aucun champ n'était fini (blanc que le modèle est tenté de combler) →
+>   repli nommé « aucun chiffre disponible » (la note « Valeurs INDISPONIBLES » reste).
+> - **Preuve de discrimination** : les 5 nouveaux tests ont été rejoués contre le code d'AVANT
+>   (logique restaurée temporairement) → **5 échecs**, puis verts après restauration du fix.
+>   Ciblé : `fireMilestone` + `aiChatFutureViewContext` + `AiChatView.futureChips` +
+>   `strategyRanking` → **39/39 verts** ; `npm run typecheck` vert.
+>
+> ## 🟢 Session 2026-08-12 (suite 62) — `[REFONTE-NAV-L5]` : l'argent du quotidien d'un seul tenant
+> Lot 5 intégré sur `main` post-#605 (PR à venir), **sans toucher un seul fichier de nav**
+> (`navDestinations` / `TabRouter` / `Layout` inchangés — comme aux lots 3-4). Mêmes règles que
+> le Lot 4, appliquées à la destination **Transactions** :
+> - **Titre de page issu de `TAB_LABELS`** : `BudgetWorkspace` porte maintenant le `PageHeader`
+>   (h1 « Budget »), **stable sur les 4 sous-onglets** ; `Transactions` prend
+>   `TAB_LABELS[Tab.TRANSACTIONS]` au lieu d'un libellé en dur.
+> - **Un seul h1 par destination** : l'ancien h1 « Pilotage Budget » de `Budget.tsx` est
+>   rétrogradé en **barre de pilotage** (badge excédent/déficit + vision de période + actions).
+>   Il y avait 2 h1 empilés sur la page — même classe de défaut qu'au Lot 4 (`LifeProjects`, 3 h1).
+> - **Cross-links entre pairs, dans les DEUX sens** : « Voir les transactions → » sur un poste
+>   déplié (`BudgetGroupTable`) et « Voir au budget → » sur la catégorie filtrée
+>   (`Transactions`), via `navigateWithFocus` + ancres `data-focus-section`
+>   (`poste:<nom>` / `category:<nom>`, patron `Settings`). `BudgetWorkspace` route aussi les
+>   sections `objectifs` / `abonnements` / `sante` vers le bon sous-onglet AVANT le scroll.
+>
+> ⚠️ **Décision de cohérence avec le Lot 4** : `VieCurveLink` (« Voir l'effet sur ma courbe »)
+> n'est **PAS** réutilisé ici, et c'est délibéré. Les deux affordances ont des intentions
+> différentes : `VieCurveLink` est **page-level** (actions du `PageHeader`), `Button`
+> `variant="ghost"` + icône `future`, et parle d'**impact sur la courbe**. Les liens du Lot 5
+> sont **contextuels** (ligne dépliée, barre de filtre) et font de la **navigation entre pairs**
+> sur la même donnée. La forme suit déjà un idiome maison (suffixe « → », cf.
+> `EmptyDataPrompt` inline et `SyncStaleBanner`), et le verbe est aligné (« Voir … »). La
+> distinction est donc LISIBLE : *lien fléché inline = aller voir la même donnée ailleurs* ;
+> *bouton ghost en tête de page = voir l'effet sur la courbe*. Ne pas « unifier » les deux.
+>
+> **Trois corrections d'honnêteté au passage** :
+> - **Empty state UNIQUE** (desktop + mobile) pour la liste : le desktop rendait un `<table>`
+>   réduit à ses en-têtes, sans un mot. CTA qui distingue « aucune transaction » (→ importer) de
+>   « les filtres masquent tout » (→ réinitialiser).
+> - **Les 2 exports CSV consolidés** sur `utils/csvExport` : celui de la vue filtrée re-dérivait
+>   le format à la main avec un **jeu de colonnes divergent** de celui du header (2 formats pour
+>   le même objet).
+> - **Compte « groupe(s) à classer » dégaté** : `uncategorizedGroups` retournait `[]` tant que
+>   `showWizard` était faux → le sous-titre affichait « 0 groupe(s) à classer » **avant** toute
+>   ouverture de l'assistant. Un `0` crédible et faux = `no-fake-data`.
+>
+> **Vérifs** : `npm run typecheck` vert ; `Budget` + `BudgetGroupTable` + `BudgetWorkspace` (nouveau)
+> + `Transactions.lot5` (nouveau) + `navDestinations` = **34/34 verts** ; non-régression sur
+> `Transactions.selection|import|owner`, `Budget.viewContext`, `EmptyState` et `tests/a11y/pages.axe`
+> = **24/24 verts**. Aucun conflit à l'intégration (les lots 3/4 et l'audit n'ont touché ni
+> `Transactions.tsx` ni `Budget*`).
+>
+> ## 🟡 Session 2026-08-12 (suite 61) — Audit complet panel 9 agents : 62 findings consolidés
+> **Pas de code touché.** Tous les findings sont **MESURÉS** (pas de supposition). Panel spécialisé : 
+> dette technique (12), moteur & fiscal (19), sécurité (4), silence (4), a11y (9), perf (6), IA (9), 
+> moteur systémique (9). Rapport complet dans [`docs/AUDIT_2026-08-12.md`](AUDIT_2026-08-12.md) 
+> (en création). **Aucune baseline cassée** (3833/3833 tests verts avant/après).
+>
+> **🔴 Priority P0 findings** (user-facing money risk) : 
+> - `FISC-DIVORCE-INCOME-PHANTOM` : 85 k$/an revenu fantôme du conjoint parti (mesure exact).
+> - `ENG-STRESSTEST-GROWTH-UNREGISTERED` : 371 782 $ créés silencieusement (mesure exact).
+> - `ENG-W5-RENTAL-OFFBALANCE` : immeuble locatif 300 k$ équité hors bilan (mesure exact).
+> - `A11Y-PRIVACY-*` (5 findings) : Mode Discret ne masque pas les montants à 4 endroits.
+> - `AI-VISION-PAYSLIP-NOGATE` : hallucination OCR écrase profil salarial sans confirmation.
+> - `PERF-ENG-LATENT-MC-WASTE` : 5-10 % MC gaspillé (301 ms sur 6532 ms mesuré).
+>
+> **Backlog** : 62 tickets injectés dans `BACKLOG.md` section « Audit complet 2026-08-12 »,
+> groupés par domaine (Moteur & fiscal · Sécurité · Silence · A11y · Perf · IA · Dette) et 
+> sévérité. Chaque ticket porte 🔴 si argent/données privées, mesure exécutée, effort S/M/L.
+> **Doublons** : 0 (aucun ID d'audit ne préexistait au BACKLOG).
+>
+> **Doc freîcheur** :
+> - CLAUDE.md : 3 734 → **3 887 tests** (339 fichiers, mesuré 2026-08-12).
+> - README.md : 2 872 → **3 887 tests**, 251 → **339 fichiers**.
+> - ARCHITECTURE.md : ~1440 → **3 887 tests**, 123 → **339 fichiers**, 31 → **48 sous-modules**.
+> - Dead references (Dashboard.tsx supprimé en Lot 2b) : corrigées.
+>
+> **Cycle de cette session** : pas de commits à pousser (audit seul, docs consolidées), 
+> pas de code applicatif modifié. Prochaine session appliquera les corrections selon la 
+> priorisation (P0 d'abord, puis chantiers fiscal/moteur cohérents).
+>
+> ## 🟢 Session 2026-08-12 (suite 60) — `[REFONTE-NAV-L4]` : les 4 pages de Vie parlent d'une seule voix
+> Lot 4 intégré sur `main` post-#603 (PR à venir), **sans toucher un seul fichier de nav** :
+> `navDestinations` / `TabRouter` / `Layout` sont inchangés — la structure vient du Lot 1, ce lot
+> ne fait que l'habiller. Trois règles appliquées aux **4** pages Vie : titre issu de `TAB_LABELS`
+> (un libellé en dur finit toujours par diverger de l'onglet qui y mène), sous-titre qui dit **ce
+> que je PRÉVOIS** (comment ce plan déforme la courbe Future), et l'affordance COMMUNE
+> `components/vie/VieCurveLink.tsx` (« Voir l'effet sur ma courbe » → `navigateWithFocus(Tab.FUTURE)`)
+> — **source unique du libellé et du placement, ne PAS la re-coder à la main dans une page Vie**.
+> Trois bugs d'affichage tombés au passage : `ChildPlanning` sans enfant faisait `return null`, soit
+> une **page littéralement BLANCHE** (→ empty state honnête + CTA) ; `Travel` et `LifeEvents` ne se
+> rendent QUE dans `LifeProjects` mais gardaient chacun un `PageHeader` (h1), soit **3 h1 sur une
+> page** (→ `<section>` + h2) ; et le ternaire `chartData.length === 0` de `Retirement` était MORT
+> (la garde `hasProjection` plus haut retourne déjà `<ProjectionRequired>`).
+> `Retirement` gagne des sous-onglets « Projection » / « Outils d'optimisation » (idiome
+> `BudgetWorkspace`, **aucune logique déplacée**) → `[UI-TABS-RICH]` **réduit à Profil**.
+> ⚠️ **Point d'intégration à connaître** : le Lot 4 a été écrit AVANT le Lot 3, donc sans la 4e page
+> Vie (« Projets immo »). L'harmonisation y a été portée à la main dans
+> `components/realestate/RealEstateWorkspace.tsx`, **variante `'projet'` UNIQUEMENT** — ce fichier
+> est PARTAGÉ avec la page Immobilier de Configurations (variante `'actuel'`), qui n'est PAS une
+> page Vie : elle garde son titre, son sous-titre de photo, et n'a **pas** de lien courbe. Toute
+> retouche de header dans ce fichier doit rester derrière `isActuel`. Garde-test :
+> `tests/components/life/RealEstateProjects.test.tsx` (dernier `it` : la page Config n'a ni idiome
+> ni lien courbe).
+>
+> ## 🟢 Session 2026-08-12 (suite 59) — `[REFONTE-NAV-L3]` panel : la frontière « bien détenu » était FAUSSE
+> Deux agents indépendants (code-reviewer + financial-integrity) ont MESURÉ la même divergence : `isOwnedToday`
+> utilisait `monthsSince >= 0` alors que le moteur exige `purchaseOffset < 0` STRICT (et `presentEquityOfGoal`
+> `> 0`). Un bien daté du mois courant était « détenu » à l'écran mais jamais acheté par le moteur →
+> **539 487 $ d'écart de patrimoine final**. Aggravant : le bouton « ajouter » de la vue « détenus » semait
+> `purchaseDate = aujourd'hui`, donc pile dans l'angle mort — chaque création naissait cassée. Corrigé : frontière
+> stricte, seed au mois PRÉCÉDENT, agrégation d'équité limitée aux biens actifs, garde sur élément null, tests
+> discriminants. Leçon portée dans CONVENTIONS (une partition qui invoque le moteur se prouve CONTRE le moteur ;
+> le seed d'un formulaire doit tomber du bon côté de sa propre frontière).
+>
+> ## 🟢 Session 2026-08-12 (suite 58) — `[REFONTE-NAV-L3]` : l'immo scindé actuel / projets
+> Lot 3 (intégré sur main post-#602, PR à venir). **`Tab.REAL_ESTATE` (Config) = les biens
+> DÉTENUS**, nouveau **`Tab.REAL_ESTATE_PROJECTS` (destination Vie, après `LIFE_PROJECTS`) =
+> les achats FUTURS**. La partition est **PURE et côté UI** — `services/realEstatePartition.ts`
+> (`partitionRealEstateGoals` / `isOwnedToday`, appuyé sur `monthsSince` de
+> `services/projection/pastPurchaseInit`) : **même tranche de store `realEstateGoals`, aucun
+> champ ajouté, aucune migration, aucun bump de schéma** (le moteur ne voit strictement rien
+> changer — la partition n'existe qu'à l'affichage).
+> Le corps de `RealEstate.tsx` (633 lignes) est extrait en
+> `components/realestate/RealEstateWorkspace.tsx` avec une variante `'actuel' | 'projet'` ;
+> `RealEstate.tsx` et `components/life/RealEstateProjects.tsx` sont deux wrappers minces qui
+> ne diffèrent que par la moitié de la partition qu'ils passent. Câblage : `types.ts` (enum),
+> `constants.ts` (`TAB_LABELS` « Projets immo »), `Layout.tsx` (`TAB_ICONS` → `building`),
+> `navDestinations.ts` (VIE), `TabRouter.tsx` (route lazy), `CommandPalette.tsx`.
+> ⚠️ **Opt-out PARTAGÉ** : les deux gates `PAGE_SETUP` utilisent la MÊME clé `realEstate`
+> (une seule notion « pas concerné par l'immobilier » — deux clés auraient obligé Marc à le
+> redire deux fois), et `SetupHub` ne liste QUE `REAL_ESTATE` : lister les deux aurait compté
+> DEUX FOIS le même prérequis dans le % de complétion. L'intro de `REAL_ESTATE` est reformulée
+> (biens possédés) pour ne plus promettre la planification d'un achat.
+> Passe de cohérence des libellés de page vs `TAB_LABELS` : « Gestion de la Dette » → **« Dettes »**,
+> « Simulateur d'impôts » → **« Impôts & Docs »**.
+> Tests : `tests/services/realEstatePartition.test.ts`, `tests/components/life/RealEstateProjects.test.tsx`,
+> `RealEstate.smoke.test.tsx` adapté, et le test de non-perte `navDestinations.test.ts` (dont
+> l'assertion exhaustive `Object.values(Tab)` moins `UNROUTED` couvre le nouvel onglet
+> automatiquement + un cas explicite « ACTUEL en Config / PROJETS en Vie, après Projets de vie »).
+> ⚠️ **`[DEBT-FROM-CONTRACT]` n'est PAS dans ce lot** — le plan le rangeait sous « Lot 3 » mais
+> c'est un chantier à part entière (parser un contrat PDF), toujours **ouvert** au BACKLOG :
+> ne pas le croire livré en lisant l'ancienne ligne du plan. Le split **invest** actuel/projets
+> reste lui aussi à faire.
+> Suite : PR + panel `/review-all` + merge ; prochain lot `L4` (Vie fusionnée).
+>
+> ## 🟢 Session 2026-08-12 (suite 57) — `[REFONTE-NAV-L2b]` : l'ex-Accueil définitivement supprimé
+> Lot 2b (intégré sur main post-#601, PR à venir) : **4e sous-onglet « Historique »** du Futur
+> (`components/future/FutureHistorySection.tsx`, lazy via `lazyWithRetry`) — le pipeline
+> `unifiedHistory` de l'ex-Accueil copié FIDÈLEMENT (usePortfolioHistory, buckets TOTAL_*,
+> équité immo par année, dettes), chips masquables + ligne Total avec les MÊMES clés
+> localStorage `dashboard:*` (les préférences de Marc survivent au déménagement).
+> **Comparaison de titres → Investissements** (mode « Comparer », `StockComparisonModal`
+> git-mv vers `components/investments/`). **`Dashboard.tsx` SUPPRIMÉ** avec son gate
+> `PAGE_SETUP[Tab.DASHBOARD]` ; conservés pour la compat deep-link : `Tab.DASHBOARD` dans
+> l'enum, `TAB_LABELS`, le redirect `#DASHBOARD→#FUTURE` + son test-scan. Restent dans
+> `components/dashboard/` (consommés ailleurs) : `DashboardEvolutionChart` (par
+> FutureHistorySection), `HistoryCoverageNote` (3 pages), `SyncStaleBanner` (TabRouter),
+> `HealthIndicator` (Budget). Tests : `Dashboard*.test.tsx` supprimés — capacités re-couvertes
+> par FutureHistorySection/FutureKpiStrip/nwParitySurfaces ; l'assertion UNIQUE de
+> `duplicateKeys` (collision compte cash nommé CELI/REER) PORTÉE dans
+> `FutureHistorySection.test.tsx` ; entrée axe Dashboard → FutureHistorySection (empty state).
+> Suite : merger la PR 2b puis fermer/archiver `[REFONTE-NAV-L2]` ; prochain lot `L3`
+> (Configurations fusionnées).
+>
+> ## 🟢 Session 2026-08-12 (suite 56) — `[REFONTE-NAV-L2a]` : le Futur reprend les repères de l'ex-Accueil
+> Lot 2 SCINDÉ 2a/2b (hypothèse du plan périmée : les paramètres de projection sont DÉJÀ dans le
+> sous-onglet « Hypothèses » du Futur — rien à rapatrier). 2a livré : `SyncStaleBanner` déplacée
+> sur le Futur (au-dessus des KPI, auto-silencieuse), tuile « Variation 30 j » via
+> `hooks/useNetWorthVariation` (fonction PURE paramétrée en jours pour le 2b ; < 2 points →
+> `null` → tuile « — », jamais 0 $ ; départ ≤ 0 → `pct: null`, plus de « 0 % » trompeur),
+> équité immo AJOUTÉE au « Patrimoine net » du bandeau ET étiquetée « équité immo incluse »
+> (parité DASH-NW-DUP — porte `.some(équité ≠ 0)`, parité exacte du gate ex-Accueil), libellé
+> « Monte Carlo (100 itér.) » codé en dur remplacé par le nombre RÉEL (`effectiveMcIterations`,
+> source unique `services/projection/monteCarlo.ts`, consommée par moteur + libellé + input
+> avancé ; résiduel `[MC-LABEL-FROZEN]` au BACKLOG : le libellé lit la config LIVE, pas le
+> résultat gelé).
+> **Itération panel #601 (consolidée, appliquée)** : la variation est RE-SCOPÉE « liquide +
+> placements » PAR CONSTRUCTION — les termes immo (granularité ANNUELLE) et dettes (constant)
+> fabriquaient une variation fictive à chaque 31 décembre et affichaient les remboursements de
+> capital en pertes sèches ; la tuile porte l'étiquette de périmètre (son assiette de % diffère
+> de la tuile Patrimoine — leçon DASH-NETWORTH-CANONICAL), dit « sur N j de données » quand la
+> couverture réelle (`spanDays`) < 30 j, et INCLUT les transactions sans compte (bucket
+> « (compte inconnu) » — l'exclusion créait un écart mesuré avec la tuile voisine).
+> Silent-failures : `effectiveMcIterations` et le calcul de variation logguent les données
+> CORROMPUES (présent-mais-non-fini) via `logErrorThrottled` avant repli/null — pattern
+> `parseRate` ; couverture courte reste silencieuse (état normal). Perf mesurée : import
+> statique de `FutureKpiStrip` dans TabRouter tirait `buildMarketData` au boot (+17,3 KB) →
+> lazyWithRetry + Suspense(null), boot chunk revenu à ~283 KB.
+> Tests : hook (13 — périmètre par construction via fenêtre chevauchant le 31 décembre, bucket
+> inconnu, spanDays, logs corrompu-vs-couverture), bandeau (10 — étiquettes de périmètre, « + »
+> sur le %, porte `.some` avec équités qui se compensent), `effectiveMcIterations` (4, spy
+> logger). Reste 2b : sous-onglet historique + comparaison d'actions + suppression
+> `Dashboard.tsx`.
+>
+> ## 🟢 Session 2026-08-12 (suite 55) — `[REFONTE-NAV-L1]` : nav 6 destinations, la courbe au centre
+> GO Marc sur `docs/REFONTE_NAV_PLAN.md` (à lire AVANT tout travail nav). Lot 1 : la nav passe
+> de 4 groupes thématiques à **6 destinations** (Futur · Configurations · Vie · Transactions ·
+> Assistant · Réglages), **source unique `components/navDestinations.ts`** (sidebar + barre
+> mobile + drawer en dérivent tous). L'app **s'ouvre sur la courbe Future** (défaut du store,
+> activeTab non persisté), l'**Accueil est retiré** : #DASHBOARD → #FUTURE (redirect AVANT le
+> check générique — DASHBOARD est encore dans l'enum, le check générique l'aurait accepté vers
+> un écran vide), route Dashboard dé-routée (composant conservé sur disque = carrière du
+> Lot 2), chiffres de tête repris par `FutureKpiStrip` (patrimoine net, liquidités,
+> épargne/mois — dérivés réels, « — » si non fini). Barre mobile : Futur·Transactions·
+> Assistant·Plus. Tour guidé réordonné (Futur d'abord), palette Cmd+K (mots-clés « accueil »
+> → Futur), SetupHub, GuideModal, e2e kpi/screenshots alignés. Tests : non-perte
+> (`navDestinations.test.ts` — les destinations couvrent EXACTEMENT les onglets routés),
+> redirect scanné, Layout destinations directes vs accordéons.
+> ⚠️ Incident : un redémarrage de conteneur a effacé le Lot 1 NON COMMITÉ pendant la suite de
+> tests (2e occurrence de la classe) — tout ré-appliqué depuis le contexte, leçon renforcée.
+>
+> ## 🟢 Session 2026-08-12 (suite 54) — `[A11Y-FUTUR-MILESTONES-KEYBOARD]` : pastilles au clavier
+> Décision Marc appliquée : ~29 pastilles focusables (tabIndex 0, Entrée/Espace = modale, labels
+> DATÉS via meta.dateLabel, Tab = ordre chronologique). Anneau de focus DESSINÉ en SVG
+> (.event-focus-ring + index.css) — l'outline CSS sur un <g> SVG est invisible dans certains
+> moteurs. Découverte : Échap ne fermait la modale de détail NULLE PART (l'e2e mobile croyait
+> le contraire — sa boucle avalait l'échec) → listener document + autofocus. E2E clavier réel
+> vert, 4 unitaires prouvés discriminants par stash.
+> **Itération audit a11y (NO-GO → corrigé, même PR)** : (1) HIGH — l'autofocus par callback-ref
+> INLINE re-volait le focus à CHAQUE re-render (identité du ref change → React ré-exécute
+> `.focus()` ; cliquer « un compte » arrachait le focus) → `useRef` + effet au montage seul ;
+> (2) le focus est RESTAURÉ à la pastille déclencheuse à la fermeture ; (3) anneau de focus :
+> fond opaque + couleur `primary` (avant : anneau bleu peint à même les aires colorées,
+> contraste < 3:1 possible sur la bande REER) ; (4) vie et flux fusionnés en UNE séquence
+> triée — « Tab = ordre chronologique » est maintenant vrai GLOBALEMENT (avant : deux passes,
+> bond de décennies en arrière à la jonction). 2 tests discriminants (stash) en plus.
+>
+> ## 🟢 Session 2026-08-12 (suite 53) — `[D6-KBD]` : la sidebar au clavier
+> Deux pièges : l'accordéon `disabled={!isSidebarOpen}` était INATTEIGNABLE au Tab en marche
+> avant (Tab saute un bouton désactivé, et au moment où Tab le considère le focus n'est pas
+> encore dans l'aside) → jamais disabled, atteint = opérable (le focus ouvre la sidebar) ;
+> et les items d'un groupe replié restaient TABBABLES en étant invisibles (max-h-0 +
+> overflow-hidden ne retire PAS du tab-order) → `invisible` quand replié. Leçon CONVENTIONS.
+> L'ancien test §B.2 verrouillait le comportement inverse — réécrit avec le POURQUOI.
+> Audit #598 (rien de HIGH) : mon test « groupe replié » était VACUEUX (tous les groupes ouverts
+> par défaut → boucle jamais exécutée — la classe CONVENTIONS que je documente moi-même) →
+> corrigé (replier PUIS asserter) ; preuve du tab-order déplacée en E2E réel (jsdom ne calcule
+> pas visibility — getComputedStyle y ment) ; aria-expanded retiré de l'aside (non conforme au
+> rôle complementary, axe aria-allowed-attr) ; aria-controls/id ajoutés (disclosure APG complet).
+> Restes assumés : repli visuellement instantané (cosmétique), Échap-dismiss →
+> `[A11Y-SIDEBAR-ESC]` (pré-existant, XS).
+>
+> ## 🟢 Session 2026-08-12 (suite 52) — `[FUTUR-MOBILE-LAYOUT]` : le Futur vivable au téléphone
+> Les 3 douleurs restantes du cadrage Marc : courbe mobile 55dvh (`min-h 380`), infobulle FIGÉE
+> en BOTTOM SHEET pleine largeur sous `sm` (`useViewportBelowSm` matchMedia réactif + garde
+> jsdom sans polyfill ; `dockedRef` débraye le positionnement impératif du hook ; `key`
+> sheet/float force le REMOUNT du portail — React ne réécrit PAS un style que l'impératif a
+> changé si SA valeur à lui n'a pas bougé), bouton « Fermer » 44px (Échap n'existe pas au
+> doigt), présets 44px / légende 36px (18 bascules, 44 gonflait le bloc), desktop intact
+> (`sm:min-h-0`). Couvre `[FUT-TOUCH-TARGETS]`. E2E géométrie réelle 390×844 (sheet pleine
+> largeur ancré en bas, Fermer visible SANS scroll, tap d'évitement des pastilles). 418 tests
+> composants verts.
+> Panel #597 (3 agents) : ÉLEVÉ convergent corrigé (rotation pendant un FIGÉ → portail remonté
+> par key naissait à (0,0) + focus tombé sur body, invisible à tout test existant → `reposition()`
+> exposé du hook + effet reposition/refocus sur [tooltipIsSheet] + e2e de rotation réelle
+> 390→900px) ; aria-label sheet sans « Échap » ; aria-modal + piège de focus minimal (Tab boucle
+> dans le dialog figé — le sheet plein écran recouvrait les contrôles vers lesquels Tab sortait) ;
+> min-w sur les cibles (cohérence .touch-target) ; hook viewport durci (singleton mql +
+> garde addEventListener vieux WebKit + reset de test). Dette AAA assumée : légende 36px
+> (AA 2.5.8 passe ; 44px ×18 bascules gonflait le bloc).
+>
+> ## 🟢 Session 2026-08-12 (suite 51) — `[FUTUR-DAILY-TOUCH]` : pincement 2 doigts sur TOUS les graphes
+> Cadrage Marc : tous les graphes d'un coup · 2 doigts = zoom, 1 doigt = la page · les 4 douleurs
+> mobiles cochées (courbe trop petite / viser un jour / infobulle déborde / contrôles → le layout
+> reste à faire, `[FUTUR-MOBILE-LAYOUT]`). Implémenté DANS `useTimeChartZoom` (9 graphes hérités
+> via `containerRef`) : pincement = zoom+pan combinés par RATIO depuis la base figée au départ du
+> geste (pas de point-fixe d'arrondi possible), `touch-action: pan-y` posé par le hook, garde
+> `isPinchActive` sur la sélection au tap du Futur. Pièges MESURÉS (leçon CONVENTIONS) :
+> (1) `synthesizePinchGesture` sans `gestureSourceType: 'touch'` émet de la MOLETTE en desktop
+> headless — le premier e2e « vert » validait la mauvaise modalité ; (2) un pincement d'écartement
+> réel démarre doigts COLLÉS → l'armement doit pouvoir se faire au touchmove, pas seulement au
+> touchstart (le graphe restait inerte au doigt) ; (3) le geste CDP est VERTICAL — un dézoom fort
+> démarre les doigts HORS de la boîte du graphe (gestes modérés dans l'e2e) ; (4) le scroll
+> tactile 1 doigt est inerte dans l'émulation headless MÊME hors graphe (aucun scroller) → le
+> contrat du hook se teste par defaultPrevented, pas par le scroll. Marc a aussi signalé puis
+> retiré (« ah si c'est bon ») un doute sur la position d'un de ses événements de vie.
+> Panel #596 : HIGH silent-failure corrigé (démontage MI-GESTE → `twoFingersRef` coincé →
+> `isPinchActive()` vrai pour toujours → tap du Futur MORT en silence ; purge complète au
+> `containerRef(null)` + test discriminant), NaN largeur-0 gardé (range [NaN,NaN] → slice(0,0)
+> = graphe vidé), re-armement si dataLength change mi-geste, docstring `isPinchActive` élargie
+> (couvre le contact 2 doigts non armé — voulu). Reste HUMAIN : smoke test iPhone/WebKit réel
+> (mes e2e = Chromium seulement) → routé `A_FAIRE_MOI.md` §A0.
+>
+> ## 🟢 Session 2026-08-12 (suite 50) — `[A11Y-INK500]` livré · retour Marc TACTILE reçu
+> Reprise de l'ordre PM (tâche #62, V10 a11y). `[A11Y-INK500]` : classification par-occurrence
+> des 115 matchs — 6 étaient des `pink-500` (substring du grep !) + 2 commentaires ; 85 textes
+> actifs migrés `ink-400` (AA normal mesuré), 22 `ink-500` gardés légitimes (glyphes aria-hidden,
+> icônes-boutons ≥3:1, présentationnel). Leçon CONVENTIONS : compte de ticket par grep naïf gonflé
+> par homonymes-substrings — mesurer avec frontière avant tout sweep. Archivage BACKLOG : blocs
+> SELECT-PATH/ROLLOVER/NATIVE/STICKY/EVENTS → BACKLOG_ARCHIVE (section PR #589→#594).
+> **Marc (14:50) : « je veux pouvoir zoomer parce que pour l'instant sur le tel c'est
+> inutilisable trop petit trop cramped impossible » → `[FUTUR-DAILY-TOUCH]` DÉGATÉ, priorité
+> au-dessus du reste de V10 (cadrage en cours : pincement courbe seule ou onglet entier ?).**
+>
+> ## 🟢 Session 2026-08-12 (suite 49) — `[FUTUR-DAILY-EVENTS]` : les événements à LEUR jour
+> Chaîne livrée : `logLife/logFlow(msg, day?)` → registre `eventDays` par point (champ ADDITIF,
+> schéma documenté) → ventilation quotidienne pose chaque label à SON jour → pastilles à
+> l'abscisse fractionnaire (`evt.x ?? monthIndex`). Datés : événements/voyages saisis (jour de
+> la date saisie ; `YYYY-MM` legacy → au mois), régularisation d'avril (échéance 30, ARC/RQ).
+> NON datés (no-fake) : jalons dérivés (FIRE, RRQ/PSV), stochastiques, lifeMarkers. 6 tests.
+> Validator : PASS complet (rétrocompat bit-identique 0 diff / 421 points, `eventDaysLog` étanche
+> par mois, partition ledger 0 cassée sur 420 mois, `TAX_DUE_DAY` prouvé purement d'affichage).
+> Ses 3 FAIBLE durcis dans la même PR : jour fractionnaire ARRONDI (label plus jamais perdu du
+> ledger), clamp `axisXAtDay` identique au ledger (date impossible restaurée ne glisse plus sur
+> le tick du mois suivant), ambiguïté daté/non-daté RETIRÉE du registre (ordre indifférent) —
+> 5 tests prouvés discriminants par stash. FAIBLE-4 cosmétique → `[FUTUR-DAILY-STACK-X]`.
+> Leçon CONVENTIONS : deux consommateurs qui NORMALISENT chacun la même donnée divergent sur le
+> hors-domaine — clamp identique des deux côtés ou extrait (variante ENTRÉE de « plusieurs
+> registres »).
+
+> ## 🟢 Session 2026-08-12 (suite 48) — `[FUTUR-DAILY-ROLLOVER]` livré · `[FUTUR-DAILY-EVENTS]` EN COURS
+> Marc (04:29) : « ça doit se mettre à jour à chaque jour pour le passé » → ROLLOVER livré
+> (useTodayIsoLocal réactif sur l'horloge partagée, ancrages au jour via axisXForIso, e2e
+> horloge Playwright minuit→frontière avance). Marc (04:37) : « j'ai mis un événement de vie et
+> ça m'a mis au mois et pas au bon jour, tout doit être au bon jour les impôts aussi » →
+> `[FUTUR-DAILY-EVENTS]` : la DONNÉE existe (LifeEvent.date = input type=date complet), le moteur
+> la TRONQUE (`monthlyEvents.ts` split('-') an/mois seulement) et la ventilation pose les
+> pastilles au 1er. À faire : pastilles à l'abscisse du jour saisi, icône d'impôt à l'échéance
+> (fin avril), jalons SANS date réelle (FIRE…) restent au mois en le disant (no-fake).
+> Leçon : changer la granularité d'un AXE = auditer TOUS ses ancrages (Aujourd'hui/bande/pastilles
+> posés au mois sur une courbe au jour — 3 trouvés en 2 retours Marc).
+
+> ## 🟢 Session 2026-08-12 (suite 47) — `[FUTUR-DAILY-NATIVE]` : la courbe au JOUR partout, sélection directe
+> **Marc (02:15) : « je veux pas un bouton je veux pouvoir selectionner sur la courbe direct. »**
+> Après 4 itérations d'affordances, le vrai besoin était un changement de RÉSOLUTION — cadrage
+> 3 questions (clic = jour partout · survol = jour · tracé au jour), plan court, GO explicite.
+> - Livré : série quotidienne GLOBALE (option `fields` de `buildDailyLedger` : courbe légère
+>   ~100 ms/30 ans mesurée, infobulle complète ventilée à la demande par mois + cache — même
+>   moteur, parité testée) ; zoom mensuel qui TRANCHE par abscisse ; tracé décimé > 700 pts
+>   (11 k × 8 aires gelaient le main thread, `mouse.wheel` expirait) avec sélection au jour EXACT
+>   sur la tranche complète ; mois-ancre reconstruit du réel seul ; retraits : boutons « Jour » et
+>   « Voir ce mois jour par jour » (livré 24 h avant), seuil 6 mois. Bandes MC = percentiles
+>   mensuels reliés, étiquetés. E2E 8/8 (vue LARGE sans zoom, Lendemain +1 jour, garde poids DOM).
+> - Leçon CONVENTIONS (6e occurrence UX-UNREACHABLE) : à la 3e affordance vers un état, l'état
+>   doit devenir le DÉFAUT. + 3 corollaires mesurés (décimation, ifOverflow discard, toLocale/pt).
+> - Panel 4 agents sur #592 : CRITIQUE corrigé (cache d'enrichissement empoisonné sur le mois
+>   ancre — extraction `buildEnrichedMonth` pur + testé), a11y (preset « Aujourd'hui » clavier,
+>   table sr-only sur la tranche complète), revue (cache useMemo sans fenêtre de staleness,
+>   nettoyages), validator : TOUS invariants PASS (raccord Δ=0 / 4 680 vérifs, parité 295 835
+>   comparaisons, dayLabel 4 907 dates) + test ÉLEVÉ `decimateForRender` ajouté (prouvé
+>   discriminant par mutation : sans lui, 484 tests verts pendant que 28/29 barres d'impôt
+>   disparaissaient). Découverte MOTEUR préexistante → `[ENG-MC-BANDS-ORDER]` au BACKLOG.
+> - ⚠️ Incident : un agent du panel a muté `dailyCurve.ts` pendant mes correctifs (3e occurrence
+>   course concurrente — leçon CONVENTIONS renforcée : diff avant debug, stage explicite).
+> - GATÉS toujours : `[FUTUR-DAILY-TOUCH]` (doigt ? sans réponse), cadence paie, ancre plan-first.
+
+> ## 🟢 Session 2026-08-12 (suite 46) — `[FUTUR-TOOLTIP-STICKY-ACTIONS]` : le bouton existait, Marc ne le VOYAIT pas
+> **Retour Marc après le déploiement de SELECT-PATH : « figée mais sans le nouveau bouton »,
+> rechargement forcé fait.** Vérifié côté Vercel : la prod servait BIEN le nouveau code (deploy
+> production 01:36). Cause réelle : le tooltip défile en interne (`max-h-[480px]`) et ses vraies
+> données (impôts + par-compte, visibles sur sa capture coupée) poussaient le pied d'actions SOUS
+> le pli. **L'e2e ne pouvait pas l'attraper : Playwright scrolle l'élément en vue avant de
+> cliquer** — 5e occurrence UX-UNREACHABLE, leçon étendue dans CONVENTIONS (une action dans un
+> conteneur scrollable se prouve par GÉOMÉTRIE sans scroll, ou s'épingle).
+> - Fix : pied d'actions `sticky bottom-0` + fond opaque + bleed sur le padding. Verrou unitaire
+>   (classes, 20/20) + assertion e2e de géométrie avant tout scroll (3/3).
+> - GATÉS toujours : `[FUTUR-DAILY-TOUCH]` (doigt ? sans réponse), cadence paie, ancre plan-first.
+
+> ## 🟢 Session 2026-08-12 (suite 45) — `[MELTDOWN-THRESHOLDS-DOC]` + 4 items PM-STALE archivés
+> Ordre PM (tâche #62), suite. **Avant de coder les 3 `TEST-GAP` : vérification → TOUS déjà livrés
+> en #552** (fichiers de test portant les IDs, re-vérifiés VERTS 25/25), ainsi que `[PV-11e]`
+> (`projection.reerByUserParity.test.ts`). Les bullets « Dette technique » dataient de l'analyse
+> du 2026-07-31, antérieure à #552 (PM-STALE-BACKLOG). `[NW-PARITY-SURFACES-TEST]` aussi : livré
+> en #552 dans un fichier NOUVEAU (`nwParitySurfaces.test.ts`, 4/4 verts) — ma re-vérification
+> l'avait d'abord déclaré non-livré en constatant l'immobilité de `nwParity.test.ts` (mauvais
+> fichier) ; attrapé par documentation-manager AVANT merge, leçon dans CONVENTIONS (prouver une
+> ABSENCE = grep l'ID partout). Les 5 items archivés avec preuve.
+> - `[MELTDOWN-THRESHOLDS-DOC]` livré : les 5 seuils de `meltdownReer.ts` documentés comme
+>   heuristiques de CONCEPTION (module + FISCAL_REFERENCE §9) — en l'écrivant, mon « 90 k ≈ haut
+>   du 2e palier » s'est révélé FAUX à la vérification (plafonds 117 045 $ féd / 108 680 $ QC) ;
+>   corrigé avant commit (règle : vérifier avant d'affirmer, surtout en doc fiscale).
+> - **Suite PM (non bloqué)** : V10 a11y ([A11Y-INK500], [FUT-TOUCH-TARGETS], [D6-KBD]…) ·
+>   V11 dette ([GODFILE-APPLYDOCUMENT] en premier). Marc n'a pas encore réagi au correctif
+>   SELECT-PATH déployé, ni répondu « doigt ou souris ».
+
+> ## 🟢 Session 2026-08-12 (suite 44) — `[FUTUR-DAILY-SELECT-PATH]` : le chemin vers le jour offert au moment du clic
+> **Retour Marc en direct (capture « mai 2027 ») : « je peux pas selectionner de jour juste un
+> mois ».** 4e occurrence UX-UNREACHABLE sur ce chantier — le bouton « Jour » existait, mais
+> AILLEURS que là où le geste exprimait l'intention (il cliquait un mois en vue large).
+> - **Livré** : infobulle figée d'un MOIS → « Voir ce mois jour par jour » (zoom centré sur le mois
+>   cliqué) ; infobulle figée d'un JOUR → « Veille / Lendemain » (sélection au jour près, sans
+>   viser un point de ~6 px — utilisable au doigt) ; tolérance de dérive du clic ADAPTATIVE
+>   (mesuré : dérive de 8 px = clic avalé par le garde anti-pan à 6 px → 14 px en vue jour) ;
+>   bandeau honnête quand la fenêtre est serrée mais les ancres mensuelles manquent.
+> - **Diagnostic MESURÉ avant de coder** (sonde Playwright jetable) : clics parfaits 19/19 OK
+>   partout, tap tactile OK, dérive 8-10 px → RIEN, ~6 px par jour au preset « Jour ». C'est la
+>   capture de Marc qui a tranché le symptôme (infobulle mensuelle en vue large).
+> - Leçon portée dans CONVENTIONS (règle raffinée : le raccourci doit être offert AU MOMENT DE
+>   L'INTENTION, pas ailleurs sur l'écran).
+> - **Findings du panel (3 agents), tous corrigés dans la même PR** : no-op MUET de `zoomToDaysAt`
+>   quand le mois figé a disparu de la fenêtre (→ logError + libération) ; label-in-name WCAG 2.5.3
+>   (aria-label qui REMPLAÇAIT « Veille »/« Lendemain » → contient maintenant le texte visible,
+>   tests verrouillés par /Veille|Lendemain/) ; `focus-ring` manquant sur les 4 boutons du pied
+>   (dont « Détail complet », lacune préexistante) ; fenêtrage extrait en helper PUR testé
+>   (`centeredWindowRange`, 5 tests de bord — la version inline re-codait le clamp sans test).
+> - Resté OUVERT : `[FUTUR-DAILY-TOUCH]` (pincement) — Marc n'a toujours pas dit s'il est au doigt ;
+>   si oui, le zoom libre reste impossible sur téléphone (les nouveaux boutons couvrent le cas
+>   sélection, pas la navigation libre).
+
+> ## 🟢 Session 2026-08-12 (suite 43) — `[FUZZ-ONETIME-FLOWS]` : V9 TERMINÉE + grand ménage BACKLOG→ARCHIVE
+> Dernier item V9 (ordre PM). Le fuzz de conservation (`projection.fuzzConservation.test.ts`) exerce
+> désormais TOUS les flux one-time : vente immo (`eventKind: 'VENTE_IMMO'` daté après l'achat),
+> revenu locatif (bien non-RP), équité négative, véhicule cyclique (W5), héritage, REEE — couverture
+> MESURÉE par un test dédié (échantillon seedé 120 scénarios, sondes d'EFFET, planchers assertés).
+> - ⚠️ **Le test de couverture a payé dès l'écriture** : `propertyGrowthRate` câblé sur la CONFIG
+>   projection = no-op silencieux (équité négative 0/120) — le moteur ne lit que
+>   `goal.propertyGrowthRate` (realEstateMonth.ts:354). Champ config FANTÔME en prod →
+>   découverte `[ENG-PROPGROWTH-CONFIG-DEAD]` au BACKLOG ; leçon « paramètre homonyme à deux
+>   niveaux » portée dans CONVENTIONS.md + index CLAUDE.md.
+> - Re-mesuré après correction (taux porté sur le GOAL) : 4/120, plancher 2 (événement rare par
+>   nature). INV-9 vert sur les 500 runs avec les nouveaux flux.
+> - **Ménage BACKLOG (règle « l'archive au plus tard à la PR suivante »)** : toutes les étapes
+>   cochées de V8bis/FUTUR-DAILY + `[NAMING-INVESTED]` + `[HARDEN-SNAPSHOT-RACE]` + V9 déménagées
+>   vers `BACKLOG_ARCHIVE.md` (section 2026-08-12). Le BACKLOG ne garde que le reste VIVANT du
+>   chantier (cadence de paie, zoom au doigt, ancre plan-first, liquidités par compte).
+> - **Suite PM (non bloqué)** : `[TEST-GAP-TAXESTIMATE]` + `[TEST-GAP-SUBSCRIPTIONS]` +
+>   `[TEST-GAP-ROLESCONFIG]` (V3, S) · `[MELTDOWN-THRESHOLDS-DOC]` (S doc) · V10 a11y · V11 dette.
+>   GATÉS Marc : `[FUTUR-DAILY-CADENCE]`, `[FUTUR-DAILY-TOUCH]`, ancre `computeStartingCash`
+>   (plan-first), `[ENG-PAST-OWNED-VS-PLANNED]`, items FISC.
+
+> ## 🟢 Session 2026-08-12 (suite 42) — `[HARDEN-SNAPSHOT-RACE]` : abort sur la projection simple (V9, ordre PM)
+> `runProjectionAsync` accepte `{ signal: AbortSignal }` + sentinelle `PROJECTION_CANCELLED` ;
+> branché dans `ProjectionEngine` (abort au changement de params / démontage ; annulation filtrée
+> avant le log « CRITICAL SIMULATION ERROR » — sinon une entrée de journal par frappe).
+> - ⚠️ **Design imposé par la dédup PH2-b** : l'abort rejette une promesse DÉRIVÉE par appelant,
+>   jamais la promesse PARTAGÉE de `_inflight` — sinon l'appelant raccroché au même calcul recevait
+>   l'annulation de l'autre. Test DISCRIMINANT dédié (2 appelants, un annule, l'autre reçoit).
+> - ⚠️ **Leçon de test (2e vacuité attrapée aujourd'hui)** : la preuve par stash était elle-même
+>   vacueuse — sous l'ancien code, l'import de la sentinelle devient `undefined` et
+>   `toThrow(undefined)` accepte N'IMPORTE quelle erreur : 14/14 verts sur du code SANS la feature.
+>   Sentinelle EN DUR dans les assertions ; re-prouvé : 2 rouges sans le fix, 14 verts avec.
+> - Le worker n'est pas interrompu (canal singleton partagé) — annuler = se détacher, message tardif
+>   filtré par `requestId`. Reste V9 : `[FUZZ-ONETIME-FLOWS]` (M).
+> - Gate vert : typecheck, lint, **3 734 tests / 326 fichiers**, build.
+
+> ## 🟢 Session 2026-08-11 (suite 41) — `[NAMING-INVESTED]` : le champ « NetWorth » de la reconstruction mensuelle renommé `InvestedValue`
+> Item d'audit du BACKLOG (ordre PM). Le champ ne porte que la somme des comptes de PLACEMENT — le
+> nom promettait un patrimoine net et avait déjà nourri de faux rapprochements d'audit.
+> - ⚠️ Le commentaire du code disait « renommer casserait d'autres consommateurs `.NetWorth` » —
+>   constat PÉRIMÉ jamais re-vérifié (même classe que `DOC-STALE-IMPOSSIBILITY`) : mesuré au grep +
+>   typecheck, AUCUN consommateur de prod ne lisait ce champ. Trois TESTS seulement, alignés.
+> - Push sans leçon NOUVELLE : c'est la 2e occurrence de `DOC-STALE-IMPOSSIBILITY` aujourd'hui — la
+>   leçon existante est confirmée, pas étendue.
+
+> ## 🟢 Session 2026-08-11 (suite 40) — `[FUTUR-DAILY-ANCHOR-CAVEAT]` : le retrait du panneau avait emporté un avertissement money-critical
+> **Attrapé à la relecture du BACKLOG après le merge de #584, pas par un test.** L'item d'audit
+> « Divergences d'ancre du cash quotidien » était noté *latent — 0 $ tant que non branché sur la
+> courbe*. Or #582 l'a branché, et sa mitigation (le PANNEAU affichait `undatedTotal` /
+> `flowsAfterNowDate`) a été supprimée avec le panneau (#584). Résultat : un niveau passé
+> potentiellement décalé (écart mesuré à l'audit) sans plus AUCUN avertissement à l'écran.
+> - **Rétabli** : `buildDailyPastLedger` rend `{ rows, undatedTotal, flowsAfterNowDate }` — y compris
+>   quand aucune ligne n'est produite (historique fait uniquement de transactions au mois seul) — et
+>   le BANDEAU de la vue au jour affiche les deux montants en avertissement, `formatCAD`.
+> - Leçon : **supprimer une surface exige l'inventaire de ce qu'elle était SEULE à dire** — le
+>   contenu redondant part avec elle, les avertissements uniques déménagent. Portée dans
+>   CONVENTIONS.md.
+> - Gate vert : typecheck, lint, **3 731 tests / 326 fichiers**, build, e2e « sélection d'un jour ».
+> - Le correctif de FOND (retrancher ces flux de l'ancre `computeStartingCash`) reste plan-first au
+>   BACKLOG — il touche le raccord au présent.
+
+> ## 🟢 Session 2026-08-11 (suite 39) — `[FUTUR-DAILY-INFOBULLE-ONLY]` + `[ZOOM-ROUND-FIXPOINT]`
+> **Correction de cap de Marc** : « je veux que juste dans l'infobulle ce soit l'information par
+> jour […] je veux pouvoir zoomer un peu plus pour voir les jours individuels […] pas de nouvel
+> onglet ou quoi ».
+> - **Retiré** : le tableau jour-par-jour sous la courbe (`DailyDetailPanel`) + tout le code que lui
+>   seul consommait (`refineMonthToDaily`, `refineWindowToDaily`, `daySpan`, `dailyDeltasFor`,
+>   `datedCoverageForMonth`) et leurs tests. Le détail du jour vit dans l'infobulle, uniquement.
+> - **Zoom profond** : `minPoints: 1` sur le graphe Futur → plancher à 2 points mensuels = 1 mois
+>   rendu au jour (~30 px par jour). Les autres graphes gardent le défaut 5.
+> - ⚠️ **Bug de fond `[ZOOM-ROUND-FIXPOINT]`, trouvé par SONDE** (10 crans dispatchés, fenêtre
+>   inchangée — pas à la lecture) : à petit span l'arrondi entier ANNULAIT le cran (à span 5, ×0,85
+>   déplace chaque borne de ~0,375 → mêmes entiers → point fixe, et la base du cran suivant est la
+>   cible arrondie). `minPoints: 1` seul était INOPÉRANT, et le DÉZOOM au plancher était déjà coincé
+>   avant ce lot. Correctif : pas entier forcé quand l'arrondi annule, côté opposé au curseur.
+>   6 tests du hook (4 discriminants prouvés par stash) + garde e2e mesurable (la légende sr-only
+>   cesse d'être « échantillonnée » sous 40 jours).
+> - ⚠️ Piège de test vécu : un stub rAF SYNCHRONE fait croire au hook qu'un frame est éternellement
+>   en attente (le callback tourne avant l'affectation de l'id) — les tests mesuraient le stub.
+>   File de frames flushée manuellement.
+> - Gate vert : typecheck, lint, **3 729 tests / 326 fichiers** (−21 : tests du tableau retiré et du
+>   code mort, +6 du hook de zoom), build, e2e Futur complet (jour, tooltip, axe, icônes).
+
+> ## 🟢 Session 2026-08-11 (suite 38) — `[FUTUR-DAILY-PAST-REAL]` : le passé au jour devient RÉEL
+> Seconde moitié de la demande de Marc (« je veux aussi que ça marche pour le passé, en fonction de
+> la valeur de mes comptes, de mes dépenses »).
+> - **Avant** : les jours du passé étaient INTERPOLÉS entre deux ancres mensuelles — un lissage là où
+>   l'app connaît la vérité au jour près (transactions datées, prix datés), et où les fonctions de
+>   reconstruction existaient déjà, consommées par `DailyDetailPanel` mais PAS par la courbe.
+> - **Livré** : `services/history/dailyPastLedger.ts` (13 tests). Soldes par compte + cash + immo +
+>   valeur nette réels, revenus/dépenses = vraies transactions du jour (libellés compris), et la
+>   variation d'un compte séparée en DÉPÔT (achats datés à leur prix d'achat) vs RENDEMENT.
+> - ⚠️ **Le point réel est construit À PARTIR DE RIEN**, pas par `{...projeté, ...réel}` : sinon des
+>   dizaines de champs PROJETÉS (impôt dormant, rentes, solde d'impôt) survivraient dans une journée
+>   présentée comme réelle. Ce qui n'est pas mesuré est ABSENT.
+> - ⚠️ Une journée n'existe que si cash ET placements ont de la matière ; aujourd'hui n'est pas
+>   reconstruit (la reconstruction s'arrête à la veille) ; bornée à aujourd'hui pour ne pas afficher
+>   des placements plats « reconstruits » sur le futur.
+> - Badge **Réel / Projeté** dans l'infobulle + avertissement quand le prix utilisé date de > 7 jours.
+> - ⚠️ **Retour immédiat de Marc : « je vois toujours pas au jour pour le passé ».** Vrai, et
+>   arithmétique : `dailyWindowRange` posait `lo = todayIndex − 1`, or la 1re ancre de la fenêtre est
+>   CONSOMMÉE comme valeur d'entrée sans être rendue → le 1er jour affiché était le 1er du mois
+>   COURANT. Le passé au jour était livré, testé, et **strictement invisible**. Fenêtre désormais
+>   CENTRÉE (2 mois passés + courant + 2 futurs), avec un test qui échoue sur l'ancien ancrage.
+>   Classe `UX-UNREACHABLE-FEATURE`, 3e occurrence sur ce chantier — livrer ≠ rendre visible.
+> - Libellé du jour passé en `JJ/MM/AAAA` (« sam. 14/09/2026 ») : le mois abrégé ressemblait encore
+>   au libellé mensuel d'un coup d'œil. Demande de Marc, 2e correction du même symptôme.
+> - Gate vert : typecheck, lint, **3 750 tests / 326 fichiers**, build, e2e « sélection d'un jour ».
+> - **Reste** : `[FUTUR-DAILY-CADENCE]` (cadence de paie dérivée des relevés) et
+>   `[FUTUR-DAILY-TOUCH]` (pincement au doigt, à cadrer avec Marc).
+
+> ## 🟢 Session 2026-08-11 (suite 37) — `[FUTUR-DAILY-FULL]` : la vue au jour ne CALCULAIT rien au jour
+> **Retour de Marc, capture à l'appui** : « ça me dit encore septembre 2026 et pas le jour […] je
+> veux que tous les calculs soient faits pour chaque jour, je veux que tout soit ajusté au jour,
+> toutes les sommes. Je veux aussi que ça marche pour le passé. »
+> - **Diagnostic** : l'infobulle de sa capture était un point MENSUEL (elle affiche « Paye »,
+>   « Dépenses de vie », « Impôt dormant », « Par compte » — des champs que le moteur n'émet qu'au
+>   mois). Mais le vrai défaut était en dessous : **la vue au jour ne portait QUE `NetWorth`**. Toutes
+>   les autres lignes de l'infobulle étaient donc vides au jour, et les aires par compte masquées
+>   « en s'en expliquant ». Une courbe au jour SANS calculs au jour.
+> - **Livré** : `services/projection/dailyLedger.ts` (25 tests) ventile **tous** les champs du moteur
+>   au jour, par classe — `stock` (interpolé du mois précédent à ce mois), `flow` (réparti selon sa
+>   cadence), `monthly` (un taux ne se divise pas), `recomputed`. L'infobulle et les aires empilées
+>   fonctionnent au jour **sans une ligne de réécriture** : elles lisent les mêmes clés.
+> - ⚠️ **Un constat de cadrage à moi était FAUX et bloquait la feature** : « seule la Valeur nette
+>   peut passer au jour, ventiler les comptes serait de la fausse précision » (BACKLOG, lot B étape 2).
+>   Le moteur émet DÉJÀ `NetTransfer*` et `MarketGrowth*` par mois ET par compte — de quoi décomposer
+>   sans rien inventer. Classe `DOC-STALE-IMPOSSIBILITY`.
+> - ⚠️ **Bug de fond corrigé** : le raffinement précédent appliquait la même liste de mouvements datés
+>   au COMPTE et au PATRIMOINE NET → un paiement de dette creusait un trou dans la valeur nette le
+>   jour de paie, rebouché ensuite par l'étalement du résidu (juste en fin de mois, faux au jour).
+> - ⚠️ **Les deux tests d'invariant ne suffisaient PAS** : ils lisent `FIELD_KIND` pour choisir quoi
+>   vérifier, donc un solde reclassé en flux leur échappe (mesuré). D'où une 3e garde d'**ordre de
+>   grandeur**, indépendante de la classification.
+> - **Reste ouvert** : `[FUTUR-DAILY-PAST-REAL]` (le passé au jour vient encore de l'interpolation des
+>   ancres mensuelles, alors que les vraies séries quotidiennes existent) et `[FUTUR-DAILY-CADENCE]`
+>   (cadence de paie dérivée des relevés — Marc : « pour l'instant jeudi hebdo »).
+> - ⚠️ **Défaut MAJEUR trouvé en route, antérieur à ce chantier** : cliquer sur une AIRE du graphe
+>   Futur ne figeait pas l'infobulle — le navigateur ne dispatche aucun `click` sur un path recharts
+>   redessiné au survol. La moitié basse de la courbe était morte au clic depuis toujours ; l'e2e
+>   cliquait dans le vide au-dessus de la pile, donc il ne le voyait pas. Corrigé (`onPointerUp`).
+>   Méthode : sonde Playwright + instrumentation par attribut DOM (le `console.log` restait muet).
+> - Gate vert : typecheck, lint, **3 735 tests / 325 fichiers**, build, e2e Futur (jour, infobulle, axe, icônes).
+
+> ## 🟢 Session 2026-08-11 (suite 36) — `[FUTUR-DAILY-REACH]` : la vue au jour était INATTEIGNABLE
+> **Retour de Marc après le déploiement de l'étape 2 : « j'arrive toujours pas à voir jour par
+> jour ».** Rien n'était cassé — et il avait entièrement raison.
+> - **Diagnostic mesuré** : la vue au jour ne s'active que sous **6 points mensuels visibles**, et le
+>   seul chemin y menant était la molette — **23 à 31 crans depuis « Tout »** (facteur 0,85/cran,
+>   plancher `DEFAULT_MIN_POINTS = 5`), **16 depuis le preset « 5 ans »** — sans aucun retour disant
+>   qu'on s'en approchait. Et `useTimeChartZoom` n'écoute QUE `wheel` + souris : **au doigt, c'était
+>   impossible**, sur tous les graphes de l'app.
+> - **Livré** : bouton **« Jour »** dans le sélecteur de période. Un clic pose la fenêtre exacte,
+>   ancrée sur aujourd'hui. `dailyWindowRange` (pur, 6 tests) — recule d'un mois parce que
+>   `refineWindowToDaily` CONSOMME la première ancre comme valeur d'entrée sans la rendre, et rend
+>   `null` si la fenêtre couvrirait tout (le hook repasserait en « vue complète » → jamais zoomé →
+>   bouton sans effet). E2E « EN UN CLIC », **prouvée discriminante** (`git stash` : échoue sans).
+> - **Défaut adjacent corrigé** : `idxForYears` cherchait dans `chartData` alors que le zoom indexe
+>   `displayData` (= passé préfixé + `chartData`) → les presets « 5/10/20/30 ans » s'arrêtaient
+>   `pastPrefix.length` mois trop tôt.
+> - **Routé au BACKLOG** : `[FUTUR-DAILY-TOUCH]` (pincement au doigt) — à cadrer avec Marc avant de
+>   coder, la question « utilises-tu l'app au doigt ? » n'est pas tranchée.
+> - Gate vert : typecheck, lint, **3 710 tests / 324 fichiers**, build.
+
+> ## 🟢 Session 2026-08-11 (suite 33) — `[FUTUR-DAILY]` lot A2 : infobulle quotidienne + par compte
+> **Demande de Marc** : « avec l'info bulle dans futur je veux voir le détail par jour et le passé je
+> veux voir le détail par jour et par compte aussi ». Les deux sont livrés.
+> - **Infobulle Futur** : bloc « Jour par jour » du mois SURVOLÉ. `ExpertTooltip` reste PASSIVE (prop
+>   `dailyRows`) — c'est `FutureProjection` qui raffine UN mois (ancre d'entrée = le mois précédent).
+>   Jours à mouvement daté surlignés ; le pied dit que le reste est de l'interpolation.
+> - **Passé par compte** : 6 colonnes de régime dans `DailyDetailPanel`. La donnée existait déjà dans
+>   `reconstructPortfolioHistoryDaily` — elle était JETÉE au rendu.
+> - ⚠️ **Défaut CORRIGÉ, trouvé en écrivant le test** : la reconstruction n'était pas bornée à
+>   aujourd'hui → plateau de prix reconduit présenté comme mesuré sur les jours FUTURS, à côté d'une
+>   colonne « Projeté » croissante. Bornée à `min(to, today)`. Leçon dans `CONVENTIONS.md`.
+> - Replis de sélecteurs `?? []` inline → **constantes de module** (`react-hooks/exhaustive-deps` les
+>   signalait : nouvelle référence à chaque rendu → memos invalidés à chaque frame de zoom).
+> - **Panel (code-reviewer, a11y-auditor, silent-failure-hunter) — 5 findings, tous CONFIRMÉS et
+>   corrigés dans la même PR** : `Number(NetWorth) || 0` qui vidait le garde no-fake de
+>   `refineMonthToDaily` (→ `finiteAnchorRun`, plage contiguë) · la ligne d'AUJOURD'HUI mesurée mais
+>   annoncée « (projeté) » (`isPast` en `<` face à une borne inclusive) · la fermeture `deltasFor`
+>   dupliquée entre les deux écrans (→ `dailyDeltasFor`) · deux conteneurs défilants inatteignables
+>   au clavier · les « — » hors convention `emptyAware`.
+> - Gate vert : typecheck, lint, **3 691 tests / 324 fichiers**, build.
+
+> ## 🟢 Session 2026-08-11 (suite 35) — `[FUTUR-DAILY]` lot B étape 2 : SÉLECTIONNER un jour
+> ⚠️ **CORRECTION DE CAP de Marc** : « je veux pas voir dans l'info bulle le détail des jours de
+> chaque mois, je veux pouvoir sélectionner chaque jour dans le graph ». Le bloc-liste ajouté au
+> lot A2 donnait à LIRE — retiré. Chaque jour est désormais un POINT du graphe au zoom maximal.
+> - Abscisse fractionnaire `axisXAtDay` (jour 1 = entier du mois → jalons alignés).
+> - ⚠️ Clic résolu par VALEUR d'abscisse (`resolvePointByX`), pas par rang : les jours ne sont pas
+>   régulièrement espacés (1/28 vs 1/31) — par rang le clic visait un autre jour, en silence.
+> - ⚠️ **Seuil COUPLÉ au plancher de zoom** : `minPoints = 5` laisse **6** points visibles ; mon
+>   plafond initial (4 mois) rendait la vue au jour INATTEIGNABLE. Code « correct », fonctionnalité
+>   jamais déclenchée — attrapé par l'e2e, invisible à la lecture et au typecheck.
+> - Aires par compte masquées au jour + bandeau qui explique pourquoi (moteur mensuel).
+> - Gardes : `e2e/futureDailySelect.spec.ts` (2 abscisses éloignées → 2 jours DIFFÉRENTS) + tests
+>   unitaires `axisXAtDay` / `resolvePointByX`.
+> - ⚠️ **2 findings CRITIQUES de la revue, corrigés** : « Variation +0 $ » en vert sur chaque jour
+>   (badge sans garde sur `diffNW || 0`) → `diffNW` est désormais l'écart avec la VEILLE, et le badge
+>   se masque quand elle est inconnue · « Détail complet » passait un point à abscisse FRACTIONNAIRE
+>   à `FutureDetailModal`, qui joint par `monthIndex` → 30 jours sur 31 sans correspondance, `|| 0`
+>   partout, et une DETTE fabriquée égale au patrimoine net quand il est négatif → on rabat sur le
+>   vrai mois hôte (`hostMonthIndex`). Le double cast `as unknown as` avait masqué les deux :
+>   remplacé par `Partial<ProjectionChartPoint> & {…}`.
+> - Table sr-only : suit désormais `chartSeries` (parité a11y avec la vue au jour), champs absents →
+>   `NO_DATA_LABEL` littéral, jamais « 0 $ ». Gate : **3 704 tests**.
+
+> ## 🟢 Session 2026-08-11 (suite 34) — `[FUTUR-DAILY]` lot B étape 1 : axe X NUMÉRIQUE
+> **Marc a choisi l'axe numérique** parmi 3 options (fraction de mois / axe numérique / 2e graphe).
+> `type="number"` + `domain={['dataMin','dataMax']}` — préalable au tracé quotidien : en catégoriel,
+> les ancrages s'apparient par CATÉGORIE et disparaîtraient sur des abscisses fractionnaires.
+> - ⚠️ **Pas un no-op au pixel** (mesuré) : décalage d'une demi-bande, points et ancrages ENSEMBLE.
+> - ⚠️ **`domain` obligatoire** : sans lui recharts part de 0 → tout le passé repoussé (316,5 vs 122,5).
+> - Garde `e2e/futureAxis.spec.ts`, prouvée discriminante dans les DEUX états fautifs.
+> - ⚠️ **Sonde à ne PAS refaire** : `toHaveScreenshot` pleine page — même md5 avec et sans le
+>   `domain` (conteneur rendu −1×−1), soit un « vert » qui masquait 194 px d'écart.
+> - ⚠️ **Constat de cadrage pour l'étape 2** : seule la **Valeur nette** peut passer au quotidien.
+>   Les 8 aires empilées, l'impôt latent, la barre d'impôts et le Monte Carlo lisent des champs que
+>   le moteur n'émet qu'au MOIS. À trancher avec Marc avant de coder.
+> - E2E dans ce conteneur : chromium 1194 vs 1223 attendu → `PW_LOCAL_CHROMIUM=/opt/pw-browsers/chromium`
+>   (les specs Futur lisent déjà cette variable).
+
+> ## 🟠 Session 2026-08-06 (suite 32) — #574 mergée, mais PAS déployée
+> `[FUTUR-DAILY]` est **sur `main`** (`ed5a7d1`, #574) — et **Vercel n'a créé aucun déploiement de
+> PRODUCTION** dans la demi-heure suivante. `latestDeployment` du projet restait la PREVIEW de
+> `02ae31a` (`target: null`). **Marc en a été informé** — ne PAS annoncer une mise en ligne qui n'a
+> pas eu lieu. À re-vérifier : `latestDeployment.target === 'production'` ET le SHA.
+> ⚠️ **J'ai d'abord accusé le quota du plan gratuit — hypothèse RÉFUTÉE 10 min plus tard** : Vercel a
+> construit sans broncher la preview de #575. Le plus probable est un webhook de déploiement MANQUÉ
+> sur ce push précis (les merges précédents du même jour avaient bien produit leur production).
+> Le merge de #575 devrait donc emporter le contenu de `ed5a7d1` en production au passage — à
+> VÉRIFIER, pas à supposer. Sinon : Vercel → Deployments → `ed5a7d1` → Redeploy (action de Marc).
+>
+> ⚠️ **Et le blocage qui a coûté 40 min** : les checks de #574 sont restés EN FILE 15 min puis ont
+> été **ANNULÉS** (`conclusion: "cancelled"`, PAS `"failure"`). L'auto-merge ne se déclenche jamais
+> là-dessus, et aucun webhook d'échec ne part. Déblocage = `rerun_workflow_run`. Leçon portée dans
+> `CONVENTIONS.md` : lire `conclusion`, pas seulement `status`.
+
+> ## 🟢 Session 2026-08-06 (suite 31) — `[FUTUR-DAILY]` : granularité QUOTIDIENNE (demande Marc)
+> **Marc a tranché « quotidien sur tout, je veux voir le détail si je zoom beaucoup ».** J'avais
+> objecté que le quotidien long terme est de la fausse précision ; il a maintenu. **Décision prise,
+> ne plus la rediscuter.** Sa formulation permet de la servir sans le coût redouté.
+>
+> **CONCEPTION** : le moteur RESTE mensuel (source de vérité, `projection.ts` INTOUCHÉ — le passer au
+> jour = ~11 000 itérations × chaque tirage MC, et rejouer au jour une fiscalité qui n'a que des
+> événements ANNUELS). Un module RAFFINE la fenêtre regardée.
+> **INVARIANT money-critical** : la série quotidienne passe EXACTEMENT par les points mensuels, par
+> construction. Sinon l'app afficherait deux vérités pour le même mois selon le zoom.
+>
+> Livré et testé (**~110 tests**) : `dailyRefine` · `reconstructCashHistoryDaily` (le `slice(0,7)`
+> jetait le jour) · `reconstructPortfolioHistoryDaily` (fenêtrée, par compte) · `datedMonthEvents` ·
+> `DailyDetailPanel` **BRANCHÉ** dans `FutureProjection` (n'apparaît qu'en zoom).
+>
+> ⚠️ **UI lot B — la COURBE elle-même en quotidien — reste À FAIRE, et ce n'est PAS un branchement.**
+> _(⚠️ PÉRIMÉ depuis le 2026-08-11 — l'axe est passé en NUMÉRIQUE, voir suite 34. Conservé tel quel :
+> c'est l'état des lieux qui a motivé le choix du panneau à l'époque.)_
+> L'axe X du graphe Futur est **CATÉGORIEL** : « Aujourd'hui », la frontière passé/futur, les
+> événements de vie et les icônes-jalons sont ancrés sur un `monthIndex` ENTIER apparié comme
+> CATÉGORIE. Migrer exige de convertir chaque ancrage ; un désalignement y serait SILENCIEUX sur un
+> écran money-critical → changement dédié + e2e.
+> ⚠️ **Écart ANNONCÉ à Marc** : `RecurringItem.dayOfMonth` est la SEULE date que l'app connaisse pour
+> le futur. La PAIE et les DETTES n'ont aucun champ de jour → seules les charges récurrentes font de
+> vraies marches, le reste est lissé. Question **A13** dans `A_FAIRE_MOI`.
+>
+> **Audit `financial-integrity` (relancé sur main, le 1er était mort au lancement)** — findings
+> traités AVANT le branchement : la fusion des deux `72` est CONFIRMÉE correcte et protectrice
+> (découpler = +6 508 $ sur 22/56 personas) · ma borne basse est INERTE (1 716 appels instrumentés) ·
+> mais mon « aucun producteur d'âge fractionnaire » était FAUX pour les CHARGEURS
+> (`appStateSchema.ts:27` accepte `z.number()` sans arrondi) et l'écart vaut **+386 276 $** sur un
+> solo à 71,5 ans · `FISCAL_REFERENCE` décrivait un gate MÉNAGE qui n'existe plus · deux divergences
+> d'ANCRE du cash quotidien (`undatedTotal`/`flowsAfterNowDate` désormais exposés ET affichés).
+> Trois dettes PRÉ-EXISTANTES ticketées : plafonds REER 2010-2023 non documentés, fallback 2025
+> appliqué aux années pré-2010, extrapolation +0,5 %/an non sourcée.
+
+> ## 🟢 Session 2026-08-06 (suite 30) — repli FERR durci + dédup doc + INDEX des blocages (PR #573)
+> **Demande de Marc : « continue avec tout ce que tu peux faire, et prépare-moi la liste de ce que
+> je dois faire pour te débloquer le backlog au complet ».** Les deux sont livrés.
+>
+> 1. **`[FISC-RRIF-FRACTIONAL-AGE]`** — `rrifRateForAge()` remplace le repli attrape-tout
+>    `RRIF_RATES[age] || RRIF_RATE_PLATEAU`, qui distribuait le facteur le PLUS PUNITIF du barème
+>    (20 %) à toute entrée absente de la table. Discriminant PROUVÉ contre `git archive` : l'ancien
+>    code rend 20 % sur 72,5 · 93,9 · NaN · +Infinity ; le nouveau rend 5,40 % · 16,34 % · 0 · 0.
+>    ⚠️ **NaN traversait le filtre `age < 72`** (toute comparaison avec NaN est fausse) — je ne
+>    l'avais pas anticipé, c'est le tracé du code qui l'a montré.
+>    **Bit-identité vérifiée** : SHA-256 sur 361 mois × 102 champs, fixture couple 70/66 ans avec
+>    1,4 M$ de REER (ΣRetraitREER = 2 185 736,69 $, donc le FERR tourne VRAIMENT), sonde prouvée
+>    discriminante (93 → 16,35 % au lieu de 16,34 % déplace le hash).
+> 2. **`[FISC-REF-DEDUP]`** — un sujet, un endroit. Les valeurs vivent dans §CELI/§REER/§FERR ; la
+>    section d'ancrage ne garde que la provenance et la leçon. Deux limites connues sont maintenant
+>    ÉCRITES là où on les lira (94 ans contesté · droits REER au niveau MÉNAGE).
+> 3. **`[FISC-CONST-ANCHOR-DEBT]` +2 (5/14)** — `RRIF_FIRST_WITHDRAWAL_AGE` (72, qui vivait en dur
+>    sur taxJanuary ET taxDecember) et `RRIF_PLATEAU_AGE` (95, qui n'était écrit NULLE PART :
+>    porté par la seule absence d'entrée dans la table).
+>    ⚠️ **Le garde a mordu sur mon propre ajout** : `95` existait DÉJÀ dans `helpers.ts` (palier de
+>    la courbe de mortalité, famille `design`) → collision de la clé `(fichier, valeur)`. Le
+>    compromis était documenté ; il est désormais VÉCU. Résolu par UNE entrée qui nomme les DEUX
+>    sens, famille la plus exigeante (`fiscal`). Taire une des deux aurait fait mentir l'inventaire.
+>    ⚠️ **Rendement décroissant sur les 9 restantes** : ce sont des âges-seuils déjà commentés et
+>    sourcés sur place. Seul le `65` (2 modules) vaut encore le geste. Noté au BACKLOG.
+> 4. **Findings du panel `silent-failure-hunter` CORRIGÉS dans la même PR** — les deux tenaient :
+>    - **MOYEN** — `return 0` sur non-fini confondait deux signaux OPPOSÉS : le sentinelle
+>      `−Infinity` de `taxJanuary` (« conjoint sans âge », absence délibérée) et une donnée
+>      CORROMPUE (`NaN`/`+Infinity`). La convention du dossier (`pastPurchaseInit.ts`, `isCorrupt`)
+>      est explicite : « champ renseigné mais non fini, jamais avalé sans trace ». Corrigé par
+>      `logErrorThrottled` — mais **sans coder « −Infinity est spécial »** : c'est l'ORDRE des
+>      gardes qui sépare (borne basse d'abord, `−Infinity < 71` est vrai). Zéro cycle d'import
+>      vérifié (`errorLogger` n'importe rien ; `pastPurchaseInit` du même dossier l'importe déjà).
+>    - **FAIBLE** — mon commentaire de test sur-affirmait « repli inatteignable ». Vrai seulement
+>      sur [72, 95) avec la vraie table. Reformulé.
+>    - ⚠️ **Et un 3ᵉ, que je me suis infligé en corrigeant le 1er** : j'ai borné par le bas à
+>      `RRIF_FIRST_WITHDRAWAL_AGE` (72), ce qui **écrasait le facteur 71** que la table porte
+>      délibérément (conversion volontaire précoce). Conversion (71) et 1er retrait forcé (72) sont
+>      DEUX règles ARC distinctes. **Attrapé par mon propre test de non-régression**, pas par
+>      relecture → `RRSP_TO_RRIF_CONVERSION_AGE` ajouté, borne corrigée, test dédié.
+>    Bit-identité RE-VÉRIFIÉE après ces corrections : même SHA-256.
+> 5. **`docs/A_FAIRE_MOI.md` — INDEX exhaustif des blocages** (§ « 🔓 INDEX ») : A = 12 questions à
+>    réponse courte + les 4 de `PROFIL-SWITCH` · B = 5 sources fiscales que le proxy bloque ·
+>    C = 7 actions de configuration · D = 5 vérifs à l'écran · E = 3 chantiers qui attendent MON
+>    cadrage, pas une action de Marc · F = ce que je fais sans lui. Chaque ligne porte son impact
+>    MESURÉ et ce qu'elle débloque.
+>
+> ## 🟠 Session 2026-08-06 (suite 29) — audit de l'ancrage : 2 findings à impact ROUTÉS vers Marc
+> L'audit `financial-integrity` de #572 CONFIRME la bit-identité (hash SHA-256 identique sur 481
+> mois, sonde prouvée discriminante par perturbation) **et prend en défaut mon CHANGELOG** : le
+> 18 % vivait AUSSI dans `setupSimulation.ts`, l'arrondi CELI à 2 endroits d'`utils/tax.ts`.
+> **Corrigé dans la même PR** : les 2 jumeaux · la contradiction interne de FISCAL_REFERENCE
+> (« 18 % du brut » vs « du GAGNÉ ») · un commentaire disant `??` là où le code fait `||` ·
+> et le **trou de garde que j'avais créé** en déplaçant `RRIF_RATE_PLATEAU` vers `helpers.ts`,
+> absent de `FISCAL_MODULES` (ajouté, avec `setupSimulation.ts`, + exclusion des opérateurs
+> BINAIRES pour ne pas noyer le signal sous le générateur pseudo-aléatoire).
+>
+> ⚠️ **DEUX findings à impact $ NON corrigés, routés vers `A_FAIRE_MOI`** — je ne peux pas les
+> confirmer seul (le proxy BLOQUE `canada.ca`, 403) et un faux fix dans un moteur d'impôt est pire
+> que le bug laissé en place :
+> - `[FISC-RRIF-94-FACTOR]` — `helpers.ts:95` code `94: 0.2000` ; le prescrit serait 18,79 %
+>   (plateau 20 % à 95+). **Mesuré +13 726 $** de patrimoine final. Il faut le règlement 7308(4).
+> - `[FISC-RRSP-ROOM-PER-USER]` — droits REER sur le revenu du MÉNAGE au lieu de PAR PERSONNE.
+>   **Mesuré 45 000 $ accordés vs 34 480 $ dus** (+10 520 $/an de droits fantômes). Changement de
+>   MODÈLE → décision de Marc requise.
+> Aussi ticketés : `[FISC-RRSP-RENTAL-EARNED]`, `[FISC-RRIF-FRACTIONAL-AGE]`, `[FISC-REF-DEDUP]`.
+
+> ## 🟢 Session 2026-08-06 (suite 28) — dette fiscale : 3 constantes ancrées (PR #572)
+> `[FISC-CONST-ANCHOR-DEBT]` entamé — **3 des 14 entrées `fiscal` résolues**, à commencer par la
+> plus nette : `0.18`, le plafond REER de 18 % du revenu GAGNÉ, en dur dans `taxJanuary.ts` sans
+> source. Aussi : `500` (arrondi CELI) et `0.20` (plateau FERR 95+, qui échappait au premier scan
+> parce qu'écrit en repli `|| 0.20`).
+> - Ancrées dans `FISCAL_REFERENCE` (tableau daté + sourcé), exportées depuis la SOURCE UNIQUE
+>   (`RRSP_ROOM_RATE`, `CELI_LIMIT_ROUNDING` dans `utils/tax.ts` ; `RRIF_RATE_PLATEAU` dans
+>   `helpers.ts`), importées par le moteur.
+> - **Refactor à valeurs IDENTIQUES** : gate vert, 3 602 tests, aucun écart numérique.
+> - Les 3 entrées d'inventaire du ratchet ont été RETIRÉES — résolues, pas exemptées. C'est ainsi
+>   que cet inventaire est censé DÉCROÎTRE.
+> **RESTENT 11 entrées `fiscal`** (âges-seuils 65/70/71/72/75/18/15, `2026`, `39`, `40`).
+> ⚠️ NE PAS toucher aux entrées `family: 'design'` — les « sourcer » serait une erreur de CATÉGORIE.
+
+> ## 🟢 Session 2026-08-05 (suite 27) — #570 MERGÉE + PROD DÉPLOYÉE + cadrage CHAT-PAGE-CONTEXT-V2
+> **#570 mergée** (`3eef577`) et **production Vercel READY dessus** (vérifié) — tout le travail de la
+> journée est EN LIGNE. Le quota Vercel s'est débloqué plus tôt que les 24 h annoncées.
+> **Bilan : V6 ✅, V7 ✅ (4/4), V8 3/4.**
+>
+> **Cadrage de `[CHAT-PAGE-CONTEXT-V2]` fait, code NON commencé** — le ticket sous-estime le
+> prérequis : `describeViewContextForPrompt` déréférence directement les champs de `BudgetViewDetail`
+> sans tester `d.kind`, donc ajouter un membre à l'union CASSE le typecheck. Il faut généraliser le
+> constructeur AVANT tout onglet, en préservant PAR MEMBRE les 3 garanties de sécurité du prompt
+> (assainissement, encadrement `<DONNEES>`, troncature non muette). Détail dans la fiche BACKLOG.
+>
+> **EN ATTENTE de Marc** : (1) emplacement de la surface abonnements ; (2) reprise du RÉEE (reverté,
+> 7 volets chiffrés). **Dette ouverte** : `[FISC-CONST-ANCHOR-DEBT]` (14 constantes fiscales en dur).
+
+> ## 🟢 Session 2026-08-05 (suite 26) — #569 MERGÉE + abonnements : pouvoir dire NON (PR #570)
+> `[SUBS-TAB]` volet « confirmer / ignorer » LIVRÉ. ⚠️ **Le ticket décrivait mal l'existant** : il
+> réclamait « une surface dédiée » alors qu'elle vit DÉJÀ dans `Planning.tsx` (section `fixed`),
+> avec alertes, totaux et épinglage. Le grep avant de coder a révélé le VRAI manque : rien ne
+> permettait de REFUSER un faux positif, qui revenait donc à chaque actualisation.
+> - Liste d'exclusion persistée `dismissedSubscriptions`, par CLÉ de marchand normalisée (pas par
+>   objet : les montants d'une occurrence bougent). Champ additif + 3ᵉ param à défaut `[]` → aucun
+>   bump de schéma, rétrocompat bit-identique (test dédié).
+> - Le filtre s'applique AUSSI aux épinglés, dans le module PUR : le handler désépingle en même
+>   temps, mais on ne s'y fie pas (un état incohérent venant du Drive se corrige au calcul).
+> - « Ne plus jamais » reste VISIBLE et réversible (`<details>` + « Réafficher ») — un refus
+>   invisible serait un piège.
+>
+> ⚠️ **EN ATTENTE de Marc** : il a répondu « sous-onglet de Transactions » pour l'emplacement, mais
+> la liste vit dans **Budget**. Je lui ai dit que déménager n'apporte rien au manque réel (livré) →
+> **ne PAS coder le déplacement sans go explicite**.
+>
+> **Reste V8** : `[CHAT-PAGE-CONTEXT-V2]` (file Marc) · `[ASSET-CURRENCY-BACKFILL]` (gaté sur un log).
+
+> ## 🟢 Session 2026-08-05 (suite 25) — #568 MERGÉE (V7 4/4) + V8 démarrée (PR #569)
+> **V7 TERMINÉE.** Deux items V8 livrés, même famille : une UI qui promet ce qu'elle ne peut tenir.
+> - `[GOAL-DEADLINE-UI]` — l'échéance pilote un décaissement réel et le MCP peut l'écrire, mais
+>   rien ne l'affichait → écriture IA invisible et irréversible. Champ date affiché + éditable.
+>   S'aligne sur la CHAÎNE VIDE (encodage déjà en place), pas `undefined`.
+> - `[PH4C-SAVINGS-NATURE]` — le menu offrait des postes de nature Épargne, qui ne peuvent afficher
+>   que « Versé ce mois : 0 » (les virements sont hors `actualsMap`). Retirés de l'offre.
+>   ⚠️ **Régression attrapée par son propre test** : le filtre rendait invisible une liaison DÉJÀ
+>   posée. Corrigé en distinguant « catégorie disparue » de « nature épargne », les deux restant
+>   visibles pour être défaites.
+>
+> **Reste V8** : `[SUBS-TAB]` (⚠️ **POSER LA QUESTION à Marc** sur l'emplacement de la surface avant
+> de coder : onglet propre / sous-onglet Transactions / carte Accueil) · `[CHAT-PAGE-CONTEXT-V2]` ·
+> `[ASSET-CURRENCY-BACKFILL]` (gaté sur l'apparition d'un log chez Marc).
+
+> ## 🟢 Session 2026-08-05 (suite 24) — **V7 TERMINÉE (4/4)** : ratchet des constantes fiscales (#568)
+> `[FISC-CONST-GUARD-V2]` livré → **V7 est complète**. Le garde ferme le trou par lequel `0.92`
+> était passé : une constante fiscale NOUVELLE née dans le moteur, que rien ne comparait à rien.
+> - **RATCHET** et non échec dur : 38 littéraux existaient déjà — un échec dur aurait cassé sur 38
+>   lignes et aurait été relâché. L'existant est inventorié AVEC SA RAISON, le NOUVEAU échoue.
+> - **Le TRI est la valeur** : 3 familles (`fiscal` / `design` / `structural`). Il a révélé `0.18`
+>   (plafond REER 18 % du revenu gagné) en dur, à côté d'heuristiques de conception qu'il ne faut
+>   surtout PAS « sourcer ».
+> - **Le garde a trouvé ce que le tri manuel avait manqué** : `RRIF_RATES[age] || 0.20`, un vrai
+>   taux FERR invisible parce que `||` ne ressemble pas à un calcul.
+> - Discriminant PROUVÉ par injection de `x * 0.92` dans `taxApril.ts`.
+>
+> **Dette ouverte : `[FISC-CONST-ANCHOR-DEBT]`** — 14 entrées `fiscal` à ancrer dans
+> FISCAL_REFERENCE, par ordre de gravité (`0.18` en tête). ⚠️ NE PAS toucher aux entrées `design`.
+>
+> **Prochaine vague : V8 — features demandées** (`[SUBS-TAB]`, `[GOAL-DEADLINE-UI]`,
+> `[CHAT-PAGE-CONTEXT-V2]`…). ⚠️ Le RÉEE reste REVERTÉ et ne se reprend PAS sans go de Marc.
+
+> ## 🟢 Session 2026-08-05 (suite 23) — #566 MERGÉE + garde chartData (PR #567)
+> **#566 mergée** (`d851504`, V7 seul). **`[MCP-CHARTDATA-SUM-GUARD]` livré** : garde de convention
+> interdisant de fabriquer un « revenu » en additionnant des flux `chartData` (0 offender aujourd'hui
+> → PRÉVENTIF, pour que la correction MCP-RETIREMENT-VERDICT ne soit pas refaite à l'envers).
+> Assertion anti-désarmement : chaque champ surveillé doit exister dans `ProjectionChartPoint`.
+> **Reste de V7** : `[FISC-CONST-GUARD-V2]` seul — ⚠️ **M et non S** : 25 offenders mesurés, mêlant
+> vrais chiffres fiscaux en dur (`0.18` plafond REER, âges 65/71/72) et heuristiques de CONCEPTION
+> (`0.95` Guyton-Klinger) à NE PAS traiter comme fiscales ⇒ ratchet + tri vers FISCAL_REFERENCE.
+
+> ## 🔴 Session 2026-08-05 (suite 22) — RÉEE implémenté puis REVERTÉ (panel)
+> `[FISC-REEE-GRANT-CLAWBACK]` a été codé (3 poches dérivées), mesuré −20 021 $ sur une fixture de
+> fermeture… puis **RETIRÉ de la PR #566** après que DEUX panels indépendants l'aient mesuré **PIRE
+> que le bug** sur deux cas courants. Le bug d'origine reste RÉEL ; le ticket est rouvert dans
+> `BACKLOG.md` avec le périmètre désormais CHIFFRÉ — **ne pas repartir de zéro**.
+> - ⛔ **Solde d'ouverture** : poches à 0 → 100 % d'un RÉEE existant classé revenu imposable →
+>   **−31 193 $ à −59 025 $** mesurés. C'est l'erreur nº 2 que le commit prétendait corriger,
+>   réintroduite en plus grand.
+> - ⛔ **Multi-enfants** : `_childReee` est un solde MÉNAGE, les poches sont par enfant →
+>   **+7 890 $ d'impôt fantôme** sur le cadet.
+> - ⛔ **Conservation de flux** : `grantsRepaid` n'alimentait aucun registre → résiduel −10 800 $.
+> - ⚠️ Assiette ménage (+6 469 $) vs revenu non indexé (−2 614 $) : deux erreurs de sens opposé qui
+>   se masquent — exactement ce que le commit reprochait à l'ancien forfait.
+>
+> **Leçon centrale, portée dans CONVENTIONS** : un gate vert sur 3 574 tests était un vert de
+> COUVERTURE, pas de correction — `moneyConservation` tourne avec `childGoals: []` et le fuzz exclut
+> le RÉEE. Deux tests discriminants sont déjà identifiés pour la prochaine tentative.
+>
+> **PR #566 ne contient donc plus que V7** (sync + durcissement OAuth), qui avait passé son propre
+> panel (8 findings corrigés).
+
+> ## 🟢 Session 2026-08-05 (suite 21) — #565 MERGÉE + V7 (PR #566) + Marc tranche : RÉEE ensuite
+> **#565 mergée** (`3d666b0`, archivage). **V7 livrée à 2/4 (PR #566)** :
+> - `[FINTABLE-SYNC-STALE-BASE]` — la sync appliquait ses payloads sur un snapshot d'AVANT le
+>   fetch réseau : une saisie manuelle pendant la fenêtre était réécrite et **perdue en silence**.
+>   `runFintableBrowserSync` relit l'état (`getFreshState`) juste avant d'appliquer et rend un
+>   `statePatch` DÉJÀ calculé — l'appelant ne choisit plus la base, donc ne peut plus se tromper.
+>   Côté cron : re-tentative UNIQUE sur conflit OCC au lieu de jeter la passe (= une journée de
+>   fraîcheur récupérée). Test discriminant prouvé (échoue sur le code d'avant).
+> - `[MCP-CLOUDRUN-AUTH-HARDENING]` — `POST /oauth/authorize` plafonné à 8 ÉCHECS / 15 min
+>   (429 + `Retry-After`), compteur GLOBAL et non par IP (`X-Forwarded-For` est spoofable derrière
+>   le LB → une clé par IP serait une illusion). Un succès remet à zéro → Marc n'est jamais gêné.
+>   Runbook de rotation `FINANCEAI_OAUTH_SIGNING_KEY` écrit dans `mcp/README.md`.
+>
+> **Panel (code-reviewer + silent-failure + security-privacy) : 8 findings, TOUS corrigés dans la
+> même PR.** Le plus instructif était auto-infligé : mon runbook disait « surveille les logs » alors
+> que le blocage 429 et le refus 403 n'écrivaient AUCUNE ligne. Aussi : plafond réel `8 × max-instances`
+> (=16, `deploy.sh --max-instances 2`) corrigé dans la doc ; `curl` du runbook sans `--data ''`
+> (→ 411 au lieu de 401, faux négatif) ; test du chemin de SUCCÈS du retry OCC ajouté (l'ancien test
+> faisait échouer `save` à chaque appel, donc un retry à version périmée restait vert — prouvé par
+> injection) ; test de `getFreshState` qui lève ; rôles Fintable toujours lus pré-fetch, nommé en
+> commentaire au lieu de rester un résiduel silencieux.
+>
+> **⚠️ DÉCISION (2026-08-05) : « vague suivante pour régime épargne-étude »** →
+> `[FISC-REEE-GRANT-CLAWBACK]` est la PROCHAINE vague, **contre** la reco de différer :
+> ne PAS re-proposer de reporter, ne pas ré-argumenter le 0 $ mesuré.
+> Plan-first (modélisation en 3 poches : capital / SCEE+IQEE / revenus accumulés ;
+> `childrenReee.ts:327` verse aujourd'hui 100 % du solde à la fermeture, les trackers de
+> subventions ne sont jamais décrémentés).
+>
+> **Restent de V7, déprioritisés avec leur périmètre MESURÉ** (fiches BACKLOG à jour) :
+> `[FISC-CONST-GUARD-V2]` — **25 offenders mesurés**, mêlant vrais chiffres fiscaux en dur
+> (`0.18` plafond REER, âges 65/71/72) et heuristiques de CONCEPTION (`0.95` Guyton-Klinger) à ne
+> PAS traiter comme fiscales ⇒ c'est un RATCHET + un tri, taille réelle **M et non S** ;
+> `[MCP-CHARTDATA-SUM-GUARD]` — **0 offender aujourd'hui** (vérifié), prévention pure, le moins
+> urgent du lot.
+
+> ## 🟢 Session 2026-08-05 (suite 20) — #564 MERGÉE + rattrapage d'archivage
+> **#564 mergée** (`191d5c0`). **6 items ARCHIVÉS** (retard rattrapé — ils étaient mergés sans
+> avoir été déplacés, exactement la dérive PM-STALE-BACKLOG que la règle interdit) :
+> [MCP-NETINCOME-MISLEADING] #560, [FINTABLE-STALE-ALERT] #561, [ENG-TAXDEC-NAN-GUARD] +
+> [ENG-TAXDEC-FLOOR-INDEX] #563, [FISC-STACK-GAINS-DIV] + [FISC-DTC-ABATEMENT-ORDER] #564.
+> **V6 : 2/4 livrés.** Restent `[FISC-REEE-GRANT-CLAWBACK]` — CONFIRMÉ contre le code
+> (`childrenReee.ts:327` verse 100 % du solde à 25 ans ; les trackers SCEE/IQEE existent mais ne
+> sont jamais décrémentés par les retraits d'études → modélisation en 3 poches à faire) mais
+> **mesuré 0 $ sur le profil de test** (`reee: 0`, aucun objectif d'études) → question posée :
+> le coder maintenant ou passer à V7 ? Reco donnée : V7 — et `[FISC-TAXDEC-INCR]` reste
+> gaté sur son go (A_FAIRE_MOI).
+> **Suite proposée si Marc ne tranche pas : V7 — sécurité serveur + sync** (
+> [MCP-CLOUDRUN-AUTH-HARDENING] + [MCP-CHARTDATA-SUM-GUARD] + [FINTABLE-SYNC-STALE-BASE] +
+> [FISC-CONST-GUARD-V2]) : ça touche ce que Marc utilise tous les jours.
+>
+> ## 🟢 Session 2026-08-05 (suite 19) — #560 MERGÉE (`2f05622`) + FINTABLE-STALE-ALERT (PR en cours)
+> **#560 mergée** (netSalaryIncome ; archivée). **En cours : `[FINTABLE-STALE-ALERT]`** — l'import
+> gelé devient VISIBLE. Module PUR `services/fintable/syncHealth.ts` (ok/stale/error/never) partagé
+> UI + MCP (source unique — la divergence est exactement ce qui a produit #560 le même jour).
+> ⚠️ **Seuil ADAPTATIF, pas fixe** : un seuil de 7 j n'aurait alerté Marc qu'à J+8 alors qu'il a
+> vu le gel à J+5 (mesuré → l'alerte serait arrivée APRÈS lui, donc inutile). Dérivé de la cadence
+> réelle (médiane des écarts entre jours d'activité × 3, borné 3–14 j) : son profil quotidien
+> donne 3 j → alerte à J+4. Livré : `SyncStaleBanner` (Accueil ; muette en démo et si l'import
+> n'a JAMAIS été configuré) + `syncHealth` dans `get_financial_overview` (ce qui manquait pour
+> diagnostiquer à distance) + deep-link Réglages (la section `fintable-` n'existait pas dans
+> `subTabForSection` → bouton qui n'aurait mené nulle part, corrigé). 14 tests.
+> Pièges attrapés au passage : `Tab.Settings` n'existe pas (c'est `SETTINGS`) et `min-h-touch`
+> n'est pas dans tailwind.config.js (no-op silencieux) — les deux pris par typecheck/grep.
+> ✅ **BOUCLE FERMÉE 15:03 UTC — Marc : « jeton marche ».** Vérifié côté serveur : les 5 jours
+> manquants sont RATTRAPÉS (11 transactions 2026-07-31 → 2026-08-05). `[FINTABLE-TOKEN-PERSIST]`
+> (#559) est validé EN CONDITIONS RÉELLES ; l'hypothèse « fin d'essai Fintable » est définitivement
+> réfutée (l'import reprend sans toucher à l'abonnement). A_FAIRE_MOI : les 2 actions Fintable de
+> Marc sont cochées, plus rien ne l'attend sur ce sujet.
+>
+> **Panel #561 (2 agents) : NO-GO levé, 6 findings traités.** silent-failure : #2 rapport non écrit
+> sur exception dans handleSync (prérequis de la feature cassé) → CORRIGÉ ; #1 provenance des
+> transactions → ticket `[FINTABLE-SOURCE-TAG]` + LIMITE documentée dans le module (un CSV manuel
+> peut masquer un connecteur mort — même vert trompeur, autre porte). code-reviewer : #1
+> `Math.max(...)` crashait > 125 k transactions et tombait TOUT l'onglet → boucle ; #2 le plancher
+> de 3 j ne protégeait de RIEN (démonstration algébrique : les écarts entre jours sont ≥ 1 donc
+> ceil(médiane×3) ≥ 3 déjà) → **p90 × 2, plancher réel 4 j** ; #3 région live insérée avec son texte
+> = violation d'une convention MAISON (#245, WCAG 4.1.3) que ProjectionStaleBanner respectait sur
+> la même page → montage permanent ; #4 la cadence affichée était re-dérivée du seuil clampé
+> (chiffre inventé, répété par l'assistant via MCP) → `observedGapDays` réel exposé. 18 tests.
+> **Demande Marc 15:33** : « avec la version payante je devrai pouvoir importer beaucoup plus de
+> transactions » → ⚠️ vérifié dans le code : `deriveCutoverDate` fixe la bascule à la transaction la
+> plus RÉCENTE, donc **aucun historique ancien ne rentrerait**, plan payant ou pas. Ticket
+> `[FINTABLE-BACKFILL-HISTORY]` créé (passe de backfill séparée + dédoublonnage via
+> `findDuplicateGroups`, déjà écrit et testé). Money-critical : jamais d'écriture sans dédoublonnage.
+>
+> ## 🟢 Session 2026-08-05 (suite 19) — V6 fiscal : deux sous-impositions du placement (PR #564)
+> **#563 mergée** (`b3477df` : tickets Fintable + [ENG-TAXDEC-NAN-GUARD] + [ENG-TAXDEC-FLOOR-INDEX]).
+> **V6 en cours (PR #564)** : [FISC-STACK-GAINS-DIV] (gains et dividendes empilaient chacun leur
+> bande depuis le revenu NU → bande commune facturée 2× au taux bas ; empilement SÉQUENTIEL
+> désormais, additivité exacte au cent : +815,41 $/an) + [FISC-DTC-ABATEMENT-ORDER] (le CID
+> FÉDÉRAL est soustrait AVANT l'abattement QC 16,5 %, comme le BPA → valeur effective 12,5415 %
+> du majoré, pas 15,0198 % : +256,50 $/an). **Effet combiné ~1 072 $/an** sur un profil à gros
+> non-enregistré, sens conservateur.
+> ⚠️ **Panel #564 — financial-integrity a VALIDÉ le fix CID contre les tables publiées** : taux
+> marginal max dividende admissible **40,11 %** et non admissible **48,70 %**, identiques à RQ/ARC
+> 2026 (avant : 36,69 % / 46,98 %, soit −3,42 pp et −1,71 pp). C'était le point que je lui avais
+> demandé de RÉFUTER — il est confirmé, chiffres à l'appui. Ses findings F1-F6 traités dans la PR
+> (FISCAL_REFERENCE §3 mis à jour — il revendiquait « 0 écart code↔doc » ; attribution du golden
+> meltdown corrigée : les −40,30 $ viennent à 100 % du CID, [FISC-STACK-GAINS-DIV] est NEUTRE sur
+> cette fixture ; commentaires à valeurs périmées ; `QC_FEDERAL_ABATEMENT_RATE` EXPORTÉ et importé
+> par les tests au lieu d'être re-codé en dur). F7 → ticket `[FISC-BAND-AGE-CREDITS]`
+> (préexistant, −648 à −675 $/an : les bandes incrémentales ignorent les crédits 65+/pension).
+>
+> ## 🟢 Session 2026-08-05 (suite 18) — #559 MERGÉE (`bbd6bda`) + MCP-NETINCOME-MISLEADING (PR en cours)
+> **#559 mergée** (jeton Fintable persisté ; archivée). **En cours : `[MCP-NETINCOME-MISLEADING]`**
+> — né d'une ERREUR que j'ai commise et que MARC m'a fait re-vérifier : j'avais comparé le
+> `netIncome` du tool fiscal (qui inclut un rendement de placement ESTIMÉ, non encaissé)
+> à ses dépôts de paie réels, et annoncé un salaire surestimé de plusieurs milliers de dollars par an — FAUX. Vrai écart :
+> bien plus petit, expliqué par la progression de ses paies (forte hausse de la paie hebdomadaire sur l'année) ; son salaire
+> saisi est bon à quelques % près au rythme actuel. Fix livré :
+> `netSalaryIncome`/`netSalaryMonthly` (brut − impôt − cotisations) = la trésorerie réelle,
+> validée à 0,5 % contre 12 mois de dépôts ; note du tool avertit explicitement ; test
+> discriminant. Leçon CONVENTIONS (agrégat non étiqueté → faux diagnostic, y compris chez Claude).
+> ⚠️ Mesuré aussi : `[FISC-SOLO-INVEST-SPLIT]` vaut **0 $** en mode SOLO (le split 1/2
+> ne mord qu'en couple mono-salarié) → NE PAS le prioriser ; `[FINTABLE-STALE-ALERT]`
+> passe devant (né de l'incident réel).
+>
+> ## 🟢 Session 2026-08-05 (suite 17) — #558 MERGÉE (`14e079a`) + FINTABLE-TOKEN-PERSIST (PR en cours)
+> **#558 mergée** (squash `14e079a`, auto-merge après panel 4 agents + findings traités).
+> **[FINTABLE-TOKEN-PERSIST] (PR en cours, priorité Marc)** : cause racine de l'import gelé
+> trouvée par MARC — le jeton Fintable n'était jamais persisté (setAppState mémoire, jamais
+> saveApiKeys). Fix : persistance dans le coffre chiffré (blur + avant Tester/Sync), échec
+> affiché ; 3 tests (blur / ceinture bouton / échec visible — discriminants par construction).
+> La piste « fin d'essai Fintable » était un leurre de timing (leçon CONVENTIONS : trajet
+> complet d'un secret + corrélation ≠ cause).
+> ⚠️ **Panel #559 (2 agents) : NO-GO des DEUX, convergents — le fix violait sa propre leçon.**
+> Le blur seul laissait 3 chemins rouvrant le symptôme (fermeture/navigation/autofill sans blur ;
+> échec de coffre écrasé par l'erreur réseau et jamais logué ; écritures concurrentes non
+> ordonnées) + 1 régression UX (le succès masqué par l'erreur de persistance). TOUT corrigé dans
+> la PR : flush `visibilitychange`/`pagehide`/démontage, canal d'alerte SÉPARÉ (`persistError`,
+> régions ARIA nommées) + `logError`, sérialisation par chaîne de promesses, test `handleSync`.
+> 15 tests (7 nouveaux). Méta-leçon aux CONVENTIONS. Marc devra RE-COLLER son jeton une fois après
+> déploiement + vérifier son abonnement Fintable (A_FAIRE_MOI). [FISC-WHT-92PCT] archivé.
+> Suite : [FISC-SOLO-INVEST-SPLIT] (Q3, GO) puis V5 gatés sources.
+>
+> ## 🟢 Session 2026-08-01 (suite 16) — #556 MERGÉE (`16e9e9d`, Vercel prod READY) + V5d : FISC-WHT-92PCT
+> **#556 mergée** (squash `16e9e9d`, prod déployée). **V5d livrée (PR en cours)** : retenue
+> employeur 100 % (`[FISC-WHT-92PCT]`, GO Marc Q2) — l'ancien ×0,92 non sourcé facturait ~8 % de
+> l'impôt salarial en double chaque avril. Mesuré avant/après : salarié référence ttp
+> 106 915 → 57 723 (−1 243,23 $/an réel = exactement les 8 %), NW +13,7 % ; retraités
+> BIT-IDENTIQUES (branche phase active seulement). Discriminant dédié
+> `projection.whtSettlement.test.ts` ; goldens re-basés : returnProfile (+7 %), bracketRealIndex
+> (pin niveau 2 702→1 459, constance intacte), totalTaxesPaid (pin salarié −17 160→−23 553).
+> ⚠️ Leçon (CONVENTIONS) : le fix a TUÉ l'observable de 4 gardes (complément 8 % ≡ 0) →
+> réancrées sur le canal survivant (remboursement des déductions, RAMQ familiale, asymétrie
+> crédit d'âge), jamais supprimées. [FISC-BRACKET-REALINDEX] archivé (BACKLOG_ARCHIVE).
+> **Panel #558 (4 agents, tous traités)** : GO ×3 + NO-GO silent-failure RÉSOLU dans la PR —
+> plancher −100 000 $ journalisé (2 sites) + test plancher réancré sur un cas qui l'exerce
+> (ablation prouvée) ; garde FA-10 fantôme re-réancrée SOUS la saturation RAMQ (2e ordre,
+> leçon CONVENTIONS) ; preuve d'auto-cohérence + TP-1015.F/T4032-QC au FISCAL_REFERENCE ;
+> « retraités bit-identiques » restreint (branche inchangée, actif→retraite bouge +21,5 % NW) ;
+> invariant T1213 ON ≡ OFF sans déductions ajouté (survit aux re-bases). Tickets ouverts :
+> [ENG-T1213-NET-MONTHLY] (T1213 annule le REER, −183 k$/30 ans, PRÉ-existant),
+> [ENG-TAXDEC-FLOOR-INDEX], [ENG-TAXDEC-NAN-GUARD], [ENG-NET-MODEL-RESIDUAL].
+> **Incident Fintable (Marc, 2026-08-05)** : import gelé depuis le 2026-07-31 — cause RACINE
+> trouvée par Marc : son jeton Fintable N'ÉTAIT PAS PERSISTÉ (la sync tournait « jeton absent »).
+> Demande explicite : le sauvegarder comme les clés API (IDB chiffré). → PROCHAINE PR après le
+> merge de #558. Tickets [FINTABLE-STALE-ALERT] + actions A_FAIRE_MOI (plan payé ? carte Réglages).
+> Suite V5 : [FISC-SOLO-INVEST-SPLIT] (Q3, GO) puis GIS/LINE361/CREDITRATE (gatés sources).
+>
+> ## 🟢 Session 2026-08-01 (suite 15) — PR #556 : panel traité, latentTax corrigé, ready+auto-merge
+> Panel #556 rendu (projection-validator + financial-integrity, tous deux MESURÉS) : cœur du fix
+> confirmé (homogénéité exacte à 1e-9, conservation 0,02 $, rétrocompat bit-identique). 3 findings
+> traités dans la PR : (1) **site oublié `latentTax.ts`** — même motif déflaté-sans-deflator, impôt
+> latent affiché sous-évalué ~53 k$/−35 % à 30 ans → corrigé (8e arg `realDeflator`), discriminant
+> unitaire d'homogénéité prouvé (échoue pré-fix) ; (2) **claim « retenue sur-évaluée » RÉFUTÉ par
+> mesure** (elle MONTE ; la vraie cause du NW salarié ↑ = prime RAMQ/FSS doublement indexée ×1,81 à
+> 30 ans qui redescend, + artefact 92 %) → CHANGELOG/CONVENTIONS/commentaire de test réécrits ;
+> (3) doc FISCAL_REFERENCE corrigée (latent + taxJanuary sont RÉELS, exception crédit pension
+> 2 000 $ notée). Nouveaux tickets : [FISC-PENSION-CREDIT-REAL] (GO Marc, re-base goldens),
+> [FISC-BRACKET-CPI-STRESS] (décision modèle i≠2 %), [FISC-MARGINAL-SPACE]. Suite V5 :
+> [FISC-WHT-92PCT] 0.92→1.0 (GO) → [FISC-SOLO-INVEST-SPLIT] (GO) ; puis ENG-TTP-UNSETTLED-PROPAGATE,
+> ENG-RANKING-ORDER-PIN (baseline mesurée dispo).
+>
+> ## 🟢 Session 2026-08-01 (suite 14) — #555 MERGÉE + V5c : FISC-BRACKET-REALINDEX (CRITIQUE)
+> **#555 mergée** (`22d128a`). **V5c livrée** : `realDeflator` (défaut 1 = bit-identique) sur
+> `getIndexedBracketsForYear` + dérivés (paliers, BPA, crédits d'âge/361, RAMQ, FSS,
+> getMarginalRate, calculateFiscalReport) ; passé par les sites RÉELS de taxDecember
+> (salarial ×4, combinedTaxFor, RAMQ, FSS) **+ latentTax (ajouté au panel #556)** —
+> gains/dividendes sont NOMINAL-cohérents (documenté en
+> code, leur passer le deflator = bug inverse). Discriminant 5/5 (impôt réel CONSTANT 2 702 $/an à
+> revenu réel constant ; dérivait à 3 235 $). Direction PAR PHASE : retraité ttp +62 %
+> (29 806 → 48 314, conservateur) ; salarié NW +0,8 % (cause mesurée par le panel : RAMQ/FSS
+> doublement indexées redescendent — PAS la retenue, cf suite 15).
+> 10 goldens re-basés SCIEMMENT (item2c, meltdownDisplay ~−10,8 k$ NW, returnProfile +0,8 %,
+> totalTaxesPaid). Archivés : #553/#554/#555 dans BACKLOG_ARCHIVE. Suite V5 : [FISC-WHT-92PCT]
+> 0.92→1.0 (GO) → [FISC-SOLO-INVEST-SPLIT] (GO) ; puis tickets panel (ENG-TTP-UNSETTLED-PROPAGATE,
+> ENG-RANKING-ORDER-PIN — baseline mesurée dispo).
+>
+> ## 🟢 Session 2026-08-01 (suite 13) — #554 MERGÉE + V5b : unsettledTaxAtHorizon
+> **#554 mergée** (auto-merge squash `acfa035`). **V5b** : `unsettledTaxAtHorizon` (photographié à
+> la réconciliation de décembre — ≡ taxPreviousYear, transfert dans le MÊME bloc, contre-vérifié
+> #555 ; remis à 0 à l'avril) + `strategySearch.lifetimeTax` l'additionne + étiquette « Régularisations d'impôt
+> (net) » + tickets [ENG-RANKING-ORDER-PIN]/[ENG-RANKTAX-ESTATE] (décision produit à poser).
+> ⚠️ Leçon : la magnitude de l'audit (−49 %) était en BRUT — le NET réel (= débit d'avril
+> manquant) : 8,6 % solvable 10 ans, 171,89 $ sur la fixture FERR. Re-mesurer le CORRECTIF d'un
+> agent, pas seulement son diagnostic. Suite V5 : [FISC-BRACKET-REALINDEX] (GO, PR dédiée) →
+> [FISC-WHT-92PCT] → [FISC-SOLO-INVEST-SPLIT].
+
+> ## 🟢 Session 2026-08-01 (suite 12) — #553 MERGÉE + V5a : PROJ-TTP-DOUBLECOUNT corrigé
+> **#553 mergée** (auto-merge squash — l'API l'accepte quand le statut Vercel est vert). **V5a
+> livrée** : `totalTaxesPaid` = Σ FluxImpots SEUL (avril débite le bucket .reer entier — retenues
+> cascade/meltdown/FERR — + le complément de décembre : les additionner re-comptait les mêmes
+> dollars, +144 % mesuré). Identité vérifiée au cent sur 3 scénarios + salarié, NW bit-identique
+> (5 scénarios git-archive), ratio MELT/AUTO honnête 4,42 — ⚠️ l'ORDRE du ranking CHANGE (voulu :
+> l'ancien reposait sur le double-comptage ; balanced best bascule sur retraité 62). Re-basés
+> SCIEMMENT : goldens ITEM-2C (tax seul, nw/ferr intacts) + test WHT-tiered repointé sur le flux
+> ImpotRetraitREER (le taux de retenue n'influence plus le compteur — décembre réconcilie).
+> Suite V5 : [FISC-BRACKET-REALINDEX] (GO Marc, L, ~12 goldens — PR dédiée), [FISC-WHT-92PCT]
+> 0.92→1.0, [FISC-SOLO-INVEST-SPLIT]. [PROFIL-SWITCH] toujours gaté sur les 4 questions Marc.
+
+> ## 🟢 Session 2026-08-01 (suite 11) — #552 MERGÉE + V4 vie privée (3/4)
+> **#552 mergée** (squash `32a112f`, merge direct — l'API auto-merge refusait sur le statut Vercel
+> non-requis « unstable » ; CI 6/6 verte). Branche réconciliée, items #551/#552 ARCHIVÉS dans
+> BACKLOG_ARCHIVE. **V4 livrée aux 3/4** : [SEC-GA-DEFER-CONSENT] (script gtag injecté seulement
+> au consentement — ensureGtagLoaded + ga-init gaté), [D6-PRIV-MONTANTS] (PrivateSliderValue :
+> masqué au repos, révélé au focus — TaxCenter ×2, ChildPlanning, DebtManager), [HIST-STORE-SIZE]
+> (downsamplePriceHistory > 365 j → 1 pt/sem, idempotent, appliqué après mergePriceHistories).
+> [PROFIL-SWITCH] GATÉ sur 4 questions posées à Marc (persistance des vraies données — voir 🧭
+> du BACKLOG). Suite : V5 fiscal (TTP-DOUBLECOUNT → BRACKET-REALINDEX GO → WHT-92PCT → SOLO-SPLIT).
+
+> ## 🟢 Session 2026-07-31 (suite 10) — PR #552 : V2'+V2''+V3 + findings panel + héritage
+> **PR #552** (draft → ready) porte : V2' (bien passé détenu), V2'' (FERR/goals visibles dans
+> RetraitREER), V3 complète (DEFAULTS-DRIFT 4 champs + garde bidirectionnelle, TEST-GAP ×3, PV-11e,
+> NW-PARITY-SURFACES, PDF equity réelle), **[ENG-HERITAGE-INFLOW]** (bug rapporté par Marc : un
+> héritage était DÉBITÉ comme dépense — branche +liquide non imposable, 4 tests discriminants
+> prouvés par stash), et le **commit findings du panel 4 agents** (tout MESURÉ) : graine
+> prevNW/minNetWorth ensemencée de l'équité passée (flux fantôme +156 629 $ et plancher −158 731 $
+> corrigés), substitution loyer↔PMT neutre au boot (sur-charge 20 084 $/an), champs explicites
+> honorés par le MOTEUR (écart Accueil↔Futur 291 676 $), sanitisation immo à la frontière (968
+> non-finis), garde non-fini DANS presentEquityOfGoal (3 consommateurs couverts), équité historique
+> PAR ANNÉE au graphe Accueil (+77 097 $ sur 2022), log « supposée DÉTENUE » au m0, docs
+> PROJECTION/OUTPUT_SCHEMA. Nouveaux tickets : [ENG-RENEWAL-RATE-MISMATCH] (ÉLEVÉ pré-existant),
+> [ENG-PAST-OWNED-VS-PLANNED] + [UX-ISACTIVE-SEMANTIQUE] (décisions Marc), [IMMO-3-FORMULES],
+> [ENG-PROPGROWTH-ZERO], [ENG-NETTRANSFER-REER-INCOMPLET], [ENG-RENEWAL-M0], [ENG-CELIAPP-RESIDUAL].
+> ⚠️ Vercel rate-limité (100 deploys/jour, plan gratuit) — le deploy PROD au merge échouera ~24 h,
+> la prod reste sur le dernier déploiement réussi ; le statut Vercel n'est PAS un check requis.
+> Suite : merge #552 → archiver les items livrés → V4 (PROFIL-SWITCH, D6-PRIV, GA-CONSENT,
+> HIST-STORE-SIZE) → V5 fiscal (TTP-DOUBLECOUNT, BRACKET-REALINDEX GO, 0.92→1.0, SOLO-SPLIT).
+
+> ## 🟢 Session 2026-07-31 (suite 9) — V2' : un bien PASSÉ est DÉTENU (moteur + KPI)
+> Racine du ticket DASH-IMMO-EQUITY-WRITERS (décision Marc « brancher ») : le moteur traitait un
+> `purchaseDate` passé comme un achat À FAIRE (re-débit de la mise de fonds au m0, ou « Achat
+> reporté » à l'infini → le Futur perdait la maison, Immobilier = 0 mesuré). Nouveau
+> `services/projection/pastPurchaseInit.ts` (pur, conventions moteur : SCHL + PMT origine + solde
+> amorti + valeur appréciée) branché sur l'init moteur ET le KPI Accueil (F4 : isActive, gate
+> équité ≠ 0, non-fini tracé). 11 tests + discriminant + conservation 20/20 + fuzz + personas verts.
+> ⚠️ Sémantique : les personas/fixtures à bien passé voient leur NW BOUGER (voulu — avant ils
+> perdaient ou re-payaient la maison).
+
+> ## 🟢 Session 2026-07-31 (suite 8) — V1 (PR #549) + V2 meltdown honnête
+> **V1 mergée (#549)** : clamp CELIAPP signalé, étiquettes « dernier close » Accueil, clamps MC
+> (bug FVI « 103/100 » réel corrigé — mesuré), note CAGR, esbuild épinglé, 8 shades hors palette,
+> filtres morts Transactions, FISCAL_REFERENCE 3ᵉ passe, Dependabot #26 (hono 2.0.12). Panel 3
+> agents : tous findings traités (taxLeakage SANS cap haut — un ratio > 1 en décaissement est une
+> info réelle ; bornes sliders TaxCenter = constantes fiscales). **V2 LIVRÉE (PR #551)** : le meltdown REER
+> alimente `retraitReerMois` (exact au dollar : 794 303 $ = sorties réelles) + `rrspWithholdingMois`
+> (convention cohérente entre stratégies — la reco « objectif impôt » était FAUSSE sur main, corrigée,
+> mesuré par 2 agents). NW bit-identique prouvé + pinné par golden. Panel : 2 tickets racine ouverts,
+> [PROJ-TTP-DOUBLECOUNT] (le compteur double-compte la retenue pour TOUTES les stratégies, « Impôt à
+> vie » +144 %) et [ENG-FERR-FLOW-INVISIBLE] (FERR/goals invisibles, 4ᵉ source). **Marc a répondu aux 14 questions** (toutes les
+> vagues débloquées). Suite : V2' équité immo (BRANCHER) → V3 parité état/tests → V4 → V5 fiscal
+> (paliers GO, 0.92→1.0, split GO) → … → V12 (nav + Budget : GROS batch de questions d'abord).
+
+> ## 🟢 Session 2026-07-31 (suite 7) — REFONTE DU BACKLOG (directive Marc) + 3 analyses
+> **Directive Marc** : cases cocheables partout, archive, vérif de tout, PM (ordre/utilité), grosse
+> analyse code, analyse fiscale, puis TOUT exécuter sans s'arrêter. Livré (PR #548) :
+> `docs/BACKLOG_ARCHIVE.md` (contenu pré-refonte + note de vérification) + `BACKLOG.md` refondu
+> (~60 items vivants, 100 % cases, plan en 12 vagues) + règle CLAUDE.md. Vérification : ~180 items
+> confrontés au code (2 agents) — ~65 FAITS non cochés archivés, 12 obsolètes, 11 coupés par le PM.
+> **Analyse fiscale (MESURÉE)** : `[FISC-BRACKET-REALINDEX]` CRITIQUE (double indexation des paliers
+> → impôt réel fond de 8 192 $/an/pers à l'an 30, patrimoine/FIRE optimistes — fusionne avec ITEM-2A,
+> gaté Q1) ; `[FISC-WHT-92PCT]` (0.92 non sourcé → ~3 600 $/an sur-facturés au couple, Q2) ;
+> `[WHT-DISPLAY-MELTDOWN]` requalifié ÉLEVÉ (le ranking de stratégies pèse un impôt sous-compté ×2,6)
+> + `[ENG-MELTDOWN-FLOW-INVISIBLE]` (774 k$ de retraits absents des flux affichés) ; SRG couple 2×
+> trop rapide ; NONREG-LOSS requalifié timing-only. **Analyse code** : `[DEFAULTS-DRIFT-FINTABLE-FIELDS]`
+> (4 champs invisibles au chat/MCP, garde-test unidirectionnel) + 3 TEST-GAP + 8 shades hors palette +
+> esbuild non déclaré + filtres Transactions morts. **Questions Marc posées en un lot (13+3)** —
+> V5/V12 gatées dessus ; exécution des vagues non gatées EN COURS (V1 d'abord).
+
+> ## 🟢 Session 2026-07-31 (suite 6) — `[PERF-SDK-BOOT-PRELOAD]` (perf, file Marc)
+> **Boot −54 Ko gzip (225,6 → 171,6, −24 %), mesuré git-stash avant/après.** Le ticket accusait les
+> onglets lazy — la VRAIE chaîne (tracée par walker d'imports statiques depuis index.tsx) était
+> `TabRouter → PageSetupGate → PayslipUploadCard → claude.ts → SDK`. Fix : makeClient ASYNC (SDK via
+> importWithRetry au 1er usage), PayslipUploadCard lazy dans le gate, et ⚠️ retrait des manualChunks
+> `ai-vendor`/`pdf-vendor` — **un manualChunk atteint seulement par import() devient EAGER** (leçon
+> CLAUDE.md, prouvée 2× : pdf-vendor est apparu dans le preload dès le retrait de la règle SDK).
+> Preload final : react-vendor + cœur seulement. Reste perf : HIST-STORE-SIZE (à mesurer).
+
+> ## 🟢 Session 2026-07-31 (suite 5) — petits a11y (Lot E de la file Marc)
+> `[A11Y-INFO300-SWEEP]` : 13 `text-info-300` (shade INEXISTANT → aucune règle CSS, texte héritant du
+> parent) → `info-400`, MESURÉ check-contrast (6,99-7,84:1 AA) + preuve build propre (`.text-info-300`
+> absente du CSS). `[A11Y-DETAILS-TAP-TARGET]` : `py-1.5` sur les 5 `<summary>` sans padding vertical
+> (WCAG 2.5.8 ; 4 autres en avaient déjà). `[A11Y-FUTUR-MILESTONES-KEYBOARD]` reste au backlog — le
+> ticket exige de TRANCHER AVEC MARC (focusabiliser ~29 pastilles vs contrôle clavier alternatif,
+> impact sur le pattern « clic n'importe où »). **Suite** : perf (PERF-SDK-BOOT-PRELOAD, HIST-STORE-SIZE
+> à mesurer) → chat conscient de la page (V2/V3) → gros chantiers.
+
+> ## 🟢 Session 2026-07-31 (suite 4) — `[FINTABLE-7]` Lot 3 (Lot D de la file Marc)
+> Sync bancaire AUTO à l'ouverture, 1×/jour : `services/fintable/autoSync.ts` (gardes jeton/mode
+> test/24 h-succès/cooldown-tentative 1 h/mutex), effet App RÉACTIF au jeton hydraté (un timer au
+> boot lirait un store vide), `referenceDeltaPatch` extrait de la carte vers
+> `services/fintable/applyStatePatch.ts` (partagé, une seule copie). Échec → rapport seul persisté,
+> pas de toast quotidien anxiogène ; succès → toast compte-seulement. **Panel #545 : 5 vrais findings
+> corrigés** — verrou partagé auto↔manuel (CRITIQUE), TOCTOU mode démo prouvé par sonde (re-check
+> frais avant toute écriture, les 2 chemins), jeton Fintable SEUL jamais restauré du coffre (`App.tsx`
+> gate `anthropic||finnhub` → `||fintable`), catch + rapport d'échec (« ne lève jamais » tenu),
+> debounce 3 s. Résiduel assumé → ticket `[FINTABLE-SYNC-STALE-BASE]` (sync vs édition concurrente,
+> base figée ; cooldown non cross-onglet). **File restante** : petits a11y
+> (A11Y-INFO300-SWEEP, A11Y-DETAILS-TAP-TARGET, A11Y-FUTUR-MILESTONES-KEYBOARD) → perf
+> (PERF-SDK-BOOT-PRELOAD, HIST-STORE-SIZE) → chat conscient de la page (V2/V3) → gros chantiers.
+
+> ## 🟢 Session 2026-07-31 (suite 3) — `[DASH-NETWORTH-CANONICAL]` (Lot C de la file Marc)
+> « Je veux source unique » : le KPI patrimoine de l'Accueil lisait `latestTotals.Total` (dernier
+> point de l'HISTORIQUE — figé au dernier close, cash gated `accountName`) → il lit désormais
+> `computePresentNetWorth + équité immo` (même expression que l'ex-repli sans CSV) dans TOUS les cas ;
+> `latestTotals` retiré (code mort). Le graphe/variation restent sur l'historique (présent ≠ histoire).
+> Discriminant : historique périmé injecté (mock `usePortfolioHistory` à identité STABLE — ⚠️ un mock
+> qui fabrique un nouvel objet par appel relance `useEffect([portfolioHistory])` en boucle et PEND le
+> test, classe CHAT-PAGE-CONTEXT « dédupe par référence », vécue ici). Symptômes 2-3 du ticket
+> (périmètre graphe/cartes historiques) : hors de ce fix, chantier séparé si redemandé.
+
+> ## 🟢 Session 2026-07-31 (suite 2) — `[FINTABLE-6]` Lot 2 (Lot B de la file Marc)
+> Lot A (bannière sync) MERGÉ (#542). Lot B livré : `BrokerReconciliationCard` (full/compact —
+> une implémentation) branche `reconcileBrokerBalances` dans Investissements ET Accueil : total par
+> panier = solde COURTIER (autorité), écart explicite reconstructible, fraîcheur bornée par le compte
+> le plus ancien, comptes non déclarés/illisibles signalés. `holdingsCadByRegime` dérive la famille
+> fiscale de `BUCKET_OF` (source unique) + `assetValueCad`. Ship dark sans sync Fintable.
+> **File restante** : DASH-NETWORTH-CANONICAL (Lot C, « source unique ») → FINTABLE-7 Lot 3 (sync
+> auto 1×/jour) → a11y → perf → chat-page-context → gros chantiers.
+
+> ## 🟢 Session 2026-07-31 (suite) — `[AUTH-DRIVE-BANNER-FLICKER]` (Lot A de la file Marc)
+> **Marc a relancé** : « la bannière rouge apparaît souvent, parfois elle s'enlève seule, parfois faut
+> que je me connecte ». Cause trouvée dans `syncLifecycle.runBootSync` (appelé toutes les 60 s par le
+> polling + au focus) : il basculait `connected:false` sur TOUTE erreur post-jeton (timeout Drive
+> transitoire, réveil de veille) et dès le 1er raté du renouvellement silencieux → bannière-mensonge
+> qui disparaissait au tick suivant. **Fix** : (1) jeton valide + erreur Drive non-401 → on RESTE
+> connecté (`handleError('boot')`, visible Diagnostics) ; (2) raté transitoire du renouvellement →
+> grâce de 3 ticks (~2 min, `_transientAuthFailStreak`) ; (3) définitif (`AuthInteractionRequiredError`,
+> 401 `DriveAuthError`) → bannière immédiate + `busy:false` (sinon polling gelé). Discriminant prouvé
+> par git-stash (4 tests rouges sur l'ancien code, `syncOrchestrator.errors.test.ts`). ⚠️ Le mock
+> `gisAuth` du test passphrase a reçu `AuthInteractionRequiredError` + `renewTokenSilently` (leçon
+> AUTH-DRIVE-INACTIVITY : un import non mocké = TypeError). **Panel #542, 2 vrais findings corrigés** :
+> verrou de réentrance `_bootSyncInFlight` (focus+visibilitychange = 2 ticks concurrents → compteur +2
+> pour UN alt-tab, prouvé par sonde) et grâce étendue aux erreurs Drive post-jeton persistantes (3 ticks
+> ratés toutes causes → bannière, sinon une panne durable restait invisible hors Réglages). Fenêtre
+> `flushPush`-pendant-grâce assumée + documentée (zéro perte, le prochain boot pousse). **File restante de Marc (dans l'ordre)** :
+> FINTABLE-6 Lot 2 (montant courtier + écart dans Investissements/Accueil) → DASH-NETWORTH-CANONICAL
+> (« je veux source unique ») → FINTABLE-7 Lot 3 (sync auto 1×/jour à l'ouverture) → petits a11y →
+> perf → chat conscient de la page → gros chantiers.
+
+> ## 🟢 Session 2026-07-31 — `[TX-REVIEW]` + `[TX-SUBSCRIPTIONS]` (PR 3/3, chantier CLOS)
+> **Le chantier « analyse des transactions » est complet** : virements (#539), catégorisation (#540),
+> mesure + abos fantômes (cette PR).
+> ⚠️ **LE point à retenir : le critère d'arrêt de Marc était STATISTIQUEMENT INTENABLE.** Il a fixé
+> « < 1 % mal classé sur 300 tirages » ; le test qui l'encodait a ÉCHOUÉ. Mesuré : à 300 jugements
+> SANS AUCUNE erreur, la borne haute de Wilson (95 %) monte encore à **1,26 %** → il faut **390**
+> tirages. `RECOMMENDED_SAMPLE_SIZE` est donc DÉRIVÉE de `samplesNeededForThreshold(1)`, jamais
+> re-tapée. Si Marc rediscute le seuil, c'est la constante qui suit, pas le test.
+> **Livré** : `services/transactions/reviewSample.ts` (tirage seedé déterministe — graine PERSISTÉE
+> dans `AppState.categoryReview`, sinon les jugements ne portent plus sur le même dénominateur ;
+> intervalle de Wilson ; verdict « indéterminé » tant qu'il chevauche le seuil) +
+> `subscriptionAlerts.ts` (hausse de prix vs le prix D'AVANT ; « arrêté » après 2 cadences manquées ;
+> coût annuel EXCLUANT les arrêtés) + `CategoryReviewPanel.tsx` (Transactions) + alertes dans Planning.
+> ⚠️ `AppState.categoryReview` est ADDITIF → déclaré EXPLICITEMENT dans `DEFAULT_APP_STATE`
+> (`: undefined`), sinon la vraie revue de Marc traverserait le mode démo (PERSONA-PURGE).
+> ⚠️ Piège d'unité rencontré : `formatPercent` prend DÉJÀ un pourcentage (×100), pas un ratio.
+> **Suite possible** (rien de bloqué) : Marc lance la revue et me dit le taux mesuré ; si > 1 %, ses
+> corrections indiquent QUELLES classes d'erreurs restent — c'est le prochain lot, guidé par la mesure
+> plutôt que par l'intuition.
+
+> ## 🟢 Session 2026-07-31 — `[TX-CATEGORIZE]` + `[TX-INTERAC-BUDGET]` (PR 2/3)
+> **Cause racine du « ça met abonnement pour tout et n'importe quoi »** : la catégorie « Abonnements »
+> se décidait sur le seul LIBELLÉ (`APPLE\.COM`, `GOOGLE \*`, `MICROSOFT`) et passait AVANT
+> Santé/Loisirs/Magasinage. Or la décision de Marc (« achat unique chez un marchand d'abo → Loisirs »)
+> est INDÉCIDABLE sur une ligne : un jeu Steam et un abonnement Steam ont le même libellé.
+> **Livré** : `services/transactions/merchantProfile.ts` (profil de récurrence PUR : ≥3 occurrences,
+> cadence weekly/monthly/quarterly/yearly, écart RELATIF ≤15 % — un abo qui passe de 9,99 à 12,99 reste
+> stable, ce que le ±5 $ absolu de `Planning.tsx` perdait) + `contextualCategorize.ts` (promotion
+> « Abonnements » réservée aux marchands AMBIGUS listés dans `AMBIGUOUS_SUBSCRIPTION_RULES`) + bouton
+> « Tout recatégoriser » (`handleAutoCategorizeAll('all')`, verrou `status === 'manual'`).
+> ⚠️ **Ne JAMAIS promouvoir un marchand SANS règle** même parfaitement régulier (loyer/assurance/prêt
+> auto ont la même forme) — c'est testé.
+> **`[TX-INTERAC-BUDGET]`** : « Remboursement » retiré de `NON_BUDGET_CATEGORIES` → un Interac sortant
+> est une VRAIE dépense (décision Marc) ; l'entrant vient en CRÉDIT du même poste. Règles extraites dans
+> `utils/spendRules.ts` (module NEUTRE : `budgetSync` ↔ `budget` s'importent déjà, cycle évité, madge = 0).
+> ⚠️ **Finding attrapé par un test MCP existant** : mon 1er jet soustrayait le crédit du TOTAL global →
+> 500 $ reçus sans sortie correspondante EFFAÇAIENT 400 $ de restaurants réels. Le crédit est désormais
+> borné à SON poste (`max(0, sorties − crédits)`).
+> **RESTE (PR 3)** : écran de tri des cas douteux + **revue d'échantillon 300 tirages** (le critère
+> d'arrêt de Marc « < 1 % mal classé » n'est PAS vérifiable sans elle — il a refusé de fournir un export)
+> + abonnements fantômes (hausse de prix, service qui a cessé d'être débité).
+
+> ## 🟢 Session 2026-07-31 — `[TX-TRANSFERS]` (PR 1/3 du chantier « analyse des transactions »)
+> Demande Marc : « ça détecte mal mes transferts entre comptes, ça met abonnement pour tout et
+> n'importe quoi ». Cadrage fait (27 questions), découpé en **3 PR** : 1) transferts, 2) catégorisation
+> (règles + IA, hybride — profil de récurrence par marchand), 3) abonnements fantômes.
+> **Livré ici (PR 1)** : cœur d'appariement GÉNÉRIQUE `services/transactions/detectTransfers.ts`
+> (montants exactement opposés, ≤3 j, comptes différents, 1:1, Interac exclu) — il ne vivait que dans
+> `services/fintable/`, qui délègue désormais au cœur en gardant SA contrainte de rôles via `canPair`.
+> Appliqué automatiquement à l'import (`App.tsx`) + panneau « Virements internes » (onglet Transactions).
+> ⚠️ **Deux régimes** : `confirmed` (comptes connus ET différents) marqué d'office ; `suggested`
+> (compte inconnu d'un côté) JAMAIS écrit — un faux positif retire une vraie dépense du budget.
+> ⚠️ **`accountName` est maintenant émis PAR TRANSACTION** (Fintable n'en émettait aucun : le payload
+> n'a qu'un compte de DOCUMENT alors qu'un lot couvre plusieurs comptes) — sans lui, rien n'est
+> prouvable. L'historique déjà importé sans compte reste en « suggestions ».
+> **Décisions Marc à respecter en PR 2** : catégoriser en HYBRIDE (règles précises d'abord, IA ensuite
+> — « pas sur des mots bateau ») ; passe IA sur tout l'historique ; écraser oui, SAUF une correction
+> manuelle (verrou par transaction, pas de règle par marchand) ; écran de tri dans Transactions ;
+> Interac = « Remboursement » MAIS doit compter comme **vraie dépense** (il est aujourd'hui dans
+> `NON_BUDGET_CATEGORIES`, donc invisible au Budget — à traiter en PR 2) ; abonnement = service
+> récurrent, achat unique chez un marchand d'abo → Loisirs (donc la catégorie ne peut PAS se décider
+> sur le libellé seul) ; critère d'arrêt = **< 1 % d'erreur mesuré sur 300 tirages** (revue
+> d'échantillon dans l'app — Marc refuse un export de données).
+
+> ## 🔴→🟢 Session 2026-07-30 (correctif 2) — `[FINTABLE-BROWSER-FETCH-RECEIVER]` : « échec réseau (TypeError) »
+> 2ᵉ bug du même écran, signalé par Marc juste après le déploiement du 1ᵉʳ. `this.fetchImpl =
+> opts.fetchImpl ?? fetch` puis `this.fetchImpl(...)` change le RÉCEPTEUR de `fetch` (`this` =
+> l'instance au lieu de `window`) → le binding WebIDL du navigateur lève `TypeError: Illegal
+> invocation`, remonté en `[NETWORK] … (TypeError)` après les 3 re-tentatives.
+> **MESURÉ dans un vrai Chromium** (sonde Playwright, pas déduit) : `bare(u)` OK · `obj.f(u)` ILLEGAL
+> INVOCATION · wrapper OK · bind OK. Fix = wrapper `(input, init) => fetch(input, init)`.
+> ⚠️ **jsdom/undici n'appliquent PAS la vérification de récepteur** → le garde est une SIMULATION de la
+> règle WebIDL dans `client.test.ts`. Discriminant : restaurer `?? fetch` → test rouge en ~5 s.
+> ⚠️ **Les 3 bugs de la session ont la MÊME cause profonde** : le chemin par DÉFAUT (carte non montée
+> en test, client non construit en test, `fetch` non exercé en test) n'était couvert nulle part.
+> Grep de la classe fait : instance unique. RESTE : que l'edge Vercel forwarde `Authorization`.
+>
+> ## 🔴→🟢 Session 2026-07-30 (correctif) — `[FINTABLE-BROWSER-RELATIVE-BASE]` : « url invalide » sur un JETON
+> Marc a collé son jeton et l'app a répondu **« url invalide »** — *« mais c'est un jeton pas une url »*.
+> Il avait raison, le message accusait la mauvaise chose. Cause RACINE : `FintableClient.buildUrl`
+> faisait `new URL(base + path)` **à un seul argument**, ce qui EXIGE une URL absolue. Ça marchait
+> côté cron (`https://fintable.io/api/v2`) et lève `TypeError: Invalid URL` côté navigateur, où la
+> base est le proxy same-origin **relatif** `/api/fintable`. Fix : résoudre une base relative contre
+> `location.origin` (2ᵉ argument ; `new URL(absolue, undefined)` ignore le 2ᵉ argument → chemin cron
+> BIT-IDENTIQUE), + erreur NOMMÉE si base relative sans origine.
+> ⚠️ **Le vrai défaut était le trou de test**, jumeau du test de câblage de la carte : les 7 tests de
+> `browserSync` injectaient TOUS un `client` factice → la ligne `new FintableClient({ baseUrl })`
+> n'était exécutée par AUCUN test. Un paramètre d'injection crée un chemin PAR DÉFAUT que plus
+> personne n'exerce — et c'est celui de la production. 3 tests ajoutés SANS injection (faux `fetch`,
+> vrai client) ; discriminant : `expected 'Invalid URL' to be null`, le message exact de Marc.
+> ⚠️ **NON vérifiable depuis le conteneur** (`fintable.io` = 403 CONNECT) : que l'edge Vercel forwarde
+> l'en-tête `Authorization` sur un rewrite externe. À confirmer par l'usage réel de Marc.
+>
+> ## 🟢 Session 2026-07-30 (fin) — `[FINTABLE-7]` Lot 2 : l'ÉCRAN existe (Réglages → Clés API)
+> Marc, 2× : « dans mes clés api je vois pas pour le jeton », puis « je ne vois toujours pas ». Les deux
+> fois c'était vrai : la 1ʳᵉ PR ne livrait que la plomberie, et la 2ᵉ n'était pas encore MERGÉE (donc pas
+> déployée — un merge n'est pas un déploiement, cf `[[FINTABLE-BOOL-QUERY]]` §2 appliqué à Vercel).
+> Livré : `components/settings/FintableSyncCard.tsx`, rendue **inconditionnellement** dans le sous-onglet
+> `integrations` de `Settings.tsx` — libellé de l'onglet = **« Clés API »**. Contenu : champ jeton
+> (`type=password`, `apiKeys.fintable`, device-local, JAMAIS poussé sur Drive), « Tester la connexion »
+> (liste les comptes RÉELS sans pager transactions/positions), un rôle par compte (liquidités / dette +
+> nom EXACT / placement + régime pré-rempli NON-ENREG / ignorer), « Synchroniser maintenant », et le
+> rapport de la dernière passe. ⚠️ **Aucun montant rendu** (verrouillé par test) → zéro surface à garder
+> en mode discret. Sync coupée en mode démo. Écriture de l'état par **delta de référence** (la 1ʳᵉ
+> version énumérait 5 clés et perdait déjà `lastUpdate`). **RESTE** : Lot 3 = déclenchement AUTO à
+> l'ouverture (throttlé 1×/jour) ; `[FINTABLE-6]` Lot 2 = afficher le montant courtier + ligne d'écart
+> dans Investissements et Accueil ; `[DASH-NETWORTH-CANONICAL]`.
+>
+> ## 🟢 Session 2026-07-30 (suite) — `[FINTABLE-7]` : la sync passe DANS LE NAVIGATEUR (zéro config pour Marc)
+> **Demande Marc, non négociable** : « je veux que tu fasses tout toi, sans que j'aie besoin de t'aider ».
+> **Mesuré avant de décider** (ne pas re-supposer) : `gcloud` ABSENT du conteneur, aucun identifiant
+> GCP, `fintable.io` = 403 CONNECT, aucun outil MCP pour créer un secret GitHub → le chemin Cloud Run
+> exige IRRÉDUCTIBLEMENT les identifiants de Marc. Donc bascule : la passe tourne dans l'app.
+> Livré (réseau + runner) : proxy same-origin `/api/fintable/:path*` (vercel.json + vite dev/preview,
+> patron Yahoo → **zéro domaine CSP ajouté**), `apiKeys.fintable`, `AppState.fintableRoles` (remplace
+> le fichier JSON + secret GCP), `services/fintable/browserSync.ts` qui RÉUTILISE lecteur/mapper/
+> `applyDocument`/persistance TELS QUELS — mêmes garanties que le cron + `nextState: null` sur échec.
+> ⚠️ Compromis assumé : jeton dans le navigateur via l'edge Vercel (lecture seule → risque borné), et
+> pas d'exécution app fermée. Le cron serveur reste en place, prioritaire si la config est montée.
+> **RESTE** : `[FINTABLE-7]` Lot 2 = UI Réglages (coller le jeton, bouton « Tester », rôles par clic —
+> Marc a dit « tout non enregistré pour le moment » → pré-remplir NON-ENREG) + déclenchement auto 1×/jour.
+>
+> ## 🔴 Session 2026-07-30 — LA SYNC FINTABLE N'A JAMAIS TOURNÉ + `[FINTABLE-6]` Lot 1 (montant courtier = autorité)
+> **⛔ CONSTAT MESURÉ (ne pas supposer le contraire)** : le cron s'est déclenché pour la 1ʳᵉ fois le
+> 2026-07-30 11:49 UTC et a ÉCHOUÉ. Deux blocages, tous deux côté Marc :
+> (1) le secret GitHub `FINANCEAI_FINTABLE_SYNC_SECRET` est **absent** (`FINANCEAI_MCP_URL`, lui, est
+> bien posé — le log montre `SYNC_SECRET:` vide) ; (2) `deploy-mcp.yml` est **skipped à chaque push**
+> (garde `vars.GCP_PROJECT_ID` non défini = déploiement manuel voulu) → **le Cloud Run tourne une
+> révision d'avant `[FINTABLE-3]` et n'expose pas `/fintable-sync`**. Donc ZÉRO donnée Fintable n'est
+> jamais entrée dans l'app, et tout ce que Marc demande en aval en dépend.
+> **🔵 `[FINTABLE-6]` Lot 1 LIVRÉ** — demandes Marc : « dans investissements utilise exactement le
+> montant que j'ai dans Fintable » + « l'accueil aussi, chaque jour ». Décision Marc (question posée) :
+> **autorité + ligne d'écart explicite** (pas autorité muette, pas simple référence). En LISANT le code :
+> `investmentBalances` était calculé puis **jeté** (seul un compteur survivait) → rien à brancher.
+> Livré : `taxRegime` OPTIONNEL par compte (jamais inféré, absent = signalé et hors projection),
+> `AppState.fintableBrokerBalances` (clé `accountId` stable + horodatage), module PUR
+> `services/fintable/brokerBalances.ts` (source unique de la réconciliation, **par PANIER FISCAL** — les
+> `Asset` ne portent pas d'id de compte courtier, réconcilier par compte est impossible par construction).
+> ⚠️ Mon propre test a attrapé mon propre bug : `Number(null) === 0` → un solde absent devenait un 0 $
+> crédible effaçant un compte. Garde null-explicite aux deux bouts. 19 tests.
+> **🩺 Diagnostic Accueil (agent `financial-integrity`)** — les 4 symptômes de Marc ont UNE cause :
+> le KPI `Dashboard.tsx:425` est **la seule surface de l'app qui recalcule localement** le patrimoire au
+> lieu de la source unique. ⚠️ Pour la suite : son cash ne somme que les transactions à `accountName`
+> non vide, or **le mapper Fintable n'en émet aucun** → réparer la sync ne suffirait PAS à réparer
+> l'Accueil. Ticket `[DASH-NETWORTH-CANONICAL]` au BACKLOG avec le piège à éviter (passer naïvement à
+> `computePresentNetWorth` FERAIT CHUTER le patrimoine de l'équité immo → cible = `+ équité immo`).
+> **Suite** : `[FINTABLE-6]` Lot 2 (consommer dans Investissements + Accueil) puis `[DASH-NETWORTH-CANONICAL]`.
+>
+> ## 🟢 Session 2026-07-29 (suite 8) — `[FINTABLE-4]` LIVRÉ (import manuel replié par défaut) — chantier Fintable CLOS côté code
+> **🔵 `[FINTABLE-4]` LIVRÉ** — dernier item du chantier Fintable. L'import manuel (`ImportBankStatement`,
+> CSV/PDF) reste ENTIÈREMENT fonctionnel (aucune ligne de logique retirée) mais le bouton d'en-tête de
+> `Transactions.tsx` est remplacé par une disclosure `<details>` native (même convention que
+> `AdvancedProjectionParams`/`HistoryCoverageNote`) : **repliée par défaut** dès qu'il y a des transactions
+> (Fintable synchronise déjà le quotidien), **ouverte automatiquement** à l'onboarding (0 transaction, D2 —
+> l'écran vide ne doit jamais être une impasse). L'instance de Réglages → Comptes était déjà hors du flux
+> principal, inchangée. L'import de courtage (`Investments.tsx`) reste au premier plan — seul chemin pour
+> les positions (FINTABLE-POSITIONS : courtier hors SnapTrade). 3 tests mis à jour, discriminant sur l'attribut
+> `open` (jsdom ne cache pas le contenu d'un `<details>` fermé). Découverte en chemin : `text-info-300`
+> (token Tailwind inexistant, ~12 sites) → `[A11Y-INFO300-SWEEP]` au BACKLOG (1 site corrigé ici).
+> **Chantier Fintable CLOS côté code** (`[FINTABLE-0]`→`[FINTABLE-4]`, #521→ce jour) — ce qui reste est
+> CONFIGURATION côté Marc : voir `docs/A_FAIRE_MOI.md` § FINTABLE-3 (3 secrets Secret Manager + redeploy
+> Cloud Run + 2 secrets GitHub Actions) pour que le cron tourne réellement.
+>
+> ## 🟢 Session 2026-07-29 (suite 7) — `[FINTABLE-3]` LIVRÉ (cron serveur, 1ʳᵉ écriture auto du chantier) + `[FUTUR-PAST-DEBT-FREEZE]`
+> **🔵 `[FINTABLE-3]` LIVRÉ** (cette PR) — cadrage validé par Marc (4 questions) : écriture réelle DÈS LE
+> DÉPART, 1×/jour, date de bascule AUTO-DÉRIVÉE, échecs visibles dans l'app seulement (pas de notif proactive).
+> `mcp/runFintableSync.ts` : lecture Fintable → mapper (Lot 2) → `applyDocument` → écriture ATOMIQUE
+> (`store.save(next, version)`), patron EXACT de `runPriceRefresh`/HUB-REFRESH-CRON. `POST /fintable-sync`
+> dans `mcp/http.ts`, secret **DÉDIÉ** `FINANCEAI_FINTABLE_SYNC_SECRET` (distinct de `FINANCEAI_REFRESH_SECRET`
+> — celui-ci autorise l'écriture de tx/soldes réels). Déclencheur = **GitHub Actions** (`.github/workflows/
+> fintable-sync.yml`, 10:00 UTC), PAS Cloud Scheduler — le patron `refresh-prices.yml` couvrait déjà
+> exactement ce besoin (réveiller Cloud Run endormi), gratuitement, sans nouveau service GCP. Rapport
+> `AppState.fintableSyncReport` TOUJOURS écrit (succès/échec) → carte « Sync Fintable » dans Système &
+> diagnostics. Conflit OCC = transitoire (relancé sans rapport d'échec) ; panne réelle = rapport persisté + 5xx.
+> `parseRolesJson` extrait en module PARTAGÉ (`services/fintable/rolesConfig.ts`, consommé par `fintable:dry`
+> ET le serveur). 20 tests.
+> **Panel de 7 agents post-commit** (code-reviewer, silent-failure-hunter, financial-integrity, security-privacy,
+> projection-validator, documentation-manager, a11y-auditor) — 6 findings vrais, chacun vérifié par lecture du
+> code puis corrigé avec test discriminant prouvé : isolation par payload (un rejet légitime n'avortait plus
+> toute la passe de sync), bascule plafonnée à aujourd'hui (transaction future ne gèle plus l'import, no silent
+> cap), garantie « rapport toujours écrit » élargie à la lecture d'état initiale, montant $ retiré d'un
+> avertissement (fuite mode discret + logs GitHub), `fintableSyncReport` ajouté à `DEFAULT_APP_STATE` (purge
+> persona), carte UI durcie contre une forme corrompue. Détail complet dans `CLAUDE.md` (bloc
+> `[FUTUR-PAST-DEBT-FREEZE]`, sous-point panel) et `docs/adr/` (n°5).
+> **🔵 `[FUTUR-PAST-DEBT-FREEZE]` LIVRÉ** (même PR) — demande Marc distincte, arrivée en cours de Lot 3 :
+> « assure-toi que le passé marche… le passé doit être exactement ce que c'était à cette date ». Audit
+> lecture seule d'abord (3/4 volets déjà corrects) puis fix d'un écart réel : `currentDebtNonImmo` (segment
+> PASSÉ) lisait `chartData[0]` — qui peut être le blob FIGÉ (PROJECTION-PERSIST) — au lieu de `liveResults`
+> (toujours frais). Conséquence : quand le futur affiché est gelé (badge « Pas à jour »), le passé continuait
+> de soustraire l'ANCIENNE dette. Fix : lire depuis `liveResults` systématiquement. Test discriminant qui
+> échoue sur l'ancien code (`git stash`, prouvé) : gèle le futur, bondit la dette live de +10 M$, vérifie
+> que le NetWorth du passé CHANGE.
+> **Suite** : `[FINTABLE-4]` (import manuel masqué, dernier item du chantier Fintable) ; Marc doit encore créer
+> les 3 secrets GCP (`financeai-fintable-sync-secret`/`-token`/`-roles-json`) et les 2 secrets GitHub Actions
+> avant que le cron ne tourne réellement (cf `mcp/README.md` § Sync Fintable planifiée).
+>
+> ## 🟢 Session 2026-07-29 (suite 6) — TX-DUPLICATES : détection de doublons (demande Marc) + durcissement CLI
+> **🔵 `[TX-DUPLICATES]` LIVRÉ** (cette PR). Demande Marc : « enlève les transactions en double ».
+> **Constat en vérifiant l'état réel** : `Transaction.isDuplicate` était RESPECTÉ partout (exclu de
+> `computeStartingCash`, Budget, revenus, patrimoine) mais **rien ne le mettait jamais à `true`** —
+> `parseBankCsv` l'initialise à `false`, personne ne le change ; et le filtre UI « afficher les doublons »
+> était du CODE MORT (`_setShowDuplicates` jamais appelé, le `_` l'exemptant du lint). Une machinerie
+> d'exclusion complète… sans personne pour l'alimenter. Marc n'avait donc AUCUN moyen de voir ni marquer
+> ses doublons. `services/transactions/duplicateDetection.ts` (PUR, 18 tests) : critère = **montant exact
+> + date proche** (tolérance 0/1/3 j), **libellé volontairement EXCLU** du critère — c'est justement quand
+> il diffère (deux sources d'import) que la dédup `txnKey` laisse passer. ⚠️ On **MARQUE, on ne SUPPRIME
+> pas** (cash dérivé → suppression = solde déplacé en silence, ADR suppressions) et **jamais de marquage
+> automatique** (deux dépenses identiques le même jour = vrai faux positif ; marquer à tort RETIRE de
+> l'argent réel des calculs). Réversible. `components/transactions/DuplicatesPanel.tsx` + toggle ressuscité.
+> **🔵 Durcissement CLI** : `fintable:dry` REJETTE désormais une option inconnue. Un binaire pré-Lot-2
+> ignorait `--roles`/`--after`/`--show-ids` en silence et rendait une sortie normale → Marc a cru la feature
+> cassée alors que son clone n'était pas à jour (2ᵉ occurrence de « mergé ≠ déployé chez l'utilisateur »).
+> **Comptes de l'utilisateur mappés** (ids obtenus via `--show-ids`) : les comptes courants = `cash` · carte de crédit = `debt` ·
+> les comptes de placement = `investment`. Date de bascule retenue : **2026-06-29** (à confirmer contre la dernière
+> transaction RÉELLE de l'app, pas la date d'import).
+> **Suite** : `[FINTABLE-3]` cron Cloud Run + écriture via `runApply` (OCC + backup) — PREMIÈRE écriture
+> réelle du chantier, plan-first obligatoire. 💡 Y dériver la date de bascule automatiquement
+> (`max(date)` des transactions existantes) au lieu d'un paramètre que Marc maintient.
+>
+> ## 🟢 Session 2026-07-29 (suite 5) — Lot 2 LIVRÉ (mapper pur) · positions IMPOSSIBLES, clos · Marc paie
+> **❌ `[FINTABLE-POSITIONS]` CLOS — impossible, mesuré.** L'annuaire PUBLIC de Fintable rend
+> **3 courtiers SnapTrade au Canada** (Webull, Questrade, Wealthsimple Trade) ; `q=<courtier>` → 0 résultat,
+> « l'institution » = `supported: false`. Limite PRODUIT, pas une config. Les positions
+> restent sur `apply_broker_statement` (relevé déposé dans le chat), qui marche déjà.
+> **✅ `[FINTABLE-PLAN]`** : Marc prend un plan payant — CONTRE ma reco (j'ai conseillé d'arrêter, le
+> cœur de la demande étant impossible). Arbitrage assumé, tracé ADR + BACKLOG.
+> **🔵 `[FINTABLE-2]` LIVRÉ** (cette PR) : `services/fintable/mapSnapshot.ts`, fonction PURE →
+> `bank_statement` + `cash_balance` + `debt`. 16 tests (82 au total sur `services/fintable/`).
+> ⚠️ **Piège money-critical trouvé en LISANT `txnKey`** : la dédup porte sur `date|montant|PAYEE`, et le
+> payee Fintable ne sera jamais celui des relevés PDF → même dépense, clé différente, **doublon
+> silencieux** qui fausserait `computeStartingCash` + les dépenses du Budget. La fenêtre Fintable (30 j)
+> RECOUVRE l'historique manuel. Parade = **date de bascule** (`transactionsAfter`, strictement postérieur).
+> Leçon générale portée dans CLAUDE.md : quand 2 sources alimentent le même journal, c'est la BORNE
+> TEMPORELLE qui protège, pas la dédup — une clé qui inclut un libellé ne survit pas au changement de fournisseur.
+> Autres garde-fous testés : rôle de compte EXPLICITE (jamais deviné) · liquidités en TOUT-OU-RIEN
+> (`cash_balance` écrit un DELTA → cible partielle = dérive silencieuse) · solde de carte négatif →
+> `Math.abs` (une dette négative gonflerait le patrimoine) · devise ≠ CAD écartée et signalée · dette en
+> SOLDE seulement (ni taux ni paiement minimum inventés → elle doit préexister).
+> Aperçu : `npm run fintable:dry -- --roles <f.json> --after YYYY-MM-DD` (`--show-ids` pour construire le
+> fichier ; `.fintable-roles.json` gitignoré = ids de comptes bancaires).
+> **Suite — 3 actions Marc (routées `A_FAIRE_MOI.md`)** : créer la dette de carte de crédit une fois (avec son
+> VRAI taux), donner la date de bascule, construire le fichier de rôles puis me coller l'aperçu. Ensuite
+> `[FINTABLE-3]` (cron Cloud Run + écriture via `runApply`) et `[FINTABLE-4]` (import manuel masqué).
+>
+> ## 🟠 Session 2026-07-29 (suite 4) — docteur lancé : cause des positions TROUVÉE + essai qui expire le 01-08
+> **Le docteur a désigné la bonne cause du premier coup** : les comptes de l'utilisateur arrivent par **UNE
+> SEULE connexion, une institution via PLAID**, et il n'y a **aucune connexion SNAPTRADE**. Chez Fintable le
+> courtage passe par SnapTrade → un compte de placement lié via un lien bancaire expose son solde sans
+> ses positions. Plan et santé des connexions HORS DE CAUSE (`can_sync: true`, sync réussie le jour même).
+> **Action Marc** : vérifier la couverture courtier via l'annuaire PUBLIC (`GET /institutions?q=<courtier>&provider=SNAPTRADE`,
+> sans jeton) puis créer la connexion. Si le courtier n'est pas couvert par SnapTrade → « investissements
+> temps réel » impossible via Fintable, rouvrir le cadrage.
+> **🔴 `[FINTABLE-PLAN]` NOUVEAU BLOCAGE, échéance dure** : l'essai de Marc **expire le 2026-08-01**, et
+> le palier **gratuit a `can_sync: false`** → à l'expiration plus AUCUNE sync ne tourne (arrêt total, pas
+> de dégradation). Heurte la règle « zéro abonnement » du CLAUDE.md global → arbitrage Marc.
+> **NE PAS coder le `[FINTABLE-2]` avant sa réponse** : sans plan actif tout l'aval est mort-né.
+> **Mesuré au passage** : ni Airtable ni Google Sheets ne sont connectés chez lui → le « repli Sheet »
+> documenté à l'ADR n'a JAMAIS existé en pratique, ce qui conforte le choix de l'API directe.
+>
+> ## 🟠 Session 2026-07-29 (suite 3) — 1ᵉʳ dry-run RÉEL : Lot 5 tranché, positions BLOQUÉES, docteur livré
+> **Le dry-run passe** (plusieurs comptes, 121 transactions). Fix `pending=1/0` (#524) **confirmé par mesure**.
+> ⚠️ Piège rencontré : le 422 est revenu VERBATIM après le merge — pas un mauvais diagnostic, le clone de
+> Marc était sur un `main` périmé. Une erreur identique au caractère près après un fix = code non rapatrié.
+> **🔵 `[FINTABLE-5]` TRANCHÉ — ON GARDE les 18 mois d'historique manuel** : 90 jours demandés, **30 rendus**
+> (2026-06-29 → 2026-07-28). La réponse de cadrage de Marc (« supprimer l'historique, que Plaid », Q8) était
+> sincère et FAUSSE → l'appliquer coûtait ~17 mois. C'est exactement pourquoi ce lot était gaté par une MESURE.
+> **🔴 `[FINTABLE-POSITIONS]` BLOQUANT** : des comptes de placement (chez son courtier), **0 position**, et les
+> appels `/holdings` RÉUSSISSENT en rendant des listes vides (aucun skip à tracer). Marc confirme que ces
+> comptes contiennent des titres → c'est la moitié de la demande initiale qui ne marche pas.
+> **🔵 `[FINTABLE-1b]` docteur livré** (cette PR) : `readDiagnostics.ts` (`/me` droits du plan, `/connections`
+> santé + historique de sync, `/integrations`) + `explainMissingData` (raisonnement PUR, testable sans réseau)
+> + `npm run fintable:doctor`. Décodeurs à défauts PRUDENTS (`can_sync`/`healthy` absents → `false`). Piste
+> n°1 encodée : chez Fintable le **courtage passe par SnapTrade** — un compte de placement lié via un provider
+> bancaire expose son solde sans ses positions. 16 tests (66 au total sur `services/fintable/`).
+> **Décisions de mapping tranchées par Marc** (AskUserQuestion) : les comptes de courtier = **régime choisi par Marc** ; la
+> carte de crédit alimente une **dette**, pas les liquidités (90/121 tx en viennent). Simplification
+> mesurée : **0 catégorie Fintable**, 121 tx non catégorisées → aucun conflit de taxonomie, `ruleCategorize` prend le relais.
+> **Suite** : Marc lance `npm run fintable:doctor` (routé `A_FAIRE_MOI.md`). Le `[FINTABLE-2]` est SCINDÉ —
+> volet transactions/liquidités/dette exerçable (121 tx réelles), volet **positions GELÉ** tant qu'aucune
+> donnée réelle ne peut l'exercer (leçon PORTFOLIO-HISTORY : un stub qui nourrit une surface est une dette qui MENT).
+>
+> ## 🟢 Session 2026-07-29 (suite 2) — FINTABLE Lot 1 LIVRÉ : lecteur API + dry-run (blocage levé)
+> **Marc a fourni la doc officielle de l'API Fintable V2** → le « Ouvert » de l'ADR est fermé (mise à jour
+> ajoutée à `docs/adr/` : base `https://fintable.io/api/v2`, Bearer, enveloppe `{data}`, curseur,
+> `order=updated&updated_since` pour l'incrémental, 300 lectures/min).
+> **🔵 `[FINTABLE-1]` livré** : `services/fintable/` = `types.ts` (formes brutes + modèle normalisé +
+> `FintableError` à code typé transitoire/confirmé, classe QUOTE-ERRKIND) · `decode.ts` (décodage STRICT) ·
+> `client.ts` (pagination curseur + garde anti-curseur-répété, 429 avec `Retry-After`, **timeout couvrant la
+> LECTURE DU CORPS** — leçon SYNC-FETCH-TIMEOUT, jeton jamais dans une URL ni un message d'erreur) ·
+> `readSnapshot.ts`. `npm run fintable:dry` (montants MASQUÉS par défaut). **50 tests**, typecheck + lint propres.
+> **4 contraintes de la doc devenues règles de code** (ADR) : `pending=false` FORCÉ (une pending repostée =
+> doublon À VIE, `applyDocument` ne supprime jamais) · `cost_basis` = coût **TOTAL** → champ `costBasisTotal`
+> (notre `buyPrice` est PAR PART) · `Account.type` = texte libre → aucune inférence du type fiscal, positions
+> demandées pour TOUS les comptes actifs · « money is a string » → `Number('')===0` gardé explicitement.
+> **⚠️ CORRECTION d'une affirmation antérieure** : j'avais dit « Fintable sync 1×/jour, donc l'API n'apporte
+> rien de plus que le Sheet » (extrait indexé). La doc réelle dit **balayage randomisé 6-23 h** + `POST /sync`
+> à la demande + polling incrémental → l'API directe reste le bon choix, le Sheet redevient un simple repli.
+> **Suite (bloquée sur Marc, routé `A_FAIRE_MOI.md`)** : il doit lancer `npm run fintable:dry -- --days 90`
+> (je ne peux PAS appeler `fintable.io` depuis l'exécution cloud — 403 au tunnel CONNECT sur TOUS les chemins,
+> endpoints publics compris). Sa sortie débloque le Lot 2 sur 4 décisions : mapping compte→type fiscal
+> (CELI/REER/NON-ENREG, non inférable), devises rencontrées, catégories Fintable → postes canoniques, et
+> l'étendue de dates réelle qui tranchera le Lot 5 (garder ou remplacer les 18 mois d'historique manuel).
+>
+> ## 🟠 Session 2026-07-29 (suite) — nouveau chantier FINTABLE : cadrage + ADR livrés, Lot 1 BLOQUÉ sur la forme de l'API
+> **Demande Marc** : « mettre en place Fintable pour récupérer mes transactions et mes investissements en temps réel »,
+> sans perdre l'import manuel (le mettre de côté), en gardant tous les tools MCP. 14 questions de cadrage répondues.
+> **🔵 `[FINTABLE-0]` LIVRÉ (cette PR)** : ADR (`docs/adr/`) + plan en 6 lots (`BACKLOG.md` § 🏦 FINTABLE).
+> **Découverte de cadrage qui RÉDUIT le chantier** (classe `R2-FIRE` — vérifier l'état RÉEL avant de coder) :
+> `mcp/ingest/applyDocument.ts` couvre DÉJÀ toute la fusion via 3 payloads existants — `bank_statement`
+> (transactions + dédup + allowlist), `broker_statement` (positions), `cash_balance` (delta `initialBalances.LIQUIDITE`).
+> Fintable est donc un **PRODUCTEUR de `DocumentPayload`**, pas un nouveau pipeline : il reste un LECTEUR + un MAPPER pur.
+> L'écriture passe par `runApply` → OCC + sauvegarde horodatée héritées (c'est ce qui rend un écrivain SERVEUR
+> compatible avec `SYNC-ANTI-CLOBBER`). Exécution = cron Cloud Run (jamais navigateur : le jeton n'entre pas dans le bundle).
+> **🔴 BLOCAGE Lot 1 (routé `A_FAIRE_MOI.md`)** : la forme de l'API Fintable n'est PAS vérifiable depuis l'exécution
+> cloud — `docs.fintable.io` NXDOMAIN, `fintable.io`/`api.fintable.com` bloqués par la politique réseau du conteneur
+> (403 au tunnel CONNECT ; `WebSearch` passe, `curl` non). Marc doit fournir URL de base + en-tête d'auth + chemins
+> + **une réponse réelle tronquée** (noms de champs). Le lecteur n'est PAS écrit tant que la forme n'est pas mesurée.
+> Repli documenté et immédiatement faisable si Marc préfère : lire le Google Sheet que Fintable alimente déjà.
+> **⚠️ Incident sécurité traité** : le 1ᵉʳ jeton Fintable (read+write, exp. 2027) a été collé en clair dans le chat →
+> RÉVOQUÉ par Marc, remplacé par un jeton **lecture seule** dans Secret Manager (`financeai-fintable-token`). Leçon
+> portée dans `CLAUDE.md` (§ Exécution cloud) avec la commande PIPÉE correcte (`gcloud secrets … --data-file=-` sans
+> pipe reste bloqué sur stdin — ça ressemble à un plantage).
+> **Suite** : dès la forme d'API reçue → Lot 1 (lecteur + `fintable:dry`, zéro écriture) puis Lot 2 (mapper pur + panel
+> money-critical : FX natif via `assetValueCad`, sémantique réelle d'`applyBrokerStatement` à MESURER, compte fermé
+> ≠ actif disparu). Lot 5 (bascule des 18 mois d'historique) reste GATÉ par une mesure de couverture Plaid réelle.
+>
+> ## 🟢 Session 2026-07-29 — DIRECTIVE MARC : « vider entièrement le backlog, non stop » → MCP-DIRECT-EDIT Lots 2-3 (PR en cours)
+> **Contexte** : `set_cash` (#517) mergé + **déployé par Marc sur Cloud Run (v0.8.0 → confirmé fonctionnel sur claude.ai)**. Marc a ensuite donné la directive : vider TOUT le backlog, trouver/corriger les erreurs, non-stop. Stratégie : lots de PR sur les items actionnables (vérifier l'état RÉEL avant de coder, leçon PM-STALE-BACKLOG) ; items gated décision/action humaine → routés `A_FAIRE_MOI.md`.
+> **🔵 Lots 2-3 MCP-DIRECT-EDIT** (cette PR) : `set_budget_item` (upsert poste par nom, édition cible → `autoTarget:false`) + `upsert_savings_goal` (upsert objectif par nom). Même pattern que set_cash (confirmation 2 temps, bornes D9, update partiel). MCP v0.9.0. ⚠️ Chaque lot MCP mergé exige un redéploiement Cloud Run par Marc (manuel — deploy-mcp.yml PAS configuré, `gcloud` non dispo en session cloud) → regrouper les lots avant de lui demander.
+> **PR #518** (Lots 2-3 + HIST quick wins) : panel 3 agents FAIT (2 ÉLEVÉ financial-integrity corrigés : parité autoTarget/fréquence + note « poste orphelin retiré au prochain sync » ; 1 ÉLEVÉ silent-failure corrigé : '' avalé par toDocument → '' = effacer ; MOYENS/FAIBLES appliqués). Auto-merge armé.
+> **Lots 4-5 FAITS localement (PR suivante)** : `delete_item` (actif = vente totale / dette / objectif) + ADR « Suppressions via MCP/IA » (docs/adr/) — correspondance EXACTE, ambiguïté → throw, confirmation stricte, transactions différées. MCP v0.10.0. Panel à lancer au push.
+> **Suite prévue** : merge #518 → réconcilier → push Lots 4-5 + panel → silent-failure/MCP LOW (AITOOLS-HISTORY-BOUND, PERSONA-SANITIZE-CHAT, PRICE-SYNC-REPORT, MCP-ENGINE-WARNINGS, ENG-LIFEEVENT-VENTE-SUBSTRING) → a11y (A11Y-INK500 Lot 3, A11Y-FUTUR-MILESTONES-KEYBOARD) → dette. Items gated décision Marc → A_FAIRE_MOI. Voir BACKLOG.
+>
+> ## 🟢 Session 2026-07-28 — MCP-DIRECT-EDIT Lot 1 : `set_cash` (changer ses liquidités « juste en le demandant ») [PR — branche `claude/progress-check-yua8yy`]
+> **🔵 `[MCP-DIRECT-EDIT]` Lot 1 `set_cash`** (demande Marc « change mes liquidités et tout tout tout avec mcp juste en le demandant » + « confirmation ») : nouveau tool d'écriture. Le cash est DÉRIVÉ (`computeStartingCash` = Σ initialBalances + Σ transactions non-dup/transfert, source unique) → l'ajustement se fait par **DELTA sur `initialBalances.LIQUIDITE`** (compte visible Réglages → Comptes, jamais d'écrasement des transactions ni de la map). Idempotent, borné (0 → 100 M$) + garde non-fini métier (bypass-Zod couvert). **Invariant round-trip prouvé** : `computeStartingCash(next) === target`. **Confirmation à 2 temps** (nouveau `RunApplyOptions` dans `runApply` : dry-run APERÇU sans écriture → 2ᵉ appel `confirm:true` persiste) côté MCP/claude.ai ; l'app garde son modal `writeExecutor`. Spec/tool scindés (`setCash.spec.ts` browser-safe + `.tool.ts` mince), enregistrés dans `mcp/server.ts` + `services/aiTools/registry.ts` (WRITE_SPECS) → parité app↔MCP. tests (round-trip exact, idempotence, bornes, dry-run/confirm bout-en-bout, garde non-fini) + registryParity/specFiniteGuard verts. **Panel money-critical FAIT** (financial-integrity RAS + security-privacy RAS + silent-failure-hunter 1 CRITIQUE CORRIGÉ : `current`/`delta` gardés non-finis avant écriture — Zod laisse passer ±Infinity dans initialBalances/transactions → on écrivait `NaN` en silence ; discipline HARDEN-NETWORTH-NAN appliquée, discriminant prouvé). ⚠️ Actif sur claude.ai seulement après **redéploiement Cloud Run** (auto via `deploy-mcp.yml` sur merge main si `GCP_PROJECT_ID` configuré, sinon `mcp/deploy.sh` manuel) + reconnexion du connecteur claude.ai (rafraîchit la liste des tools). Prochains lots BACKLOG : `set_budget_item`, `upsert_savings_goal`, vente totale, suppression (ADR). Salaire déjà couvert par `apply_payslip`.
+>
+> ## 🟢 Session 2026-07-24 (suite) — backlog « tout » VIDÉ (PR #505→#511 MERGÉES) → FUTUR-REAL-HISTORY en cours (raccord dette exact)
+> **🔵 `[FUTUR-REAL-HISTORY]`** (PR suivante, DRAFT — branche `claude/progress-check-yua8yy`) : la courbe Futur AVANT aujourd'hui montre l'historique RÉEL du patrimoine. **Cadrage (architect + financial-integrity) : DÉJÀ construit à ~90 %** (`pastPrefix` dans `FutureProjection.tsx`). Cette PR ferme les 2 écarts money-critical : (1) **raccord dette EXACT (Option A, décision Marc 2026-07-24)** — le passé soustrait `chartData[0].DettesNonImmo` (dette courante) via `pastNetWorthAt`→`computeRawNetWorth` (zéro copie locale) → fin du SAUT « aujourd'hui » pour un endetté ; (2) **cohérence base cash** — `reconstructCashHistory` exclut dup/transfert comme `computeStartingCash` (les 2 bouts divergeaient) ; (3) **FX du jour** + note d'honnêteté au bandeau. Tests discriminants (3 rouges sur l'ancien code). Reste différé (Lot 4, non bloquant) : `[FUTUR-HIST-DAILY-REFRESH]`, `[FUTUR-HIST-FX-DATED]`. Panel money-critical à lancer.
+> **✅ `[A11Y-DASH-SRONLY]`** (PR #511, MERGÉE) : convention globale d'accessibilité pour l'état vide « — ». Helper pur `components/ui/emptyAware` (tiret `aria-hidden` + `sr-only` « Pas de donnée ») appliqué au CENTRE (slot `value` de `KPIStat` hors privacy + branche non-privée de `PrivateAmount` → couvre `DualKPIStat`) — pas site-par-site. Miroir de `PrivateAmount`. **DERNIER item du backlog « tout » de Marc → VIDÉ.**
+> **✅ `[AITOOLS-PROMPT-CACHE]`** (PR #509, DRAFT) : prompt caching Anthropic. État réel : le `cache_control` du bloc system statique (#490) cachait DÉJÀ les 16 schémas de tools par l'ORDRE de préfixe (tools → system → messages). Complété par un marqueur `cache_control` EXPLICITE sur le dernier tool (`agentLoop.ts`) → tools cachés indépendamment du system (défense en profondeur). Guard-test de forme de requête (2 marqueurs). Zéro changement de comportement ; `usage.cache_read_input_tokens` déjà remonté.
+> **✅ `[QUOTE-ERRKIND]`** (PR #508, DRAFT) : fix structurel du cache négatif — les providers de cours (Finnhub/CoinGecko/Yahoo) PROPAGENT désormais (throw `MarketDataError` typée) les échecs TRANSITOIRES (429/réseau/AUTH) au lieu de les aplatir en `null` ; l'absence CONFIRMÉE (Finnhub `c:0`, Yahoo 404, crypto inconnu) reste `null`. La façade (`runLink`) ne compte au skip QUE l'absence confirmée → un 429 ne gèle plus un vrai titre (finding ÉLEVÉ #499). TTL gradué = 2ᵉ ceinture. Discriminant : 3× 429 → interrogeable ; 3× 404 → skip armé. 52 tests marketData verts.
+> **✅ `[FUTUR-ICON-DENSITY]`** (PR #505, mergée) : bug Marc « pas assez d'icônes dans Futur » — `thinEvents` sous-remplissait le cap de densité (pas entier `Math.ceil(n/cap)` → jusqu'à 2× trop peu d'icônes). Remplacé par `utils/sampleEvenly.ts` (répartition uniforme atteignant EXACTEMENT `cap` indices). Panel + tests discriminants.
+> **✅ `[A11Y-PILL-RADIOGROUP]`** (PR #506, mergée) : navigation clavier APG du composant `Pill` partagé (roving tabindex + flèches + Home/End, sélection suit le focus, `aria-label` requis, cible ≥ 24 px). Panel a11y.
+> **PR #507 `[PERF-STALE-TAIL-ZERO]` (DRAFT, auto-merge armé)** : `seriesReturnPct` rend « — » au lieu d'un 0 % TROMPEUR quand latest ET baseline sont des valeurs raccordées au prix courant (candles KO + quote fraîche, cas d'un titre européen détenu). `buildMarketData.syntheticTailKeys` (clés `JSON.stringify([date, symbol])` anti-collision) trace ces valeurs figées ; prédicat optionnel `isSynthetic` (rétrocompat bit-identique). Panel financial-integrity (SÛR, 5 points sondés) + code-reviewer (finding clé anti-collision appliqué). Un SEUL endpoint synthétique → mouvement réel conservé.
+>
+> ## 🟢 Session 2026-07-24 — BUDGET-3-VUES + BUDGET-MATCH-UNIFY + MCP-CATEGORY-ALLOWLIST + AI-CATEGORIZE-MISSING-ID + AUTH-DRIVE-STILL-RECONNECT (PR #503/#504 MERGÉES)
+> **✅ `[BUDGET-3-VUES]`** (PR #500, squash 7e80af2, 2026-07-23) : tableau Budget 3 colonnes — réel période · moyenne 12 mois · cible. Panel `/review-all` : findings a11y corrigés.
+> **✅ `[BUDGET-MATCH-UNIFY]`** (PR #501, squash ace36bf, 2026-07-24) : rapprochement catégorie fuzzy via `matchCategoryToName` prédicat partagé, allocation zéro-overhead, auto-target. Panel : financial-integrity 0 findings (mesurés), code-reviewer 1 perf (allocation/appel, corrigé), silent-failure-hunter 1 ÉLEVÉ → déploiement imédiat.
+> **✅ `[MCP-CATEGORY-ALLOWLIST]`** (PR #502, squash 9686691, 2026-07-24) : validations catégorie libre au point d'écriture `applyDocument.ts` (app↔MCP partagé), allowlist postes/RULE_CATEGORIES, remap casse/accents, inconnue → ruleCategorize sinon « Non catégorisé », remaps comptés au summary. Description du tool dérivée de source unique. Panel 4 agents (code-reviewer, silent-failure-hunter, security-privacy, ai-reviewer) appliqué. MERGÉE. Nouveau ticket [AI-CATEGORIZE-MISSING-ID] (S) découvert.
+> **✅ PR #503 `[AI-CATEGORIZE-MISSING-ID]` (MERGÉE, squash fde0eec, 2026-07-24, branche `claude/progress-check-yua8yy`)** : trace des transactions omises par le modèle dans `categorizeBatch` + triage Dependabot #26 ([DEP-HONO-TRAVERSAL] non exploitable, en attente upstream) + action Cloud Run remise en attente. Panel 2 agents appliqué.
+> **PR #504 `[AUTH-DRIVE-STILL-RECONNECT]` (DRAFT, branche `claude/progress-check-yua8yy`)** : instrumentation des échecs de renouvellement Drive (traceSilentAuthFailure : raison GIS throttlée, sévérité info/warning) + fermeture trou 401 DriveAuthError. Panel 2 agents en cours, ready+auto-merge imminents. ⚠️ **Bug Marc signalé : « pas assez d'icônes dans Futur »** — cause trouvée (thinEvents sous-remplit cap de densité), fix prévu tâche #35 PR séparée post-merge #504.
+>
+> ## 🟡 Session 2026-07-23 (suite 9) — BUDGET-3-VUES : Budget par poste 3 colonnes réel/moy.12m/cible (PR #500, DRAFT — auto-merge armé)
+> **En cours** `[BUDGET-3-VUES]` : tableau Budget 3 colonnes — réel période · moyenne 12 mois (mois courant exclu, sans historique → « — ») · cible.
+> Bandeau groupe (réel/moy/cible gaté mode discret). `buildMonthlyLedger` + `computeAvgByItem` sources uniques. Panel `/review-all` fait (4 agents) :
+> findings a11y (sr-only sur colonnes) + tests câblage corrigés ; finding financial-integrity (rapprochement fuzzy vs exact) routé BACKLOG `[BUDGET-MATCH-UNIFY]`.
+> Auto-merge sera armé immédiatement après ce handover.
+>
+> ## 🟢 Session 2026-07-23 (suite 8) — QUOTE-NEGATIVE-CACHE, QUOTE-MARKET-TIMESTAMP : cache négatif + horodatage marché (PR #499, MERGÉE)
+> **✅ `[QUOTE-NEGATIVE-CACHE]` + `[QUOTE-MARKET-TIMESTAMP]`** (PR #499) : cache négatif TTL par symbole —
+> 3 échecs CONSÉCUTIFS (fenêtre 7 j) → skip 24 h quotes / 7 j profils, auto-guérison à l'expiration, entrées
+> non FINIES rejetées à la lecture (durcissement anti-tampering `1e999`→Infinity, finding sécurité), purge au
+> bouton Actualiser + changement de clé provider. Contrat historique null=erreur / []=vide cacheable PRÉSERVÉ
+> (périmètre historique exclu volontairement). Horodatage marché (`priceUpdatedAt` = heure du COURS si plausible
+> ≥ 2000-01-01 et ≤ maintenant+10 min, sinon heure de fetch). BACKLOG cochés, CHANGELOG fait.
+>
+> ## 🟢 Session 2026-07-23 (suite 7) — INVEST-PERF-PERIOD : sélecteur de période Performance (PR #498, MERGÉE)
+> **En cours `[INVEST-PERF-PERIOD]`** : sélecteur de période (24h / 7j / 1M / 3M / 6M / YTD / 1a) sur la carte
+> Performance d'Investissements + chips du graphe + cartes par titre. Helper pur `services/history/periodReturn.ts` :
+> `seriesReturnPct` (variation valeur TOTAL/buckets) + `priceReturnPct` (performance titre natif via `priceHistory`).
+> Benchmark Marché = prix d'un FNB MSCI World (repli CSV). Pas de baseline → null/« — ». Score santé : momentum fixé 24h.
+> Panel : finding ÉLEVÉ corrigé (`isBenchmarkCandidate` — « MSCI » nu matchait un FNB MSCI Asie émergente) + tri
+> déterministe dates dupliquées. MERGÉE (squash `7fbdccb`).
+>
+> ## 🟢 Session 2026-07-23 (suite 6) — DEP-DEPENDABOT-2026-07 : npm audit + assetMeta seed (PR #497)
+> **✅ `[DEP-DEPENDABOT-2026-07]`** : `npm audit fix` — HIGH corrigés (fast-uri 0.1.50, dompurify 3.0.11) ;
+> résiduel @hono/node-server (2 MODERATE, inexploitable mesuré) documenté BACKLOG. + 2 entrées seed assetMeta
+> (deux tickers européens de Marc non couverts Finnhub). Tests 2985 verts (inchangés). Build OK.
+> BACKLOG+CHANGELOG déjà à jour. **Suite : [INVEST-ALLOC-GEO-SECTOR] (déjà livré, #496).**
+>
+> ## 🟢 Session 2026-07-23 (suite 5) — INVEST-ALLOC-GEO-SECTOR : répartitions géo/secteur (PR #496)
+> **✅ `[INVEST-ALLOC-GEO-SECTOR]`** : Asset.sector/region champs additifs optionnels ; resolveAssetMeta
+> (normalisation : champ > seed statique > crypto > « Autre ») ; assetProfileSync (auto-populate profil
+> Finnhub au boot) ; sélecteurs Région/Secteur inline dans les cartes d'allocation (Investissements).
+> Tests 2985 verts (+14). BACKLOG [INVEST-ALLOC-GEO-SECTOR] ✅ coché. Suite : [BUDGET-3-VUES] (plan-first).
+>
+> ## 🟢 Session 2026-07-23 (suite 4) — INVEST-CURVES-LOW : graphe investissements (PR #495)
+> **✅ `[INVEST-CURVES-LOW]`** : graphe Investissements dégagé (notes de couverture + diagnostic repliés en
+> `<details>`, ligne « N points » retirée, 400→520px), StockChart auto-défaut Base 100 en séries disparates
+> (choix manuel prime) + fix base éparse (courbe figée à 0), correctifs panel (tooltipValue « — » sur null +
+> yFormatter respecté, aria-pressed + aria-live, cibles tactiles summary, h4 sr-only, isPrivacyMode enfin
+> passé au StockChart). Tests 2971 verts. BACKLOG [INVEST-CURVES-LOW] ✅ coché, CHANGELOG et leçon CLAUDE.md
+> déjà faits. **Suite : [INVEST-ALLOC-GEO-SECTOR], [BUDGET-3-VUES] (plan-first).**
+>
+> ## 🟢 Session 2026-07-23 (suite 3) — HIST-MULTI-PROVIDER : quotes multi-providers (PR #494)
+> **✅ `[HIST-MULTI-PROVIDER]`** (suite de #493 coverage-total) : chaîne de quotes multi-providers
+> (CoinGecko crypto, Finnhub stock-US, Yahoo Finance via proxy same-origin `/api/history/yahoo/:symbol`
+> pour Euronext/CAD) + repli quote `meta.regularMarketPrice` sans nouveau rewrite. Actualiser les cours =
+> purge cache history + hydratation forcée + quotes fraîches. HistorySyncDoctor : diagnostic par titre
+> (symbole de cotation inline, recherche `/api/search/yahoo` par NOM de titre), module `services/history/syncDiagnostics.ts`,
+> composant `HistorySyncDoctor` sur Investissements. Rewrites vercel.json + proxy vite dev. Tests 2954 verts (+24).
+> ADR complet docs/adr/ (bloc HIST-MULTI-PROVIDER). Leçons CLAUDE.md portées.
+>
+> ## 🟢 Session 2026-07-23 (suite 2) — HIST-COVERAGE-TOTAL : portefeuille complet (PR #493)
+> **✅ `[HIST-COVERAGE-TOTAL]`** (panel 30 agents, 9 confirmés, 17 vérifiés) : le TOTAL du portefeuille couvre
+> TOUT — titres sans historique comptés à valeur actuelle (contribution plate, noHistorySymbols), backfill pré-historique,
+> queue périmée au currentPrice, variantes Yahoo-devise persistées (Asset.historySymbol, additif). ADR-complet docs/adr/.
+> Trade-off assumé : reconstructibilité `TOTAL == Σ colonnes` ne tient plus dès qu'existe un titre sans historique —
+> test coché, usage cohérent (UI+modals). Tests 2930 verts (+24 dont correctifs panel, gate propre). BACKLOG [HIST-COVERAGE-TOTAL] ✅ coché,
+> [HIST-GOOGLE-PARITY] absorbé. Suite : [INVEST-CURVES-LOW], [INVEST-ALLOC-GEO-SECTOR], [BUDGET-3-VUES] (plan-first).
+>
+> ## 🟢 Session 2026-07-23 (suite) — ASSISTANT-HUB : fusion Prochaine action + Assistant (PR #492)
+> **✅ `[ASSISTANT-HUB]`** (plan PM+architect suivi) : onglet Assistant VISIBLE dans la nav (remplace
+> ACTIONS — cause du « je ne vois pas l'onglet assistant ») ; cartes de signaux purs
+> (`useFinancialSignals`→`computeFinancialSignals`, MÊME moteur que le tool MCP — un seul avis) au-dessus
+> du chat, clic → discussion contextualisée ; widget Haiku getNextBestActions + cache 1h RETIRÉS ;
+> `Tab.ACTIONS` retiré de l'enum (8 sites, typecheck = filet) + redirect `#ACTIONS`→`#ASSISTANT` ;
+> mode discret = clic désactivé (ADR). Tests : parité narrow↔full (garde anti-staleness du hook),
+> clic/discret discriminants, scan redirect. ADR : docs/adr/.
+>
+> ## 🟢 Session 2026-07-23 — vague 1.5 : panneau réparé + Budget à 100 % (PR #491)
+> **Fix bug Marc (captures)** : auto-scroll du chat par `scrollTop` sur le CONTENEUR de messages —
+> `scrollIntoView` scrollait le drawer overflow-hidden parent (header/conversation invisibles). Prouvé/
+> verrouillé par e2e `e2e/chatPanel.spec.ts` (Chromium réel ; env cloud : PW_LOCAL_CHROMIUM pour pointer
+> le Chromium préinstallé). **Vague 1.5** : `BudgetViewDetail.cards` (label/valeur AFFICHÉE/note de
+> PROVENANCE, assainies au prompt-build) — Impact à long terme (estateNetWorth de lastProjection),
+> Sensibilité, Fin de mois, ventilation revenus, statut, dépassements. Le chat peut EXPLIQUER chaque
+> chiffre de la page Budget. BACKLOG enrichi (demandes Marc) : [BUDGET-3-VUES], [HIST-COVERAGE-TOTAL]
+> (courbe nettement sous le total réel — titres sans historique exclus), [INVEST-ALLOC-GEO-SECTOR], [INVEST-CURVES-LOW],
+> [HIST-GOOGLE-PARITY] (réponse : pas d'API Google Finance — viser la parité par couverture), [DEP-DEPENDABOT-2026-07].
+>
+> ## 🟢 Session 2026-07-22 (suite 6) — CHAT-PAGE-CONTEXT vague 1 : chat conscient de la page (PR #490)
+> **✅ `[CHAT-PAGE-CONTEXT]` vague 1** (demande Marc « le chat réagit à tout sur la page », OK donné d'avance,
+> plan PM+architect suivi) : registre pur `services/aiChat/viewContext.ts` (Tier 1 = onglet actif partout via
+> `TAB_LABELS` déplacé dans `constants.ts` ; Tier 2 = détail publié par la page) + `useViewContextPublisher`
+> (gate mode discret À LA SOURCE) + `useViewContextSnapshot` (badge). Injection en FIN de `system` (figée par
+> envoi — ADR : PAS un tool, relu à chaque tour = dérive ; registre app↔MCP jamais forké), capture SYNCHRONE
+> avant tout await dans sendMessage. Budget instrumenté (période/vue/dépenses/cible/revenus/top3/filtre —
+> RÉUTILISE totalSpentDisplay/computeIncomeBreakdown, jamais un 3e chiffre, parité verrouillée par test).
+> Page non instrumentée → aveu honnête. Vague 2 (autres onglets) : `[CHAT-PAGE-CONTEXT-V2]` au BACKLOG.
+>
+> ## 🟢 Session 2026-07-22 (suite 5) — B3+B4 : choix du modèle par conversation + coût réel (PR #489)
+> **✅ `[B3-CHAT-MODEL]` + `[B4-CHAT-COST]`** (fin de la roadmap chat B de Marc) : sélecteur Haiku/Sonnet/Opus
+> dans le header du chat, PAR conversation (`AppState.aiChatModel` additif pour l'active, porté dans
+> `AiConversation.model` à l'archivage, restauré à la bascule ; pré-B3 → sonnet). Source unique des ids :
+> `services/aiChat/models.ts` (`MODEL_IDS` — `services/claude.ts` en dérive ses constantes). Coût RÉEL :
+> `agentLoop` accumule `msg.usage` par tour (présent sur TOUS les stopReasons — l'annulation compte ses
+> tours payés) → `services/aiChat/pricing.ts` (tarifs $/MTok datés/sourcés : haiku 1/5, sonnet 3/15, opus
+> 5/25 ; cache read 0,1×/write 1,25×) → `costUsd` par réponse (persisté) + cumul à vie `aiChatCostUsdTotal`.
+> Affichage CAD via `fxRates.USD` (`formatCostCad` — « < 0,01 $ », jamais un faux 0,00 $) : bulle, header
+> (conv + total), sidebar (coût + modèle par archive). Modèle sans tarif → null honnête + logError (garde de
+> parité ids↔tarifs par test). Défauts store/MCP/backup en parité. **Roadmap chat B TERMINÉE (B1→B4).**
+>
+> ## 🟢 Session 2026-07-22 (suite 4) — B2 : onglet + historique multi-conversations + pièces jointes cross-device
+> **✅ `[B2-CHAT-HISTORY]` implémenté** : `aiConversations`/`activeAiConversationId` (additifs — `aiConversation`
+> RESTE l'active, source unique, jamais dupliquée dans la liste), logique pure `services/aiChat/conversations.ts`,
+> UI `AiConversationList` (sidebar onglet md+ / sélecteur mobile, gelée pendant un envoi, zone mode discret),
+> octets des pièces jointes en fichiers Drive appdata SÉPARÉS (`attachmentDriveStore.ts` : push best-effort à
+> l'envoi, fetch au cache-miss sur l'autre appareil, delete avec la conversation, skip mode test). Défauts MCP
+> mis en parité (appStateDefaults). **Panel 4 agents APPLIQUÉ** : CRITIQUE droit-à-l'effacement
+> (`deleteRemoteData` wipe désormais les `financeai-chat-attach-*`) ; ÉLEVÉS course flags-avant-await
+> (sonde : un message atterrissait dans la MAUVAISE conversation pendant la lecture d'un fichier) +
+> suppression Drive paginée/tracée ; MOYENS TTL 60s sur les fetch ratés (course de sync cross-device),
+> cap 30 archives (payload sync borné), focus/contraste/SR a11y, purge caches au changement de compte.
+> Reste latent → BACKLOG `[PERSONA-SANITIZE-CHAT]`. Ensuite B3 (choix modèle) + B4 (coût CAD).
+>
+> ## 🟢 Session 2026-07-22 (suite 3) — B1 : pièces jointes multimodales du chat (PR #487)
+> **Panel 5 agents APPLIQUÉ en commit de suivi** : CRITIQUE fichier 0 octet (tour évaporé de l'historique
+> modèle, sonde) → plancher + garde par type + repli honnête ; ÉLEVÉS : suggestion-jette-fichier (sonde),
+> budget agrégé 20 Mo/message (limite API par REQUÊTE ≠ par fichier), `cache_control` sur le dernier bloc
+> pièce jointe (un PDF était re-facturé jusqu'à ~30× sur la clé BYOK) ; MOYENS : éviction cache hors fenêtre
+> + purge inter-persona (enableTestMode/disableTestMode), nom de fichier jamais dans logError (peut porter
+> un montant), erreur API 400 pièce jointe → « retire-la » (pas « réessaie »), contraste puces ink-200
+> (mesuré 7,1:1, l'ancienne puce toolsUsed corrigée au passage), cible retirer ≥24 px, aria-live.
+> **✅ `[B1-CHAT-ATTACHMENTS]`** (roadmap chat B, scope validé Marc) : images/PDF/texte-CSV joignables au
+> chat (trombone, panneau + onglet), envoyés en blocs multimodaux Anthropic. `services/aiChat/attachments.ts`
+> (pur : classify allowlist+bornes, read → base64/texte, buildUserContent, cache session par id message),
+> `useAiChat.sendMessage(text, files?)` (lecture AVANT append — échec = refus honnête de l'envoi entier ;
+> historique multimodal tant que le cache vit, note « contenu non disponible » post-reload), transcript =
+> MÉTA seulement (ADR-4, jamais d'octets dans le store/push Drive), anti-injection (neutralizeFrameTags sur
+> fichiers texte + clause system prompt). 15+4 tests. Boot inchangé (~109 kB gzip, SDK toujours absent).
+> **Suite : B2 (onglet + multi-conversations Drive, octets → fichiers appdata), B3 (choix modèle), B4 (coût).**
+> ⚠️ Marc a RÉITÉRÉ « plus me reconnecter à Drive tout le temps » APRÈS le merge de #483 → suivi
+> `[AUTH-DRIVE-STILL-RECONNECT]` au BACKLOG (vérifier en prod post-deploy ; instrumenter si ça persiste).
+>
+> ## 🟢 Session 2026-07-22 (suite 2) — PORTFOLIO-HISTORY : courbes de cours réelles (bug Marc) — PR #485
+> **✅ `[PORTFOLIO-HISTORY]` implémenté + panel appliqué** (bug Marc « je vois pas le cours ni le cours du
+> portefeuille ») : cause = stub CSV mort (`fetchPortfolioHistory`→[]) → graphes vides en réel. Livré : chaîne
+> d'historique gratuite `marketData.getHistory` (Finnhub clé Marc → repli Yahoo via proxy same-origin
+> `/api/history/yahoo` [rewrite vercel.json + proxy vite dev] → CoinGecko crypto ; contrat null=erreur JAMAIS
+> cachée / []=vide cacheable, PROPAGÉ jusqu'à l'hydratation) ; hydratation `services/history/hydrateAssetHistories`
+> (depuis 1er achat, pacing 2,5s, fraîcheur 24h, FUSION ancien∪nouveau au re-sync, garde devise crypto,
+> anti-course, skip mode test) au boot App ; builder pur `services/history/buildMarketData` (DCA qty(t) ×
+> close natif × FX → CAD, colonnes AGRÉGÉES multi-comptes, buckets TOTAL_*, prix périmé >7 j exclu,
+> excludedSymbols + partialHistorySymbols) ; `usePortfolioHistory` DÉRIVE du store → Dashboard (piles depuis
+> les buckets émis), Investissements (chips distinctes, isTotal strict), StockComparisonModal (union des
+> clés) ; matching par `historyKeyMatchesSymbol` (exact, jamais includes). **Panel adversarial wf 30 agents :
+> 9 confirmés appliqués, 17 vérifiés inline après un « session limit » des agents verify** (8 réels corrigés,
+> 3 → BACKLOG [HIST-*], reste réfuté). Cache IDB survit au boot (configure idempotent + sweep expirés).
+> ⚠️ Suivi : smoke test Yahoo proxy en PROD après deploy (query params period1/period2 — prouvés OK en dev,
+> [Probable] côté Vercel).
+>
+> ## 🟢 Session 2026-07-22 (suite) — Google Drive : rester connecté + déconnexion auto 8h + roadmap chat
+> **En cours `[AUTH-DRIVE-INACTIVITY]`** (demande Marc « plus me reconnecter à chaque fois + déconnexion ~8h d'inactivité ») :
+> ré-auth SILENCIEUSE au boot (`renewTokenSilently` prompt='' sur cache-miss, GATÉE sur < 8h d'inactivité) + minuteur 8h
+> (`services/sync/inactivityLogout.ts`) → `handleInactivityLogout` révoque le jeton (garde la meta, reconnexion 1-clic).
+> Données locales jamais touchées. Tests : `inactivityLogout.test.ts` (8) + 2 dans `syncOrchestrator.flow.test.ts`. Panel
+> security-privacy + cycle PR à suivre. **ROADMAP CHAT (B, plan-first, scope validé Marc)** : B1 pièces jointes (images+PDF+CSV
+> multimodal, stockées en fichiers Drive appdata SÉPARÉS — pas inline), B2 onglet dédié + historique multi-conversations (sync
+> Drive), B3 choix modèle Haiku/Sonnet/Opus par conv, B4 coût (tokens×tarif → total + par conv, CAD). + BACKLOG `[FUTURE-ICONS-EXHAUSTIVE]`
+> (icône pour tout événement + LOD par priorité au zoom). ⚠️ Rappel : fix SEC `[MCP-WRITE-SUMMARY-SCRUB]` actif sur claude.ai
+> seulement au **prochain deploy Cloud Run** (workflow deploy-mcp SKIPPED : `GCP_PROJECT_ID` non défini → deploy manuel).
+>
+> ## 🟢 Session 2026-07-22 — Refresh planifié des prix (`HUB-REFRESH-CRON`) livré (GO Marc « code tout »)
+> **Problème Marc** : « les données de finance ai sont pas à jour mais j'ai pas envie d'aller dans l'app
+> pour que ce soit à jour ». Cause racine : seule l'app navigateur poussait l'état dans Drive → tout
+> figeait dès l'onglet fermé. **Solution livrée** : `mcp/refreshPrices.ts` (`runPriceRefresh` — lit le
+> blob, rafraîchit les cours via le moteur PARTAGÉ `services/priceRefresh` en `force:true`, réécrit avec
+> l'OCC ; ne touche QUE `currentPrice`, jamais les données saisies ; skip honnête si pas de provider) +
+> route `POST /refresh` (`mcp/http.ts`, activée par `FINANCEAI_REFRESH_SECRET` ≥16 car., Bearer temps
+> constant, conflit OCC = `200 {ok:false, conflict:true}` transitoire mais panne RÉELLE = `5xx` pour
+> que le cron rougisse — `StateConflictError` typée, finding sécu ÉLEVÉ appliqué) + déclencheur GitHub Actions gratuit
+> (`.github/workflows/refresh-prices.yml`, 6 h + manuel — Cloud Run dort, un cron externe le réveille).
+> `deploy.sh` monte `financeai-refresh-secret` + `financeai-finnhub-key` (optionnelle, actions) depuis
+> Secret Manager s'ils existent. Tests `tests/mcp/refreshPrices.test.ts` (7, verts). ADR `docs/adr/`.
+> ⏳ **Marc doit** : créer les secrets Cloud Run (`financeai-refresh-secret` + `financeai-finnhub-key`),
+> redéployer (`./mcp/deploy.sh`), puis créer les 2 secrets GitHub (`FINANCEAI_MCP_URL` +
+> `FINANCEAI_REFRESH_SECRET`). Détail : `mcp/README.md` § Refresh planifié.
+>
+> ## 🟢 Session 2026-07-22 — Chantier Claude-in-app COMPLET (A→E + audit SEC)
+> **✅ `[AITOOLS-SEC]` livré — chantier CLÔTURÉ.** Audit de sécurité final (panel security-privacy + ai-reviewer,
+> sondes exécutées) sur toute la surface. **Verdict : sain.** Rapport `docs/AUDIT_SEC_CLAUDE_IN_APP_2026-07-22.md`.
+> Prouvés SAINS : aucune écriture sans confirmation, clés API exclues, Loi 25/mode discret, isolation persona,
+> lecture zéro-mutation, parité claude.ai. **3 findings corrigés** : `[MCP-WRITE-SUMMARY-SCRUB]` (ÉLEVÉ — injection
+> indirecte côté serveur MCP, le scrub app jamais porté au serveur → helper PARTAGÉ `scrubWriteResult.ts` ;
+> ⚠️ effet claude.ai au prochain deploy Cloud Run), `.finite()` sur 3 tools lecture + garde-scan, `refusal`
+> fin dégradée honnête. Optimisations coût routées (non-sécurité) : `[AITOOLS-PROMPT-CACHE]`, `[PERF-SDK-BOOT-PRELOAD]`.
+> **Chantier Claude-in-app : A→E + SEC = TOUT livré.** Suite possible (au choix Marc) : P2 (tools d'écriture
+> supplémentaires : transactions/objectifs/budgets/actifs/immobilier, réutilisent l'infra de confirmation) + P3
+> (visuels des 5 surfaces). Marc doit encore VALIDER en prod (questions réelles dans l'onglet Assistant).
+>
+> ## 🟢 Session 2026-07-22 — Chantier Claude-in-app : Lot E livré (chat PARTOUT)
+> **✅ `[AITOOLS-E]` livré** : le conseiller IA est accessible sur TOUS les onglets (panneau latéral global
+> `AiChatLauncher`, FAB partout, lazy) + onglet Assistant pleine page. `AiChatProvider` (monté App) = UNE
+> instance `useAiChat` partagée → même conversation/état sur les deux surfaces ; rendu mutualisé `AiChatView`
+> (variant panneau/onglet). Résout à la RACINE le finding Lot D « promesse orpheline au démontage d'onglet »
+> (chat plus jamais démonté par onglet ; modal rendu 1× par le provider). Boot inchangé (~107 kB gzip : SDK en
+> import dynamique dans useAiChat). ⏳ Panel (a11y + code-reviewer + silent-failure + ai-reviewer) en cours sur
+> le diff commité. **Reste au chantier** : SEC (audit sécurité final, exigence Marc). Puis P2 (tools d'écriture
+> supplémentaires) + P3 (visuels des 5 surfaces).
+>
+> ## 🟢 Session 2026-07-21 (suite) — Chantier Claude-in-app LANCÉ (GO Marc) — Lot A livré
+> **GO Marc** : « go jusqu'à tout fini et testé + audit de sec à la fin + aucune donnée changée + résultat fiable ».
+> Plan 5 lots validé (PM + architect) — détail et décisions verrouillées : BACKLOG §Chantier Claude-in-app.
+> **✅ `[AITOOLS-A]` livré (#475)** : 16 tools MCP scindés spec (pur, browser-safe) / register (mince) — parité
+> d'enregistrement MESURÉE 16/16 (worktree HEAD vs courant), suite MCP verte, garde `noMcpSdkInSpecs`.
+> **✅ `[AITOOLS-B]` livré** : `services/aiTools/` (boucle agentique tool-use lecture, 11 tools, cap 6 tours,
+> validation zod explicite) + `appStateProvider` (snapshot plat via la MÊME normalizeAppState que le MCP,
+> extraite browser-safe → `mcp/state/appStateDefaults.ts`). Parité de payloads PROUVÉE (8×2 personas) +
+> preuve « aucune donnée changée ». ⚠️ Piège trouvé au test : l'état du STORE porte les ACTIONS Zustand →
+> structuredClone du what-if plantait (« could not be cloned ») — d'où le pick data-only + normalize.
+> **✅ `[AITOOLS-ENGINE-WORKER]` livré (#477)** : 3 tools moteur → runProjectionAsync (Worker navigateur,
+> repli sync Node/MCP), withState async-compatible, garde-scan anti-appel-direct.
+> **✅ `[AITOOLS-C]` livré (PR #478)** : AiAssistant en tool-use (useAiChat partagé), generateContext
+> SUPPRIMÉ, chips, bannière mode test, mode discret = chat masqué entier, bundle boot inchangé. Panel sur
+> diff COMMITÉ : abort ≠ error (plus de faux logs), identité de message par ID + réentrance par ref +
+> Effacer gelé pendant envoi, divergence écran-Futur-figé vs get_projection expliquée au system prompt.
+> ⚠️ **INCIDENT revert conteneur** : le Lot C NON COMMITÉ a été effacé pendant l'attente du panel (agents
+> orphelinés en prime) — ré-appliqué depuis la mémoire de session. RÈGLE : committer AVANT tout panel.
+> ⏳ Marc doit VALIDER le critère d'arrêt en prod (5 vraies questions → réponses correctes).
+> **✅ `[AITOOLS-D]` livré (PR #479)** : écritures avec CONFIRMATION — `writeExecutor` (diff pur applyDocument →
+> modal `AiChatConfirmModal` → recalcul sur état FRAIS anti-course → backup auto OBLIGATOIRE sinon pas
+> d'écriture → setAppState sans apiKeys) ; apply_* déclarés à l'API SEULEMENT si l'exécuteur est branché ;
+> Annuler/✕/Échap/backdrop = refus explicite. Panel 4 agents (sondes) → 6 findings appliqués : mode discret
+> masque le modal (Loi 25), promesse orpheline au démontage d'onglet, scrub injection du `summary`, Annuler
+> coupe tout le lot de tool_use, `.finite()` sur 5 specs. 17 tests + fix flake oauthProvider. Découverte :
+> `[MCP-WRITE-SUMMARY-SCRUB]` (même vecteur côté serveur MCP, au BACKLOG).
+> **Suite** : E (panneau latéral global + onglet agrandi — useAiChat déjà prêt), SEC (audit final),
+> puis P2 (tools d'écriture supplémentaires : transactions, objectifs, budgets, actifs, immobilier).
+> + `[DEP-AUDIT-2026-07]` mergé (#474) : npm audit 4→0 vulnérabilités (adm-zip 0.6 prouvé par mcp:pack).
+>
+> ## 🟢 Session 2026-07-21 — Lot audit n°2 : les 6 restants (« go ») + cadrage MCP/Claude-in-app
+> **✅ Lot des 6 restants de l'audit livré (1 PR)** : `[MCP-TOOLS-SILENT-CATCH]` (logError aux 6 catch de
+> frontière MCP), `[SYNC-APIKEYS-SILENT]` (échec coffre journalisé au pull), `[DEBT-SUM-DUP]` (HealthIndicator +
+> DebtManager → computeTotalDebt), `[MCP-USERTEXT-LANDMINE]` (+4 clés préventives, `notes` réservé code-auteur),
+> `[LOG-TOKEN-ANCHORED]` (`.*token` suffixe), `[MCP-RUNPROJECTION-AMBIG]` (description clarifiée). 6 tests
+> discriminants prouvés rouges pré-fix. §Audit 2026-07-16 : TOUT est coché sauf la découpe god-files (L, plan-first).
+> **🎯 NOUVEAU CHANTIER demandé par Marc (2026-07-21)** : « grandement améliorer le MCP », app surtout
+> visuel/affichage (l'usage passe par Claude), + Claude INTÉGRÉ dans l'app qui consomme le MCP directement.
+> Marc veut un cadrage par questions (« pose plein de questions ») → batch de cadrage envoyé, EN ATTENTE de ses
+> réponses avant tout plan/code (plan-first).
+>
+> ## 🟢 Session 2026-07-17 — Lot corrections audit passe n°2 (« go correction »)
+> **✅ Lot 1-2-3 de l'audit livré (1 PR)** : `[STORE-REHYDRATE-SILENT]` (CRITIQUE — `onRehydrateStorage` +
+> `getHydrationStatus()` + paliers de migration tracés + toast « NE RIEN SAISIR, restaure un backup », blob intact),
+> `[DASH-NW-DUP]` (HIGH — repli Dashboard → `computePresentNetWorth`, dettes enfin soustraites ; `computeTotalDebt`
+> gardé ; périmètre immo + « salaire déclaré » étiquetés), `[INCOME-3WAY-SPLIT]` (HIGH — `buildFinancialSnapshot`
+> → moyenne réelle des transactions, repli étiqueté `monthlyIncomeSource` ; prompts claude.ts étiquetés ;
+> NextBestAction routé sur le helper partagé). 6 tests discriminants prouvés rouges pré-fix (git-stash séquentiel).
+> **Restants audit** (BACKLOG §Audit 2026-07-16) : `[MCP-TOOLS-SILENT-CATCH]`, `[SYNC-APIKEYS-SILENT]`,
+> `[DEBT-SUM-DUP]` (reste HealthIndicator:108 + DebtManager:73), `[MCP-USERTEXT-LANDMINE]`, `[LOG-TOKEN-ANCHORED]`,
+> `[MCP-RUNPROJECTION-AMBIG]`, découpe god-files (L, plan-first).
+>
+> ## 🟢 Session 2026-07-16 — Durcissement sync/MCP + a11y + Budget + persistance Drive/projection
+> **✅ Mergés** : ARCH-SYNC-SPLIT (#455), SYNC-FETCH-TIMEOUT (#456), A11Y-CHECK-CONTRAST-DRIFT (#457), GHOST-BUTTON (#458),
+> BORDER-SWEEP boutons (#459), MCP-WRITE-VERSION-TOKEN OCC (#460), `[BUDGET-MONTH-NAV]` (#461), `[BUDGET-INCOME-REAL]` (#462),
+> `[TAX-MCP-INCOMEAVG-TEST]` (#463), `[AI-PROMPT-FAKE-ZERO]` (#464), `[MCP-PROMPT-SCRUB]` (#465). **En cours** :
+> `[AUTH-DRIVE-PERSIST]` (#466, MERGÉ) — « ne plus me reconnecter à Drive à chaque reload » : jeton `sessionStorage`→
+> `localStorage` (clé dédiée, jamais synchronisée) + renouvellement silencieux avant ~1h ; panel a trouvé + fixé une régression
+> HIGH (sync fantôme cross-onglet post-déconnexion → écouteur `storage`). **En cours : `[PROJECTION-PERSIST]`** — la projection
+> révélée RESTE (signature persistée+synchronisée dans le store ; blob figé IDB record `revealed`) et se FIGE quand les entrées
+> changent (badge « Pas à jour » + boutons Recharger/Rechoisir, choix Marc : figer). Gel coupé en mode test. Panel (3 agents)
+> → 4 findings réels appliqués (garde no-fake-data reload, garde suppression blob en mode test, hash de sig, dédup IDB) ;
+> 7 tests discriminants + round-trip IDB réel (fake-indexeddb) — **MERGÉ (#467)**. Puis `[A11Y-BANNER-HOVER-CONTRAST]` :
+> hover quota BackupReminder 3,76:1 → `brightness-90` (5,23:1 mesuré ; le facteur dépend de la base, jamais copier).
+> **🔬 AUDIT FINANCIER passe n°2 (demande Marc « gros checkup ») : rapport `docs/AUDIT_FINANCIER_2026-07-16.md`** —
+> cœur AAA (fiscal 0 écart, conservation 0,02 $ max sur 31 scénarios, 2661/2661, 0 vuln) ; lot de juin fermé 12/14 ;
+> MAIS 1 CRITIQUE (`[STORE-REHYDRATE-SILENT]` : réhydratation sans filet = app vierge sans trace) + 2 HIGH
+> (`[DASH-NW-DUP]` repli NW sans dettes ; `[INCOME-3WAY-SPLIT]` IA/MCP sur salaire config) + suivis — tout au BACKLOG §Audit
+> 2026-07-16. Prochain lot de corrections proposé à Marc (plan-first). **Décision Marc** :
+> SEC-DRIVE-ENCRYPT-DEFAULT = NON ; refresh_token/backend = NON (archi 100% navigateur). **En attente Marc** : sweep a11y des
+> CHAMPS (input/select) — regarder le rendu des boutons en preview d'abord.
+>
+> ## 🔴 Session 2026-07-15 (suite) — Incident « fausses transactions » : purge persona + chantier transactions/catégories/Budget
+> **Incident** : Marc a trouvé des FAUSSES transactions dans ses vraies données (« je veux plus que ça arrive jamais »).
+> Diagnostic (MCP + code) : ~600 transactions du persona de test « Karim » (`persona-tx-*`, activé ~06-07) + son objectif
+> `kar-fg1` (« Indépendance financière 1 M$ ») mélangés aux ~200 vraies transactions bancaires ; [Probable] budgets `kar-b*`
+> aussi (expliquerait « catégories très mal réglées »). Fuite antérieure aux gardes actuelles, chemin exact inconnu
+> (`[PERSONA-LEAK-ROOTCAUSE]` LOW au BACKLOG).
+> **✅ LIVRÉ `[PERSONA-PURGE]`** : registre d'ids (`testPersonas/artifactIds.ts`, parité test-scan) + sanitizer pur
+> (`personaSanitizer.ts`) à 5 ancrages (boot self-heal + toast, sortie mode test, push Drive, pull Drive, restauration
+> backup). 22 tests. La purge chez Marc s'exécute au prochain chargement de l'app après déploiement Vercel.
+> **✅ LIVRÉ (même session) `[TX-CATEGORY-RULES]` + `[BUDGET-TX-CATEGORIES]`** : règles déterministes de catégorisation
+> (payees QC réels tirés de ses 37 relevés PDF uploadés — corpus extrait et PROUVÉ : 355 tx compte validées par soldes +
+> 1 640 tx carte exactes au sou vs totaux imprimés, 19/19 relevés ; ~88 % de couverture) branchées import CSV + bouton
+> Auto-catégoriser (règles AVANT IA) + MCP ; Budget auto-aligné sur les catégories des transactions (médiane 6 mois
+> comme cible suggérée, retraits à la 1re passe du montage) + table « Historique par catégorie » 12 mois.
+> **✅ (D) CSV livré à Marc** (1 995 tx validées au sou, 87 % catégorisées, instructions d'import données).
+> **✅ LIVRÉ `[BUDGET-MONTHLY-LEDGER]`+`[BUDGET-PAST-AVG]`** : grand livre mensuel revenus+dépenses+solde (12 mois,
+> mois courant marqué partiel et exclu des moyennes), budget du mois courant = moyenne de TOUT le passé (cibles
+> `autoTarget` recalculées au chargement et en session ; édition manuelle décroche), tuiles KPI dédupliquées.
+> **✅ LIVRÉ `[INCOME-PROVENANCE]`+`[TAX-DETAIL]` (Lot F)** : chaîne de vérité du revenu — salarySource estampillé
+> (scan de paie UI + apply_payslip MCP avec `employer`), bannière de provenance + détail des retenues
+> (féd/QC/RRQ v1+2/RQAP/AE, brut→net annuel+mensuel) + réel des transactions dans l'onglet Impôt ;
+> get_tax_situation enrichi (perUser.withholdings/netMonthly/salarySource + realMonthlyAverages). MCP v0.7.1 —
+> **✅ Cloud Run REDÉPLOYÉ par Marc (2026-07-16, « ça marche »)** : le connecteur claude.ai tourne sur la
+> dernière version (v0.7.x + OCC MCP-WRITE-VERSION-TOKEN + MCP-PROMPT-SCRUB). Plus d'action en attente ici.
+>
+> ## 🟢 Session 2026-07-15 (suite) — Vidage du BACKLOG en vagues (plan PM validé « go tout ») — VAGUE 1 livrée
+> Marc a demandé au PM l'ordre pour « tout corriger et vider le backlog », validé le plan en vagues, puis « go tout sans t'arrêter ».
+> **Ordre** : V1 confiance quotidienne (S) → V2 fiscal money-critical (M) → V3 fondation sync (L, ARCH-SYNC-SPLIT d'abord) → V4 périphérique.
+> **✅ VAGUE 1 livrée (6 items S)** : `[DETTE-PDF-FX-BYPASS]` (pdfReport + `useDerivedFinancials` — **2ᵉ bypass FX latent RÉVÉLÉ par
+> le garde `assetFxGuard` resserré** ; les deux routés par `assetValueCad`), `[MCP-GET-HOLDINGS]` (tool `get_holdings`, MCP **v0.7.2**),
+> `[CELI-ASSET-NUDGE]` (helper pur + bannière dismissible Investissements, NO-fake-data), `[MCP-FRESHNESS-PRECISION]` (heures+minutes < 48 h),
+> `[DETTE-TOLOCALESTRING-NU]` (6 sites → formatNumber/formatCAD, zéro reliquat), `[DETTE-TESTGAP-MARKETDATA]` (6 tests routage pickProvider).
+> Panel 6 agents (code-reviewer, silent-failure-hunter, financial-integrity, ai-reviewer, a11y-auditor, security-privacy) : cœur jugé net,
+> ~8 correctifs mineurs appliqués (2 MEDIUM : celiNudge garde NaN, getHoldings log rendement non-fini ; + arrondi `round(Σ)`, aria-label
+> Label-in-Name, hover contraste, taxApril remboursement). 3 findings pré-existants routés au BACKLOG (`AI-PROMPT-FAKE-ZERO`,
+> `MCP-PROMPT-SCRUB`, `A11Y-BANNER-HOVER-CONTRAST`). **⚠️ Marc : redéployer Cloud Run pour MCP v0.7.2** (`get_holdings` + fraîcheur précise).
+> **✅ VAGUE 2 livrée (fiscal money-critical, MCP v0.7.3)** : `[FISC-PAYROLL-BASE-INVEST]` + `[TAX-APP-MCP-BASE]` —
+> `calculateFiscalReport` sépare l'assiette EMPLOI (RRQ/RQAP/AE = salaire) de l'assiette IMPOSABLE (paliers = salaire +
+> placement) via un 7ᵉ param optionnel `employmentIncome` (défaut = grossIncome → **rétrocompat bit-identique** pour les
+> ~15 appelants moteur, prouvé par projection-validator + moneyConservation 20/20). App (TaxCenter) et MCP (get_tax_situation)
+> alignés sur le helper partagé `services/taxEstimate.ts`. **Mesuré ~1 016 $/an de cotisations sur-évaluées corrigées**
+> (profil salarié avec un gros portefeuille non enregistré), discriminant git-stash prouvé. Panel 4 agents : cœur correct ; 1 bug ÉLEVÉ que j'avais
+> introduit (averageRatePct MCP sur salaire au lieu de l'assiette imposable) CORRIGÉ + `taxableInvestmentIncome` exposé.
+> 2 items routés au BACKLOG : `[FISC-SOLO-INVEST-SPLIT]` (split par longueur de tuple sous-impose le placement d'un solo —
+> pré-existant, à valider avec Marc car ↑ son impôt estimé), `[FISC-ASSETLOC-INTL]` ÉVALUÉ/DIFFÉRÉ (international en non-enreg
+> chez Marc = pas de perte ; fix non trivial). **⚠️ Marc : redéployer Cloud Run pour MCP v0.7.3.**
+> **✅ VAGUE 3a livrée** : `[UX-STATEMENT-REMINDER]` — bannière proactive « relevé du mois manquant » (onglet Budget,
+> helper pur + dismiss keyé par mois, CTA vers Transactions). Le filet d'import mensuel qui manquait (leçon fuite persona).
+> **✅ VAGUE 4a livrée (périphérique sûr, hors sync)** : `[SEC-VISION-CONSENT-INJECTION]` (clause anti-injection
+> `VISION_INJECTION_GUARD` dans les 2 prompts Vision + avis de confidentialité explicite à l'upload, Loi 25),
+> `[DETTE-DEADCODE-2026-07]` (locales `_` mortes retirées), `[BACKUP-PROMISE-CATCH]` (`await` du backup → rejet async logué).
+> **✅ VAGUE 3b livrée** : `[ARCH-SYNC-SPLIT]` — `syncOrchestrator.ts` (892 l.) scindé en **9 modules à responsabilité
+> unique + barrel de compat** verbatim (API publique inchangée, zéro appelant modifié) : `syncStatusStore` (propriétaire
+> UNIQUE de `_status`, racine du DAG), `syncTypes`, `syncSnapshot`, `syncErrors`, `syncMeta`, `syncPush`, `syncPull`
+> (applyPulledPayload = point d'écrasement de l'incident Drive), `syncLifecycle` (switch anti-clobber `runDecision`, `_decisionInFlight`),
+> `syncPolling`, `syncPassphrase`. Invariants prouvés : `grep "let _status"`==1, double-ceinture persona (push+pull)==2 non
+> fusionnée, `madge --circular`==0. 81 tests sync + suite complète + typecheck OK. Débloque le durcissement sync.
+> **✅ VAGUE 3c livrée** : `[SYNC-FETCH-TIMEOUT]` — `withDriveTimeout` (AbortController 20 s) sur TOUS les appels
+> `driveAppData.ts`, **lecture du corps comprise** (un 1er jet ne couvrait que les en-têtes → re-pendait sur un gros
+> pull dont le corps stalle ; corrigé sur finding code-reviewer) → un réseau lent lève une `DriveError` honnête au lieu
+> de pendre à l'infini. **+ `gateSilentResume` route désormais l'erreur Drive post-jeton via `handleError`** (avant :
+> avalée en silence → renvoi muet au login ; finding silent-failure). Volet `keepalive` ÉCARTÉ à la mesure : keepalive/
+> sendBeacon plafonnés à 64 Ko < payload sync réel → fiabilité `pagehide` = timeout+bannière+debounce (leçons CLAUDE.md).
+> 5 tests (2 discriminants timeout en-têtes+corps, clearTimeout, repli userinfo, gate route l'erreur). Panel 2 agents (2 findings appliqués).
+> **✅ VAGUE 4 (a11y)** : `[A11Y-CHECK-CONTRAST-DRIFT]` — `check-contrast.ts` LIT les tokens depuis `tailwind.config.js`
+> (fini la dérive silencieuse) + garde anti-scan-vide. 60 combos, 0 non-conforme. `[A11Y-GHOST-BUTTON-PROMINENCE]` —
+> bordure boutons `ghost`/`outline` `white/10`→`white/40` (~3,8:1 mesuré, WCAG 1.4.11 non-texte ≥3:1) au niveau du
+> composant de design-system (corrige ~28 usages ; a11y-auditor a confirmé 3,76-3,82:1). `[A11Y-BORDER-PROMINENCE-SWEEP]`
+> **PARTIEL** : 12 boutons d'action autonomes custom bumpés à `white/40` (TaxCenter/AiAssistant/Investments/Dashboard/Drive/
+> SyncConflictModal/Budget). RESTE différé par type (jugement) : `<input>`/`<select>` (interaction focus), toggles à état
+> conditionnel (l'actif a déjà bordure colorée), labels/dropzones — passe dédiée. Décoratifs hors périmètre.
+> **✅ `[MCP-WRITE-VERSION-TOKEN]` (GO Marc « 2 oui » 2026-07-16)** : OCC per-call plumbé (`getWithVersion`/`save(next,
+> expectedVersion)`, `DriveStateSource.loadRawVersioned`) → 2 tool-calls MCP concurrents ne se clobberent plus. Discriminant prouvé (git-patch).
+> **⏸️ Décision Marc — `[SEC-DRIVE-ENCRYPT-DEFAULT]` = NON** (Marc 2026-07-16 « pas 1 ») : plan-first Claude avait tranché reco
+> basse priorité (touche l'anti-clobber + migration format, gain modeste, clé `sub` non-secrète) → confirmé, on ne le fait pas.
+> `[MCP-CHARTDATA-SUM-GUARD]` différé (lint heuristique, faux positifs). Reste sweep a11y sur les CHAMPS (input/select/toggle/
+> dropzone) → en attente que Marc regarde le rendu des boutons en preview. ⚠️ Zone sync = là où Marc a perdu ses placements → prudence maximale.
+>
+> ## 🔴 Session 2026-07-14 — Incident perte de données Drive (placements) + anti-clobber STRICT + audit 6 alertes MCP
+> **Incident** : Marc a perdu l'essentiel de ses placements. Chaîne : appareil silencieusement déconnecté (jeton Google expiré ~1h →
+> `schedulePush` no-op EN SILENCE) → ses ajouts (l'essentiel de ses placements) jamais poussés vers Drive → à la reconnexion, méta vierge →
+> l'ancien `restoreIntent` de `decideOnLoad` faisait un `pull` qui a ÉCRASÉ le local avec une VIEILLE copie Drive (un seul titre, montant minime).
+> **✅ Récupéré** via l'auto-backup IndexedDB (`applyPulledPayload` → `createBackupNow('auto')` AVANT d'écraser → Réglages →
+> Sauvegarde → « Restaurer » le plus gros backup). Confirmé bout-en-bout : le MCP relit les placements non-enreg et la valeur nette attendus.
+> **✅ LIVRÉ `[SYNC-ANTI-CLOBBER]` (PR à venir)** : `decideOnLoad` SANS `restoreIntent` (une seule garde : local réel + Drive
+> divergent → `conflict`, jamais d'écrasement auto) + `SyncConflictModal` GLOBAL (résumé « cet appareil vs Drive ») +
+> `SyncStatusBanner` (alerte déconnexion/erreur push) + `flushPush` (push au masquage d'onglet → MCP jamais périmé) + gate
+> HARD-block (`LoginGate`). Discriminant git-stash PROUVÉ. typecheck clean, 34 tests sync verts. **⚠️ Marc doit mettre
+> `VITE_GOOGLE_GATE=1` sur Vercel** pour activer le hard-block. **⚠️ NE JAMAIS conseiller déconnecter+reconnecter** (efface la
+> méta = recrée le piège vierge).
+> **Audit adversarial 6 alertes claude.ai (12 agents)** → BACKLOG (§ Intégrité Drive+MCP), tous CONFIRMÉS sauf 1 : `MCP-RETIREMENT-VERDICT`
+> (CONFIRMED, money-critical, a induit Marc en erreur : verdict retraite ignore le décaissement du portefeuille), `MCP-PAYSLIP-BACKUP`
+> (CONFIRMED : écrit Drive sans backup ni garde de concurrence), `MCP-TAX-COUPLE` (PARTIAL : fusionne les 2 salaires, ≈nul pour Marc mono-salarié),
+> `PROJ-TAXPAID-LABEL` (PARTIAL non-money-crit : `totalTaxesPaid` mal nommé), `CELI-ASSET-NUDGE` (CONFIRMED : virements CELI suivis mais compte
+> destinataire non → CELI=0). Moteur impôt couple **REFUTED** (déjà per-conjoint, aucun bug). **⚠️ Les fixes MCP requièrent un REDÉPLOIEMENT Cloud Run.**
+> **✅ LOT MCP v0.6.0 LIVRÉ (même session, 2e PR)** : les 4 items MCP + surface TAXPAID faits — `MCP-RETIREMENT-VERDICT`
+> (décaissement visible + verdict = soutenabilité minNetWorth/MC ; ⚠️ leçon : le décaissement NON-ENREGISTRÉ n'a pas de champ
+> `Retrait*` moteur → toute somme de revenus retraite depuis chartData SOUS-estime, cf CLAUDE.md), `MCP-TAX-COUPLE`
+> (per-conjoint, discriminant 60/60 → 22 126 $/36,1 % vs fusionné 33 435 $/45,7 %), `MCP-PAYSLIP-BACKUP` (backup Drive
+> horodaté rolling 5 FAIL-CLOSED + garde de concurrence updatedAt + cache store invalidé sur échec), `MCP-STALE-FRESHNESS`
+> (note de fraîcheur sur chaque réponse withState, seuil 6 h), `PROJ-TAXPAID-LABEL` surface (`netTaxSettlements` + note ;
+> reliquat moteur au BACKLOG). Discriminants git-stash prouvés (8 tests échouent sur l'ancien code). v0.6.0.
+> **⚠️ ACTION MARC : redéployer Cloud Run** (`mcp/deploy.sh` depuis son poste) pour activer v0.6.0 sur claude.ai.
+> **✅ v0.6.0 DÉPLOYÉE par Marc (même session, ~18:45Z)** — révision financeai-mcp-00004-kvh, /health vérifié.
+> **✅ 3e LOT `[ASSET-FX-DISPLAY]` (même session)** : « je devrais pas avoir ce montant » → investigation → en fait SI :
+> les prix d'actifs sont NATIFS (USD/EUR/CAD) et 6 surfaces UI sommaient SANS conversion FX → app affichait
+> une somme multi-devises brute en « $ » nettement sous le total CAD réel (le MCP avait raison ; le courtier affichait encore davantage, écart
+> restant = cours périmés → `[PRICE-REFRESH-LIVE]`). Fix : source unique `assetValueCad` + 5 surfaces converties +
+> garde scan `assetFxGuard` (discriminant git-stash prouvé). La note de fraîcheur v0.6.0 a AUSSI exposé au passage
+> que l'onglet app de Marc (vieux bundle) ne poussait plus vers Drive depuis 15:41Z — F5 requis pour le nouveau bundle.
+> **✅ 5e LOT `[MCP-APPLY-DEBT]` (2026-07-15, demande Marc « rajouter des dettes avec mcp genre achat de voiture »)** :
+> tool `apply_debt` v0.7.0 — ajout/màj PAR NOM (update PARTIEL, idempotent), catégorie inférée, bornes D9 + non-fini bypass-Zod,
+> description qui ROUTE l'achat futur vers simulate_what_if (dettes servies dès mois 0). ⚠️ Redéploiement Cloud Run requis.
+> **✅ 4e LOT `[PRICE-REFRESH-LIVE]` (même session, PR #442 MERGÉE)** : les cours se rafraîchissent (boot + bouton
+> « Actualiser les cours »), séquentiel provider-aware 2 500 ms, prix natif only + devise protégée + couverture honnête
+> (non-couverts NOMMÉS — les titres EU de Marc peuvent ne pas être quotables en Finnhub gratuit), patches fusionnés
+> anti-course, `Asset.priceUpdatedAt` additif. Ça ferme l'écart avec le courtier pour les titres couverts.
+>
+> ## 📊 Session 2026-07-13 — MCP pour claude.ai : Lot 1 what-if + séries LIVRÉ, chantier Cloud Run relancé
+> **Demande Marc** : parler à Claude de ses VRAIES finances depuis claude.ai web/mobile (pas seulement Desktop), déposer des
+> PDF (déjà couvert, Lot 2 ingestion), et poser des what-if (« si j'achète une voiture demain ») avec chiffres EXACTS de l'app
+> + graphiques — zéro chiffre inventé. **Choix Marc consignés** : cible claude.ai direct (chantier MCP-CLOUDRUN relancé, 4 lots) ·
+> what-if générique complet · séries annuelles pour que Claude trace · PAS de passphrase sur le coffre (DriveStateSource OK).
+> **✅ Lot 1 `[MCP-WHATIF]`** : tool `simulate_what_if` (`mcp/whatIf.ts` PUR : achat ponctuel/financé → LifeEvent GROS_ACHAT+Debt,
+> salaire → users (net proportionnel REMONTÉ en assumption), dépense récurrente → délta d'épargne POST-clamp, immo → RealEstateGoal
+> avec closingCosts SANS taxe de bienvenue — le moteur ajoute `welcomeFees` lui-même) ; moteur roulé 2× même `now` → deltas
+> 1/2/5/10/20 ans + FIRE + impôts + séries annuelles base/scénario ; `get_projection` gagne `includeSeries`. 13 tests
+> (discriminants de MAGNITUDE : voiture 30 k$ → écart an 1 ∈ [−40k,−25k] ; 20 après panel). **Panel (3 agents, findings
+> MESURÉS, tous intégrés)** : mot réservé « vente » (delta 0 silencieux) assaini · Infinity passait Zod (`.finite()` +
+> gardes, leçon CLAUDE.md) · mois ISO = même construction que le moteur (UTC) · hors-horizon + financement différé +
+> mise>prix REJETÉS (erreurs claires) · suivis BACKLOG `MCP-WHATIF-DATED-DEBT`/`MCP-ENGINE-WARNINGS`/
+> `ENG-LIFEEVENT-VENTE-SUBSTRING`. **Phase 0 Cloud Run REFAITE** : ⚠️ claude.ai
+> custom connectors = OAuth 2.0/2.1 SEULEMENT (pas de Bearer statique ; `static_headers` = bêta Team/Enterprise) → Auth B révisée
+> en mini-OAuth 2.1 mono-user (BACKLOG §MCP-CLOUDRUN à jour). `MCP-CLOUDRUN-ROOT` (consent Production) déjà réglé 2026-07-06.
+> **✅ Lot 2 `[MCP-CLOUDRUN-HTTP]` (même session, PR #433 mergée avant)** : `mcp/http.ts` (node:http pur, sessions
+> Streamable HTTP + `/health`, loopback+anti-DNS-rebinding Host+Origin en local, `0.0.0.0:$PORT` sous Cloud Run,
+> SIGTERM propre, 13 tests e2e) + `mcp/bootstrap.ts` (source d'état factorisée stdio/http) ; v0.5.0 ; `npm run
+> mcp:http`. **Panel Lot 2 (code-reviewer + silent-failure + security-privacy, findings PROUVÉS, tous intégrés)** :
+> arrêt borné (grâce 5 s + fermeture forcée loguée — une requête en vol suspendue bloquait SIGTERM à JAMAIS, prouvé) ·
+> corps plafonné 5 Mo → 413 + drain (OOM silencieux sinon, +144 Mo RSS/20 Mo mesuré) + garde close-avant-fin ·
+> `transport.onerror` câblé (rejets SDK invisibles sinon) · `allowedHosts/Origins` sur le port RÉELLEMENT lié ·
+> refus de démarrage hôte non-loopback sans auth (sauf `MCP_HTTP_ALLOW_EXPOSED=1`) · session-ids tronqués dans les
+> logs · fermetures de session loguées · version dédupliquée (`MCP_SERVER_VERSION`). Verdict security-privacy :
+> mergeable AVANT le Lot 3 (loopback par défaut, rien d'exposé).
+> **✅ Lot 3 `[MCP-CLOUDRUN-A]`+`[MCP-CLOUDRUN-B]` (même session)** : **Auth B** = `mcp/auth/oauthProvider.ts` — OAuth 2.1
+> mono-user STATELESS (tokens signés HMAC, DCR sans base = client_secret dérivé, PKCE S256 obligatoire, allowlist redirect,
+> rotation refresh) ; porte = clé d'accès (`$FINANCEAI_ACCESS_KEY`) constant-time sur page HTML ; endpoints `/oauth/*` +
+> `/.well-known/*` (RFC 8414/9728) ; garde Bearer sur `/mcp` (401 + WWW-Authenticate). **Auth A** = `mcp/auth/
+> credentialsBackend.ts` — refresh token Google en **Secret Manager** (`$FINANCEAI_GOOGLE_SECRET`, metadata server + REST,
+> zéro dép) ou fichier local ; `invalid_grant` → message actionnable. Activation : `SIGNING_KEY`+`ACCESS_KEY` présents.
+> 21 unités OAuth + flux e2e HTTP complet.
+> **✅ Lot 4 `[MCP-CLOUDRUN-DEPLOY]` (même session) → CHANTIER MCP claude.ai COMPLET (1→4)** : `mcp/Dockerfile`
+> (node:22-slim, fermeture d'import PROUVÉE minimale, `npx tsx mcp/http.ts`) + `.dockerignore` + `mcp/deploy.sh`
+> (gcloud run, Montréal, secrets OAuth, min-instances 1, 2 passes pour `FINANCEAI_PUBLIC_URL`) + `.github/workflows/
+> deploy-mcp.yml` (CD via WIF, garde `if vars.GCP_PROJECT_ID`) + README pas-à-pas GCP + carte « Connecter à Claude »
+> (section web/mobile via `VITE_MCP_SERVER_URL`). **Actions Marc → `A_FAIRE_MOI` O8** : projet GCP + 3 secrets + IAM +
+> `deploy.sh` + coller l'URL dans claude.ai (~15 min, pas-à-pas fourni). Conditions pré-exposition : BACKLOG
+> `MCP-CLOUDRUN-AUTH-HARDENING` (rate-limit, clé aléatoire) + `MCP-CLOUDRUN-DEPLOY-LOGS`.
+>
+> ## 📊 Session 2026-07-07 — BACKLOG EN CONTINU : money-critical (#429/#430/#431 mergés) → sweep a11y/nettoyage/perf
+> Exécution **ORDONNÉE du backlog** (demande Marc « continue le backlog en entier ») : **✅ MERGÉS** #429 `FISC-WELCOME-2026` (barème taxe
+> bienvenue « reste QC » 2026, 500 k$ = 5 610,50 $), #430 `DETTE-RE-SALE` (vente immo ciblée par `propertyId`, panel 2352/2352), #431
+> `TP1G-VIVANT-SEUL` (crédit QC « personne vivant seule » 2 172 $ ligne 361, seuil UNIQUE **42 955 $** remplaçant les paliers duaux 27 835/45 270
+> — DÉCOUVERTE : l'ancien 45 270 était le seuil du crédit ligne 462 CONFONDU → retrait d'un sur-crédit couple ; panel `financial-integrity` +
+> `silent-failure-hunter`). **Nouveau finding BACKLOG** : `[FISC-LINE361-PERCONJOINT-REDUC]` (réduction 18,75 % appliquée PAR CONJOINT → possible
+> double-comptage couple en bande partielle, pré-existant, à vérifier séparément). **⏳ EN COURS — sweep LOW/MEDIUM sûrs, PR #432**
+> (branche mono `claude/recent-commits-status-w3sakd`, commits focalisés, un merge) : **✅ a11y** (`A11Y-HEALTH-RAW-INK500` +
+> `A11Y-BUDGETTABLE-SELECT-KBD`) · **✅ nettoyage** (`HEALTH-SUB-DRY` DRY coût mensuel santé + `PLANNING-ANNUAL-CALENDAR` abo annuel ≠ chaque
+> mois ; **`DETTE-RE-SALE-PURGE` DIFFÉRÉ** — ambiguïté design money-adjacent purge/remove/warn, à trancher avec Marc) · **✅ perf**
+> (`PERF-MISSINGDATA` sélecteur `useShallow` + `PERF-BUNDLE` 2/3 imports statiques, `claude.ts` gardé dynamique à dessein). Panels APPROVE à
+> chaque vague. **RESTE — money-critical ISOLÉS** (PRs séparées après merge #432) : `WHT-DISPLAY-MELTDOWN`, `FISC-REEE-AIP-MODEL`, investigation
+> `FISC-LINE361-PERCONJOINT-REDUC`. **NE PAS toucher** (bloqués) :
+> 🧭 décisions Marc (IA-NAV-CONSOLIDATE, PH4-BUD, ITEM-2A, FISC-TAXDEC-INCR) · ⏳ gros chantiers (MCP-CLOUDRUN, DETTE-GODFILES, CIX-*, CA-*, D-*,
+> P0-IDB, PROFIL-SWITCH) · money-critical différés `fixIsSafe:false` (FISC-RAP-REPAY, FISC-CHILDCARE, FISC-SURVIVOR-CAP, NAN-MUTATOR-CENTRAL).
+> **Reste Marc** : envs O4 (jeton relais Vercel), 12 tests manuels. Décisions bloc 2026-07-06 exécutées ✅.
+>
+> ## 📊 Session 2026-07-06 — Rapport d'état + hygiène doc + P0-PROXY BYOK + décision app SOLO
+> Rapport complet livré à Marc (3 semaines, 111 commits #315→#425, santé 2334 tests verts mesurée) ; branche de session réconciliée (résidus 06-17 superseded écartés) ; dérives doc corrigées (README remis à niveau + features, BACKLOG ×5 cochés/fusionnés/dédoublonnés, compteurs CLAUDE.md/VISION/FISCAL_REFERENCE, CHANGELOG, SESSION_HANDOVER table/mantra). **+ P0-PROXY relais BYOK livré dark-launch** (phases 1-2 : code proxy Edge + routes + tests ; awaiting env Vercel + flag, cf O4) **+ décision Marc : app SOLO** (multi-user remisé indéfiniment, focus qualité AAA ; multi-appareil Marc + sync Drive conservés). **+ Batch décisions 2026-07-06 consigné** (welcome-tax 2026 + grille TP-1.G reçues → 2 items money-critical actionnables `FISC-WELCOME-2026` + `TP1G-VIVANT-SEUL` ; W5-TAX-PROXY (a) garder proxies ; FA-11 limite assumée ; ITEM-2C restes fermés ; HIST-NW=(b) disclaimer visuel ; D6-PRIV=oui au focus ; FISC-TAXDEC-INCR à confirmer ; 3 batchs de questions UI à préparer). **+ FISC-WELCOME-2026 LIVRÉ 2026-07-07** (barème taxe de bienvenue « reste du Québec » 2026 : 3 tranches 62 900/315 000, panel `financial-integrity` ✅, discriminant 500k = 5 610,50 $). **Actions Marc FAITES** : OAuth consent → Production ✅ · sync Drive prouvée (fenêtre privée) ✅ · FISC-TAXDEC-INCR = **« laisse »** (statu quo documenté, clos). Reste sur Marc : envs O4 (jeton relais Vercel), 12 tests manuels. **Session EN COURS : exécution ORDONNÉE du backlog (ordre PM 2026-07-07)** — fait #1 `FISC-WELCOME-2026` + #3 `DETTE-RE-SALE` (vente immo ciblée par `propertyId` ; panel projection-validator 2352/2352 + code-reviewer APPROVE + silent-failure ; suivi LOW `DETTE-RE-SALE-PURGE`). **RESTE #2 `TP1G-VIVANT-SEUL`** (crédit « personne vivant seule ») : plan-first fait, mécanique COMBINÉE confirmée, MAIS **1 point money-critical à valider avec Marc AVANT de coder** — le seuil unique 42 955 $ remplace-t-il le seuil COUPLE 45 270 $ actuel ? (mauvais choix = sur-imposition de tous les couples ; les données consignées par Marc donnent UN seul seuil 42 955 → penche Option A). Puis privacy/a11y/perf (ordre PM).
+>
+> ## ⚡ BRIEF MARC 2026-06-10 — LE CHANTIER PRIORITAIRE (4 phases)
+> Marc a livré un brief structurant (détail COMPLET dans `BACKLOG.md` § « BRIEF MARC 2026-06-10 ») :
+> **Phase 1** bugs chunk périmé (✅ FAITE, mergée #238 → prod : [PH1-a] `lazyWithRetry` sur le dernier
+> `React.lazy` nu + filet global `vite:preloadError` durci au panel — garde timestamp ≤ 1 reload/min,
+> clear-au-mount supprimé ; analyse Cloudflare livrée, décision Marc = [PH1-b]/Q2) →
+> **Phase 2** clé de voûte (état persistant inter-onglets, projection en Web Worker app-level, source
+> unique Futur=Retraite, verrouillage de courbe + IndexedDB) → **Phase 3** onglet Profil (remplace
+> Config/Profil, regroupe profil+retraite+profil détaillé, % complétion, purge des champs morts) →
+> **Phase 4** refontes par onglet (Futur leviers-d'abord/annotations/plan d'action remonté ;
+> Transactions ; Budget ; Investissement autocomplétion+dividendes ; Retraite).
+> ⚠️ RÈGLES : plan-first OBLIGATOIRE sur Ph. 2/3/et CHAQUE onglet de Ph. 4 ; **JAMAIS passer à la
+> phase suivante sans OK explicite de Marc** ; Q1/Q2 à poser (cf `A_FAIRE_MOI` O6) ; handover à jour
+> après chaque phase.
+>
+> **Session 2026-06-19 — ACC Lot 0 + Lot 1 (#379)** : Agent Control Center (`docs/BRIEF_CONTROL_CENTER.md`), exécution
+> LOT PAR LOT. **Lot 0** (test surface) = **Voie 1 viable** : le preview pane rend `127.0.0.1:4317` avec JS live (poll `/status`
+> mesuré au network, 0 erreur). **Lot 1** (capteur enrichi, `scripts/hooks/agent-status.mjs` + `settings.json` SubagentStop +
+> `.gitignore`) : prompt COMPLET → `agents[nom].message` ; au SubagentStop, extraction sortie+outils(+thinking) du transcript
+> `.jsonl` → `.claude/agent-transcripts/<id>.json` (gitignored) + extraits bornés dans status.json ; corrélation prompt→nom par
+> sous-chaîne du message ENTIER (longest-wins) — **bug live corrigé** (préambule commun attachait tout au 1er agent). ⚠️ **DÉCOUVERTE
+> LIVE : les transcripts SOUS-AGENTS n'ont PAS de blocs `thinking`** (`hasThinking:false`) → pas de « fil de pensée » pour les
+> sous-agents, on montre la SORTIE + les outils. Transcripts sous-agents = `.claude/projects/<session>/subagents/agent-<id>.jsonl`.
+> Panel code-reviewer+silent-failure APPROVE (findings intégrés). **Lot 2 (#380, mergé)** : route `/backlog` (`backlog-scan.mjs` scan READ-ONLY `BACKLOG.md`+`A_FAIRE_MOI`+git via `execFileSync` SANS shell, parsing TOLÉRANT, import dynamique → un scanner cassé ne tue pas `/status`). **Lot 3 (dashboard enrichi)** : cartes agents CLIQUABLES → tiroir détail (message+sortie+outils du transcript, focus-trap via `inert`, fermeture Échap/fond/✕) + **bloc Avancement** (métriques backlog, barres de phases, backlog groupé en cours/attente Marc/à venir/fait, **chips de filtre** + **recherche** client) ; polling `/status`+`/backlog` avec détection de changement ; XSS-safe (`el()`/`textContent`). Vérifié LIVE (preview : routes 200, 0 erreur, tiroir réel, filtres/recherche OK, `inert` pose/retire le focus-trap). Panel code-reviewer+silent-failure+a11y APPROVE (findings intégrés). **Lot 4 (workflows)** : ⚠️ DÉCOUVERTE — les dynamic workflows **se journalisent eux-mêmes** dans `<session>/workflows/wf_<runId>.json` (terminés) + `subagents/workflows/<runId>/journal.jsonl` (stream LIVE, le json final n'existe pas encore pendant le run) ; **PAS de hook** (les agents internes d'un workflow ne touchent PAS `agent-status.mjs` — 2 systèmes séparés). Livré : `workflow-scan.mjs` (read-only, PUR fs, zéro dép) + route `/workflows` + bloc dashboard (cartes de run : nom/statut/phases/agents+état/tokens/durée, run EN COURS surligné en tête, marqueur `stale` > 2 h). Vérifié LIVE : un workflow lancé apparaît EN COURS (agents `running`) puis passe en « récents ». Panel code-reviewer+silent-failure APPROVE (findings intégrés : warns sur faux négatifs muets, stale, label 60). **Lot 5 (présence)** : le hook `SessionStart` (`session-brief.mjs`) **démarre le serveur ACC au début de session** (détaché, s'auto-termine sur EADDRINUSE — plus tôt que `ensureAccServer` au 1ᵉʳ agent) + **surface l'URL** `http://127.0.0.1:4317` dans le brief → présence « un clic » (Marc épingle le preview une fois). Vérifié : le hook spawn bien le serveur (port 4317 écoute, `/health` + `/workflows` répondent). **✅ ACC COMPLET (Lots 0-5).** Limite assumée : un hook ne peut pas auto-ÉPINGLER le preview (UI app) → « un clic », pas « zéro ».
+>
+> **📋 FILE D'ATTENTE (2026-06-19)** : Marc a demandé l'**ACC d'abord** (« fais le acc avant tout »). **✅ ACC COMPLET — Lots 0-5 FAITS**
+> (Lot 0 test ✓ · Lot 1 #379 capteur ✓ · Lot 2 #380 `/backlog` ✓ · Lot 3 #381 dashboard ✓ · Lot 4 #382 workflows ✓ · Lot 5 présence ✓).
+> **PROCHAINE SESSION** : ORDRE 1 (R1→R6) ✅ + **PH4 COMPLET ✅ : A/B/C + D (Santé+poids store+2 ratios budget) + E (couple auto + override manuel) + F (abos)** → **ORDRE 2 (PH4) TERMINÉ.**
+> **ORDRE 3 = money-critical** : **dons (FA-6) ✅ FAIT 2026-06-23** ; RESTE : **ITEM-2C** (gates timing par conjoint) / **tables
+> fiscales** TP-1.G (personne vivant seule) / **FISC-WHT-HARDCODE** (retenue REER 0,15 en dur). **session DÉDIÉE** — panel
+> `financial-integrity`+`projection-validator`+`silent-failure-hunter` + **test discriminant `git stash` OBLIGATOIRE** par item.
+> Plan-first par item. Reste aussi les multi-courbes (Q1) et divers BACKLOG. Plus de chantier PH4 ouvert.
+> **Session 2026-06-23 — FA-6 (crédit dons + sous-imposition locatif/CCPC active) ✅ FAIT** : `utils/donationCredit.ts` (crédit par
+> paliers féd+QC, FISCAL_REFERENCE §10). ⚠️ Bug CRITIQUE trouvé en cadrant : `taxCurrentYear.revenu` (crédit + taxe locative/CCPC W5)
+> est **ÉCRASÉ** en décembre année ACTIVE (`taxDecember:406` `=` vs `+=` retraité) → crédit jeté + loyers/CCPC non imposés pour un actif.
+> Fix = router vers `divers` (jamais écrasé) via `addTaxDivers` — PAS `=`→`+=` (double-compterait la retenue salariale). **+ `FA-6-CREDIT-CAP`
+> inclus** : crédit non remboursable PLAFONNÉ à l'impôt dû (champ `donCredit` accumulé → cap en décembre à `grossIncomeTax+gains`, excédent
+> perdu) — corrige le sur-crédit d'un donateur bas-revenu (silent-failure-hunter). Panel financial-integrity+projection-validator+silent-failure
+> + discriminants `git stash` (fix d'imputation ET cap) + conservation verte. Follow-up restant : **`W5-TAX-PROXY`** (taux locatif 0,45 / CCPC 0,36 plats non sourcés).
+> **Session 2026-06-23 — AUDIT FINANCIER + CODE exhaustif ✅** (`docs/AUDIT_FINANCIER_2026-06-23.md`, panel 5 agents sur `main`
+> ce61ee1) : **cœur AAA confirmé** (fiscalité 0 écart, conservation 29 scénarios résiduel ≤0,03 $, suite 2329 verte, FA-6 conforme).
+> Findings de juin quasi tous FERMÉS. Nouveaux findings PÉRIPHÉRIQUES routés au BACKLOG (§ audit 2026-06-23) : `NAN-INPUT-HARDENING`
+> (durcissement défensif, 7 sites, plan-first), `TC-FX-HARDCODE` (TaxCenter FX 1.38 en dur), `SEC-PRIVACY-BLUR-INPUTS` (Loi 25),
+> `SEC-PBKDF2-DRIVE` (100k→600k), + M1/M5/HIST/log-regex (LOW). **Aucun ne menace la conservation/fiscalité** — lot 1 (sûr) puis NaN-hardening.
+> **Correction des findings (PM a séquencé en 5 lots)** : **LOT 1 ✅ (#407)** (`SEC-PBKDF2-DRIVE` 600k+fallback ; `SEC-LOG-DEBT-REGEX`).
+> **LOT 2+3 ✅ FAIT** (batché — UI pure) : `SEC-PRIVACY-BLUR-INPUTS` (`PrivateNumberInput` focus-to-edit, valeur hors DOM) + `TC-FX-HARDCODE`
+> (FX réel du store + constantes). Panel a11y+security-privacy+financial-integrity+silent-failure+code-reviewer → fix convergents intégrés
+> (id sur bouton, focus-ring, ref-focus, re-mask sur activation privé, `CAPITAL_GAINS_INCLUSION_STANDARD`). RESTE : LOT 5 `M1`+`M5-INV1`+
+> `HIST-NW` (LOW), LOT 4 `NAN-INPUT-HARDENING` (moteur, plan-first+panel, EN DERNIER). Découverte → BACKLOG : `SEC-PRIVACY-RETIREMENT-RRQ-PSV`
+> (rrq/psv jamais masqués, LOW). Bloqués → A_FAIRE_MOI : `FISC-WELCOME-2026`, `W5-TAX-PROXY` (a/b).
+> **LOT 5 ✅ FAIT** (doc-only) : `M5-INV1-EXTEND` était **déjà couvert** par INV-9 (lignes 346-354 : reconstructabilité hypothèque +
+> discriminant DetteTotale) → fermé sans test dupliqué ; `HIST-NW-NO-DEBT` documenté aux 2 sites (module + `FutureProjection`, NW passé
+> sans dettes faute d'historique). Question produit → A_FAIRE_MOI `HIST-NW-DEBT-DISCLAIMER` (a/b/c).
+> **LOT 4 ✅ FAIT** (moteur, panel 4 agents + discriminant git-stash) : `NAN-INPUT-HARDENING` — gardes `Number.isFinite` sur les VRAIS
+> vecteurs (retirementIncome `??`, useDerivedFinancials arith. nue, monthlyEvents `??`, w5Effects rental `!==0`, helpers `NaN<=0`+rateAnnual,
+> portfolio `||`→isFinite pour Infinity). Faux positifs écartés (portfolio `||` rattrapait NaN ; taxDecember déjà gardé ; business `>0`).
+> **INV-8 corrigé** (était VACANT : `num()` sanitisait avant `isNaN`). Panel a trouvé `rateAnnual` non gardé → corrigé. Findings différés →
+> BACKLOG `NAN-OBSERVABILITY` + `NAN-MUTATOR-CENTRAL`. Conservation 19/19.
+> **LOT 6/M1 ✅ FAIT** (moteur, panel 4 agents + discriminant) : `FISC-WHT-HARDCODE` — `totalTaxesPaid` `*0.15` → `withholdingForGrossRRSP`
+> (tiered 19/24/29 %, même barème que le cashflow). Non-double-compte vérifié (acompte que décembre réconcilie). Mesuré 211,6→270,1 k$
+> (discriminant git-stash). ⚠️ A cassé `projection.survivor.test.ts` (écart 3,77→2,21 %, artefact du biais 0,15) → seuil re-calibré 0,03→0,015
+> + chiffres MAJ (pas affaiblir : direction tient). ⚠️ PIÈGE INFRA : la course git-stash CONCURRENTE (4 agents + suite) a donné un faux gate
+> VERT → re-mesuré en isolation (leçon CLAUDE.md). Résiduels → BACKLOG `WHT-DISPLAY-EXACT`.
+> **✅✅ TOUS LES FINDINGS DE L'AUDIT 2026-06-23 CORRIGÉS** (6 lots, PR #407-#411). + **SEC-PRIVACY-RETIREMENT-RRQ-PSV ✅ FAIT** (suivi :
+> les 2 champs rente RRQ/PSV migrés vers `PrivateNumberInput` → volet vie privée des champs éditables COMPLET). Restent en BACKLOG : découvertes
+> LOW (NAN-OBSERVABILITY, NAN-MUTATOR-CENTRAL, WHT-DISPLAY-EXACT) + A_FAIRE_MOI : `FISC-WELCOME-2026`, `W5-TAX-PROXY`, `HIST-NW-DEBT-DISCLAIMER`.
+> **ORDRE 3 / ITEM-2C — FERR per-conjoint ✅ FAIT (2026-06-25, money-critical, options 3 de Marc)** : Phase 0 (golden #413) +
+> Phase 1+2 FERR (1 PR) : `taxJanuary.ts` boucle sur `reerByUser` + âge par conjoint (chaque conjoint de 72+ convertit SA part au
+> facteur RRIF de SON âge) ; `reerByUser` passe de SHADOW à PILOTE. Défaut additif (ancres equal/solo INCHANGÉES) ; golden age-gap
+> re-basés + preuves-de-fix (discriminant git-stash 5/7). ⚠️ Panel a trouvé un **flux fiscal FANTÔME au DÉCÈS** (part du défunt
+> FERR-convertissait → +63 k$ survivant) → corrigé par roulement REER conjugal `reerByUser=[Σ,0]`. + repli `birthYear`, 2 tests unitaires.
+> Conservation 20/20. **+ Sous-phase PSV/RRQ per-conjoint ✅ FAIT (2026-06-25, plan-first OK Marc)** : `rrqMonthly`/`psvMonthly`
+> (`retirementIncome.ts`) en SOMME per-conjoint — départ RRQ/PSV + bonus PSV 75+ à l'âge de CHAQUE conjoint sur SA part. Modèle d'âge
+> RELATIF `ctx.age + (âgeDépart_i − âgeDépart_0)` (symétrique, golden inchangé, 10 tests `retirementIncome` préservés — leçon CLAUDE.md).
+> Mode SURVIVANT = modèle familial INCHANGÉ (zéro impact FISC-SURVIVOR). Golden `couplePsvBonus`/`couplePsvStartGap` re-basés + discriminant 4/9.
+> **⏳ RESTE (faible priorité)** : reset REER 71 per-conjoint (~0 impact) + PSV/RRQ AU DÉCÈS (raffinement survivant). ITEM-2C ≈ COMPLET.
+> **Priorisation PM (2026-06-25, « fais selon le PM »)** : sa reco #1 TEST-PROJ-MODULES était PÉRIMÉE (49 tests déjà là — leçon R2-FIRE) →
+> passé à #2 **HEALTH-SAVINGS-RATE ✅ FAIT** : taux d'épargne + coussin du score de santé excluent enfin les postes ÉPARGNE (helper
+> `monthlyConsumptionExpenses`). Découverte → BACKLOG `HEALTH-SAVINGS-CONSISTENCY` (4 surfaces IA/MCP/moteur à uniformiser sur `isSavingsNature`).
+> #3 **DEP-UNDICI = PÉRIMÉ** (lockfile déjà à undici 7.28.0, `npm audit` 0 vuln — fermé). #4 **NAN-OBSERVABILITY ✅ FAIT** (helper
+> `logErrorThrottled` + 2 sites monthlyEvents/useDerivedFinancials). ⚠️ **3 des 5 recos PM étaient PÉRIMÉES** (BACKLOG en retard sur l'état réel) →
+> leçon CLAUDE.md `PM-STALE-BACKLOG`.
+> **PASS de de-staling (workflow `backlog-verify`, 2026-06-26)** : 12 items actionnables vérifiés contre le code → **11 VALIDES, 1 PÉRIMÉ**
+> (FMT-CASING-ACCOUNTTYPE fermé). NAN-MUTATOR-CENTRAL = VALIDE mais **DIFFÉRÉ** (Infinity inatteignable depuis l'UI, `numericInput` garde déjà ;
+> plan en réserve). FISC-SRCDED-NOOP = **2 bugs confirmés** (ordre + unité ~12×, cashflow mensuel affiché, net annuel ≈ inchangé). WHT-DISPLAY-EXACT,
+> FISC-ASSETLOC-INTL = VALIDES, plan-first. Le reste (REEE-LITERALS, NW-ASSETBREAKDOWN-DRY, DETTE-DEADCODE, PERF-WITHHOLDING…) = VALIDES LOW.
+> **HEALTH-SAVINGS-CONSISTENCY ✅ FAIT (choix Marc)** : `isSavingsNature` (NFD) sur 5 surfaces/6 sites (4 du BACKLOG + 5ᵉ `Budget.tsx` trouvée par le panel) ;
+> discriminant git-stash 2500→3500 + panel (conservation 20/20).
+> **FISC-SRCDED-NOOP ✅ RÉSOLU par RETRAIT (choix Marc)** : enquête a prouvé que les 2 bugs visaient du code MORT (`computeMonthlyWithholding`,
+> sortie écrasée par l'override décembre avant règlement ; perturbation +999 999/mois → golden byte-identique). Fonction RETIRÉE (résout aussi
+> PERF-WITHHOLDING + perf MC). Panel 2329/2329. Leçon CLAUDE.md FISC-SRCDED-NOOP (test de perturbation pour prouver « code mort »).
+> **WHT-DISPLAY-EXACT ✅ FAIT (2026-06-26, choix Marc)** : le compteur d'AFFICHAGE `totalTaxesPaid` additionne désormais la retenue REER
+> EXACTE PAR TIRAGE (nouveau champ `CashflowState.rrspWithholdingMois`, round-trippé buildCashState/applyCashState, reset/mois) au lieu de la
+> recalculer sur le brut MENSUEL agrégé (barème non additif → sur-estimait les mois multi-tirages). + dédup volet b : fonction locale
+> `rrspWithholding` → source unique `withholdingForGrossRRSP`. Découplage CF-2 (delta `−rrspWithholdingAtStart` pour rester correct au 2ᵉ appel
+> du sauvetage PV-6). Mesuré git-stash 270 087 → 269 132 $ (−955 $, direction correcte). Test discriminant unitaire RED→GREEN (3 tirages palier 1,
+> somme franchit le palier 2). **Aucun impact NW** (compteur display/ranking). Panel 4 agents APPROVE, conservation 12 inv. verte, suite 2330/2330.
+> **REEE-LITERALS ✅ FAIT (2026-06-26)** : constantes fiscales SCEE/IQEE/REEE de `childrenReee.ts` extraites en constantes nommées+sourcées
+> (pointent vers `FISCAL_REFERENCE §REEE`) — refactor PUR, golden/conservation/suite byte-identiques. `REEE_AIP_TAX_RATE` (~20 % PRA) nommé +
+> marqué « approximation modèle » (à raffiner). Note FISCAL_REFERENCE l.450 passée de « dette LOW » à « résolu ».
+> **DETTE-DEADCODE ✅ FAIT (2026-06-26)** : retiré `runBuyVsRent` + types `BuyVsRent*` + son test (test-only, zéro call-site prod) et
+> `buildTestFixtures` (wrapper compat jamais appelé) + imports orphelins. EXCLUS après vérif : `clearCredentials` (mcp/, touch-on-request),
+> façade `getProfile` (contrat `MarketDataProvider` testé). Bruit knip restant (GST/QST/SCHL/interfaces) NON purgé (règle). typecheck+build+suite verts.
+> **PLANNING-ANNUAL-SUB-12X ✅ FAIT (2026-06-26, « fais tout »)** : KPI abos (`Planning.tsx`) comptaient un abo ANNUEL ×12 (Σ `averageAmount` brut ×12).
+> Helpers purs `monthlyEquivalent`/`totalMonthlyCost`/`totalYearlyCost` (`utils/subscriptions.ts`) dérivés de `yearlyCost` + gardes `Number.isFinite`.
+> Affichage display-only (zéro impact NW, confirmé financial-integrity). 7 tests dont discriminant. Follow-ups → `HEALTH-SUB-DRY`, `PLANNING-ANNUAL-CALENDAR`.
+> **⚠️ PERF-BOOT/D7 DÉFÉRÉ (pas un quick-win)** : `hydrateAssets` (`App.tsx:420`) `sleep(2500)` protège AUSSI CoinGecko (~30/min, pas que Finnhub 60/min) →
+> un speedup provider-AVEUGLE déclenche des 429 crypto au cold-boot (régression UX). Vrai fix = provider-aware (M-L) + plan-first. Item rouvert dans cet état.
+> **A11Y-INK500 LOTS 1+2 ✅ FAITS (2026-06-26, « fais tout »)** : `text-ink-500`→`text-ink-400` (AA normal ✅) sur classification a11y-auditor PAR-OCCURRENCE.
+> **Lot 1** = 6 écrans quotidiens (Dashboard/Budget/BudgetGroupTable/Investments/Transactions/Planning), 43 occ. + 10 gardées. **Lot 2** = LifeEvents/RealEstate/
+> FutureDetailModal/ChildPlanning/retirement(RetirementIncomeCard+AssetLocationCard), 37 occ. + 8 gardées (+ fix empty-state LifeEvents:367 + `aria-hidden` `→` AssetLoc:215).
+> Panel a11y-auditor + code-reviewer APPROVE chaque lot, check-contrast confirme, suite verte. **RESTE ~37 fichiers/~105 occ.** en lots suivants (investments/*, projection/*,
+> sidebar/*, setup/*, realestate/*…). Découverte → `A11Y-BUDGETTABLE-SELECT-KBD` (selects+bouton invisibles au clavier). Méthode rodée : a11y-auditor classe → sed line-adressé → vérif GARDER → panel.
+> **⚠️ IA-NAV-LABELS = DÉCISION UX MARC** (pas un bug) : rail délibérément collapsed-by-default (hover/focus expand, Phase B.1) — NE PAS override sans OK.
+> **⚠️ PERF-BOOT/D7 DÉFÉRÉ** (CoinGecko ~30/min ; provider-aware requis, plan-first).
+> **Prochaines pistes plan-first** : FISC-ASSETLOC-INTL (M, money-critical) ; A11Y-INK500 lots suivants (par écran) ; reste lot hygiène LOW (NW-ASSETBREAKDOWN-DRY — partie `currentLiquidity`
+> safe, `assetBreakdown` a 3 deltas sémantiques à garder) ; + WHT-DISPLAY-MELTDOWN / FISC-REEE-AIP-MODEL (LOW money-critical, discriminant requis).
+> + décisions Marc en attente : W5-TAX-PROXY, HIST-NW-DEBT-DISCLAIMER, FISC-WELCOME-2026.
+> ⚠️ Leçons : registre per-conjoint pilote → gérer décès (fantôme) ; 2ᵉ course git-stash (vérifs isolées) ; gate d'âge per-conjoint = ancrer sur ctx.age + écart.
+> **Session 2026-06-23 — quick-win `BUDGET-NATURE-FREEFORM` ✅ FAIT** : les 56 items de fixtures (testBudget + 6 personas) avaient
+> des natures LIBRES violant l'union typée `'Besoin'|'Envie'|'Epargne'` → tout en « Envie » + CELI/REER (`'Épargne'` accentué)
+> comptés comme dépenses (groupement, coupleAnalysis, dépenses IA/Dashboard/NextBestAction). Normalisés 50/30/20. Panel
+> financial-integrity+code-reviewer = CORRECTION, 0 régression (2285 verts). Donuts montrent enfin Besoins ≠ 0. Nouveau finding
+> BACKLOG `HEALTH-SAVINGS-RATE-DIVERGENCE` (HealthIndicator:93 n'exclut pas l'épargne du taux d'épargne — pré-existant, à trancher).
+> **Session 2026-06-23 — `BUDGET-DONUT-SVG-ARIA` ✅ FAIT (#403)** : les 2 donuts 50/30/20 enveloppent `<ResponsiveContainer>` dans
+> `<div aria-hidden="true">` (SVG Recharts hors traversée SR ; nom accessible sur `role="img"`, données dans `ChartDataTable` sr-only).
+> ⚠️ `BUDGET-KEY-WARNING` reste OUVERT : hypothèse `nameKey="name"` **TESTÉE et RÉFUTÉE** (ne change pas la clé interne Recharts) →
+> investigation dédiée requise (instance « mesurer pas raisonner »). Non-fatal (warning React dev).
+> ⭐ **PATRON migration store ADDITIVE** (validé PH4-C + PH4D-WEIGHTS-STORE) : champ `optional` dans `AppState` (ne casse pas les fixtures),
+> valeur fournie à l'**état initial** du store, `partialize` allow-all-sauf-denylist le persiste AUTO, et le **`merge` Zustand par défaut**
+> (`{...current, ...persisted}`) GARDE la valeur initiale quand l'état persisté ne l'a pas → **AUCUN bump v7→v8** ni `migratePersistedState`.
+> Pour migrer une vieille clé localStorage : la lire à l'init (helper testable, ex. `loadLegacyHealthWeights`). Le **v7→v8 de PH4-F** est DIFFÉRENT
+> (vrai bump → toucher `migratePersistedState` + version, test RED d'abord).
+> Money-critical (M1 dons / M2 ITEM-2C / M3 tables fiscales) = ORDRE 3 (panel + discriminant obligatoires).
+> ⚠️ **Quick-win découvert (BACKLOG `BUDGET-NATURE-FREEFORM`)** : les `TEST_BUDGET_ITEMS` ont des natures LIBRES (violent l'union typée)
+> → les 2 donuts 50/30/20 montrent **Besoins 0 %** pour les personas test (un vrai user a la dropdown typée → OK). Fix = aligner les
+> fixtures sur 'Besoin'/'Envie'/'Epargne' (PAS le groupement) ; relancer la SUITE COMPLÈTE après (tests à seuil keyés personas).
+>
+> **Session 2026-06-22 — PH4E-OWNER-EDIT ✅ (override couple, PH4-E + PH4 COMPLETS)** : colonne « Conjoint » dans le tableau `Transactions.tsx`
+> en mode couple — un `<select>` par ligne (Auto / prénom conjoint 0 / prénom conjoint 1) qui OVERRIDE `Transaction.ownerId` (`updateOwner`,
+> `undefined` = retour AUTO par type de poste). Lu depuis `config` du store (`isCouple = user[1] nommé`). Table desktop (colonne conditionnelle) +
+> carte mobile. L'override alimente `resolveTransactionOwner` (ownerId explicite gagne, #398, déjà prouvé). **Revue adversariale (workflow,
+> 3 dim × vérif) : 5 findings intégrés** — (1) `useFinanceStore` en tête ; (2) **HIGH `isSolo` BUDGET pré-existant** : `config.users` est un
+> tuple `[User,User]` → `length>1` TOUJOURS vrai → la section couple s'affichait en SOLO (un override orphelin y montrait un montant inexpliqué)
+> → `isSolo` basé sur le NOM (cohérent avec `isCouple`) ; (3) select sur DÉPENSES seulement (revenus/transferts ignorés par le calcul → « — ») ;
+> (4) `aria-label` + date (unicité si même marchand) ; (5) `touch-target` mobile. 1 réfuté (focus-ring : tous les selects pareils, pré-existant).
+> 7 tests (5 owner + 2 Budget solo/couple). ⚠️ Branche EMPILÉE sur PH4D (bb4c37d pre-squash) → reconciliée via `git merge origin/main`
+> (#400 squashé en ac2d3ef). **PH4 ENTIÈREMENT COMPLET** → prochain = ORDRE 3 money-critical (session dédiée).
+>
+> **Session 2026-06-22 — PH4D-BUDGET-RATIOS ✅ (2 ratios santé, PH4-D complet)** : `utils/healthRatios.ts` (purs) — **adhérence budget**
+> (`computeBudgetParityScore` : réel vs cibles du mois COMPLET précédent, hors postes ÉPARGNE, dépassement seul pénalise) + **poids des abos**
+> (`computeSubscriptionLoadScore` : `Σ yearlyCost/12` / revenu net, plafond 15 % → évite le ×12 des abos annuels). `HealthWeights` 4→6 +
+> `normalizeHealthWeights` (rétrocompat lecture, pas de bump). `HealthIndicator` : flag `available` + **`totalScore` EXCLUT les métriques sans
+> donnée** (un 0 par absence ne tire plus le score — corrige aussi FIRE). **Revue ADVERSARIALE (workflow ultracode, 5 dimensions × vérification,
+> 14 agents) : 6 findings RÉELS intégrés** (épargne exclue du dénominateur ; `monthlyExpenses` normalisé en fréquence — bug PRÉ-EXISTANT exposé ;
+> orphelins distingués de « aucune dépense » ; aucun abo épinglé → indispo cohérent ; a11y `—` en `ink-400`) + **3 réfutés à raison**. 62 tests
+> ciblés verts + suite complète. **PH4 : A/B/C ✅ + D ✅ + E ◑ + F ✅** → reste `PH4E-OWNER-EDIT` (LOW) puis ORDRE 3 money-critical.
+>
+> **Session 2026-06-22 — PH4-F ✅ (abonnements persistés)** : `AppState.subscriptions?: RecurringItem[]` (réutilise `RecurringItem`).
+> **DÉCISION : ADDITIF SANS bump v7→v8** (le plan disait v7→v8, mais les abos n'étaient JAMAIS stockés — seulement détectés à la volée
+> par IA/heuristique → RIEN à migrer ; le pattern additif validé #397 prouve qu'un champ optionnel ne nécessite aucun bump ; plus SÛR =
+> zéro code de migration = zéro bug de migration). `utils/subscriptions.ts` (`subscriptionKey`/`isPinned`/`mergeSubscriptions`/`addSubscription`/
+> `removeSubscription`, purs, dédup par marchand). `Planning.tsx` lit le store + boutons Épingler/Désépingler (l'onglet « Charges fixes & Abos »
+> existait déjà, `section='fixed'`). **Test de migration RED écrit ET PROUVÉ** (retiré `subscriptions:[]` du store → test échoue « undefined ≠ [] »).
+> 13 tests (util + migration). Panel code-reviewer + silent-failure + financial-integrity (zéro double-comptage, dédup) + security-privacy (même
+> classe de sensibilité que `transactions`, chiffré au repos) APPROVE. Découverte routée BACKLOG : `PLANNING-ANNUAL-SUB-12X` (abo annuel ×12,
+> pré-existant). **PH4 : A/B/C ✅ + D ◑ + E ◑ + F ✅.**
+>
+> **Session 2026-06-22 — PH4-E ◑ (dépenses réelles par conjoint)** : `Transaction.ownerId?: 0|1` (additif) ; `utils/budget.ts`
+> `resolveTransactionOwner` (override `ownerId` gagne ; sinon AUTO par `BudgetCategory.type` : `Perso 1`→0, `Perso 2`→1, `Commun`→null)
+> + `computeActualByOwner` (réel par conjoint, purs, réutilisent `matchTransactionToCategory`). `Budget.tsx` : `actualByOwner` dans le
+> useMemo de parité → `coupleAnalysis` (`user1Actual/user2Actual/communActual`) → carte couple « Perso réel » (masqué en solo). 7 tests
+> (4 resolve + 3 compute). Panel financial-integrity (**conservation prouvée** : owner0+owner1+commun == totalSpent, seaux disjoints) +
+> code-reviewer + silent-failure APPROVE. **Scope** : auto-attribution + affichage ✅ ; **override éditable dans l'UI transactions → BACKLOG
+> `PH4E-OWNER-EDIT`** (l'auto couvre le défaut). **PH4 : A/B/C ✅ + D ◑ + E ◑.**
+>
+> **Session 2026-06-22 — PH4D-WEIGHTS-STORE ✅** : poids de l'`HealthIndicator` migrés de localStorage (`healthIndicator:weights:v1`)
+> vers le **store Zustand persisté** — `AppState.healthWeights?` (additif, PAS de v7→v8), `utils/healthWeights.ts` (`DEFAULT_HEALTH_WEIGHTS`
+> + `loadLegacyHealthWeights` lu à l'init du store ; le `merge` défaut garde les poids user → zéro perte). HealthIndicator lit/écrit le store
+> (`setAppState`), plus de loadWeights/saveWeights/localStorage. 7 tests migration + 2 tests composant adaptés. Panel code-reviewer + silent-failure
+> APPROVE (logError sur corruption, `@deprecated` sur la clé). Cf. ⭐ PATRON migration additive ci-dessus. **Reste PH4-D : `PH4D-BUDGET-RATIOS`.**
+>
+> **Session 2026-06-22 — PH4-D ◑ PARTIEL (« Santé » ramené dans Budget)** : l'`HealthIndicator` (composant INCHANGÉ) est DÉPLACÉ
+> du Dashboard vers un nouveau sous-onglet **« Santé »** de `BudgetWorkspace` (`Dashboard.tsx` : render + import retirés ; `BudgetWorkspace.tsx` :
+> sous-onglet 'sante' icône `health`). **e2e `kpi.spec.ts` MIS À JOUR** (test #2 navigue Budget→Santé au lieu du Dashboard — sinon CI rouge ;
+> attrapé par code-reviewer). Le test unit `HealthIndicator.test.tsx` (rend le composant via son chemin inchangé) → OK. **Scope RÉDUIT
+> volontairement** (slice sûre, session à 10 PR) : les 2 autres parties de PH4-D → BACKLOG `PH4D-WEIGHTS-STORE` (poids localStorage→store,
+> additif) + `PH4D-BUDGET-RATIOS` (ratios parité/abos, schéma poids 4→6). Panel code-reviewer + silent-failure + a11y APPROVE. **PH4 : A/B/C ✅ + D ◑.**
+>
+> **Session 2026-06-22 — PH4-C (objectif d'épargne lié au budget) ✅ FAIT** : `SavingsGoal.linkedBudgetCategoryName?` (lien par NOM
+> = clé d'`actualsMap`, pas l'`id?` optionnel) ; `utils/budget.ts monthlyActualsMap` (pur, mois courant, réutilise `computeBudgetParity`) ;
+> `BudgetWorkspace.tsx` calcule le mois courant (réactif, `monthStr` dans les deps) + passe à `Planning section="goals"` ; `Planning.tsx` :
+> dropdown de lien (form + par objectif éditable) + « Accumulé / cible / **Versé ce mois** » (formatCAD + PrivateAmount). **Migration : AUCUN
+> code** (champ optionnel additif, pas de Zod strict). 6 tests `monthlyActualsMap`. Panel (financial-integrity JUSTE + silent-failure +
+> code-reviewer + a11y) : fixes intégrés — **lien orphelin** (catégorie renommée/supprimée) → badge « ⚠ Lien invalide » (plus de « 0 » muet) ;
+> token `text-info-300` INEXISTANT → `info-400` (RÉCIDIVE de FIX-INK600 → leçon CLAUDE.md renforcée). Limite documentée `[PH4C-SAVINGS-NATURE]`
+> (BACKLOG, LOW) : catégorie nature « Épargne » (virements exclus) → « versé 0 ». **PH4 : A/B/C ✅ → reste D/E/F.**
+>
+> **Session 2026-06-22 — PH4-B (donut 50/30/20 réel vs théorique) ✅ FAIT** : `utils/budget.ts computeGoldenSplit` (pur, clamp ≥0 +
+> garde NaN/division-zéro, partagé théo/réel) + `GOLDEN_IDEAL`. `Budget.tsx` : 2ᵉ donut « Ta répartition réelle » (Besoins/Envies =
+> Σ actualsMap par groupe ; Épargne réelle = revenu réel − dépenses réelles) + table comparative **Réel · Cible · Idéal** (écart ±2 pts
+> vert/orange), caption sr-only, `ChartDataTable` sr-only. ⚠️ Panel `silent-failure-hunter` : `Math.max(0,…)` masquait un **déficit réel**
+> → note « Déficit réel de X » quand dépenses > revenu (no-fake-data). a11y : panel a MESURÉ tous les contrastes PASS. 6 tests
+> `computeGoldenSplit` + suite complète verte. Découvertes BACKLOG : `BUDGET-NATURE-FREEFORM`, `BUDGET-DONUT-SVG-ARIA` (pré-existants).
+>
+> **Session 2026-06-22 — PH4-A (parité Budget↔Transactions) ✅ FAIT** : `utils/budget.ts` (`matchTransactionToCategory` règle UNIQUE
+> exact+substring + `computeBudgetParity` → `actualsMap`/`totalSpent`/`orphanCategories`/`itemsWithoutTransactions`). `Budget.tsx` :
+> réels ET tendances 6 mois via la MÊME règle (avant : tendances en exact seul + comptaient les doublons → divergence supprimée).
+> Section UI « Parité » (orphelins + postes jamais rapprochés sur TOUT l'historique ; épargne exclue accent-insensible ; empty-state).
+> ⚠️ Panel `financial-integrity` a attrapé une **régression $** (sortir les orphelins d'`actualsMap` faisait baisser le « Total dépensé »
+> /Restant/projection/IA) → `totalSpent` (matchés+orphelins) préserve le total EXACT d'avant. a11y h2/h3, key robuste. 14 tests utils +
+> suite complète verte. Découverte hors scope : `BUDGET-KEY-WARNING` (warnings React clés dupliquées sur la page Budget, pré-existant, BACKLOG).
+>
+> **Session 2026-06-22 — R6 (personas de test) ✅ FAIT** : tous les personas ouvrent désormais toutes les pages data (aucune
+> `PageSetupGate`). `isActive:true` sur les childGoals (coupleConfort via `TEST_CHILD_GOALS`, autonomeMono) ; `setupOptOut` par
+> persona (karim/preRetraite `{debts,realEstate,children}`, jeuneCoupleDink `{children}`, autonomeMono `{realEstate}`,
+> lea/coupleDettes `{realEstate,children,lifeProjects}`) + **micro-actif CELI** (lea/coupleDettes, prérequis `assets` non opt-outable).
+> Garde-fou `tests/components/setup/personaGates.test.ts` (7 personas × pages data via source unique `PAGE_SETUP`+`REQUIREMENTS`).
+> Actions/Assistant restent gated = clé API (par design). ⚠️ Découverte pré-existante `PERSONA-ASSET-PERF` (BACKLOG) : les actifs
+> de tous les personas omettent `performance`/`currency` (cast `as unknown as Asset[]`) → `AiAssistant` rend `+undefined%` en test
+> avec clé. Aussi ce jour : `DEP-UNDICI` résolu (PR Dependabot #366 mergée → 0 alerte), ménage des branches locales.
+>
+> **Session 2026-06-22 — R4 (boot-restore + densité) ✅ FAIT** : **R4-P1 (boot-restore)** était DÉJÀ en place (`App.tsx:72-96`,
+> PH2-d : `isProjectionLocked` persisté → `loadLockedProjection()` → `setLockedProjection` au mount, gère ok/unreadable/empty +
+> toast) → vérifié, zéro patch. **R4-P4 (densité)** : cap fixe d'icônes baissé **40/24 → 24/16** (`MAX_LIFE_ICONS`/`MAX_FLOW_ICONS`
+> dans `FutureProjection.tsx`) pour « dézoomé = peu d'icônes » ; le LOD « zoom = toutes » était déjà assuré (fenêtre zoomée < cap) ;
+> pinned (FIRE) jamais écrêté. ⚠️ **Formule du plan `(visMax−visMin)/6` REJETÉE** (à l'envers : aurait montré PLUS d'icônes dézoomé
+> et écrêté en zoom) → un cap FIXE plus bas est le correctif correct (décision Marc 2026-06-22 : baisse modérée). Aussi : `DEP-UNDICI`
+> planifié (PR #389 : 2 alertes Dependabot `undici` dev-dep → merger la PR Dependabot #366) ; ménage des 13 branches locales `[gone]`.
+>
+> **Session 2026-06-22 — R3 (tooltip figeable) ✅ IMPLÉMENTÉ** (blueprint suivi à la lettre, choix Marc « clic = fige ») :
+> clic sur le graphe Futur = FIGE l'infobulle (portail `createPortal` body, `position:fixed`, ancré/scrollable/interactif,
+> `z-290` < modale `z-300`) ; survol = suit la souris (`pointer-events:none`) ; Échap / clic-dehors libère ; **coexistence** avec
+> `FutureDetailModal` via bouton « Détail complet » (+ pastilles d'événement inchangées). `<Tooltip content={()=>null}>` garde
+> Recharts actif (alimente `onMouseMove`/`lastHoverPointRef` + le curseur). **Nouveaux fichiers** : `utils/chartTooltip.ts`
+> (`resolvePointFromClick` + `clampTooltipPosition`, purs), `hooks/useChartTooltipPosition.ts` (machine d'état `idle/hovering/frozen`,
+> position en `useRef` + mutation DOM directe = pas de re-render 60fps, listeners Échap/clic-dehors montés en gelé seulement, focus
+> a11y). `ExpertTooltip` découplé de Recharts (prend `data` direct + `frozen`/`onOpenDetail`). **Tests** : 34 unité (utils/hook/tooltip)
+> + 2 e2e (figeage, invariant mousemove, Échap, « Détail complet »→modale) — tous verts ; suite complète + build verts. Panel
+> `code-reviewer`+`silent-failure-hunter`+`a11y-auditor` : 2 findings réfutés (mesurés), corrigés sur surfaces R3 (contraste footer
+> `ink-400`, cible tactile 44px). ⚠️ **Leçons** (cf CLAUDE.md) : le preview headless rend `window` 0×0 → Recharts (ResizeObserver) ne
+> dessine PAS le SVG → vérifier l'interaction graphe par e2e (vrai viewport Chromium), pas par le preview. Le graphe Futur est GATED
+> derrière le bouton « vois directement ta projection actuelle (sans optimiser) » → l'e2e doit le cliquer d'abord. Follow-ups routés
+> BACKLOG : `FIX-INK600-TOKEN` ✅ **FAIT (2026-06-22, PR séparée)** — `text-ink-600` (hors palette) → `ink-400` sur 9 usages/7 fichiers (AA normal mesuré). Reste `A11Y-CHART-KEYBOARD` : accès CLAVIER du graphe (préexistant, mitigé sr-only `ChartDataTable`).
+>
+> **Session 2026-06-19 — R1 (LABEL-NW-SUCCESSORAL) ✅ — 1ᵉʳ chantier autonome** : libellé trompeur « Patrimoine projeté »
+> (qui affichait en fait `estateNetWorth`) renommé **« Patrimoine successoral, avec rentes »** + **tooltip** (nouveau prop
+> `tooltip` sur `KPIStat`) sur 5 sites (FutureProjection KPI, Budget, StressTestPanel, GoalSeekerCard `title`, prompt AiAssistant).
+> Fallback CONDITIONNÉ (libellé neutre si `estateNetWorth`=0, sinon « avec rentes » mentirait sur le `finalNetWorth` affiché —
+> attrapé par financial-integrity). a11y durcie (`Tooltip` : `aria-describedby` sur l'enfant via `cloneElement` + fermeture Échap ;
+> déclencheur `<button>` aria-label court au lieu de `role="img"`). Pure UI, zéro moteur. Typecheck + tests ciblés (22) verts.
+> **CHANTIERS : R1 ✅ → reprendre R2** (annotation « FIRE atteint » au 1ᵉʳ mois `NetWorth ≥ FireTarget`, `FutureProjection.tsx` `lifeMarkers`).
+>
+> **Session 2026-06-20 — R2 (annotation FIRE) ✅ — PIVOT source-unique (revue adversariale ultracode)** : ⚠️ DÉCOUVERTE — le
+> MOTEUR émet DÉJÀ `'Objectif FIRE Atteint 🔥'` (`projection.ts:1438`, seuil inflaté) → la pastille FIRE existait. Recalculer
+> côté UI = DOUBLON + violation « Future = source unique ». **Livré** : on met en valeur la pastille MOTEUR — orange `#f97316`
+> + icône 🔥 (`ClickableEventIcon` `payload.color` + entrée `EVENT_KEYWORD_ICONS`) + `pinned` (jamais écrêtée par `thinEvents`
+> en vue dézoomée — bug attrapé par la revue). 2 fichiers (`FutureProjection.tsx`, `ProjectionTooltip.tsx`), zéro moteur,
+> zéro recompute. Le helper `fireReached.ts` a été créé PUIS supprimé après la découverte (workflow de revue adversariale =
+> 5 dimensions + réfutation ; 3 findings confirmés). Typecheck + tests verts ; code-reviewer + silent-failure APPROVE.
+> ⚠️ **LEÇON (portée CLAUDE.md)** : avant d'AJOUTER un calcul/détection côté UI sur la projection, VÉRIFIER que le moteur
+> ne l'émet pas déjà (`chartData.lifeEvents`/champs) — sinon doublon + contournement de la source unique. **CHANTIERS : R2 ✅ → reprendre R3** (infobulle figée/scrollable, `FutureProjection.tsx` + `ProjectionTooltip.tsx`, portail React — risque MOYEN).
+>
+> **Session 2026-06-19 — FEUILLE DE ROUTE VALIDÉE (#376)** : `docs/PLAN_CHANTIERS_2026-06-19.md` — plans cadrés par
+> 4 agents (`fichier:ligne`) + VALIDÉS par Marc, exécutés en AUTONOMIE PR par PR. Ordre : R1-R6 gains rapides UI
+> (NW-successoral libellés, Futur P1-P4 annotation FIRE/tooltip figée/boot-restore/densité, PH3-c-bis suppr. `User.industry`,
+> personas complets) → PH4-A→F (Budget) → money-critical (FA-6 dons fed 14 %/titres 0 %/QC 24 %, ITEM-2C per-conjoint, tables
+> personne seule QC) → Q1 multi-courbes. ★ Persistance de courbe DÉJÀ construite (~95 %, `lockedProjectionStore.ts`) → ne pas
+> reconstruire. **PROCHAINE SESSION : reprendre l'exécution à l'item non coché dans le PLAN.**
+>
+> **Session 2026-06-19 — A11Y-BADGE-PROMINENCE (#375)** : Badge option B (choix Marc) — bordure renforcée
+> (`border-*-border` 0,30 → `border-*-400/55`), fond inchangé, badge-only (token `*-border` partagé non touché).
+> Contraste badge↔page remonté (WCAG 1.4.11). Classes Tailwind générées vérifiées (build propre). Item clos.
+>
+> **Session 2026-06-19 — Décisions & vision Marc (batch, #374)** : Marc a tranché un lot d'items + livré sa vision
+> Futur/Budget. Capturé dans `BACKLOG.md` § « Décisions & vision Marc — 2026-06-19 ». Closures : ENG-TAX-NS (garder
+> alias), H1 (pas de passphrase), **B-AUDIT-5 vérifié DÉJÀ-FAIT** (SRG déjà exclu du clawback PSV, `projection.ts:918/921/929`
+> — pas de fake fix). Go : Badge **option B** (bordure renforcée), LABEL-NW-SUCCESSORAL (libellés distincts + tooltip),
+> FA-6 (modéliser, barème fed+QC sourcé), PH3-c-bis (supprimer `User.industry`, ⚠️ schéma Zustand). Plans rédigés : ITEM-2C
+> (per-conjoint), tables fiscales (personne seule QC). ★ Vision Q1 Futur = annotations (retraite/événements/FIRE) +
+> infobulle figée + densité au zoom + **verrouillage/persistance de courbe** (clé Phase 2). PH4 = parité catégories Budget,
+> envie/besoin, objectif épargne, détail per-conjoint, abonnements, personas de test complets. Gros chantiers = plan-first.
+>
+> **Session 2026-06-19 — Hygiène CA-01 partiel (#373)** : `utils/safeNumber.ts` (+ test) SUPPRIMÉ — util de coercition
+> NaN jamais adopté (0 consumer prod, grep). CORRIGÉ une affirmation périmée du backlog : `csvExport.ts` n'est PAS mort
+> (usé par `Transactions.tsx`). CA-01 passe à PARTIEL (exports orphelins restants à vérifier 1-à-1, knip bruyant). Trivial, zéro impact runtime.
+>
+> **Session 2026-06-19 — HARDEN-NETWORTH-NAN (#372)** (money-critical, garde anti échec silencieux) : `computeRawNetWorth`
+> (SOURCE UNIQUE du patrimoine, `netWorth.ts`) n'avait AUCUNE garde `Number.isFinite` → un seul terme NaN/Infinity rendait
+> TOUT le patrimoine NaN, graphe vide SANS trace. Fix : helper module-scope `sumNetWorthParts` (formule unique, hot-path
+> inchangé) ; total non fini → chemin LENT qui rabat chaque terme fautif sur 0 (itère `NET_WORTH_SIGN`), `logError` THROTTLÉ
+> par signature (anti-flood MC), recalcul. Chemin sain = 1 `Number.isFinite`. Discriminant prouvé (court-circuit → 4 échecs),
+> +6 tests. Panel 3 agents APPROVE — finding redaction-PII RÉFUTÉ empiriquement (pattern `^debt$` ancré ≠ substring → clés
+> `*Debt` non redactées ; leçon « mesurer les findings »). Gates verts.
+>
+> **Session 2026-06-19 — FISC-RE-CAPITAL-LOSS (#371)** (money-critical, découverte panel #368) : un IMMEUBLE LOCATIF vendu
+> SOUS son coût réalisait une perte en capital SILENCIEUSEMENT ignorée (`gain = max(0, produit − coût)` + `if (gain > 0)`)
+> → avantage fiscal LIR 111(1)b perdu. Fix : helper SOURCE UNIQUE `applyCapitalDisposition(state, rawGain signé)` (`portfolioOps.ts`)
+> — perte < 0 → banque de pertes ; gain ≥ 0 → nette la banque puis impose. `handleNonRegSale`/`handleCryptoSale` refactorés
+> dessus (zéro duplication, 3 copies → 1). Mutator immo `realizeCapitalGain` → `realizeCapitalDisposition` (nom honnête : gère
+> gain ET perte) + log de la perte. `NonRegSaleState`/`CryptoSaleState extends CapitalDispositionState` (lien nominal). **Discriminant
+> prouvé 2× (réintro `Math.max(0)` → échec) : unitaire (mock) ET end-to-end (vrai moteur, log « Perte en capital »), puis revert chirurgical**.
+> Tests +7 : helper ×5, perte+gain-netté monthlyEvents, **e2e conservation moneyConservation (reconstructabilité INV-9 sous hypothèque)**.
+> Panel 4 agents APPROVE (M2 toLocaleString RÉFUTÉ : locale `'fr-CA'` explicite ≠ nu). Suite complète verte. Gates verts.
+>
+> **Session 2026-06-18 — Garde-fou FISC-CONST-LINT (#364)** : `utils/fiscalConstantsGuard.ts` + `tests/fiscalConstants.guard.test.ts`
+> (10 tests) : échec dur, auto-extraction des littéraux distinctifs non-collisionnables de `utils/tax.ts`/`services/realEstate.ts`
+> + scan du codebase pour interdit. **A trouvé + corrigé 1 vraie fuite** : `32490` (RRSP 2025 recopié dans `setupSimulation.ts` sans
+> le nommer) → constante nommée `RRSP_ANNUAL_LIMIT_FALLBACK` dans `tax.ts`. Scope sûr : ronds (`60000`) et taux 2-décimales (`0.5`)
+> EXCLUS, strip des commentaires, échappatoire `// fiscal-const-ok`. Nouveaux LOW-tickets découverts (FISC-CONST-LINT-LIMITS,
+> FISC-RRSP-PRE2010-FALLBACK). ~2159 tests verts (+ 10). Gates verts.
+>
+> **Session 2026-06-17 — AUDIT FINANCIER COMPLET + corrections (#318→#323)** : audit exhaustif du moteur
+> (panel 5 agents + vérif empirique → rapport AAA `docs/AUDIT_FINANCIER_2026-06-17.md`, 5 diagrammes Mermaid).
+> Verdict : **cœur money-critical AAA** (conservation prouvée ≤ 0,02 $ sur ~25 scénarios, fiscalité 0 écart,
+> 0 échec silencieux) ; TOUS les findings PÉRIPHÉRIQUES (consommateurs UI/IA qui contournaient la source unique).
+> Commande récurrente **`/audit-financier`** créée (cadence trimestre + release + période d'impôts). Corrigé :
+> **#319** H1/H2 (NW présent UI/IA omettait les dettes + FX en dur → `computePresentNetWorth` SOURCE UNIQUE +
+> garde keystone parité ; régression `availableCash` attrapée par le panel) · **#320** M2/M3 (DRY dividende/
+> inclusion) · **#321** SEC-1 (anti-injection 2 surfaces LLM) · **#322** M5 (`DettesNonImmo` → NW reconstructible
+> sous hypothèque, INV-9 étendu) + L4 (snapshot fréquence) + section BACKLOG « Durcissement structurel »
+> (11 tickets Marc validés : 2 déjà faits, 3 partiels, 5 nouveaux) · **#323** M4 (viz fiscale NETTE de crédits) +
+> AI-NBA-FX (FX réels). **Reste LOW** : L1/L2 (tests-guards), L3 (🧭 décision alias `services/tax.ts`),
+> REEE-LITERALS (hygiène), M1 (⚠️ analyse double-comptage requise). Gates verts, ~2077 tests, 12 invariants conservation.
+>
+> **Session 2026-06-17 (suite) — Environnement d'agents + Accessibilité (Vague 2)** : mise en place de
+> l'environnement d'agents (14 agents projet + orchestrateur routé à CHAQUE message via hook `UserPromptSubmit`)
+> et de l'**Agent Control Center** (dashboard dev-only live `npm run acc`, auto-démarré au lancement d'un agent —
+> PR #325→#334), puis reprise du backlog. **Vague 2 (accessibilité)** : `A11Y-TAXBRACKET` (#335,
+> `TaxBracketViz` → `role="img"`+`aria-hidden`, `<ChartDataTable>` sr-only, `h4`→`h3`, `ink-500`→`ink-400`
+> contraste VÉRIFIÉ) + `D6-HEADING` (#336, `CollapsibleSection` titre dans un vrai `<hN>` + prop `headingLevel`)
+> LIVRÉS. Reste Vague 2 : `A11Y-INK500` (codemod CIBLÉ — ink-500 = disabled), `A11Y-D6-SR-2` ph.3,
+> `A11Y-CHARTS` ph.2, `A11Y-MODAL-PRIVATE`, `D6-KBD`.
+>
+> **Session 2026-06-17 (suite²) — AUDIT UX externe VALIDÉ + backlog** : audit UX (rendu headless, 7 personas,
+> 14 pages) reçu de Marc → **20 claims validés un par un** par panel de 5 agents (preuve `fichier:ligne`) →
+> `docs/AUDIT_UX_2026-06-17.md`. Verdict : robustesse OK (0 plantage), cœur money-critical sain (les 2 « bugs de
+> chiffres » = libellé `estateNetWorth` + persona insoutenable, PAS des erreurs de calcul). Vrais chantiers :
+> **FMT-CURRENCY-UNIFY** (75 sites $ manuels), **IA dispersée** (14 dest., scores/holdings/complétude dupliqués),
+> **PRIV-DISCRET-DOM** (mode discret floute sans masquer + hover révèle). Backlog rempli (§ « Audit UX 2026-06-17 »),
+> dédupliqué, + 3 nouveaux points. **PM relancé pour l'ordre d'exécution.**
+>
+> **Session 2026-06-16/17 — Durcissement MONEY-CONSERVATION (#314 #315)** : 2 bugs de conservation de
+> l'argent du moteur, trouvés via le résiduel `ΔNW − (épargne+croissance−impôt)`. **#314 [FISC-REER-WHT-DOUBLE]**
+> (le montant d'impôt anormalement élevé signalé par Marc) : la retenue REER/FERR était comptée 2× (au retrait ET en avril) →
+> sur-imposition ~retenue/an ; fix = retenue CONSERVÉE au liquide (acompte), retrait NW-neutre, débitée 1× en
+> avril (INV-10/11). **#315 [FISC-BROKE-LIQUID-FLOOR]** : un retraité insolvable (tous comptes de décaissement
+> épuisés, coussin `criticalThreshold` gardé) voyait sa dépense non couverte S'ÉVAPORER (ΔNW stable, +~3,7 k$/mois
+> d'argent fantôme) ; fix (choix Marc = porter en dette) = `uncoveredShortfall` reporté en `liquidDebt` VISIBLE
+> (INV-12, prouvé discriminant via `git stash`). Garde-fou `moneyConservation` = **12 invariants**. Leçons
+> CLAUDE.md : résiduel de conservation comme ARBITRE (mesurer, pas raisonner) ; « pas de flux fantôme » étendu au
+> shortfall mensuel insolvable ; piège race sonde-agent/`commit-gate`. Gates verts, ~2073 tests.
+>
+> **Session 2026-06-15 — Infra/hygiène (5 PR auto-mergées #288→#292)** : reprise sur un clone local
+> **146 commits en retard** (fetch+ff → règle ajoutée à CLAUDE.md). #288 js-yaml → `npm audit` **0 vuln**.
+> #289 règle « CLAUDE.md s'améliore à chaque push » **DURCIE** (obligatoire) + fetch-first à la reprise.
+> #290 **hook `learn-on-push`** (PreToolUse : rappel « leçon→CLAUDE.md » sur chaque `git push`) + #291 fix
+> de son faux positif (nom de branche en `-push`). #292 maj `A_FAIRE_MOI`. **Ménage : 23 branches mortes
+> supprimées** (16 distantes + 7 locales) → `main` SEULE. ⚠️ **Auto-merge PROUVÉ bout-en-bout** (push→CI→
+> squash-merge→suppression auto, zéro intervention) : les notes « auto-merge KO / required checks à activer »
+> plus bas sont **PÉRIMÉES** (la ruleset `main` exige les 2 checks, ça marche). Stack : **Vite 8 (Rolldown)**,
+> schema store **v7**.
+>
+> **Session 2026-06-15/16 — Review multi-agents + LOT HIGH FINANCIER BOUCLÉ (#295→#300)** : audit
+> complet (12 agents, emphase financière) → 32 findings consignés au `BACKLOG.md` (§ « Review multi-agents
+> 2026-06-15 »). **Lot HIGH financier #1-#6 entièrement traité** : 4 corrigés — #296 [FISC-RRQ-UNIT] (RRQ
+> ×12, grossSalary mensuel÷MGA annuelle), #297 [FISC-SURVIVOR-DRAWDOWN] (survivant = 1 contribuable dans
+> la cascade), #298 [FISC-LATENT-RE] (gain locatif latent au bilan successoral), #300 [FISC-WELCOME-UNIFY]
+> (taxe de bienvenue UNIFIÉE par municipalité, source unique moteur+UI, repli Montréal, fin du bug C9) — et
+> **2 FAUX POSITIFS écartés après vérif** : #2 FISC-MARGINAL-YEAR (revenu déjà déflaté), #5 FISC-ACB-RENO
+> (rénos symétriques cost/value). ⚠️ Leçon clé ajoutée à CLAUDE.md : **« findings de review = hypothèses »**
+> (33 % de faux positifs sur du code money-critical → VÉRIFIER avant de coder un fix). Restent MEDIUM/LOW au
+> BACKLOG (FISC-TAXDEC-INCR, FISC-GOVPENSION-SCALE, FISC-RRQ-PRORATA, a11y…). Tous gates verts, 2048 tests.
+>
+> **▶ PHASE 2 (clé de voûte) TERMINÉE — 3/3 PR** (#240 #241 #242, détail BACKLOG) · **▶ PHASE 3 TERMINÉE
+> (a/b/d) #244** : onglet PROFIL unifié (tout le setup user : identité, salaires, fiscal, répartition,
+> détaillé, retraite via RetirementSettingsCard + RetirementIncomeCard extrait, enfants) + SetupHub en tête
+> (% complétion global) ; éditeurs RETIRÉS de Impôts/Enfant/Budget/Config/Retraite (pointeur
+> `ProfileFieldsMoved`) ; Retraite = résultats/analyses only. **PH3-c (purge champs détaillé morts) RESTE**
+> (audit consigné au BACKLOG : 19 non consommés vs 5 ; purge soignée à part, tax-sensible).
+>
+> **Session 2026-06-12 (reprise) — GRIND autonome #267-275** (Marc « forcer basse-prio, ne pas s'arrêter ») :
+> #267 SESSION_HANDOVER consolidé · **PH4-FUT « leviers-d'abord » BOUCLÉE** : #268 composeur de leviers
+> REMONTÉ en amont (écran d'amorçage = `StrategyOptimizerPanel` obligatoire ; calcul-sur-clic via
+> `revealedSig`/`applyAndReveal`, 2 `setAppState` BATCHÉS React 19) · #269 onglet « Paramètres »→« Hypothèses »
+> + ordre de retrait AUTO (sélecteur retiré) · #270 annotations courbe (retraite/RRQ/PSV/épuisement compte) ·
+> #271 docs (leçon git merge>reset). · **#272 tests Futur-critiques** : `applyAndReveal` (révélation sans
+> flash = garde le batching) + `usePastPortfolioHistory` (mode test reconstruction directe, anti-fuite
+> réel→test M3). · **#273 inflation 0 % respectée** (`?? 2.0` vs `|| 2.0`, famille PV-5 ; + cohérence
+> moteur↔UI Retraite/Enfants) + re-scope FSS-PSV. · **#274 NPV estate** : estimés RRQ/PSV priment sur le
+> split 65/35 (×N per-personne comme retirementIncome ; garde FA-5 verrouillée) — résout une divergence
+> silencieuse estate↔revenu. · **#275 RRQ-PSV-MIN** : clamp `Math.max(0,…)` des estimés (retirementIncome
+> + estateCalculation + `min={0}` UI ; un estimé négatif ne dégrade plus `total`/NPV en silence). Chaque
+> lot : panel 3 agents (code-reviewer/silent-failure/projection-validator), suite verte (→**1996/1996**),
+> zéro baseline. Confirmé : **le repo n'a aucun required check → `enable_pr_auto_merge` échoue « unstable »**
+> → merge au vert via **timer court** (`sleep ~290` run_in_background, pattern documenté §auto-merge).
+> **Lane fraîche épuisée → Marc a tranché « CONTINUER BAS-BRUIT »** : **#277** D6-SR-2 parité lecteur d'écran
+> sur les sliders monétaires (helper `maskedSliderAria` + `aria-valuetext` ; étiquettes `privacy-blur`→
+> `<PrivateAmount>` ; 0 privacy-blur restant dans les 2 fichiers) · **#278** CA-10 `usePwaInstallPrompt`
+> (11 tests : recence de dismiss 30j, standalone, flux install) · **#279** noms accessibles `aria-label` sur
+> les 5 sliders monétaires (WCAG 2.5.3/4.1.2) + constante partagée `MASKED_AMOUNT_LABEL` · **#280** [A11Y-SLIDERS]
+> nom accessible (`aria-label` = texte visible) sur les **10 sliders taux/% de ProjectionControls** (dont la
+> boucle inflation/poste) + PropertyConfigurator:172 ; test direct `ProjectionControls.a11y.test.tsx` · **#281**
+> [A11Y-SLIDERS] **COMPLÉTÉ** — noms sur les 6 derniers sliders (RealEstate Rendement/Appréciation, DebtManager,
+> TaxCenter REER/CELIAPP, ChildPlanning REEE) ; Budget déjà nommé, HealthIndicator déjà associé · **#282**
+> [D6-SR-2] Retirement.tsx : les **13 montants** mono-valeur (3 KPIs + 10 tooltip) `privacy-blur`→`<PrivateAmount>`
+> (ferme la fuite SR : le blur est CSS-only, un SR lisait les vrais montants en mode privé) · **#283** [D6-SR-2]
+> **primitive `<PrivateBlock>` créée** (4 tests : aria-hidden conteneur + sr-only sibling, préserve le flex
+> multi-spans là où PrivateAmount le casse) **+ Dashboard liste d'actifs migré**. Panel a11y-auditor à chaque
+> lot UI. Suite → **~2024**.
+> **▶ Reste = 🧭 FEU VERT MARC** : **[FSS-PSV]** (PSV DANS l'assiette FSS confirmé `taxDecember.ts:662` ;
+> fix = câbler une PSV mensuelle au `ctx` + **transcrire la règle Annexe F dans FISCAL_REFERENCE D'ABORD**
+> — money-critical, ne pas coder sur source non transcrite) · gros refactors CA-03/CA-06/CA-09 · P0 (proxy
+> Anthropic / IndexedDB) · refontes **DESIGN** (Budget/Transactions/Retraite, irritants à cadrer).
+> **Bas-bruit ENCORE dispo (prêt, mandat « continuer » de Marc)** : **[A11Y-SLIDERS] ✅ FAIT** · **D6-SR-2 :
+> primitives `<PrivateAmount>`/`<PrivateBlock>` prêtes**, Retirement + Dashboard migrés → RESTE = **finition de masse**
+> (~50 `privacy-blur` sur ~16 fichiers : ProjectionTooltip 13, ActionPlanDrilldown 6, RealEstate 4, etc. — mécanique,
+> à faire par paquets de 1-2 fichiers ; outils prêts) · `analytics.ts` (trivial). DEAD-FLT-2/CA-01 = consommateurs
+> VIVANTS → PAS du code mort. **Bas-bruit à fort signal épuisé ; reste = grind de masse D6-SR-2 OU item FEU VERT.**
+> 🐛 **FIX 2026-06-12 (urgent Marc) — upload de DOCUMENTS PDF réparé** : `analyzePayslip` (services/claude.ts)
+> envoyait TOUT fichier dans un bloc Anthropic `image` ET rejetait les non-images → tout PDF de bulletin/relevé
+> échouait (« Analyse échouée ») alors que PayslipUploadCard + TaxCenter annoncent le PDF (`accept`+label). Correctif :
+> helper pur exporté `buildPayslipFileBlock` → PDF en bloc `document` (base64 `application/pdf`), image en bloc `image`,
+> throw sinon ; tests ajoutés. **Leçon : un PDF NE PASSE PAS dans un bloc `image` côté API Anthropic — bloc `document`
+> obligatoire.** Validé typecheck + tests ; bout-en-bout réel (clé Anthropic + vrai PDF) reste à confirmer par Marc.
+> 🆕 **FEATURE 2026-06-13 (Marc) — import de relevé PDF + auto-classification** : `ImportBankStatement` accepte
+> désormais PDF/image (+ CSV). PDF → `analyzeBankStatement` (Claude Vision, bloc `document`) → tri chrono → CSV canonique
+> (`extractedTxnsToCsv`) → MÊME pipeline que le CSV (parseBankCsv/fusion/dédup). Helper du fix PDF généralisé
+> `buildPayslipFileBlock`→`buildVisionFileBlock`. Auto-catégorisation IA des nouvelles transactions à l'import (PDF+CSV,
+> choix Marc) sur l'état FRAIS du store, lazy-import `claude.ts` (bundle boot préservé). CSV reste 100 % local ; le PDF
+> est envoyé à Claude (consenti). Panel 4 agents → a11y status/alert + fix clobber appliqués. Bout-en-bout réel à confirmer.
+> ⏸️ **Grind D6-SR-2 EN PAUSE** : ne pas relancer la finition de masse en pilote auto — DEMANDER la direction à Marc
+> (Pause / grind D6-SR-2 / FSS-PSV / DESIGN). Outils (`PrivateAmount`/`PrivateBlock`) prêts pour reprise incrémentale.
+>
+> **Session 2026-06-11 (suite) — GRIND backlog (demande Marc « tout faire sans s'arrêter »)** :
+> #243 PH2-d-1 (toast verrou irrécupérable) · #244 Phase 3 + **réduction docs 47→9** (HISTORIQUE.md
+> consolidé) · #245 **[CPL-1]** (bug couple Marc : passage en couple GATÉ sur définition consciente du
+> conjoint — formulaire + bypass sidebar fermé ; conjoint vide = zéro revenu fantôme, prouvé par test)
+> + PH2-c-1 (dédup module fetch Finnhub durcie : par symbole+clé, retry, anti-fuite test) + PH2-c-2
+> (ProjectionStaleBanner inter-onglets) + PH2-d-2 (tooltip verrou) + PH2-d-3 (aire CELIAPP) + SF-WARN ·
+> #246 PH2-c-4 (parité directe du hook, 7 personas) + A11Y-LBL (18 labels) + DEAD-FLT (purge
+> fetchLiveTotals inopérant) + primitive **PrivateAmount** · #247 : D6-SR
+> (migration PrivateAmount : KPIStat levier + 21 sites — montants masqués aux SR en mode privé)
+> + **PV-11** (goalShortfalls structuré, retraits goals aux séries withdrawal*, clamp liquid négatif ;
+> validé projection-validator 1927/1927, réserve per-conjoint assumée → PV-11e).
+> · **#248 FA-8** (lot fiscal : 2 vrais bugs — cap clawback PSV versée + assiette dividendes ; panel
+> fiscal-accuracy AUCUN BLOQUANT ; 11 tests preuve-par-mutation) · **#249 PH3-c** (19 champs profil morts
+> purgés, contre-audit complet, zéro migration — Phase 3 100 % TERMINÉE).
+> **BACKLOG ACTIONNABLE VIDÉ** (10 PR mergées 2026-06-11). Restent : 🧭 décisions Marc (PH3-c-bis,
+> PH1-b/Q2, FA-6, ITEM-2A/2C, P0-*) · suivis opportunistes (PV-11e test pinnant, D6-SR-2, DEAD-FLT-2,
+> CA-xx) · **Phase 4 (refontes par onglet) : plan-first + OK Marc REQUIS par onglet.**
+>
+> **Session 2026-06-11 (suite 2) — PHASE 4 onglet FUTUR « leviers-d'abord » LIVRÉE** (5 PR) :
+> #250 PH4-FUT-A (calcul-sur-clic : courbe+KPIs cachés tant que pas cliqué, signature `params` entier ;
+> retrait des « plans » / 5 stratégies-types ; purge chaîne robustesse) · **4 nouveaux leviers de stratégie**
+> (câblage partagé recherche↔courbe : StrategyConfig+LEVER_LIBRARY+applied*+configToEngine+runScenario) :
+> #251 **profil de rendement** (conservateur/équilibré/agressif, presets) · #252 **fractionnement pension 65+**
+> (ON/OFF, gate Phase 3 taxDecember) · #253 **taux d'épargne** (multiplicateur 0.9/1/1.2) · #254 **downsizing**
+> immo retraite (vendre+racheter plus petit, libère 40% équité RP, exemption gain ARC). Chaque levier :
+> non-régression bit-près + monotonie/effet + panel (fiscal-accuracy/projection-validator). Suivi : `[RE-GAIN]`
+> (gain locatif non taxé, préexistant). ⚠️ Agents-panel s'orphelinent au resume → checks refaits à la main.
+> **Phase 4 : onglet Futur TERMINÉ. Autres onglets (Transactions/Budget/Investissement/Retraite) : OK Marc requis par onglet.**
+>
+> **Session 2026-06-12 — GRIND MASSIF (~20 PR #250-266, demande Marc « forcer les basse-prio »)** :
+> Phase 4 ONGLETS : Futur (#250 calcul-sur-clic gaté sur signature `params` + retrait des « plans » ; #251-254
+> **4 LEVIERS** profil de rendement / fractionnement pension 65+ / taux d'épargne / downsizing) · Investissement
+> (#255 autocomplétion Finnhub `searchSymbol` ; #256 allocation = portefeuille `assets` RÉEL + dividendes réels ;
+> #259 4→3 pages) · Transactions (#257 tri colonnes) · Retraite (#258 invite `ProjectionRequired`, CSV déprécié
+> retiré). · **RE-GAIN** #260 (vente immeuble LOCATIF → gain en capital imposé ; RP EXEMPTE) + #261 (succession,
+> disposition réputée). · #263 **PV-6** (résiduel insolvable porté en dette `liquidDebt` au lieu d'absorbé) +
+> **PH2-c-3** (calcul déterministe routé au Web Worker ; `useDebouncedMemo` purgé). · #264 **CA-02** (formatage →
+> `formatCAD`). · #265/#266 **CA-04** (smoke tests des 8 composants money-critical sans test direct). Câblage
+> leviers : StrategyConfig + LEVER_LIBRARY + applied* (ProjectionConfig) + configToEngine + runScenario (recherche
+> ↔ courbe cohérentes). FISCAL_REFERENCE §8 (RE-GAIN) à jour. ⚠️ **Agents-panel s'orphelinent au resume** → checks
+> refaits à la main (baselines + cohérence). **RESTE (FEU VERT MARC requis — gros/risqué)** : CA-03 (migration
+> `utils/tax.ts` 820 l → `services/tax.ts`), CA-05 (découpe `Investments.tsx` 1187 l), P0 (proxy Anthropic /
+> IndexedDB), DESIGN Budget + annotations Futur (routé `A_FAIRE_MOI`). **Non-tractables** : PV-11e (micro-effet
+> non observable), DEAD-FLT-2 (`fetchPortfolioHistory` stub mais consommateurs VIVANTS → `StockComparisonModal`),
+> CA-01 (`csvExport` en fait VIVANT, utilisé par Transactions).
+>
+> Session 2026-06-10 — **TOP 10 [UI-EPURE] COMPLET + 5 fiscaux MAJEURS + [UI-SCEN]**. Build/tsc/tests verts.
+> - **Épuration UI (EP-1..EP-10)** — 4 PR (#225 EP-1/2, #226 EP-3/4/5, #227 EP-6/7/10, #228 EP-8) :
+>   Futur/Paramètres « Risques & aléas » repliée + Card AI retirée ; Dashboard 5e KPI « Patrimoine projeté »
+>   = source unique (`lastProjection.chartData`, mini-formulaire retiré) ; Investments donut santé +
+>   projection par compte épurés ; Config SetupHub → ruban discret à 100 % ; ProjectionExplains méthodologie
+>   sous « En savoir plus » ; Optimisation StressTest replié + **AssetLocationPanel SUPPRIMÉ** (doublon
+>   Retraite) ; Retraite bloc pension DB replié. **no-silent-failure** : NetWorth non fini → `<ProjectionRequired>`
+>   + `logError` (Dashboard/Investments). EP-9 = déjà satisfait (doublons retirés avant, CTA Futur fonctionnels).
+> - **[UI-SCEN] (#223)** : `projection.withdrawalStrategy` = paramètre (sélecteur Paramètres), moteur 1 scénario
+>   par défaut (suite moteur **82→33 s**), stress-tests à la demande (`StressTestPanel`), plans de base supprimés.
+> - **Fiscal 5 MAJEURS (#221/#222)** : FA-1 assiette crédit pension (exclut RRQ/PSV) · FA-2 clawback PSV par
+>   conjoint (seuil individuel) · FA-3 SRG non imposable + clawback complet · FA-4 CELI source unique ·
+>   FA-5 NPV rentes succession ×N corrigé. `FISCAL_REFERENCE` §4/6/7 à jour.
+> - **Gouvernance** : Action `backlog-autocheck` retirée (déjà) ; CLAUDE.md — règle auto-merge +
+>   **force-push BLOQUÉ par le repo** → recovery « checkout branche distante + merge main + fast-forward »
+>   (+ reconcile après CHAQUE squash-merge) documenté en § résilience cloud.
+> - ⚠️ **Auto-merge KO** : le repo n'a **aucun required status check** → `enable_pr_auto_merge` échoue
+>   (« unstable »). **À débloquer côté Marc** : Settings → Branches → required status checks (cf `A_FAIRE_MOI`).
+>   Sinon chaque PR = re-check manuel. ⚠️ **Le webhook PR ne livre PAS le succès CI** (que les échecs +
+>   commentaires) → pour merger sur vert sans auto-merge : `send_later` indispo ici → **réveil court en
+>   arrière-plan** (`Bash run_in_background` `sleep ~210`) qui re-déclenche le check CI puis merge. Pas de
+>   1 h d'attente, pas de `sleep` foreground (bloqué par le harness).
+> - **Fix moteur/fiscal money-critical (suite, #229-#234)** : **PV-5** (champs `number` Retraite —
+>   vide ⇒ `Number('')=0` persisté ⇒ pension DB « dès 0 an » ; garde `numOr`/`numOrUndef`) ·
+>   **PV-1** (découvert de liquidités effacé par le clamp de croissance ⇒ patrimoine surévalué ;
+>   sauvetage par cascade de vente, choix Marc) · **FA-9** (double indexation du SRG ⇒ max surévalué
+>   ~49 % à 20 ans ; base réelle + nominalisation unique) · **FA-10** (impôt de décembre en survivorMode
+>   sur 2 têtes ⇒ sous-imposition ; 1 contribuable) · **PV-2** (récolte de gains ignorait la banque de
+>   pertes ; consomme `capitalLossBank` en premier, LIR 111(1)(b)) · **PV-10** (retrait NON-ENREG des
+>   objectifs ne réalisait AUCUN gain ⇒ sous-imposition ; via `handleNonRegSale`). Chaque PR : panel
+>   4 agents + FISCAL_REFERENCE à jour, suite ~1859 verte, zéro baseline.
+> - **Règles Marc 2026-06-10** (CLAUDE.md) : **date+heure en tête de CHAQUE réponse** · **agents/timers
+>   tués IMMÉDIATEMENT après usage** (plus de traînards « 160 h »).
+> - **Reste ouvert (découvertes routées au BACKLOG)** : FA-6/7/8/11 (fiscal) · PV-3/4/7/8/9/11 (moteur :
+>   crypto sans banque de pertes, TLH×ACB, gains invisibles au test SRG/clawback, métriques d'objectifs) ·
+>   CA-01..10 (dette code) · [D6-SR] fuite SR mode privé. Auto-merge toujours KO (required checks à activer).
+>
+> Session 2026-06-09 — **14 PR mergées (#206-#217 + gouvernance)**. Tests **1782 verts / 154 fichiers**.
+> - **Refonte Futur COMPLÈTE** : 4 sous-onglets (Graphique/Paramètres/Optimisation/Plan d'action)
+>   + écran d'amorçage (#213) ; Robustesse+Optimiseur fusionnés en « Comparer les stratégies »
+>   2 modes (#215) ; Plan d'action = checklist (case + montant + « Pourquoi ? » repliable,
+>   `AdviceItem[]` structuré, zéro chiffre fiscal en dur) (#216) ; fix contraste onglets actifs (#215).
+> - **Bug rentes bouclé** : début RRQ/PSV découplé de l'âge d'arrêt (moteur #210, RRQ→72) + UI âges
+>   dans Retraite (#214). Fiscal : fractionnement pension 65+ (#211), récolte de gains (#212).
+> - **Mode test réparé (#217)** : switch persona = base propre (zéro fuite inter-persona) ; mode test
+>   PERSISTÉ (bannière survit au reload) ; push Drive toujours coupé en test ; `resetState` sort du
+>   mode test ; `realDataSnapshot` typé `Omit<…,'apiKeys'>`.
+> - **Gouvernance** : Action `backlog-autocheck` RETIRÉE (Claude coche le BACKLOG au merge) ;
+>   CLAUDE.md § « Exécution cloud — résilience » (reverts conteneur → vérifier ancêtre origin/main,
+>   CI muette = divergence, flake E2E = rerun) ; 14 branches mortes supprimées.
+> - **Reste ouvert** : PR #150 dependabot (hono, sécu) ; P0 (proxy clé, IndexedDB, sync Drive réelle,
+>   gate Google) ; [D6-SR] fuite SR mode privé.
+>
+> Session 2026-05-29 — **Feature Sync Google Drive** (livrée « dark », inerte sans `VITE_GOOGLE_CLIENT_ID`) :
+> données dans le Drive de chaque user (appDataFolder), auto + garde anti-perte, pas de chiffrement
+> applicatif (choix Marc), clés API synchronisées (sync v2, en clair). Code : `services/sync/*` + `services/googleDrive/*`
+> + carte Réglages→Système. **Pour activer** : suivre `docs/GOOGLE_DRIVE_SETUP.md` (créer le Client ID
+> OAuth + mettre `VITE_GOOGLE_CLIENT_ID`). Design : `docs/GOOGLE_DRIVE_SYNC_DESIGN.md`. Tests +53.
+>
+> Dernière session : 2026-05-28 — **Lot 1 (sécu) + Lot 2 (tests) + Audit multi-agents (Lot 3)** :
+> - **Lot 1 — Sécurité & conformité** : backup auto chiffré AES-GCM (S-A), Google Consent Mode v2
+>   pour GA4/Loi 25 (S-B), redaction PII errorLogger testée (S-C), anti-injection prompt partagé
+>   `utils/promptSafety.ts` (S-D), quick-wins (S-E). ✅
+> - **Lot 2 — Filet de tests moteur money-critical** : ~119 tests sur 11 modules sans test unitaire
+>   direct (cloudBackup, taxJanuary, meltdownReer, monteCarlo, monthlyCalcs, etc.). ✅
+> - **Audit 5 agents → corrections (Lot 3)** : aucun CRITICAL. Shippé en batches isolés (CI verte) :
+>   F5/F7/F8/F6 (sécu), **F4** (retenue REER 21/26/30→19/24/29 % via `RRSP_WITHHOLDING_QC` — money fix),
+>   **F1/F3** (silent-failures projection : stack worker préservée + `_hasError` lu → erreur honnête),
+>   **F9/F10/F11** (perf : hoist `Math.pow`, Map O(1) tickFormatter, handlers pan stables). Rapport :
+>   [AUDIT_2026-05-28.md](AUDIT_2026-05-28.md). Tier 🟢 (règles fiscales incertaines) **non modifié** sans source.
+> Voir aussi [AUTH_SETUP.md](AUTH_SETUP.md), [SECURITY_STRATEGY.md](SECURITY_STRATEGY.md). Tests **1154/1154 verts** (106 fichiers).
+>
+> Session 2026-05-27 — **État production** (Cloudflare Access, clés chiffrées, CSV universel,
+> CoinGecko/Finnhub, era retiré, G21 optimiseur, G22 UX, G23 a11y). Tests 732/732 alors.
+>
+> Session précédente : 2026-05-26 (G22) — refonte UX + navigation.
+> Tests 742 → **732 verts** (delta : 2 fichiers test era retirés, compensé par test régression coussin).
+>
+> **Cycle 17-18 highlights** :
+> - Mode test fixtures (couple Alex/Sam, 5 actifs réels Yahoo, REEE/dettes/immo)
+> - 13 fixes bugs visibles (TaxCenter × 100, dettes infinies, Enfant crash, Math.round M$, etc.)
+> - **Mode strict TOTAL** : 8 composants migrés vers `lastProjection.chartData`
+> - **Centralisation Phase 3** : 9 nouveaux champs chartData (marginalTax,
+>   reeeContribCum, DividendIncome, realNetWorth, etc.)
+> - CSV Yahoo Finance authentique pour mode test (no-fake total)
+> - Keyboard shortcuts Alt+1..9
+> - 23 tests convergence Vitest (594→596 verts) + checklist 131 tests manuels
+> - 8 nouveaux docs (BACKLOG, SECURITY_STRATEGY, CENTRALIZED_CALC_*,
+>   PROJECTION_OUTPUT_SCHEMA, etc.)
+
+> **Session 2026-06-19 — NW-PARITY-INVARIANT (#370)** (★ garde-fou keystone) : test-only, `tests/services/nwParity.test.ts` (5 tests). Cross-check NW présent (`computePresentNetWorth` UI) ≡ NW de départ moteur (cash + Σ buckets `derivePortfolioStartingBalances` − dettes) + end-to-end `chartData[0]` à flux nuls avec dettes. **Discriminant prouvé** : 3 scénarios (D1 celibataire, D2 couple 2 revenus, D3 couple asym dettes). Limite documentée : parité HORS immobilier. Panel 3 agents (code-reviewer/financial-integrity/silent-failure) APPROVE, 0 régression. Tests ~**2171/2171 verts**. Gates verts.
+>
+> **Process 2026-06-19 — CLAUDE.md prefs de Marc FONDUES (#369)** : au lieu d'un bloc dupliquant le `~/.claude/CLAUDE.md` global, les bouts nouveaux sont intégrés aux sections existantes — Réponses (résumé d'abord + options bon/mauvais + reco + le POURQUOI + labels enrichis `[Certain]/[Probable]/[Supposition]/[À vérifier]`), Workflow (cadrage en UN batch + définition de « fini » objectif+critère d'arrêt + « proposer ≠ faire »), cycle git **RECONFIRMÉ autonome** (commit→push→PR→merge seul ; le « push si demandé » du bloc global NE prévaut PAS ici ; mais destructif hors-cycle force-push/reset --hard/rm/drop/migration → confirmer Marc d'abord). Décision Marc.
+>
+> **Session 2026-06-19 — FISC-RE-SALE-RESIDUAL (#368)** (money-critical) : vente immo quasi-underwater (hypo 95-100 %, frais 5 % > équité → `saleNet < 0`) : `addLiquid(Math.max(0, saleNet))` effaçait le déficit → patrimoine surévalué. Fix = `addLiquid(saleNet)` → déficit déduit ou porté en `liquidDebt` (PV-6). 2 tests discriminants (unitaire `monthlyEvents.test.ts` + end-to-end conservation). ΔNW = −5 % valeur prouvé. Panel 4 agents APPROVE, 0 régression. Tests ~**2166 verts**. Gates verts.
+>
+> **Session 2026-06-19 — FUZZ-ONETIME-FLOWS (#367)** : fuzz étendu à l'**ACHAT IMMOBILIER** (mise 5-50 % < prix, génère hypothèque ; mesuré 257/500 runs sous hypothèque) + **RÉNOVATION** majeure. Invariant ajouté : `DetteTotale ≥ DettesNonImmo` (hypothèque non double-comptée). **Test déterministe immo** : reconstruction NW sous prêt. Discrimination prouvée end-to-end (flip signe équité + drop liquidDebt → fuzz échoue). **PARTIEL** : reste vente immo / gain locatif / revenu locatif / équité négative / véhicule / héritage / REEE (suivi au BACKLOG). Tests ~**2164 verts**. Gates verts.
+>
+> **Session 2026-06-18 (suite) — HARDEN-FUZZING (#365)** : `tests/services/projection.fuzzConservation.test.ts`
+> (2 tests : 1 fuzz 500 runs + 1 discriminant end-to-end) + dép dev `fast-check ^4.8.0` déjà en place. Fuzz des 12 invariants :
+> reconstructabilité forme-bilan (`ΔNetWorth = Σactifs − dettes`), NetWorth toujours fini, INV-6 (pas de flux fantôme).
+> Scénarios bornés (1-180 mois, couples/célibataires, revenus/immo/dettes aléa). Discrimination prouvée : revert TEMPORAIRE
+> d'une garde → test échoue → revert annulé (pattern détaillé CLAUDE.md « Prouver un test discriminant »). Panel 4 agents
+> (projection-validator/financial-integrity/silent-failure/code-reviewer) ; **résiduel max mesuré 0,02 $**. **Backlog autonome
+> ÉPUISÉ** : restent suivis (FUZZ-ONETIME-FLOWS, DEP-UNDICI-VULN, FISC-CONST-LINT-LIMITS, FISC-RRSP-PRE2010-FALLBACK) +
+> items 🧭/👤 Marc (FISC-WELCOME-2026, RECH-ACTION-UX, phases 2-4 brief). Tests ~**2163 verts**. Gates verts.
+>
+> **Session 2026-06-18 — Durcissement MONEY-CONSERVATION + correctifs métier + UX (12 PR #351→#363)** :
+> **Lot HIGH fiscal/métier** — #352 [FISC-ESTATE-PENSION-NPV] (NPV rentes RRQ/PSV ×12 annualisée, bilan successoral ~375 k$ corrigés) · #354 [FISC-EVENT-INCOMELOSS] (perte d'emploi/sabbatique/accident : réduction revenu ménage appliquée par moteur ; défauts 100%/100%/50%, net+brut REER réduits, impôt décembre conservateur) · #355 [FINNHUB-MISMATCH][RECH-ACTION-UX] (Investissement : fallback gracieux symbole non-cotable, Escape ferme dropdown sans fermer modale) ; **Durcissement money** — #356 [HARDEN-NETWORTH-EXHAUSTIVE] (compile-guard `NET_WORTH_SIGN` dans `computeRawNetWorth`, test littéral vs Σ, zéro régression) · **#362 [ENG-LOOP-ORDER-TEST]** (test ordre boucle mensuelle : allocation AVANT croissance, 2 scénarios discriminants, inversion PROUVÉE à la main échoue test → attrape décalage rendement que les 12 invariants laissent passer) · **#363 [HARDEN-FISCAL-TIMEBOMB]** (garde de fraîcheur des valeurs fiscales : `utils/fiscalFreshness.ts` lit la date « Dernière vérification »/« Ré-audité » dans `FISCAL_REFERENCE.md`, warn @12 mois, fail @18 mois ; 13 tests discriminants) ; **Hygiène** — #351 [ENG-MONTHLYOUTPUT-TEST] (test monthlyOutput complet, seul module sans test) + #353 [BACKLOG] (cocher livrés, découvertes, router FISC-WELCOME-2026) ; **UX + infra** — #357 [DOCS-DISCIPLINE] (`documentation-manager` devient PROPRIÉTAIRE de SESSION_HANDOVER, dans le « Toujours » de /review-all + rappel hook → handover à jour à CHAQUE push) · #358 [PROJ-INSOLVENCY-BADGE] (onglet Futur : badge danger « Plan insoutenable — capital épuisé vers X ans » quand le NW projeté franchit 0 ; helper pur `utils/insolvency.ts`) ; **Robustesse** — #360 [ENG-ESTATE-ESTIMATE-FIN] (`fin()` à la SOURCE : un estimé de rente NaN ne zérote plus TOUT l'estate — dégradation gracieuse). Conservation prouvée : **12 invariants OK**. Moteur stable **~2149 tests**, typecheck strict, Vite clean. État prêt déploiement.
+> ⚠️ **À FAIRE Marc** : `FISC-WELCOME-2026` (valeurs RQ 2026) · `RECH-ACTION-UX` (confirmer visuellement avec clé Finnhub, A_FAIRE_MOI O5). **Restes autonomes** : `FISC-CONST-LINT` (risque faux positifs) ; `HARDEN-FUZZING` (attend OK dép `fast-check`). **Déféré (décision design Marc)** : `A11Y-BADGE-PROMINENCE` (fond Badge ~1.1:1 < 3:1 WCAG 1.4.11 sur TOUS les variants ; contraste par teinte non automatisé par check-contrast).
+
+---
+
+## 1. État en une page
+
+| Indicateur | Valeur |
+|---|---|
+| **Repo** | https://github.com/MoKarade/FinanceAI |
+| **Branche principale** | `main` (seule branche — ménage 2026-06-15) |
+| **Dernière PR mergée** | **#532** [DOC] correction post-merge #531 (compte de tests + résumé panel dans SESSION_HANDOVER.md) |
+| **PR en cours (DRAFT)** | **`[FINTABLE-4]`** (import manuel replié par défaut, dernier item du chantier Fintable — cf bandeau ci-dessus) — en cours d'ouverture |
+| **App déployée** | https://www.hubperso.com (Vercel auto-deploy sur push `main`) |
+| **Tests** | **3290 verts, suite complète** (288 fichiers, Vitest 4 ; `fileParallelism: false` ; 12 invariants money-conservation — compte exact au gate/CI, mesuré 2026-07-29) |
+| **Typecheck** | Clean en mode strict |
+| **Build** | OK — **Vite 8 (Rolldown)** ; lazy-loading préservé (vendor react/recharts/ai/pdf) |
+| **Schema store** | **v7** (Zustand persist, migrations v1→v7) |
+| **Stack IA** | `@anthropic-ai/sdk` (Haiku 4.5 + Sonnet 4.6 + Opus 4.8) — choix modèle par conversation, coût réel CAD ; Gemini retiré |
+| **Banque** | CSV **+ import relevé PDF** (Claude Vision, #285) → pipeline `parseBankCsv` ; CSV 100 % local |
+| **Crypto** | CoinGecko (gratuit, sans clé) |
+| **Stock/ETF** | Finnhub REST (gratuit) |
+| **Sécurité storage** | AES-256-GCM + IndexedDB non-extractible (`services/secureKeyStore.ts`) ; `npm audit` = **0 HIGH/CRITICAL, 2 MODERATE** (@hono/node-server, MCP-CloudRun séparé) |
+| **Auth** | **Gate Google in-app** (`LoginGate`+`authGate`, `VITE_GOOGLE_GATE=1`) — **Cloudflare RETIRÉ le 2026-06-16** (Access + proxy DNS). Gate SOFT (trappe `?nogate=1`) ; données privées par compte Google |
+| **Lighthouse prod** | Performance 97 / A11y 100 / BP 100 / SEO 90 (dernière mesure connue) |
+| **PWA** | manifest + SW v2 (precache résilient) — installable Chrome/Edge/Mobile |
+| **WCAG** | AA conformant (sub-set AAA pour touch, focus, reduced-motion) |
+
+(Lighthouse : dernière mesure connue ; re-run recommandé après une grosse livraison UI.)
+
+---
+
+## 2. Contraintes cardinales (NE PAS VIOLER)
+
+1. **🔒 ZÉRO service payant** — user a explicitement refusé Finnhub paid,
+   Sentry SaaS, GlitchTip backend, tout SaaS récurrent. Tout doit rester
+   sur tiers gratuits (Vercel free, GitHub Actions free, IndexedDB browser,
+   localStorage, Anthropic API clé perso de l'user, Era Context perso, Finnhub free).
+
+2. **🔒 PAS de Google Sheet** — l'user a demandé suppression totale du
+   Google Sheet legacy (cycle 14). Le fichier `netlify/functions/sheet-proxy.ts`
+   a été supprimé, le CSP a été nettoyé de docs.google.com, `services/finance.ts`
+   ne fait plus de fetch CSV. Ne PAS le réintroduire.
+
+3. **🔒 Pas de demo data au boot** — l'user veut un état vide tant qu'il
+   n'a pas saisi ses infos lui-même. Hook `useHasUserData` (`utils/useHasUserData.ts`)
+   gate l'affichage des widgets d'actions/dashboard. NE PAS pré-remplir
+   `constants.ts` avec des INITIAL_USERS / INITIAL_BUDGET non-vides.
+
+4. **🔒 Tester sur hubperso.com** — l'user a précisé : « SI tu veux faire
+   des tests directement sur l'app utilise hubperso.com ». L'app est aussi
+   sur GitHub Pages mais hubperso.com est la prod canonique.
+
+5. **Branches `claude/<slug>` — cycle AUTONOME** (changé depuis 2026-06) — Claude gère le cycle
+   COMPLET : branche → commits gated → push → PR → **auto-merge squash** (GitHub merge dès CI verte)
+   → sync. **Plus de gate humain, Claude merge lui-même.** Source de vérité : `CLAUDE.md` § Workflow.
+
+---
+
+## 3. Ce qui a été livré cette session (18 PRs)
+
+### Phase 1 — Production Readiness (PRs #99-#105)
+
+| PR | Item | Description |
+|---|---|---|
+| #99 | P1.1 errorLogger | Rolling buffer 100 entrées localStorage + global handlers + viewer dans Système |
+| #100 | P1.4 CSV + chunkLoad | `utils/csvExport.ts` RFC 4180 + `lazyWithRetry` (fix chunk-load) + cache headers Netlify |
+| #101 | P1.3 backupAuto | IndexedDB 7-day rolling backups + AutoBackupPanel UI |
+| #102 | P1.2 zod safeParse | Toutes les `Schema.parse()` → `safeParse()` avec errorLogger |
+| #103 | P1.7 audit log | Rolling 500 entrées + AuditLogViewer dans Système |
+| #104 | P1.5 PDF complet | Patrimoine + **Fiscal** + **Holdings** + **Dettes** + **Goals** + Retraite + Budget (+16 tests builders purs) |
+| #105 | P1.6 Lighthouse CI | Workflow `.github/workflows/lighthouse.yml` warn-only + continue-on-error |
+| #106 | docs P1 | MAJ HANDOVER + CHANGELOG + PLAN_P1 |
+
+### Phase 2 — Mobile & a11y AAA (PRs #107-#114)
+
+| PR | Item | Description |
+|---|---|---|
+| #107 | P2 plan | `docs/PLAN_P2.md` — triage + 9 items chiffrés |
+| #108 | P2 quick wins | Modal focus restore (P2.2) + close 44px (P2.3) + prefers-reduced-motion (P2.6) |
+| #109 | P2.5 contrast | ink-400 #64748b→#8896a8, ink-500 #475569→#6a7689 (WCAG AA) |
+| #110 | P2.4 touch targets | 5 boutons icon <44px corrigés (privacy toggle, toast, docs, planning) |
+| #111 | docs intermédiaires | MAJ HANDOVER P2 6/9 |
+| #112 | P2.8 form labels | ~35 inputs orphelins fixés (PatrimoineExtended 17, Settings 10, DebtManager 5, etc.) |
+| #113 | P2.9 PWA | manifest.json + sw.js + icon.svg + register en PROD |
+| #114 | P2.1 axe pages | 4 pages couvertes (Onboarding, SystemView, Dashboard, TaxBracketViz) |
+| #115 | docs P2 final | MAJ HANDOVER + CHANGELOG + PLAN_P2 (clôturé 9/9) |
+
+### Cycles 17-18 — Mode test + Centralisation + Strict mode (2026-05-21)
+
+Direct merges sur main (pas de PRs numérotées — workflow accéléré avec
+Marc validant en live).
+
+**Mode test** :
+- `services/testFixtures.ts` : couple Alex/Sam, 68 transactions, 5 actifs
+  réels Yahoo (ETF canadiens, AAPL, BTC-CAD), CSV historique
+  100% authentique bundlé `services/data/test-portfolio-history.csv`
+- Bouton Activer/Désactiver dans Configuration → TestModePanel
+- Banner orange permanent en mode actif
+- `enableTestMode` snapshot des vraies données pour restauration safe
+
+**13 fixes bugs visibles** (cycle 17) :
+- TaxCenter taux marginal × 100 (était décimal affiché tel quel)
+- Future scénarios "0.0M$" (Math.round avant /1M)
+- Enfant crash (Bar dans AreaChart → ComposedChart)
+- Tooltip Future taille fixe + icônes alignées + ligne décaissement
+- Extinction dettes (effectiveMinimum garde-fou)
+- Retirement aligné avec Future (savingsGoals + financialGoals)
+- Fixtures Debt/ChildGoal champs corrects
+- Variation Dashboard 2 décimales partout
+- Plus : tooltip décaissement portfolio en retraite (bug "60\$/mois")
+
+**Mode strict TOTAL** (cycle 18) :
+- 8 composants migrés : Retirement, Dashboard, Investments, Budget,
+  RealEstate, Planning, ChildPlanning, HealthIndicator
+- Composant partagé `components/ui/ProjectionRequired.tsx` (variants
+  block + inline)
+- Suppression de tous les fallbacks fake (formule 5% Dashboard, 25×
+  HealthIndicator, ×10×1.4 Latte Factor Planning, projection REEE locale
+  ChildPlanning)
+- Convention "valeurs réelles ou rien" appliquée à fond
+
+**Centralisation Phase 3 — 9 nouveaux champs `chartData`** :
+- Tier 1 : `realNetWorth`, `liquidityRunway`, `mortgageRemainingMonths`
+- Tier 2 : `reeeContribCum`, `reeeGrantsCum`
+- Tier 3 : `DividendIncome`, `TaxableInvIncome`, `marginalTaxRate`, `effectiveTaxRate`
+- Hook partagé `hooks/useProjectionSelector.ts` (3 variants)
+
+**B1 décision UX** : Retirement reflète automatiquement le scénario actif
+de Future (badge "Scénario actif : {strategyName}" dans subtitle).
+
+**Q3 keyboard shortcuts** : Alt+1..9 pour switcher d'onglet.
+
+**Tests** : 573 → 596 verts (+23 : 16 convergence + 5 nouveaux Tier 1-2
++ 2 nouveaux Tier 3). +131 tests manuels checklist.
+
+### G21 — Optimiseur de stratégie (cycles post-#116)
+
+- `services/projection/strategySearch.ts` : recherche automatique de la meilleure stratégie d'allocation parmi toutes les combinaisons
+- `services/projection/drawdownOptimizer.ts` : optimisation du calendrier de décaissement
+- `services/projection/strategyRanking.ts` / `strategyRobustness.ts` : classement et robustesse des stratégies
+- Bouton « Annuler » dans l'UI FutureProjection pour interrompre le calcul long
+- Bouton « Appliquer la stratégie gagnante » (bascule le scénario actif sur le résultat optimal)
+- Budget adaptatif : watchdog 15 min, estimation ~8ms/sim
+- `lastProjection.bestStrategyIdx` : index de la stratégie gagnante dans `allResults`
+
+### G22 — Refonte UX (cycles post-G21)
+
+| Item | Description |
+|---|---|
+| G22-N3 | Planning + Abonnements fusionnés dans Budget (sous-onglets via `BudgetWorkspace.tsx`) |
+| G22-N4 | Settings.tsx découpé en sous-sections (`settings/sections/` : Profile, Accounts, Integrations, Patrimoine, Backup) |
+| G22-N5 | Onglet Système fusionné dans Configuration (sous-onglet « Système & diagnostics ») |
+| G22-F1 | `components/projection/ProjectionExplains.tsx` : explorateur data-driven des données de projection |
+| G22-F4 | `components/tour/GuidedTour.tsx` : tutoriel guidé lancé après l'onboarding (relançable depuis Profil) |
+| G22-B1 | Valeur nette complète dans FutureProjection (placements reconstruits + cash) |
+| G22-B2 | Bascule directe Couple/Individuel depuis la sidebar |
+
+### G23 — Qualité & purge (session 2026-05-27, 4 merges directs sur main)
+
+| Commit | Description |
+|---|---|
+| `3167a55` | U3 radio-group MC (clavier natif) + U4 tooltip tous événements + DT4 split testFixtures (6 modules) + bug HealthIndicator/NextBestAction (coussin = 0) + lisibilité tax.ts/projection.ts + sécurité MEDIUM eraContext + 0 warning ESLint (484→0) + resync docs |
+| `20abca8` | Retrait 4 fonctions IA mortes de services/claude.ts (getInvestmentAdvice, generateSmartGoals, analyzeBudgetAI, analyzeDocuments) + schémas Zod orphelins |
+| `4af08b2` | Retrait COMPLET era Context (~1 224 lignes) : services/eraContext.ts, services/aiOrchestrator.ts, components/dashboard/EraContextInsights.tsx, clé apiKeys.eraContext. ADR 002 marqué SUPERSEDED |
+| `6042fe9` | Purge résidus era (CSP index.html + netlify.toml, source log errorLogger) + code mort knip (53→36 unused exports : hasSeenTour, PLAN_LEVELS, annualToMonthly, getAssetMeta*, getDividends, clearApiKeys, loadApiKeys) |
+
+Tests après session : **732 verts / 71 fichiers** (delta : 2 fichiers test era retirés, compensé par test de régression coussin).
+
+### Phase 3 — Lighthouse prod fixes (PR #116)
+
+| PR | Description |
+|---|---|
+| #116 | Card title h3→h2 (heading hierarchy) + CoupleModeBadge role="img" + SW cache.addAll → précache individuel (Vercel rewrite `/index.html` 404 swallowed) + cache v1→v2 |
+
+### P2.7 skip-to-main : déjà fait au cycle 5.1 (Layout.tsx:117-123) — pas de PR nouvelle.
+
+---
+
+## 4. Ce qui a été validé manuellement par l'user
+
+Validé sur hubperso.com lors de la dernière session :
+- ✅ PWA install Chrome desktop + mobile (icône emerald "Fi")
+- ✅ DevTools → Manifest chargé, theme `#10b981`
+- ✅ SW registered, activated
+- ✅ Offline test (page s'affiche)
+- ✅ **Lighthouse desktop : 97/95/100/90** (avant PR #116) — A11y 100 attendu après
+- ✅ A11y manual checks 5.1 à 5.7 tous OK (focus restore, hit area, contrast, touch, reduced-motion, skip-link, form labels)
+
+**À valider encore** (après #116 mergé) :
+- ✅ **Cache Storage `financeai-v2` peuplé** — Validé 2026-05-21 après PR #118 (cycle 16). 16 entrées au 2e load (HTML + assets/* hashés). Voir `docs/INVESTIGATION_PWA_VERCEL_2026-05-21.md` pour le diagnostic complet.
+- 🔲 **Lighthouse A11y re-run pour confirmer 100**
+- 🔲 **PDF complet (P1.5)** — l'user n'a pas encore testé Patrimoine + Fiscal + Holdings + Dettes + Goals dans un seul PDF
+- ✅ **SW update test** — Validé 2026-05-21 : push PR #118 a triggered un nouveau build, SW v2 a remplacé l'ancien automatiquement (skipWaiting + clientsClaim).
+- 🔲 **iOS Safari** (l'user n'a pas Safari)
+
+---
+
+## 5. Ce qui reste (roadmap "10/10")
+
+| Priorité | Item | Effort | Notes |
+|---|---|---|---|
+| 🔴 | P3 Refactor god-components | 40h | Settings 1500+ lignes, Retirement 1000+ lignes, Investments. Le refactor le plus rentable car ces fichiers freinent toute évolution. |
+| 🟠 | P4 Tests Playwright E2E + visual regression | 25h | Manque tests d'intégration full-flow (onboarding → ajout asset → projection → PDF). |
+| 🟢 | P5 Era push / sync multi-device | 50-80h | Avancé : sync transactions cloud bidirectionnel via Era. **Touche backend** → vérifier que ça reste gratuit. |
+| 🟡 | Form primitives `<Input>`/`<Select>`/`<Field>` | 8h | 133+ inputs inline non factorisés (ADR-004). À faire en même temps que P3 idéalement. |
+| 🟡 | i18n compléter | 10h | 32 → ~260 clés si l'user veut réactiver EN/FR (cycle A a supprimé le toggle). |
+| ⚪ | Brancher `logAudit()` aux call-sites | 2h | Infra prête depuis #103 mais les call-sites (import CSV, suppressions batch) ne logent pas. Quick win. |
+
+### Suggestions ad-hoc
+
+- **Lighthouse Performance** : 97 est excellent. Si tu veux le pousser à 100, vise les 239 KiB d'unused JS dans `index-*.js` (split Settings + Retirement + Investments en lazy chunks). Voir suggestion Lighthouse.
+- **Forced reflow Recharts** : 46ms perdus dans recharts internals. Pas fixable côté FinanceAI sans forker recharts. Ignorer.
+
+---
+
+## 6. Comment travailler dans ce repo
+
+### Setup
+```bash
+git clone https://github.com/MoKarade/FinanceAI.git
+cd FinanceAI
+npm ci   # package-lock.json EST committé (lockfile de référence ; après reprise si node_modules manque)
+```
+
+### Commandes utiles
+```bash
+npm run dev          # localhost:3000 — Vite HMR
+npm test             # vitest run (suite complète)
+npm run typecheck    # tsc --noEmit, strict
+npm run build        # bundle prod (vérifie pas de regression de size)
+npm run lint         # eslint
+npm run knip         # détecter dead code
+npx tsx scripts/check-contrast.ts  # audit WCAG AA contrast
+```
+
+### Workflow Git (cycle AUTONOME — détail dans `CLAUDE.md` § Workflow)
+1. À la reprise : `git fetch origin main && git merge --ff-only origin/main` (le clone local peut être
+   TRÈS en retard — vu 146 commits le 2026-06-15).
+2. `git checkout -b claude/<slug>` depuis `main`.
+3. Code + tests ; commit (le hook `commit-gate` relance typecheck+test+build si des `.ts/.tsx` sont stagés).
+4. `git push -u origin claude/<slug>` (le hook `learn-on-push` rappelle « leçon → CLAUDE.md ? »).
+5. `gh pr create` (ready) → `gh pr merge --auto --squash` : GitHub merge seul dès la CI verte.
+6. Au point de contrôle : vérifier `merged`, puis `git checkout main` + ff + `git branch -D <slug>` (squash ⇒ `-D`).
+7. **CLAUDE.md s'améliore à chaque push** : capturer la leçon dans la MÊME PR.
+
+### Onglets actifs (Alt+1..9)
+
+| Alt | Onglet | Notes |
+|---|---|---|
+| Alt+1 | Dashboard | |
+| Alt+2 | Transactions | |
+| Alt+3 | Budget | Inclut Planification et Abonnements (sous-onglets internes — G22-N3) |
+| Alt+4 | Dettes | Ancien Alt+4 était Planning, maintenant fusionné dans Budget |
+| Alt+5 | Investments | |
+| Alt+6 | Future | Sous-onglet « Explications » (ProjectionExplains — G22-F1) |
+| Alt+7 | Retraite | |
+| Alt+8 | Impôts | |
+| Alt+9 | Assistant | |
+
+Onglets retirés : Planning (fusionné dans Budget — G22-N3), Système (fusionné dans Configuration — G22-N5).
+
+### Architecture clés
+- **Entry** : `index.tsx` → `App.tsx` (root) → `Layout.tsx` (sidebar + bottom nav)
+- **Routing** : Tab enum dans `types.ts:1`, dispatch via `TabRouter.tsx`
+- **State** : `store/useFinanceStore.ts` (Zustand v5 + persist localStorage)
+- **State shape** : `AppState` dans `types.ts:638`
+- **Projection moteur** : `services/projection.ts` (9 phases mensuelles, 7 scénarios) — voir `docs/PROJECTION.md`
+- **Fiscal** : `utils/tax.ts` (barèmes 2026 fédéral + QC + RRQ + RQAP + AE)
+- **PDF** : `services/pdfReport.ts` (jspdf lazy)
+- **IA** : `services/claude.ts` (Anthropic SDK) — `aiOrchestrator.ts` et `eraContext.ts` supprimés (era retiré)
+- **Market data** : `services/marketData/` (façade Finnhub)
+- **Backup** : `services/backupAuto.ts` (IndexedDB rolling 7-day) + `services/cloudBackup.ts` (export chiffré)
+- **Audit/logs** : `services/errorLogger.ts` + `services/auditLog.ts` (rolling localStorage)
+
+### Composants UI primitives (`components/ui/`)
+- `Button`, `Card` (title=h2), `Badge`, `KPIStat`, `PageHeader` (h1), `EmptyState`, `Skeleton`, `Modal` (focus-trap+restore), `Pill`, `Tooltip`, `Toast`, `ConfirmModal`, `CommandPalette` (Cmd+K), etc.
+
+### A11y patterns en place
+- `.focus-ring` (72 usages) → `:focus-visible:ring-2 ring-primary`
+- `.touch-target` (`min-width/height: 44px`)
+- `prefers-reduced-motion` global media query (`index.css`)
+- Skip-to-main link (`Layout.tsx:117-123`)
+- Modal focus-trap + focus-restore
+- 205+ `aria-*` attributes
+- WCAG AA tokens (`ink-400` #8896a8, `ink-500` #6a7689)
+
+---
+
+## 7. Docs à lire si besoin de plus
+
+**Core actif (9 fichiers `docs/`)** — réduction 2026-06-11 (47→9, le reste fusionné dans HISTORIQUE) :
+| Doc | Quand le lire |
+|---|---|
+| **`BACKLOG.md`** | **Restant à faire — à lire EN PREMIER** |
+| `docs/A_FAIRE_MOI.md` | Tâches HUMAINES (Marc) |
+| `docs/FISCAL_REFERENCE.md` | Valeurs fiscales — SOURCE DE VÉRITÉ (datée + sourcée) |
+| `docs/ARCHITECTURE.md` | Stack, topologie, store, pipeline IA |
+| `docs/PROJECTION.md` | Moteur de projection (phases, scénarios, MC) |
+| `docs/PROJECTION_OUTPUT_SCHEMA.md` | Champs de `lastProjection.chartData[i]` |
+| `docs/VISION.md` | Où va le projet |
+| **`docs/HISTORIQUE.md`** | **TOUT le reste fusionné** : snapshots, audits, designs LIVRÉS (auth Cloudflare, sync Drive, MCP, multiuser, sécurité), ADRs, plans finis, 131 tests manuels. Git garde le détail par fichier. |
+| `CHANGELOG.md` | Historique versionné |
+
+---
+
+## 8. Recommandations immédiates pour le prochain Claude
+
+### Si l'user veut continuer le sprint
+1. **D'abord** : faire valider les 4 items manuels restants (§4 ci-dessus)
+   en demandant `AskUserQuestion`. Ne pas coder à l'aveugle si la prod
+   n'est pas validée.
+2. **Si tout est vert** : proposer P3 plan (refactor Settings le plus
+   gros gain) ou Form primitives (compatible avec P3).
+3. **Si bugs trouvés** : fixer en priorité avant d'ouvrir un nouveau chantier.
+
+### Si l'user veut une feature précise
+1. Lire `docs/ARCHITECTURE.md` pour comprendre la stack et la topologie
+2. Identifier le composant/service à toucher via `grep`/`find` (pas Read en aveugle)
+3. Suivre le workflow Git de la section 6
+4. Toujours respecter les 5 contraintes cardinales (§2)
+
+### Sources potentielles d'erreur connues
+- **vitest v4** (PR #98 dependabot) : `environmentMatchGlobs` retiré. Le `vitest.config.ts` utilise déjà `environment: 'jsdom'` globalement. Ne pas re-rajouter `environmentMatchGlobs`.
+- **CI race condition** (Tests + Build duplicate runs) : push+PR sync déclenchent 2 jobs concurrents qui se battent sur npm install. Faux-positif si un fail en <60s — re-run le job ou merger quand même.
+- **Recharts canvas warnings** dans tests : `HTMLCanvasElement.getContext` non implémenté dans jsdom. Ce sont des warnings, pas des échecs.
+
+### Anti-patterns à éviter
+- ❌ Ré-introduire Google Sheet / docs.google.com / fetchPortfolioHistory CSV
+- ❌ Pré-remplir INITIAL_USERS avec des noms / salaires non-vides
+- ❌ Push à `main` directement sans PR (le cycle autonome = branche + PR + auto-merge, jamais direct)
+- ❌ Ajouter une dépendance payante / SaaS récurrent
+- ❌ Toucher au workflow `.github/workflows/ci.yml` sans précaution
+  (vitest v4 incident — lighthouse a son propre workflow isolé pour ça)
+- ❌ Rewrite massif sans plan (cycle 14 = plan P1 d'abord puis exécution)
+- ❌ Arrêter une tâche EN PLEINE EXÉCUTION (règle Marc 2026-06-15 : aller au bout sans rendre la main)
+
+---
+
+## 9. Contact / contexte user
+
+- **GitHub** : MoKarade
+- **Email** : (retiré)
+- **Localisation** : Québec, Canada (l'app cible fiscalité QC/CA)
+- **Langue** : français (FR uniquement depuis le cycle A — EN retiré)
+- **Style** : direct, méthodique, valide en prod après merge, merge rapide
+- **Préférence** : 1 PR par item, draft par défaut, descriptions PR détaillées
+- **Test environnement** : hubperso.com (prod Vercel)
+
+---
+
+## 10. Mantra
+
+> **Plan avant code. Tests verts avant commit. Gate vert + /review-all avant auto-merge. Claude merge autonome dès CI verte.**
+
+Cycle 2026-06 : plus de validation humaine sur chaque PR — Claude gère le cycle COMPLET (branche → commits gated → push → PR draft → auto-merge squash dès CI ✅). Si tu lis ça, prends 5 min pour relire les contraintes cardinales (§2) et le workflow (§6) avant de commencer. C'est la différence entre une session productive et un rollback.
+
+Bonne session 👋

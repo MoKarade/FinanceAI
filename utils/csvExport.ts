@@ -1,0 +1,142 @@
+// P1.4 — Export CSV helpers (RFC 4180 compliant).
+//
+// Fonctions :
+//   - toCSV(rows, columns) : helper générique
+//   - downloadCSV(filename, content) : trigger téléchargement browser
+//   - exportTransactionsCSV : preset (les presets holdings/budget, sans appelant, ont été retirés
+//     au lot [CSV-EXPORTS-MORTS-SANS-GARDE] — ils n'avaient pas la garde du mode discret)
+//
+// Format : virgule (comma) comme delimiter, double-quotes pour escape,
+// CRLF line ending — conforme RFC 4180 pour compat Excel/Google Sheets.
+
+import type { Transaction } from '../types';
+import { useFinanceStore } from '../store/useFinanceStore';
+import { modeDonneesFictives } from '../store/modeTestActif';
+
+/**
+ * Échappe une valeur pour CSV RFC 4180.
+ * - Si contient `,`, `"`, ou `\n` → entoure de `"` et double les `"` internes.
+ * - Sinon, retourne tel quel.
+ */
+export function escapeCsvField(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    const needsQuoting = /[",\n\r]/.test(str);
+    if (!needsQuoting) return str;
+    return `"${str.replace(/"/g, '""')}"`;
+}
+
+interface CsvColumn<T> {
+    header: string;
+    accessor: (row: T) => unknown;
+}
+
+/**
+ * Convertit un array d'objets en CSV.
+ *
+ * @example
+ *   toCSV([{a:1, b:'x'}], [{header:'A', accessor: r => r.a}, {header:'B', accessor: r => r.b}])
+ *   // → "A,B\r\n1,x"
+ */
+export function toCSV<T>(rows: T[], columns: CsvColumn<T>[]): string {
+    const header = columns.map(c => escapeCsvField(c.header)).join(',');
+    const body = rows.map(row =>
+        columns.map(c => escapeCsvField(c.accessor(row))).join(','),
+    );
+    return [header, ...body].join('\r\n');
+}
+
+/**
+ * Refus JUMEAU de `CsvRefusedPrivacyError`, pour l'autre raison de ne pas faire sortir un
+ * fichier : non pas « ces montants doivent rester masqués » mais « ces montants n'existent pas ».
+ * Quand l'app tourne sur des données FICTIVES (mode test / bac à sable), un CSV téléchargé est
+ * un fichier d'allure parfaitement réelle, ligne par ligne, que rien ne distinguera du vrai une
+ * fois ouvert dans un tableur six mois plus tard.
+ */
+export class CsvRefusedTestModeError extends Error {
+    constructor() {
+        super('Export CSV refusé : l\'app affiche des données fictives.');
+        this.name = 'CsvRefusedTestModeError';
+    }
+}
+
+/**
+ * Déclenche le téléchargement d'un CSV dans le browser.
+ * Ajoute le BOM UTF-8 pour qu'Excel ouvre correctement les accents.
+ *
+ * ⚠️ POURQUOI la garde « données fictives » est ICI et pas dans chaque preset, alors que la garde
+ * du mode discret, elle, vit dans `exportTransactionsCSV`. Les deux règles n'ont pas le même point
+ * de passage obligé. Le mode discret refuse de CONSTRUIRE (inutile de fabriquer des lignes qu'on
+ * ne rendra pas), donc il vit au plus près de la construction. Les données fictives refusent de
+ * FAIRE SORTIR — et `downloadCSV` est le seul endroit par lequel un fichier sort, quel que soit le
+ * preset, y compris ceux qu'un lot futur ajoutera sans penser à cette règle. Mesuré à l'écriture : il y
+ * avait trois presets d'export, et poser la garde sur chacun aurait laissé le quatrième découvert.
+ */
+export function downloadCSV(filename: string, content: string): void {
+    // Lu à l'APPEL : le mode a pu basculer entre le rendu du bouton et le clic.
+    if (modeDonneesFictives()) throw new CsvRefusedTestModeError();
+    if (typeof window === 'undefined') return;
+    const bom = '﻿'; // BOM UTF-8 pour Excel
+    const blob = new Blob([bom + content], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * [PRIV-EXPORT-CSV-CONTRAT] Refus d'exporter en mode discret — même contrat que le PDF
+ * (`PdfRefusedPrivacyError`, décision Marc 2026-08-17 dans `docs/adr/0012-quatre-decisions-de-marc-2026-08-17.md`).
+ *
+ * ⚠️ POURQUOI CETTE GARDE MANQUAIT, et pourquoi c'est la MÊME faute. La décision « refuser en mode
+ * discret » a été prise pour le PDF, avec cette justification : « un fichier SORT de l'app et
+ * SURVIT au mode ». Elle n'a jamais été étendue au CSV — or le CSV est PIRE : il contient le
+ * marchand ET le montant, ligne par ligne, alors que le PDF ne porte aucun `payee`. L'écran
+ * affichait « ••• » partout pendant que le bouton « Export CSV » fabriquait, en un clic, une copie
+ * permanente et intégralement en clair. Trouvé par l'audit vie privée de la PR #645.
+ *
+ * ⚠️ Au SERVICE, pas au clic : une borne posée dans le composant laisserait passer tout futur
+ * appelant (autre bouton, raccourci, outil MCP, script). Même motif que `clampSplitPct`, où la
+ * borne UI seule laissait passer un import de sauvegarde.
+ */
+export class CsvRefusedPrivacyError extends Error {
+    constructor() {
+        super('Export CSV refusé : le mode discret est actif.');
+        this.name = 'CsvRefusedPrivacyError';
+    }
+}
+
+/**
+ * Export transactions au format CSV (preset).
+ * @throws {CsvRefusedPrivacyError} si le mode discret est actif.
+ */
+export function exportTransactionsCSV(transactions: Transaction[]): string {
+    // ⚠️ Lu à l'APPEL, pas capturé en amont : le mode a pu être activé entre le rendu du bouton et
+    // le clic. Et on refuse AVANT de construire la moindre ligne.
+    if (useFinanceStore.getState().isPrivacyMode) throw new CsvRefusedPrivacyError();
+    return toCSV<Transaction>(transactions, [
+        { header: 'Date', accessor: t => t.date },
+        { header: 'Payee', accessor: t => t.payee || '' },
+        { header: 'Amount', accessor: t => t.amount },
+        { header: 'Category', accessor: t => t.category || '' },
+        { header: 'Account', accessor: t => t.accountName || '' },
+        { header: 'Is Transfer', accessor: t => t.isTransfer ? 'true' : 'false' },
+        { header: 'Is Duplicate', accessor: t => t.isDuplicate ? 'true' : 'false' },
+        { header: 'Status', accessor: t => t.status || '' },
+        // [REFONTE-NAV-L5, revue #606] Colonne CONSERVÉE lors de la consolidation des deux exports :
+        // l'export « vue filtrée » la portait (`Confiance IA`) et sert justement à relire les
+        // catégorisations douteuses. Unifier les formats ne doit RIEN retirer — on ajoute au format
+        // commun plutôt que de laisser tomber une capacité en silence. Vide (pas 0) si absente :
+        // une confiance inconnue n'est pas une confiance nulle.
+        { header: 'Confiance IA', accessor: t => (typeof t.confidence === 'number' ? t.confidence : '') },
+    ]);
+}
+
+/** Format ISO date pour les noms de fichiers (YYYY-MM-DD) */
+export function dateForFilename(): string {
+    return new Date().toISOString().slice(0, 10);
+}

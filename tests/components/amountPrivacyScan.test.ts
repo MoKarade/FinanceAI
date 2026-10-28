@@ -1,0 +1,363 @@
+/**
+ * [A11Y-PRIVACY-SCAN-GLOBAL] GARDE DE SOURCE — tout montant RENDU tient compte du mode discret.
+ *
+ * Le pendant, pour le JSX ordinaire, de `chartPrivacyScan.test.ts` (qui ne couvre que les props
+ * Recharts). Elle MESURE au lieu d'énumérer : les quatre tickets `A11Y-PRIVACY-*` livrés jusqu'ici
+ * partaient d'une liste écrite à la main par un audit, et le périmètre annoncé s'est trouvé faux à
+ * chaque lot.
+ *
+ * ⚠️ **POURQUOI ELLE CONNAÎT LES ALIAS LOCAUX.** Le ticket annonçait « 38 sites dans 19 fichiers »,
+ * mesurés par un grep `formatCAD`. Or une bonne moitié des écrans passe par un alias local
+ * (`const fmt = (n) => formatCAD(n)`, `money`, `formatCurrency`, `fmtMoney`) : ces sites étaient
+ * INVISIBLES au grep qui a produit le ticket. Le recensement alias-aware en trouve nettement plus.
+ * Même famille que `UN-ALIAS-DEPRECIE-REND-LE-CODE-INTROUVABLE-PAR-UN-SEUL-NOM` : un second nom
+ * rend le code introuvable par le premier.
+ *
+ * CE QUE LA GARDE EXIGE : toute ligne qui FORMATE un montant porte, dans une fenêtre de ±2 lignes,
+ * une marque de mode discret (`PrivateAmount`, `isPrivacyMode`, `MASKED_…`, …).
+ *
+ * DEUX ÉCHAPPATOIRES, explicites et greppables — comme `AXE-NON-MONETAIRE` chez sa jumelle :
+ *  · `MONTANT-PUBLIC`     — la valeur n'est pas celle de l'utilisateur (borne de palier fiscal,
+ *                           barème légal, tarif de référence). #608 exige de les GARDER visibles.
+ *  · `MONTANT-HORS-ECRAN` — la ligne construit une chaîne pour un canal qui n'est PAS un rendu
+ *                           (contexte de l'assistant IA, prompt du diagnostic). Décision Marc
+ *                           2026-09-05 (`[PRIVACY-CONTEXTE-IA]`) : MASQUER — le jeton ne dispense
+ *                           pas du mode discret, il déclare que le canal est gaté EN AMONT et
+ *                           PROUVÉ : chokepoint du chat (`useAiChat.viewContext.test.tsx`),
+ *                           diagnostic Budget (`budgetAiModalModeDiscret.test.tsx`). Un nouveau
+ *                           canal qui poserait ce jeton sans sa garde amont serait un trou.
+ *  · `MONTANT-MASQUE-AILLEURS` — le masquage existe, mais hors de la fenêtre : un formateur d'axe
+ *                           que son appelant enveloppe (`privacyMode ? … : yFormatter(v)`), ou un
+ *                           sous-arbre entier retiré par un `{!isPrivacyMode && …}` plus haut.
+ *                           Chaque usage DIT où, en clair, à côté du jeton.
+ *
+ * ⚠️ **Un quatrième jeton a existé pendant un lot, et a disparu comme prévu.** À la livraison de la
+ * garde (lot 59), 12 sites portaient le montant à l'intérieur d'une chaîne construite en amont :
+ * rien à envelopper, correctif structurel. Plutôt que de livrer la garde non bloquante — ce que la
+ * règle autorise, et qui l'aurait apprise à être ignorée — ils portaient `MONTANT-CHAINE-A-DECOUPER`
+ * et un test refusait le treizième. Ce test avait une SECONDE assertion, symétrique : « dette à
+ * zéro → retire le jeton ». Le lot 60 l'a fait rougir en soldant les 12 sites, et le jeton a été
+ * retiré du vocabulaire. Un inventaire de dette doit savoir mourir, sinon il devient une
+ * échappatoire permanente (`ENTREE-D-INVENTAIRE-FANTOME`).
+ *
+ * ⚠️ **DEUX LECTEURS, et c'est un choix.** MONEY et PRIVACY sont cherchés dans la source
+ * DÉCOMMENTÉE : sans ça, un commentaire qui EXPLIQUE le mode discret satisfait la garde — classe
+ * `SCAN-QUI-MATCHE-LA-PROSE`, déjà payée trois fois dans ce dépôt. Les trois échappatoires, elles,
+ * sont cherchées dans la source BRUTE : elles sont FAITES pour vivre en commentaire, à côté de la
+ * ligne qu'elles justifient.
+ */
+import { describe, it, expect } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import { stripCommentsJsx } from '../../utils/stripComments';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+
+/** Formateurs monétaires de la source unique (`utils/format.ts`). */
+const MONEY_BASE = /\bformatCAD\s*\(|\bformatCompactCAD\s*\(|\bformatSigned\s*\([^)]*withCurrency/;
+/**
+ * Marques prouvant que le mode discret est pris en compte.
+ *
+ * ⚠️ Comme chez `chartPrivacyScan`, n'ajoute JAMAIS ici un nom de helper LOCAL : il figure déjà
+ * côté MONEY, et l'y remettre rendrait la garde auto-satisfaite.
+ */
+const PRIVACY = /Private(Amount|Block|Text|SliderValue|NumberInput|Select)\b|isPrivacyMode|privacyMode|MASKED_[A-Z]|masked[A-Z]|(?<![\w.])privacy(?![\w.])/;
+/**
+ * ⚠️ **Les lignes d'ATTRIBUT ne bénéficient PAS de la fenêtre — et c'est le cœur du lot.**
+ *
+ * `<KPIStat value={formatCurrency(x)} sublabel={`Manque ${formatCurrency(y)}`} privacy />` : la prop
+ * `privacy` masque le `value`, PAS le `sublabel`, qui sort en clair juste en dessous. Une fenêtre de
+ * ±2 lignes voit la marque du voisin et déclare la ligne saine — le masquage du `value` SERVIRAIT
+ * d'alibi à la fuite du `sublabel`. Ces lignes doivent donc porter leur marque À ELLES.
+ * C'est `PATRON-APPLIQUE-A-COTE-MAIS-PAS-ICI` transformé en règle de garde.
+ */
+const LIGNE_ATTRIBUT = /\b(sublabel|title|aria-label|placeholder|alt|note)\s*=/;
+const PUBLIC_OK = /MONTANT-PUBLIC/;
+const HORS_ECRAN = /MONTANT-HORS-ECRAN/;
+const MASQUE_AILLEURS = /MONTANT-MASQUE-AILLEURS/;
+/** Fenêtre de voisinage : un `<PrivateAmount>` ouvrant est souvent une ou deux lignes plus haut. */
+const W = 2;
+
+const files = readdirSync(path.join(ROOT, 'components'), { recursive: true, encoding: 'utf8' })
+    .filter((f) => f.endsWith('.tsx'))
+    .map((f) => path.join(ROOT, 'components', f));
+
+/**
+ * Jeton posé sur la DÉFINITION d'un alias de `formatNumber` (sur sa ligne ou celle du dessus), ou au-dessus
+ * d'un appel direct / d'un ratio, pour un nombre qui n'est PAS une donnée de l'utilisateur (hypothèse
+ * saisie, qualité d'un outil…). ⚠️ Depuis `[PRIVACY-RATIOS-DUREES-UNIFORMES]` (Marc, 2026-09-29), un
+ * ratio ou une durée DÉRIVÉ du dossier ne se déclare PLUS ainsi : il se masque.
+ * Honoré pour `formatNumber` SEULEMENT : un alias de `formatCAD` est un montant par construction.
+ */
+const NOMBRE_NON_MONETAIRE = /NOMBRE-NON-MONETAIRE/;
+
+/**
+ * Alias LOCAUX d'un formateur monétaire, déclarés dans le fichier.
+ *
+ * [PRIVACY-SCAN-ALIAS-FORMATNUMBER] `formatNumber` (sans symbole de devise) en fait partie : un
+ * `const fmtNu = (n) => formatNumber(...)` qui rend un gain en dollars était structurellement
+ * invisible (`panneauJour/sections.tsx`). Ses alias sont donc traités comme monétaires PAR DÉFAUT,
+ * sauf déclaration explicite `NOMBRE-NON-MONETAIRE` sur leur définition (lue dans `brut`).
+ * Les appels DIRECTS à `formatNumber(` sont relevés à part (`NOMBRE_DIRECT`, plus bas).
+ */
+export function aliasMonetaires(src: string, brut?: string): string[] {
+    const lignesBrutes = brut?.split('\n');
+    return [...src.matchAll(/const\s+(\w+)\s*[:=][^\n]*=>\s*[^\n]*\b(formatCAD|formatCompactCAD|formatNumber)\s*\(/g)]
+        .filter((m) => {
+            // `[^\n]*` est glouton : `m[2]` est le DERNIER formateur de la ligne. Une définition qui
+            // contient AUSSI un formateur CAD reste monétaire, jeton ou pas.
+            if (m[2] !== 'formatNumber' || /\bformat(CAD|CompactCAD)\s*\(/.test(m[0]) || !lignesBrutes) return true;
+            const ligne = src.slice(0, m.index).split('\n').length - 1;
+            return !NOMBRE_NON_MONETAIRE.test(lignesBrutes.slice(Math.max(0, ligne - 1), ligne + 1).join('\n'));
+        })
+        .map((m) => m[1]);
+}
+
+/**
+ * [PRIVACY-SCAN-FORMATNUMBER-DIRECT] Appel DIRECT au formateur sans devise. Il sert autant aux
+ * montants (prix d'achat, total investi) qu'aux ratios et durées : il est donc relevé comme un
+ * montant, et un site non monétaire le DÉCLARE par `NOMBRE-NON-MONETAIRE` dans sa fenêtre (±2 lignes,
+ * source brute). Mesuré le 2026-09-29 : 6 sites relevés, dont 2 vraies fuites (récapitulatif
+ * d'`AddStockForm`) corrigées dans le même lot. Le jeton n'excuse JAMAIS une ligne qui porte aussi
+ * un formateur CAD ou un alias monétaire.
+ */
+const NOMBRE_DIRECT = /\bformatNumber\s*\(/;
+
+/**
+ * [PRIVACY-RATIOS-DUREES-UNIFORMES] Décision de Marc (2026-09-29) : un RATIO dérivé des données de
+ * l'utilisateur (part du budget, poids d'un titre, taux d'épargne, variation du portefeuille, gain %)
+ * se masque comme un montant. Relevés ici : `formatPercent(`, `formatVariationPct(`, et un
+ * `.toFixed(n)` suivi d'un `%` sur la même ligne. Un pourcentage NON personnel (hypothèse de marché,
+ * réglage de simulation, barème légal) le DÉCLARE par `NOMBRE-NON-MONETAIRE` ou `MONTANT-PUBLIC`.
+ */
+const RATIO_BASE = /\bformatPercent\s*\(|\bformatVariationPct\s*\(|\.toFixed\(\s*\d*\s*\)[^\n%]{0,6}%/;
+
+/**
+ * [PRIVACY-GARDE-DUREES-SCORES-BARRES] Les trois familles que la garde ne voyait pas (Marc, 2026-10-16,
+ * option 1 sur #1149 : « étendre la garde »). Le lot 5 les couvrait par des tests de rendu seulement :
+ * un NOUVEAU site de ces familles passait sans que rien ne rougisse. Relevés, comme les ratios :
+ *  · SCORE_BASE — `{score}/100` (texte ou gabarit) ;
+ *  · BARRE_BASE — largeur/hauteur d'une barre en `${…}%`, `scaleX(`, `strokeDashoffset={…}`, et
+ *                 `aria-valuenow={…}` (la valeur d'une barre dite aux lecteurs d'écran) ;
+ *  · DUREE_BASE — `{n} mois`, `{n} ans`, `{n} an` (durée ou âge rendu).
+ * Même sortie que les ratios : une marque de mode discret dans la fenêtre, OU un jeton ci-dessus
+ * `NOMBRE-NON-MONETAIRE` pour un nombre qui n'est PAS dérivé du dossier (réglage saisi, horizon,
+ * axe d'âge ou d'année, fraîcheur d'une donnée, durée d'un barème). Un score, une barre ou une durée
+ * DÉRIVÉ du dossier se masque : le jeton ne le couvre pas.
+ * Volontairement hors périmètre : `jours` (fraîcheur de donnée, jamais une durée financière) et les
+ * `strokeDasharray` (décor de grille, pas une valeur).
+ */
+const SCORE_BASE = /\}(?:\s*<\/\w+>)?\s?\/\s?100\b/;
+const BARRE_BASE = /\b(?:width|height):\s*`[^`]*\$\{[^}]*\}\s*%|\bscaleX\(|\bstrokeDashoffset=\{|\baria-valuenow=\{/;
+const DUREE_BASE = /\}\s*(?:mois|ans?)\b/;
+const SCORE_BARRE_DUREE = (l: string): boolean => SCORE_BASE.test(l) || BARRE_BASE.test(l) || DUREE_BASE.test(l);
+
+interface Site { fichier: string; ligne: number; texte: string }
+
+function sitesNonMasques(): Site[] {
+    return files.flatMap((file) => sitesNonMasquesDans(readFileSync(file, 'utf8'), path.relative(ROOT, file)));
+}
+
+/** Même jugement, sur UNE source (testable sur une synthèse). */
+function sitesNonMasquesDans(brut: string, fichier: string): Site[] {
+    const out: Site[] = [];
+    {
+        // `stripCommentsJsx` BLANCHIT (mêmes lignes, mêmes colonnes) : les deux lectures restent
+        // alignées ligne à ligne, ce qui est la condition pour croiser les deux fenêtres.
+        const src = stripCommentsJsx(brut);
+        const lines = src.split('\n');
+        const lignesBrutes = brut.split('\n');
+        const alias = aliasMonetaires(src, brut);
+        const ALIAS = alias.length ? new RegExp(`\\b(${alias.join('|')})\\s*\\(`) : null;
+        lines.forEach((l, i) => {
+            const monetaire = MONEY_BASE.test(l) || (ALIAS !== null && ALIAS.test(l));
+            const formateur = NOMBRE_DIRECT.test(l) || RATIO_BASE.test(l);
+            const nombre = formateur || SCORE_BARRE_DUREE(l);
+            if (!monetaire && !nombre) return;
+            // La DÉFINITION d'un alias de formateur n'est pas un rendu — c'est son point d'APPEL qui compte.
+            // (Pas pour scores/barres/durées : une flèche qui rend `${v} ans` EST un rendu.)
+            if (/const\s+\w+\s*[:=][^\n]*=>/.test(l) && (MONEY_BASE.test(l) || formateur)) return;
+            const fenetre = lines.slice(Math.max(0, i - W), i + W + 1).join('\n');
+            const fenetreBrute = lignesBrutes.slice(Math.max(0, i - W), i + W + 1).join('\n');
+            // Le jeton ne regarde QUE vers le haut (ligne courante + 2 au-dessus) : posé pour un site,
+            // il ne doit pas excuser un `formatNumber(` situé AU-DESSUS de lui (revue lot 4).
+            if (!monetaire && NOMBRE_NON_MONETAIRE.test(lignesBrutes.slice(Math.max(0, i - W), i + 1).join('\n'))) return;
+            if (LIGNE_ATTRIBUT.test(l)) { if (PRIVACY.test(l)) return; }
+            else if (PRIVACY.test(fenetre)) return;
+            if (PUBLIC_OK.test(fenetreBrute) || HORS_ECRAN.test(fenetreBrute)
+                || MASQUE_AILLEURS.test(fenetreBrute)) return;
+            out.push({ fichier, ligne: i + 1, texte: l.trim().slice(0, 120) });
+        });
+    }
+    return out;
+}
+
+describe('[A11Y-PRIVACY-SCAN-GLOBAL] aucun montant rendu n\'échappe au mode discret', () => {
+    it('a bien des fichiers à scanner (la garde ne peut pas être vide)', () => {
+        expect(files.length).toBeGreaterThan(100);
+    });
+
+    it('connaît les alias locaux — sinon elle hérite du trou qui a fabriqué le ticket', () => {
+        // Anti-vacuité : ce dépôt EN CONTIENT, et c'est la seule raison d'être de cette moitié du
+        // scan. Si plus aucun alias n'existait, la ligne `ALIAS` serait morte sans que rien ne le
+        // dise. Témoin nommé plutôt que compte : un compte se rebase, un nom se vérifie.
+        const src = readFileSync(path.join(ROOT, 'components/realestate/RealEstateWorkspace.tsx'), 'utf8');
+        expect(aliasMonetaires(src)).toContain('formatCurrency');
+    });
+
+    it('[PRIVACY-SCAN-ALIAS-FORMATNUMBER] voit les alias de formatNumber (témoin réel + synthèse)', () => {
+        // Témoin RÉEL : le gain affiché sous la valeur d'un compte, qui a motivé le ticket.
+        const brut = readFileSync(path.join(ROOT, 'components/projection/panneauJour/sections.tsx'), 'utf8');
+        expect(aliasMonetaires(stripCommentsJsx(brut), brut)).toContain('fmtNu');
+        // Synthèse : un alias de formatNumber est monétaire par défaut…
+        const nu = 'const fmtNu = (n: number) => formatNumber(Math.round(n));';
+        expect(aliasMonetaires(nu, nu)).toEqual(['fmtNu']);
+        // …sauf déclaration explicite sur sa définition ;
+        const pct = '// NOMBRE-NON-MONETAIRE : pourcentage\nconst pct = (v: number) => formatNumber(v);';
+        expect(aliasMonetaires(pct, pct)).toEqual([]);
+        // et le jeton ne blanchit JAMAIS un alias de formatCAD.
+        const cad = '// NOMBRE-NON-MONETAIRE\nconst fmt = (v: number) => formatCAD(v);';
+        expect(aliasMonetaires(cad, cad)).toEqual(['fmt']);
+        // …ni une définition qui mêle formatCAD PUIS formatNumber (le dernier formateur n'y suffit pas).
+        const mixte = '// NOMBRE-NON-MONETAIRE\nconst m = (v: number) => `${formatCAD(v)} (${formatNumber(v)})`;';
+        expect(aliasMonetaires(mixte, mixte)).toEqual(['m']);
+        // …et le jeton d'un alias voisin (ligne du DESSOUS) n'exclut pas l'alias du dessus.
+        const voisins = 'const a = (v: number) => formatNumber(v);\n// NOMBRE-NON-MONETAIRE\nconst b = (v: number) => formatNumber(v);';
+        expect(aliasMonetaires(voisins, voisins)).toEqual(['a']);
+    });
+
+    it('le décommentage laisse du code à scanner (anti-vacuité, AGRÉGÉE)', () => {
+        // ⚠️ Le seuil est AGRÉGÉ sur tout `components/`, pas par fichier : mesuré au lot 58, un
+        // fichier très documenté descend à 0,466 de code sans être malade pour autant
+        // (`UN-SEUIL-D-ANTI-VACUITE-APPARTIENT-A-LA-PORTEE-QU-IL-MESURE`). À l'échelle du dossier,
+        // « la moitié du dépôt a disparu » redevient un signal.
+        // `partDeCodeRestante` n'est pas utilisée ici À DESSEIN : elle rend un ratio PAR FICHIER,
+        // et c'est précisément la portée dont le seuil ne veut pas. On agrège les caractères.
+        let brutTotal = 0, codeTotal = 0;
+        for (const file of files) {
+            const brut = readFileSync(file, 'utf8');
+            brutTotal += brut.replace(/\s/g, '').length;
+            codeTotal += stripCommentsJsx(brut).replace(/\s/g, '').length;
+        }
+        expect(codeTotal / brutTotal).toBeGreaterThan(0.5);
+    });
+
+    it('la garde TIRE : un montant nu, sans marque, est bien relevé', () => {
+        // Sans ce cas, « zéro offender » ne distingue pas « tout est masqué » de « le scan est
+        // mort ». On lui donne une source de synthèse qui porte exactement le défaut visé.
+        const faux = [
+            'const x = 1;',
+            '<div className="kpi">{formatCAD(soldeDuCompte)}</div>',
+            'const y = 2;',
+        ].join('\n');
+        const lignes = faux.split('\n');
+        const suspecte = lignes.findIndex((l) => MONEY_BASE.test(l));
+        expect(suspecte).toBe(1);
+        expect(PRIVACY.test(faux)).toBe(false);
+        // …et le MÊME texte, enveloppé, ne l'est plus.
+        expect(PRIVACY.test(faux.replace('{formatCAD(', '<PrivateAmount>{formatCAD('))).toBe(true);
+    });
+
+    it('[PRIVACY-SCAN-FORMATNUMBER-DIRECT] un appel direct à formatNumber est relevé, sauf masqué ou déclaré', () => {
+        const nu = 'const a = 1;\n<strong>{formatNumber(total, { decimals: 2 })}</strong> CAD\nconst b = 2;';
+        expect(sitesNonMasquesDans(nu, 'synthese.tsx').map((s) => s.ligne)).toEqual([2]);
+        // Enveloppé : sain.
+        const masque = nu.replace('<strong>{formatNumber(total, { decimals: 2 })}</strong>', '<strong><PrivateAmount>{formatNumber(total, { decimals: 2 })}</PrivateAmount></strong>');
+        expect(sitesNonMasquesDans(masque, 'synthese.tsx')).toEqual([]);
+        // Déclaré non monétaire (commentaire JSX au-dessus) : sain.
+        const ratio = '{/* NOMBRE-NON-MONETAIRE : un ratio */}\n<span>{formatNumber(part, { decimals: 1 })} %</span>';
+        expect(sitesNonMasquesDans(ratio, 'synthese.tsx')).toEqual([]);
+        // Le jeton n'excuse PAS un formateur CAD sur la même ligne.
+        const mixte = '{/* NOMBRE-NON-MONETAIRE */}\n<span>{formatNumber(part)} % de {formatCAD(total)}</span>';
+        expect(sitesNonMasquesDans(mixte, 'synthese.tsx').map((s) => s.ligne)).toEqual([2]);
+        // Le jeton d'un site du DESSOUS n'excuse pas un montant du dessus.
+        const dessus = '<b>{formatNumber(total)}</b>\n{/* NOMBRE-NON-MONETAIRE */}\n<span>{formatNumber(part)} %</span>';
+        expect(sitesNonMasquesDans(dessus, 'synthese.tsx').map((s) => s.ligne)).toEqual([1]);
+    });
+
+    it('[PRIVACY-RATIOS-DUREES-UNIFORMES] un ratio rendu en clair est relevé, sauf masqué ou déclaré', () => {
+        const pct = 'const a = 1;\n<span>{formatPercent(taux, 1)}</span>\nconst b = 2;';
+        expect(sitesNonMasquesDans(pct, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        const toFixed = 'const a = 1;\n<div>{a.weight.toFixed(1)}%</div>\nconst b = 2;';
+        expect(sitesNonMasquesDans(toFixed, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        const variation = 'const a = 1;\n<div>{formatVariationPct(v, 2)}</div>\nconst b = 2;';
+        expect(sitesNonMasquesDans(variation, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        expect(sitesNonMasquesDans(pct.replace('{formatPercent(taux, 1)}', '<PrivateAmount>{formatPercent(taux, 1)}</PrivateAmount>'), 's.tsx')).toEqual([]);
+        expect(sitesNonMasquesDans('{/* MONTANT-PUBLIC : barème */}\n<span>{formatPercent(taux, 1)}</span>', 's.tsx')).toEqual([]);
+    });
+
+    it('[PRIVACY-GARDE-DUREES-SCORES-BARRES] un score `/100` rendu en clair est relevé, sauf masqué ou déclaré', () => {
+        const score = 'const a = 1;\n<span>Santé {total}/100</span>\nconst b = 2;';
+        expect(sitesNonMasquesDans(score, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        // Dans un gabarit (la forme qui avait échappé : `${fvi}/100`).
+        expect(sitesNonMasquesDans('const v = ok ? `${fvi}/100` : \'—\';', 's.tsx').map((s) => s.ligne)).toEqual([1]);
+        expect(sitesNonMasquesDans(score.replace('{total}', '<PrivateAmount>{total}</PrivateAmount>'), 's.tsx')).toEqual([]);
+        expect(sitesNonMasquesDans('// MONTANT-MASQUE-AILLEURS : rendu dans <PrivateAmount>\n' + score, 's.tsx')).toEqual([]);
+        // Le score peut être refermé par une balise avant le `/100` (la forme du badge corrigé).
+        expect(sitesNonMasquesDans('<b>{total}</b>/100', 's.tsx')).toHaveLength(1);
+        expect(sitesNonMasquesDans('<PrivateAmount>{total}</PrivateAmount>/100', 's.tsx')).toEqual([]);
+        // Une division ordinaire n'est PAS un rendu de score.
+        expect(sitesNonMasquesDans('const taux = (rate / 100) / 12;', 's.tsx')).toEqual([]);
+    });
+
+    it('[PRIVACY-GARDE-DUREES-SCORES-BARRES] une barre dessinée par une valeur est relevée, sauf masquée ou déclarée', () => {
+        const barre = 'const a = 1;\n<div style={{ width: `${part * 100}%` }} />\nconst b = 2;';
+        expect(sitesNonMasquesDans(barre, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        expect(sitesNonMasquesDans('<circle strokeDashoffset={decalage} />', 's.tsx')).toHaveLength(1);
+        expect(sitesNonMasquesDans('<div role="progressbar" aria-valuenow={pct} />', 's.tsx')).toHaveLength(1);
+        expect(sitesNonMasquesDans('<span style={{ transform: `scaleX(${ratio})` }} />', 's.tsx')).toHaveLength(1);
+        // Barre vidée en mode discret : saine.
+        expect(sitesNonMasquesDans('<div style={{ width: `${isPrivacyMode ? 0 : part * 100}%` }} />', 's.tsx')).toEqual([]);
+        // Barre qui ne dessine rien de personnel : déclarée.
+        expect(sitesNonMasquesDans('{/* NOMBRE-NON-MONETAIRE : progression d\'une tâche */}\n' + barre.split('\n')[1], 's.tsx')).toEqual([]);
+        expect(sitesNonMasquesDans('// MONTANT-PUBLIC : tranche du barème\n' + barre.split('\n')[1], 's.tsx')).toEqual([]);
+        // Pas de faux positif sur une largeur fixe ou un décor de grille.
+        expect(sitesNonMasquesDans('<div style={{ width: \'100%\', height: 300 }} /><CartesianGrid strokeDasharray="3 3" />', 's.tsx')).toEqual([]);
+    });
+
+    it('[PRIVACY-GARDE-DUREES-SCORES-BARRES] une durée ou un âge rendu en clair est relevé, sauf masqué ou déclaré', () => {
+        const duree = 'const a = 1;\n<span>{moisDeCoussin} mois</span>\nconst b = 2;';
+        expect(sitesNonMasquesDans(duree, 's.tsx').map((s) => s.ligne)).toEqual([2]);
+        expect(sitesNonMasquesDans('<b>{fireAge} ans</b>', 's.tsx')).toHaveLength(1);
+        expect(sitesNonMasquesDans('const t = `${Math.round(age)} an`;', 's.tsx')).toHaveLength(1);
+        // Une FLÈCHE qui rend la durée est un rendu, pas un alias de formateur à ignorer.
+        expect(sitesNonMasquesDans('const fmtDuree = (v: number) => `${v} ans`;', 's.tsx')).toHaveLength(1);
+        expect(sitesNonMasquesDans(duree.replace('{moisDeCoussin}', '<PrivateAmount>{moisDeCoussin}</PrivateAmount>'), 's.tsx')).toEqual([]);
+        expect(sitesNonMasquesDans('{/* NOMBRE-NON-MONETAIRE : réglage saisi */}\n' + duree.split('\n')[1], 's.tsx')).toEqual([]);
+        // Le jeton d'un site du DESSOUS n'excuse pas une durée du dessus.
+        expect(sitesNonMasquesDans('<b>{moisDeCoussin} mois</b>\n<i/>\n<i/>\n{/* NOMBRE-NON-MONETAIRE */}\n<b>{horizon} ans</b>', 's.tsx').map((s) => s.ligne)).toEqual([1]);
+        // `jours` reste hors périmètre (fraîcheur d'une donnée, jamais une durée financière).
+        expect(sitesNonMasquesDans('<b>{n} jours</b>', 's.tsx')).toEqual([]);
+        // Le jeton n'excuse JAMAIS un montant sur la même ligne.
+        expect(sitesNonMasquesDans('{/* NOMBRE-NON-MONETAIRE */}\n<b>{formatCAD(x)} sur {n} ans</b>', 's.tsx').map((s) => s.ligne)).toEqual([2]);
+    });
+
+    it('[PRIVACY-GARDE-DUREES-SCORES-BARRES] anti-vacuité : chaque famille a ses sites réels dans components/', () => {
+        // Témoins NOMMÉS (un nom se vérifie, un compte se rebase). Si une famille n'a plus aucun site
+        // réel, sa regex est peut-être morte sans que « zéro site fautif » le dise.
+        const lire = (rel: string) => stripCommentsJsx(readFileSync(path.join(ROOT, rel), 'utf8')).split('\n');
+        expect(lire('components/Investments.tsx').some((l) => SCORE_BASE.test(l))).toBe(true);
+        expect(lire('components/budget/DualKPIStat.tsx').some((l) => BARRE_BASE.test(l))).toBe(true);
+        expect(lire('components/projection/StrategyOptimizerPanel.tsx').some((l) => DUREE_BASE.test(l))).toBe(true);
+    });
+
+    it('le jeton de dette `MONTANT-CHAINE-A-DECOUPER` a bien disparu du dépôt', () => {
+        // Il a servi UN lot (59 → 60) et sa raison d'être est éteinte. Ce test empêche qu'on le
+        // ressuscite en douce : un montant dans une chaîne se DÉCOUPE, il ne se déclare pas.
+        // Il vise le CODE de `components/` — la prose de cette garde a le droit d'en raconter
+        // l'histoire, et c'est bien pour ça qu'elle lit les fichiers scannés, pas elle-même.
+        const survivants = files.filter((f) => /MONTANT-CHAINE-A-DECOUPER/.test(readFileSync(f, 'utf8')));
+        expect(survivants.map((f) => path.relative(ROOT, f))).toEqual([]);
+    });
+
+    it('aucun montant formaté ne reste hors du mode discret', () => {
+        const offenders = sitesNonMasques().map((s) => `${s.fichier}:${s.ligne}  ${s.texte}`);
+        expect(
+            offenders,
+            'montant formaté sans marque de mode discret dans les 2 lignes voisines. '
+            + 'Envelopper dans <PrivateAmount>, ou déclarer MONTANT-PUBLIC (valeur légale, pas celle '
+            + 'de l\'utilisateur) / MONTANT-HORS-ECRAN (chaîne pour un canal non rendu).',
+        ).toEqual([]);
+    });
+});

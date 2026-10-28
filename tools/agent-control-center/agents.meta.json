@@ -1,0 +1,20 @@
+{
+  "_comment": "Métadonnées STATIQUES des 14 agents projet, dérivées de docs/agents.md. Source unique partagée hook + dashboard. Données RÉELLES du projet (pas inventées).",
+  "agents": [
+    { "name": "orchestrator", "model": "sonnet", "priority": "normal", "role": "Route vers les agents pertinents selon le type de demande (ne code jamais)." },
+    { "name": "architect", "model": "sonnet", "priority": "normal", "role": "Structure cible + plan d'implémentation." },
+    { "name": "product-manager", "model": "sonnet", "priority": "normal", "role": "Valeur utilisateur / MVP / critères d'acceptation." },
+    { "name": "financial-integrity", "model": "opus", "priority": "critical", "role": "Justesse des calculs $ + intégrité des données monétaires (vs FISCAL_REFERENCE)." },
+    { "name": "security-privacy", "model": "sonnet", "priority": "high", "role": "Failles d'accès / fuites / vie privée (Loi 25, RGPD)." },
+    { "name": "code-reviewer", "model": "sonnet", "priority": "high", "role": "Correction / clarté / perf générale / couverture des tests." },
+    { "name": "ai-reviewer", "model": "sonnet", "priority": "normal", "role": "Robustesse des prompts / coût / fallback du SDK Anthropic." },
+    { "name": "documentation-manager", "model": "haiku", "priority": "low", "role": "Cohérence doc <-> code (Edit docs/ + .md)." },
+    { "name": "projection-validator", "model": "opus", "priority": "critical", "role": "Conservation de l'argent / 12 invariants du moteur (systémique)." },
+    { "name": "silent-failure-hunter", "model": "sonnet", "priority": "high", "role": "Erreurs avalées / fallback masquant un bug (transversal)." },
+    { "name": "test-writer", "model": "sonnet", "priority": "normal", "role": "Génère des tests Vitest pour la logique ajoutée." },
+    { "name": "performance-optimizer", "model": "sonnet", "priority": "normal", "role": "Profilage moteur profond (Monte Carlo / worker / boucles chaudes)." },
+    { "name": "a11y-auditor", "model": "sonnet", "priority": "normal", "role": "Accessibilité WCAG AA sur UI notable." },
+    { "name": "code-analyzer", "model": "sonnet", "priority": "normal", "role": "Dette technique large -> entrées BACKLOG." }
+  ],
+  "pipeline": ["Request", "Analysis", "Architecture", "Implementation", "Review", "Security", "Financial", "Testing", "Documentation", "Release"]
+}

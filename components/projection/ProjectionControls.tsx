@@ -1,0 +1,455 @@
+import React from 'react';
+import { Select } from '../ui/Select';
+import { Icon } from '../ui/Icon';
+import { PrivateAmount } from '../ui/PrivateAmount';
+import { Button } from '../ui/Button';
+import { CollapsibleSection } from '../ui/CollapsibleSection';
+import { Badge } from '../ui/Badge';
+import { ProjectionConfig, RealEstateGoal, BudgetConfig } from '../../types';
+import { AdvancedProjectionParams } from '../AdvancedProjectionParams';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import { esperanceDeVieEffective } from '../../services/projection/horizon';
+import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
+import { ValeurMaxMaisonField } from './macroFields/ValeurMaxMaisonField';
+import { ProjectionControlsMobile } from './ProjectionControlsMobile';
+
+interface LiveCSVBalances {
+    CELI: number;
+    REER: number;
+    NON_ENREG: number;
+    CRYPTO: number;
+    REEE: number;
+    TOTAL: number;
+    historicalRate: number;
+}
+
+interface ProjectionControlsProps {
+    projection: ProjectionConfig;
+    updateProj: (key: keyof ProjectionConfig, val: ProjectionConfig[keyof ProjectionConfig]) => void;
+    updateReturnRate: (key: string, val: number) => void;
+    runMC: boolean;
+    setRunMC: (v: boolean) => void;
+    isComputing: boolean;
+    fireNumber: number;
+    liveCSVBalances: LiveCSVBalances;
+    applyHistoricalRate: () => void;
+    realEstateGoals: RealEstateGoal[];
+    setRealEstateGoals?: (g: RealEstateGoal[]) => void;
+    config: BudgetConfig;
+    /** [FUTUR-NAV-TIROIRS bandeau, 2026-09-21] Ce composant ne s'affiche plus QUE dans un `<Drawer>`
+     *  (tiroir « Modifier les hypothèses ») — jamais plus en page pleine largeur. Sur téléphone
+     *  (`isNarrowViewport`, branche `ProjectionControlsMobile` ci-dessus) le tiroir est une feuille
+     *  `w-full` : les seuils `md:`/`lg:` (viewport) restent justes. Sur desktop, le tiroir est
+     *  `lateral` — plafonné à 440px alors que le VIEWPORT (≥1024px pour l'atteindre) déclenche
+     *  toujours `md:`/`lg:` : 3-4 colonnes s'écrasaient dans 440px, quel que soit le contenu.
+     *  Tailwind 3.4 n'a pas de container queries natives ici (pas de plugin installé) → ce booléen,
+     *  fourni par l'appelant qui connaît déjà le seuil (`useViewportBelowLg`), REMPLACE les préfixes
+     *  `md:`/`lg:` par un choix explicite quand le tiroir est latéral. Défaut `false` (comportement
+     *  d'avant ce lot) pour le test existant qui monte `ProjectionControls` sans le fournir. */
+    isLateralDrawer?: boolean;
+}
+
+// [FUTUR-MOBILE-PR4] Exportés pour être réutilisés tels quels par `ProjectionControlsMobile`
+// (source unique — jamais recopiés, sinon les deux vues divergeraient en silence à la prochaine
+// valeur fiscale/config ajoutée ici).
+export const STOCHASTIC_TOGGLES = [
+    { key: 'useStochasticMortality', label: 'Mortalité', title: "Active des tirages aléatoires de date de décès (tables Stats Can 2020-2022) en mode Monte Carlo. La simulation s'arrête à la mort." },
+    { key: 'ltcEnabled', label: 'Soins LD', title: "Soins de longue durée (CHSLD/RPA). Probabilité croissante après 65 ans (1% → 25%/an)." },
+    { key: 'jobLossEnabled', label: 'Perte emploi', title: "Perte d'emploi stochastique en MC. Probabilité annuelle ~3% (Stats Can). Pendant N mois, revenu du user principal = 55% (assurance-emploi)." },
+    { key: 'modelSurvivor', label: 'Survivant', title: "Modélise le décès du conjoint en MC (RRQ survivant 60%, PSV cesse, DB selon election)." },
+    { key: 'useHistoricalBootstrap', label: 'Bootstrap historique', title: "Échantillonne l'historique réel S&P 500 + inflation US 1928-2024 (97 ans)." },
+    { key: 'divorceEnabled', label: 'Divorce', title: "Divorce stochastique (MC). Probabilité annuelle ~1.5% (cumul ~36% sur 30 ans)." },
+    { key: 'ltdEnabled', label: 'Invalidité', title: "Invalidité longue durée stochastique. Probabilité annuelle ~0.5%." },
+    { key: 'criticalIllnessEnabled', label: 'Maladie grave', title: "Maladie grave stochastique. Probabilité ~0.3%/an." },
+    { key: 'inheritanceEnabled', label: 'Héritage', title: "Héritage probabilisé. Tirage dans la fenêtre [âge attendu ± uncertaintyY]." },
+    { key: 'snowbirdEnabled', label: 'Snowbird', title: "Snowbird (4-6 mois en US/Mexique en hiver à la retraite). Surcoût mensuel ~1500$." },
+] as const;
+
+export const INFLATION_CATEGORIES = [
+    { key: 'inflationHousing',   label: 'Logement',   weight: 30, def: 4.0 },
+    { key: 'inflationFood',      label: 'Alim.',      weight: 17, def: 3.5 },
+    { key: 'inflationTransport', label: 'Transport',  weight: 15, def: 2.5 },
+    { key: 'inflationHealth',    label: 'Santé',      weight: 5,  def: 4.5 },
+    { key: 'inflationLeisure',   label: 'Loisirs',    weight: 6,  def: 1.5 },
+    { key: 'inflationOther',     label: 'Autres',     weight: 27, def: 2.0 },
+] as const;
+
+export const REPLAY_OPTIONS = [
+    { value: '',     label: '— Aucun (mode normal) —' },
+    { value: '1929', label: '1929 — Grande Dépression' },
+    { value: '1973', label: '1973 — Choc pétrolier + stagflation' },
+    { value: '2000', label: '2000 — Bulle dot-com' },
+    { value: '2008', label: '2008 — Crise financière' },
+    { value: '2020', label: '2020 — COVID' },
+    { value: '2022', label: '2022 — Inflation post-COVID' },
+];
+
+export const ProjectionControls: React.FC<ProjectionControlsProps> = ({
+    projection, updateProj, updateReturnRate,
+    runMC, setRunMC, isComputing,
+    liveCSVBalances, applyHistoricalRate,
+    realEstateGoals, setRealEstateGoals,
+    isLateralDrawer = false,
+}) => {
+    // Grilles de la branche desktop : colonnes FIXES dans le tiroir latéral (440px, viewport ≥1024px
+    // garanti donc `md:`/`lg:` toujours actifs et sans rapport avec la largeur réelle du tiroir),
+    // seuils `md:` d'origine conservés dans la feuille mobile (`w-full`, où ils restent justes).
+    // 3 colonnes au bureau depuis le retrait de « Flux Mensuels » ([SANDBOX-CURSEURS-THEORIQUES-RETRAIT]).
+    const gridHypotheses = isLateralDrawer ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
+    const gridInflationCategories = isLateralDrawer ? 'grid grid-cols-2 gap-3 mt-3 p-3 rounded-card border border-warning-border bg-warning-bg' : 'grid grid-cols-2 md:grid-cols-3 gap-3 mt-3 p-3 rounded-card border border-warning-border bg-warning-bg';
+    const gridUsWithholding = isLateralDrawer ? 'grid grid-cols-1 gap-4 p-3 rounded-card border border-white/5 bg-black/30' : 'grid grid-cols-1 md:grid-cols-2 gap-4 p-3 rounded-card border border-white/5 bg-black/30';
+    const gridStochastic = isLateralDrawer ? 'grid grid-cols-2 gap-2 mt-3' : 'grid grid-cols-1 md:grid-cols-3 gap-2 mt-3';
+    // D6-SR-2 — masque la valeur des sliders monétaires (revenu/dépenses théoriques, plafond immo) au
+    // lecteur d'écran en mode privé (parité avec le blur visuel ; les sliders de taux/% ne sont pas masqués).
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    const esperanceDeVie = esperanceDeVieEffective(useFinanceStore((s) => s.retirementGoal));
+    const projAsMap = projection as unknown as Record<string, unknown>;
+    const activeStochasticCount = STOCHASTIC_TOGGLES.filter(t => !!projAsMap[t.key]).length;
+    // [EP-1] les 10 toggles d'événements de vie sont cachés derrière un bouton « Activer des
+    // aléas… » (révélés si déjà actifs) — ils noyaient l'onglet sous des contrôles rarement utilisés.
+    const [showStochastic, setShowStochastic] = React.useState(activeStochasticCount > 0);
+    // [FUTUR-MOBILE-PR4] Décision Marc 2026-09-10 : réorganisation COMPLÈTE de l'onglet Hypothèses
+    // sur mobile (curseur+champ, ordre Mode→macro→rendements→sections repliées). Zéro changement
+    // visuel desktop (mandat #13) : le JSX ci-dessous, sous ce `if`, n'est JAMAIS rendu à largeur
+    // desktop — la branche desktop plus bas reste EXACTEMENT celle d'avant ce lot.
+    const isNarrowViewport = useViewportBelowSm();
+    // [FUTUR-MOBILE-PR4] Bandeau Mode/Smile Curve PARTAGÉ (Marc : « Mode » vient en premier sur
+    // mobile ET desktop) — une seule expression JSX, jamais recopiée, rendue par les DEUX branches.
+    const modeToolbar = (
+        <>
+            {/* PH4-FUT « leviers-d'abord » — le sélecteur « stratégie de retrait » est RETIRÉ d'ici :
+                l'ordre de retrait est désormais un LEVIER (composeur en amont, withdrawalOrder), appliqué
+                automatiquement (AUTO). Plus de doublon paramètre↔levier. */}
+
+            {/* Toolbar simulation — radio-group MC prominent (U3).
+                Le mode MC est structurant : il change la forme des courbes sur
+                tous les onglets (Futur, Retraite, Enfant…) via la projection
+                partagée. Un simple bouton toggle était invisible pour un
+                nouvel utilisateur.
+                Implémenté avec de vrais <input type="radio"> stylés via <label>
+                plutôt que role="radio" sur <button> — les navigateurs gèrent
+                nativement la navigation fléchée (ArrowLeft/Right) et l'état
+                checked, sans avoir à implémenter le onKeyDown manuellement
+                (fix HIGH a11y review). */}
+            <div className="flex flex-wrap items-center gap-3">
+                <fieldset
+                    className="flex items-center bg-black/50 border border-white/10 rounded-xl p-1 gap-0.5"
+                    disabled={isComputing}
+                >
+                    <legend className="sr-only">Mode de simulation</legend>
+
+                    <label
+                        className={`px-3 py-1.5 rounded-lg text-meta font-semibold transition-all cursor-pointer select-none ${
+                            !runMC
+                                ? 'bg-success-500/20 text-success-400 border border-success-500/30 shadow-xs'
+                                : 'text-ink-400 hover:text-ink-200 border border-transparent'
+                        } ${isComputing ? 'pointer-events-none opacity-50' : ''}`}
+                        title="Projection unique, sans aléatoire. Rapide (~150 ms). Pas de bandes P10-P90."
+                    >
+                        <input
+                            type="radio"
+                            name="simulation-mode"
+                            value="deterministic"
+                            checked={!runMC}
+                            onChange={() => setRunMC(false)}
+                            className="sr-only"
+                        />
+                        Déterministe
+                    </label>
+
+                    <label
+                        className={`px-3 py-1.5 rounded-lg text-meta font-semibold transition-all cursor-pointer select-none ${
+                            runMC
+                                ? 'bg-primary/20 text-primary border border-primary/30 shadow-xs'
+                                : 'text-ink-400 hover:text-ink-200 border border-transparent'
+                        } ${isComputing ? 'pointer-events-none opacity-50' : ''}`}
+                        title="100 scénarios aléatoires — affiche les bandes P10/P90. Impacte Retraite et Enfant."
+                    >
+                        <input
+                            type="radio"
+                            name="simulation-mode"
+                            value="montecarlo"
+                            checked={runMC}
+                            onChange={() => setRunMC(true)}
+                            className="sr-only"
+                        />
+                        Monte Carlo{isComputing && runMC ? ' …' : ''}
+                    </label>
+                </fieldset>
+                {runMC && (
+                    <span className="text-tiny text-ink-400 hidden sm:inline select-none">
+                        Impacte tous les onglets
+                    </span>
+                )}
+                <Button
+                    onClick={() => updateProj('useSmileCurve', !projection.useSmileCurve)}
+                    variant={projection.useSmileCurve ? 'primary' : 'ghost'}
+                    size="sm"
+                    title="Courbe en U des dépenses retraite (étude CIBC): go-go +15%, slow-go base, no-go -10%"
+                >
+                    Smile Curve {projection.useSmileCurve ? 'ON' : 'OFF'}
+                </Button>
+                {/* [EP-9] badge décoratif « N événements actifs » retiré ici (redondant avec le
+                    badge de la section « Risques & aléas » ci-dessous). */}
+            </div>
+        </>
+    );
+    if (isNarrowViewport) {
+        return (
+            <>
+                {modeToolbar}
+                <ProjectionControlsMobile
+                    projection={projection}
+                    esperanceDeVie={esperanceDeVie}
+                    updateProj={updateProj}
+                    updateReturnRate={updateReturnRate}
+                    runMC={runMC}
+                    liveCSVBalances={liveCSVBalances}
+                    applyHistoricalRate={applyHistoricalRate}
+                    realEstateGoals={realEstateGoals}
+                    setRealEstateGoals={setRealEstateGoals}
+                    isPrivacyMode={isPrivacyMode}
+                    activeStochasticCount={activeStochasticCount}
+                    showStochastic={showStochastic}
+                    setShowStochastic={setShowStochastic}
+                    projAsMap={projAsMap}
+                />
+            </>
+        );
+    }
+    return (
+        <>
+            {modeToolbar}
+            {/* §1 — Hypothèses macro (ouverte par défaut) */}
+            <CollapsibleSection
+                title="Hypothèses macroéconomiques"
+                icon={<Icon name="cash" size={20} />}
+                defaultOpen={true}
+            >
+                <div className={gridHypotheses}>
+                    {/* [SANDBOX-CURSEURS-THEORIQUES-RETRAIT] Colonne « Flux Mensuels » (curseurs Revenus /
+                        Dépenses théoriques) retirée : `useTheoretical` est neutralisé dans le moteur. */}
+                    <div className="space-y-4">
+                        <h4 className="text-tiny uppercase text-ink-400 border-b border-white/10 pb-1">Facteurs Macro</h4>
+                        {/* [HORIZON-ESPERANCE-DE-VIE] Plus de curseur : la projection va toujours jusqu'à
+                            l'espérance de vie de la personne 1 (réglée dans Retraite). */}
+                        <p className="text-meta text-ink-300">
+                            {/* NOMBRE-NON-MONETAIRE : réglage saisi (âge ou horizon choisi), pas une valeur dérivée du dossier (espérance de vie réglable) */}
+                            Horizon : jusqu'à <span className="text-secondary font-bold">{esperanceDeVie} ans</span> (espérance de vie, réglable dans Retraite)
+                        </p>
+                        <div>
+                            <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                <span>Inflation</span>
+                                <span className="text-danger-400 font-bold">{projection.inflationRate}%</span>
+                            </label>
+                            <input type="range" aria-label="Inflation" min="0" max="8" step="0.1" value={projection.inflationRate} onChange={e => updateProj('inflationRate', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-danger-500" />
+                        </div>
+                        <div>
+                            <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                <span>Hausse Salaire (An)</span>
+                                <span className="text-info-400 font-bold">{projection.salaryGrowth ?? 2.5}%</span>
+                            </label>
+                            <input type="range" aria-label="Hausse Salaire (An)" min="0" max="10" step="0.1" value={projection.salaryGrowth ?? 2.5} onChange={e => updateProj('salaryGrowth', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="text-tiny uppercase text-ink-400 border-b border-white/10 pb-1 flex justify-between items-center">
+                            <span>Rendements Estimés</span>
+                            {liveCSVBalances.historicalRate > 0 && (
+                                <Button
+                                    onClick={applyHistoricalRate}
+                                    variant="ghost"
+                                    size="sm"
+                                    title="Appliquer le rendement composé observé sur ton historique. ⚠️ Il inclut tes APPORTS (pas seulement la croissance des titres) → il SURESTIME le rendement pur, surtout sur un historique court (fiable à partir de ~3 ans)."
+                                    className="px-2! py-0.5! text-tiny!"
+                                >
+                                    Auto (<PrivateAmount>{liveCSVBalances.historicalRate.toFixed(1)}%</PrivateAmount>)
+                                </Button>
+                            )}
+                        </h4>
+                        <div>
+                            <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                <span>CELI (Tax Free)</span>
+                                <span className="text-warning-400 font-bold">{projection.returnRates?.celi || 7}%</span>
+                            </label>
+                            <input type="range" aria-label="CELI (Tax Free)" min="2" max="15" step="0.1" value={projection.returnRates?.celi || 7} onChange={e => updateReturnRate('celi', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500" />
+                        </div>
+                        <div>
+                            <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                <span>Non-Enregistré / REER</span>
+                                <span className="text-warning-400 font-bold">{projection.returnRates?.nonReg || 6.5}%</span>
+                            </label>
+                            <input type="range" aria-label="Non-Enregistré / REER" min="2" max="15" step="0.1" value={projection.returnRates?.nonReg || 6.5} onChange={e => { const v = Number(e.target.value); updateProj('returnRates', { ...(projection.returnRates || { celi: 7, reer: 6.5, nonReg: 6.5, crypto: 10, cash: 3 }), nonReg: v, reer: v }); }} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="text-tiny uppercase text-ink-400 border-b border-white/10 pb-1">Paramètres Spéciaux</h4>
+                        <div>
+                            <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                <span>Coussin de Sécurité</span>
+                                <span className="text-info-400 font-bold">{projection.emergencyFundMonths || 3} Mois</span>
+                            </label>
+                            <input type="range" aria-label="Coussin de Sécurité" min="1" max="12" step="1" value={projection.emergencyFundMonths || 3} onChange={e => updateProj('emergencyFundMonths', Number(e.target.value))} className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500" />
+                        </div>
+                        <ValeurMaxMaisonField realEstateGoals={realEstateGoals} setRealEstateGoals={setRealEstateGoals} isPrivacyMode={isPrivacyMode} />
+                    </div>
+                </div>
+            </CollapsibleSection>
+
+            {/* [EP-1] §2 « Variabilité » + §3 « Événements stochastiques » FUSIONNÉS en une seule
+                section « Risques & aléas » (ouverte si MC actif ; comptent surtout en Monte Carlo). */}
+            <CollapsibleSection
+                title="Risques & aléas"
+                icon={<Icon name="dice" size={20} />}
+                defaultOpen={runMC}
+                badge={activeStochasticCount > 0 ? <Badge variant="warning" size="sm">{activeStochasticCount} aléas actifs</Badge> : undefined}
+            >
+                <div className="space-y-4">
+                    {!runMC && (
+                        <p className="text-tiny text-ink-400 leading-snug">
+                            Ces réglages prennent tout leur sens en <strong className="text-ink-200">Monte Carlo</strong>
+                            {' '}(bandes P10–P90). En mode déterministe, seuls l'inflation par poste et le replay s'appliquent.
+                        </p>
+                    )}
+                    {/* Inflation par poste */}
+                    <div>
+                        <Button
+                            onClick={() => updateProj('usePerCategoryInflation', !projection.usePerCategoryInflation)}
+                            variant={projection.usePerCategoryInflation ? 'primary' : 'ghost'}
+                            size="sm"
+                            title="Décompose l'inflation en 6 postes (logement, alim, transport, santé, loisirs, autres) avec pondérations CPI 2023."
+                        >
+                            Inflation par poste {projection.usePerCategoryInflation ? 'ON' : 'OFF'}
+                        </Button>
+                        {projection.usePerCategoryInflation && (
+                            <div className={gridInflationCategories}>
+                                {INFLATION_CATEGORIES.map(item => (
+                                    <div key={item.key}>
+                                        <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                            <span>{item.label} ({item.weight}%)</span>
+                                            {/* NOMBRE-NON-MONETAIRE : hypothèse d'inflation saisie (réglage), pas un ratio du dossier. */}
+                                            <span className="text-warning-400 font-bold">{((projAsMap[item.key] as number | undefined) ?? item.def).toFixed(1)}%</span>
+                                        </label>
+                                        <input
+                                            type="range" aria-label={`${item.label} (${item.weight}%)`} min="0" max="10" step="0.1"
+                                            value={(projAsMap[item.key] as number | undefined) ?? item.def}
+                                            onChange={e => updateProj(item.key as keyof ProjectionConfig, Number(e.target.value))}
+                                            className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-warning-500"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Replay krach */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <label className="text-meta text-ink-300" htmlFor="replay-select">Replay krach historique:</label>
+                        <Select
+                            id="replay-select"
+                            value={projection.replayHistoricalYear ?? ''}
+                            onChange={e => updateProj('replayHistoricalYear', e.target.value ? Number(e.target.value) : undefined)}
+                        >
+                            {REPLAY_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </Select>
+                        <span className="text-tiny text-ink-400">→ Force les rendements historiques.</span>
+                    </div>
+
+                    {/* US Withholding */}
+                    <div className={gridUsWithholding}>
+                        <div>
+                            <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                <span>🇺🇸 Part actions US dans CELI (%)</span>
+                                <span className="text-info-400 font-bold">{projection.usEquityShareCeli ?? 0}%</span>
+                            </label>
+                            <input
+                                type="range" aria-label="Part actions US dans CELI (%)" min="0" max="100" step="5"
+                                value={projection.usEquityShareCeli ?? 0}
+                                onChange={e => updateProj('usEquityShareCeli', Number(e.target.value))}
+                                className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500"
+                            />
+                            <p className="text-tiny text-ink-400 mt-1">VOO/SPY/QQQ... Le CELI n'est PAS protégé du withholding US 15% (le REER si).</p>
+                        </div>
+                        <div>
+                            <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                <span>Rendement dividende US (%)</span>
+                                {/* NOMBRE-NON-MONETAIRE : hypothèse de rendement saisie (réglage). */}
+                                <span className="text-info-400 font-bold">{(projection.usEquityDividendYield ?? 1.5).toFixed(1)}%</span>
+                            </label>
+                            <input
+                                type="range" aria-label="Rendement dividende US (%)" min="0" max="5" step="0.1"
+                                value={projection.usEquityDividendYield ?? 1.5}
+                                onChange={e => updateProj('usEquityDividendYield', Number(e.target.value))}
+                                className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-info-500"
+                            />
+                            <p className="text-tiny text-ink-400 mt-1">Yield moyen S&P 500 ≈ 1.5%. Drag = part × yield × 15%.</p>
+                        </div>
+                    </div>
+
+                    {/* [EP-1] Événements de vie aléatoires : 10 toggles cachés derrière un bouton. */}
+                    <div className="pt-2 border-t border-white/10">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <h4 className="text-tiny uppercase text-ink-400 flex items-center gap-1.5">
+                                <Icon name="wind" size={14} /> Événements de vie aléatoires
+                            </h4>
+                            {!showStochastic && (
+                                <Button onClick={() => setShowStochastic(true)} variant="ghost" size="sm"
+                                    title="Perte d'emploi, divorce, invalidité, soins de longue durée, héritage… (Monte Carlo)">
+                                    Activer des aléas… ({STOCHASTIC_TOGGLES.length})
+                                </Button>
+                            )}
+                        </div>
+                        {showStochastic && (
+                            <div className={gridStochastic}>
+                                {STOCHASTIC_TOGGLES.map(({ key, label, title }) => {
+                                    const isOn = !!projAsMap[key];
+                                    return (
+                                        <Button
+                                            key={key}
+                                            onClick={() => updateProj(key as keyof ProjectionConfig, !isOn)}
+                                            variant={isOn ? 'primary' : 'ghost'}
+                                            size="sm"
+                                            title={title}
+                                            fullWidth
+                                        >
+                                            {label} {isOn ? 'ON' : 'OFF'}
+                                        </Button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    {projection.ltcEnabled && (
+                        <div className="mt-3 p-3 rounded-card border border-danger-border bg-danger-bg">
+                            <label className="flex justify-between text-meta text-ink-300 mb-1">
+                                <span>Coût mensuel soins ($/mois)</span>
+                                <span className="text-danger-400 font-bold">{projection.ltcMonthlyCost ?? 5000}$</span>
+                            </label>
+                            <input
+                                type="range" aria-label="Coût mensuel soins ($/mois)" min="2000" max="12000" step="500"
+                                value={projection.ltcMonthlyCost ?? 5000}
+                                onChange={e => updateProj('ltcMonthlyCost', Number(e.target.value))}
+                                className="w-full h-1 bg-dark rounded-lg appearance-none cursor-pointer accent-danger-500"
+                            />
+                            <p className="text-tiny text-ink-400 mt-1">CHSLD public ~2000$, RPA semi-privé ~4500$, soins privés à domicile 8000-12000$.</p>
+                        </div>
+                    )}
+                </div>
+            </CollapsibleSection>
+
+            {/* §3 — Paramètres avancés (FERMÉE par défaut) */}
+            <CollapsibleSection
+                title="Paramètres avancés"
+                icon={<Icon name="settings" size={20} />}
+                defaultOpen={false}
+            >
+                <AdvancedProjectionParams projection={projection} updateProj={updateProj} />
+            </CollapsibleSection>
+        </>
+    );
+};

@@ -1,0 +1,474 @@
+// tests/services/hydrateAssetHistories.test.ts
+//
+// [PORTFOLIO-HISTORY] Hydratation de priceHistory : sélection par fraîcheur, fenêtre depuis le 1er
+// achat, pacing séquentiel injecté, anti-course (applyHistoryPatches sur liste fraîche), erreurs
+// par-symbole non bloquantes.
+
+import { describe, it, expect, vi } from 'vitest';
+import {
+    hydrateAssetHistories, applyHistoryPatches, needsHistorySync, mergePriceHistories,
+    historySymbolVariants, variantClosePlausible,
+} from '../../services/history/hydrateAssetHistories';
+import type { Asset } from '../../types';
+
+import type { ResultatHistorique } from '../../services/marketData';
+import type { MarketDataErrorCode } from '../../services/marketData/types';
+
+/**
+ * [MARKETDATA-HISTORY-CAUSE-PERDUE] Adapte une fausse réponse au contrat HISTORIQUE (`[]` = vide
+ * valide, `null` = échec) vers la forme DÉTAILLÉE que la dépendance exige désormais. Les cas qui
+ * veulent une CAUSE précise passent `echec()` — sans quoi un `null` reste « échec sans cause
+ * connue », ce qui est le comportement d'avant et doit continuer de marcher.
+ */
+const adapte = (f: (s: string, from: Date, to: Date) => Promise<Array<{ date: string; close: number }> | null>) =>
+    async (s: string, from: Date, to: Date): Promise<ResultatHistorique> => ({ forme: 'ok', points: await f(s, from, to) });
+
+/** Échec NOMMÉ de la chaîne de cours (ce que la façade publie désormais). */
+const echec = (cause: MarketDataErrorCode): ResultatHistorique => ({ forme: 'echec', echec: { cause, provider: 'finnhub' } });
+
+
+const NOW = 1_800_000_000_000;
+
+const mk = (over: Partial<Asset>): Asset => ({
+    symbol: 'XEQT.TO', quantity: 10, currency: 'CAD', currentPrice: 30, name: 'x',
+    performance: 0, dateBought: '2026-01-10',
+    purchases: [{ date: '2026-01-10', quantity: 10, price: 28 }],
+    ...over,
+} as Asset);
+
+describe('needsHistorySync', () => {
+    it('sans historique → true ; frais (< 24h) → false ; périmé (> 24h) → true', () => {
+        expect(needsHistorySync(mk({}), NOW)).toBe(true);
+        expect(needsHistorySync(mk({ priceHistory: [{ date: '2026-01-10', price: 28 }], lastHistorySync: NOW - 1000 }), NOW)).toBe(false);
+        expect(needsHistorySync(mk({ priceHistory: [{ date: '2026-01-10', price: 28 }], lastHistorySync: NOW - 25 * 3600_000 }), NOW)).toBe(true);
+    });
+    it('quantité 0 SANS achats connus, ou sans symbole → false (rien à tracer)', () => {
+        expect(needsHistorySync(mk({ quantity: 0, purchases: [], dateBought: undefined, buyPrice: undefined }), NOW)).toBe(false);
+        expect(needsHistorySync(mk({ symbol: '' }), NOW)).toBe(false);
+    });
+    it('actif VENDU (qty=0 mais purchases présents) → true — sa courbe passée existe (alignement buildMarketData)', () => {
+        // Avant fix panel 2026-07-22 : attendu par buildMarketData mais JAMAIS hydraté → exclu à vie.
+        expect(needsHistorySync(mk({ quantity: 0 }), NOW)).toBe(true);
+    });
+});
+
+describe('hydrateAssetHistories', () => {
+    it('fenêtre = DEPUIS LE PREMIER ACHAT ; patch = clôtures natives + lastHistorySync', async () => {
+        // Closes RÉCENTS vs NOW (2027-01-15) : à < 365 j, le downsample [HIST-STORE-SIZE] ne
+        // touche rien — ce test verrouille la fenêtre/le patch, pas la densité du stocké.
+        const getHistory = vi.fn(async () => [
+            { date: '2027-01-10', close: 28 },
+            { date: '2027-01-11', close: 28.5 },
+        ]);
+        const res = await hydrateAssetHistories([mk({})], { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} });
+        expect(getHistory).toHaveBeenCalledTimes(1);
+        const [sym, from] = getHistory.mock.calls[0] as unknown as [string, Date, Date];
+        expect(sym).toBe('XEQT.TO');
+        expect(from.toISOString().slice(0, 10)).toBe('2026-01-10'); // 1er achat
+        const patch = res.patches.get('XEQT.TO')!;
+        expect(patch.priceHistory).toEqual([
+            { date: '2027-01-10', price: 28 },
+            { date: '2027-01-11', price: 28.5 },
+        ]);
+        expect(patch.lastHistorySync).toBe(NOW);
+    });
+
+    it('pacing SÉQUENTIEL : sleep entre les appels (pas avant le premier)', async () => {
+        const calls: string[] = [];
+        const getHistory = vi.fn(async (s: string) => { calls.push(`fetch:${s}`); return [{ date: '2026-01-10', close: 1 }]; });
+        const sleep = vi.fn(async () => { calls.push('sleep'); });
+        await hydrateAssetHistories(
+            [mk({ symbol: 'A1' }), mk({ symbol: 'A2' }), mk({ symbol: 'A3' })],
+            { getHistory: adapte(getHistory), sleep, now: () => NOW },
+        );
+        expect(calls).toEqual(['fetch:A1', 'sleep', 'fetch:A2', 'sleep', 'fetch:A3']);
+    });
+
+    it('actif frais → sauté SANS sleep ; sans provider → sauté', async () => {
+        const getHistory = vi.fn(async () => [{ date: '2026-01-10', close: 1 }]);
+        const sleep = vi.fn(async () => {});
+        const res = await hydrateAssetHistories(
+            [
+                mk({ symbol: 'FRAIS', priceHistory: [{ date: '2026-01-10', price: 28 }], lastHistorySync: NOW - 1000 }),
+                mk({ symbol: 'SANSPROV' }),
+                mk({ symbol: 'OK' }),
+            ],
+            { getHistory: adapte(getHistory), sleep, now: () => NOW, hasProvider: (s) => s !== 'SANSPROV' },
+        );
+        expect(getHistory).toHaveBeenCalledTimes(1); // seulement OK
+        expect(sleep).not.toHaveBeenCalled();        // 1 seul appel réseau → aucun pacing gaspillé
+        expect(res.skipped.map((s) => `${s.symbol}:${s.reason}`)).toEqual(['FRAIS:fresh', 'SANSPROV:no-provider']);
+    });
+
+    it('une ERREUR sur un symbole ne bloque pas les suivants (skip + logError)', async () => {
+        const getHistory = vi.fn()
+            .mockRejectedValueOnce(new Error('boom'))
+            .mockResolvedValueOnce([{ date: '2026-01-10', close: 2 }]);
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'KO' }), mk({ symbol: 'OK' })],
+            { getHistory: adapte(getHistory), sleep: async () => {}, now: () => NOW },
+        );
+        expect(res.patches.has('OK')).toBe(true);
+        expect(res.skipped.find((s) => s.symbol === 'KO')?.reason).toBe('error');
+    });
+
+    it('résultat vide → skip « empty » (pas de patch, retry au prochain cycle)', async () => {
+        const res = await hydrateAssetHistories([mk({})], {
+            getHistory: adapte(async () => []), now: () => NOW, sleep: async () => {},
+        });
+        expect(res.patches.size).toBe(0);
+        expect(res.skipped[0].reason).toBe('empty');
+    });
+
+    // ── Correctifs panel 2026-07-22 ────────────────────────────────────────────────────────────
+
+    it('null (échec de TOUTE la chaîne, contrat façade) → skip « error », PAS « empty »', async () => {
+        const res = await hydrateAssetHistories([mk({})], {
+            getHistory: adapte(async () => null), now: () => NOW, sleep: async () => {},
+        });
+        expect(res.patches.size).toBe(0);
+        expect(res.skipped[0].reason).toBe('error'); // avant fix : la façade aplatissait null en [] → « empty » menteur
+    });
+
+    // [MARKETDATA-HISTORY-CAUSE-PERDUE] Un texte affiché est une AFFIRMATION. « Nouvel essai
+    // automatique au prochain chargement » est VRAI d'un quota ou d'une coupure réseau, et FAUX
+    // d'une clé refusée — où l'utilisateur peut recharger indéfiniment sans que rien ne change.
+    // La garde tient les DEUX sens : sans le cas transitoire, supprimer purement la promesse de
+    // retry la satisferait, en retirant une information juste dans le cas le plus fréquent.
+    it('cause PERMANENTE (clé refusée) → le diagnostic ne promet PAS de nouvel essai', async () => {
+        const res = await hydrateAssetHistories([mk({})], {
+            getHistory: async () => echec('AUTH'), now: () => NOW, sleep: async () => {},
+        });
+        const skip = res.skipped[0];
+        expect(skip.reason).toBe('error'); // toujours un échec, pas un « vide » menteur
+        expect(skip.detail).not.toMatch(/nouvel essai/i);
+        expect(skip.detail).toMatch(/Clés API/); // on envoie là où l'action est possible
+        expect(skip.detailPrivacySafe).toBe(skip.detail); // aucun montant/nom en jeu ici
+    });
+
+    // ⚠️ 403 n'est PAS 401 : Finnhub le rend quand la clé est BONNE mais que le forfait ne couvre
+    // pas l'appel (chandelles premium, cotations européennes en tier gratuit). Les fusionner
+    // enverrait l'utilisateur « corriger » une clé parfaitement valide.
+    it('cause PLAN (forfait insuffisant) → ne dit PAS de corriger la clé', async () => {
+        const res = await hydrateAssetHistories([mk({})], {
+            getHistory: async () => echec('PLAN'), now: () => NOW, sleep: async () => {},
+        });
+        expect(res.skipped[0].detail).not.toMatch(/nouvel essai/i);       // permanent : pas de promesse
+        expect(res.skipped[0].detail).not.toMatch(/Corrige la clé/i);     // …mais pas la clé en cause
+        expect(res.skipped[0].detail).toMatch(/forfait/i);
+    });
+
+    it('cause TRANSITOIRE (réseau) → la promesse de nouvel essai reste, elle est vraie', async () => {
+        const res = await hydrateAssetHistories([mk({})], {
+            getHistory: async () => echec('NETWORK'), now: () => NOW, sleep: async () => {},
+        });
+        expect(res.skipped[0].detail).toMatch(/nouvel essai/i);
+        expect(res.skipped[0].detail).not.toMatch(/Clés API/);
+    });
+
+    it('échec SANS cause connue → comportement d\'avant (retry annoncé), pas de régression', async () => {
+        const res = await hydrateAssetHistories([mk({})], {
+            getHistory: adapte(async () => null), now: () => NOW, sleep: async () => {},
+        });
+        expect(res.skipped[0].reason).toBe('error');
+        expect(res.skipped[0].detail).toMatch(/nouvel essai/i);
+    });
+
+    it('réponse non-vide mais 100 % INVALIDE → skip « empty », l\'historique existant SURVIT (pas de patch [])', async () => {
+        const existing = [{ date: '2026-01-10', price: 28 }];
+        const res = await hydrateAssetHistories(
+            [mk({ priceHistory: existing, lastHistorySync: NOW - 25 * 3600_000 })], // périmé → re-sync
+            {
+                getHistory: adapte(async () => [
+                    { date: '', close: 10 }, { date: '2026-01-11', close: NaN }, { date: '2026-01-12', close: 0 },
+                ]),
+                now: () => NOW, sleep: async () => {},
+            },
+        );
+        // Avant fix : le filtre passait APRÈS le check vide → patch `priceHistory: []` écrasait l'existant.
+        expect(res.patches.size).toBe(0);
+        expect(res.skipped[0].reason).toBe('empty');
+    });
+
+    it('re-sync : le nouvel historique FUSIONNE avec l\'ancien (fenêtre provider bornée ne mange pas le passé)', async () => {
+        const existing = [
+            { date: '2025-01-10', price: 20 },  // hors de la nouvelle fenêtre (provider cappé)
+            { date: '2027-01-10', price: 27 },  // sera écrasé par le nouveau close du même jour
+        ];
+        const res = await hydrateAssetHistories(
+            [mk({ priceHistory: existing, lastHistorySync: NOW - 25 * 3600_000 })],
+            {
+                getHistory: adapte(async () => [
+                    { date: '2027-01-10', close: 28 },
+                    { date: '2027-01-11', close: 28.5 },
+                ]),
+                now: () => NOW, sleep: async () => {},
+            },
+        );
+        // Avant fix : patch = REMPLACEMENT → un crypto > 1 an (CoinGecko cap 365 j) perdait chaque
+        // jour son point le plus ancien. Le survivant 2025 est > 365 j : le downsample
+        // [HIST-STORE-SIZE] le RÉDUIT (hebdomadaire) mais ne le SUPPRIME jamais — il reste seul
+        // dans sa semaine, donc intact ici.
+        expect(res.patches.get('XEQT.TO')!.priceHistory).toEqual([
+            { date: '2025-01-10', price: 20 },   // survivant (downsample = réduction, pas perte)
+            { date: '2027-01-10', price: 28 },   // nouveau close gagne à date égale
+            { date: '2027-01-11', price: 28.5 },
+        ]);
+    });
+
+    it('garde de DEVISE crypto : « BTC » nu (CoinGecko → USD) sur un actif déclaré CAD → skip « currency-mismatch »', async () => {
+        const getHistory = vi.fn(async () => [{ date: '2026-01-10', close: 60_000 }]);
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'BTC', currency: 'CAD', accountType: 'CRYPTO' })],
+            { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} },
+        );
+        // Avant fix : closes USD stockés puis valorisés ×1 (facteur CAD) → graphe faux de −27,5 % mesuré.
+        expect(getHistory).not.toHaveBeenCalled();
+        expect(res.patches.size).toBe(0);
+        expect(res.skipped[0].reason).toBe('currency-mismatch');
+    });
+
+    it('garde de DEVISE crypto : « BTC-CAD » sur un actif CAD, et « BTC » nu sur un actif USD → hydratés', async () => {
+        const getHistory = vi.fn(async () => [{ date: '2026-01-10', close: 60_000 }]);
+        const res = await hydrateAssetHistories(
+            [
+                mk({ symbol: 'BTC-CAD', currency: 'CAD', accountType: 'CRYPTO' }),
+                mk({ symbol: 'BTC', currency: 'USD', accountType: 'CRYPTO' }),
+            ],
+            { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} },
+        );
+        expect(res.patches.has('BTC-CAD')).toBe(true);
+        expect(res.patches.has('BTC')).toBe(true);
+        expect(res.skipped).toEqual([]);
+    });
+});
+
+// ── [HIST-COVERAGE-TOTAL] Variantes de suffixe par devise (bug signalé : fonds sans suffixe) ──
+
+describe('historySymbolVariants', () => {
+    it('ticker NU + devise EUR → suffixes Euronext/XETRA ; CAD → TSX/TSXV ; USD → aucun', () => {
+        expect(historySymbolVariants('ZKIL', 'EUR')).toEqual(['ZKIL.PA', 'ZKIL.DE', 'ZKIL.AS', 'ZKIL.MI']);
+        expect(historySymbolVariants('ABC', 'CAD')).toEqual(['ABC.TO', 'ABC.V']);
+        expect(historySymbolVariants('AAPL', 'USD')).toEqual([]);
+    });
+    it('déjà suffixé/préfixé/crypto → JAMAIS de variante', () => {
+        expect(historySymbolVariants('ZKIL.PA', 'EUR')).toEqual([]);   // suffixe déjà là
+        expect(historySymbolVariants('EPA:ZKIL', 'EUR')).toEqual([]);  // préfixe place
+        expect(historySymbolVariants('BTC-CAD', 'CAD')).toEqual([]);  // tiret crypto
+        expect(historySymbolVariants('BTC', 'CAD')).toEqual([]);      // crypto CoinGecko connue
+    });
+});
+
+describe('variantClosePlausible', () => {
+    it('facteur ≤ 2 vs le prix courant → plausible ; au-delà → collision de ticker probable', () => {
+        expect(variantClosePlausible(100, 100)).toBe(true);
+        expect(variantClosePlausible(51, 100)).toBe(true);
+        expect(variantClosePlausible(199, 100)).toBe(true);
+        expect(variantClosePlausible(49, 100)).toBe(false);
+        expect(variantClosePlausible(201, 100)).toBe(false);
+    });
+    it('SANS prix de référence → REFUS (afficher la courbe d\'un autre titre = pire que rien)', () => {
+        expect(variantClosePlausible(100, undefined)).toBe(false);
+        expect(variantClosePlausible(100, 0)).toBe(false);
+        expect(variantClosePlausible(100, NaN)).toBe(false);
+    });
+});
+
+describe('hydrateAssetHistories — variantes de suffixe', () => {
+    it('symbole EUR nu VIDE → variante .PA plausible essayée → patch + historySymbol résolu', async () => {
+        const getHistory = vi.fn(async (s: string) =>
+            s === 'ZKIL.PA' ? [{ date: '2026-01-10', close: 480 }] : []);
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'ZKIL', currency: 'EUR', currentPrice: 500 })],
+            { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} },
+        );
+        // Avant fix : « ZKIL » → Yahoo 404 → « vide légitime » caché 24 h, titre sans courbe à vie.
+        expect(getHistory.mock.calls.map((c) => c[0])).toEqual(['ZKIL', 'ZKIL.PA']);
+        const patch = res.patches.get('ZKIL')!;
+        expect(patch.priceHistory).toEqual([{ date: '2026-01-10', price: 480 }]);
+        expect(patch.historySymbol).toBe('ZKIL.PA');
+    });
+
+    it('variante IMPLAUSIBLE (close ~10× le prix courant = autre titre) → refusée, skip « empty »', async () => {
+        const getHistory = vi.fn(async (s: string) =>
+            s === 'ZKIL.PA' ? [{ date: '2026-01-10', close: 5000 }] : []);
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'ZKIL', currency: 'EUR', currentPrice: 500 })],
+            { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} },
+        );
+        expect(res.patches.size).toBe(0); // jamais la courbe d'un autre titre
+        expect(res.skipped[0].reason).toBe('empty');
+    });
+
+    it('[Finding code-reviewer #493] PANNE réseau du principal (null) → variantes JAMAIS tentées (retry même symbole)', async () => {
+        // Prouvé par sonde : une panne transitoire sur le VRAI symbole partait à la pêche aux
+        // variantes et pouvait PERSISTER (historySymbol) un AUTRE titre au prix coïncident.
+        const getHistory = vi.fn(async (s: string) =>
+            s === 'ZKIL' ? null : [{ date: '2026-01-10', close: 490 }]); // la variante répondrait « plausible »
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'ZKIL', currency: 'EUR', currentPrice: 500 })],
+            { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} },
+        );
+        expect(getHistory).toHaveBeenCalledTimes(1); // AUCUNE variante sur une panne
+        expect(res.patches.size).toBe(0);
+        expect(res.skipped[0].reason).toBe('error'); // retry au prochain cycle, même symbole
+    });
+
+    it('[Finding silent-failure #493] historySymbol MORT (vide confirmé) → self-heal : retour au symbole saisi', async () => {
+        // Avant : dès que historySymbol était posé, la boucle de secours était court-circuitée à
+        // VIE — un symbole résolu délisté gelait l'actif sans recours.
+        const getHistory = vi.fn(async (s: string) =>
+            s === 'ZKIL' ? [{ date: '2026-01-10', close: 480 }] : []); // la variante résolue ne répond plus
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'ZKIL', currency: 'EUR', currentPrice: 500, historySymbol: 'ZKIL.PA' })],
+            { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} },
+        );
+        expect(getHistory.mock.calls.map((c) => c[0])).toEqual(['ZKIL.PA', 'ZKIL']);
+        const patch = res.patches.get('ZKIL')!;
+        expect(patch.priceHistory).toEqual([{ date: '2026-01-10', price: 480 }]);
+        expect(patch.historySymbol).toBe('ZKIL'); // le champ se répare (pointera le symbole vivant)
+    });
+
+    it('[Finding silent-failure #493] principal vide + variantes en PANNE réseau → « error » (indéterminé), jamais « empty » menteur', async () => {
+        const getHistory = vi.fn(async (s: string) => (s === 'ZKIL' ? [] : null));
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'ZKIL', currency: 'EUR', currentPrice: 500 })],
+            { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} },
+        );
+        expect(res.patches.size).toBe(0);
+        expect(res.skipped[0].reason).toBe('error'); // avant fix : « empty » silencieux (0 logError)
+    });
+
+    it('historySymbol DÉJÀ résolu → frappe directement la variante (1 seul appel), patch sous le symbole de l\'actif', async () => {
+        const getHistory = vi.fn(async () => [{ date: '2026-01-10', close: 480 }]);
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'ZKIL', currency: 'EUR', currentPrice: 500, historySymbol: 'ZKIL.PA' })],
+            { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} },
+        );
+        expect(getHistory).toHaveBeenCalledTimes(1);
+        const [calledSym] = getHistory.mock.calls[0] as unknown as [string];
+        expect(calledSym).toBe('ZKIL.PA');
+        expect(res.patches.has('ZKIL')).toBe(true); // toujours keyé par le symbole de l'actif
+    });
+
+    it('pacing : chaque variante est PRÉCÉDÉE d\'un sleep (rate-limit respecté)', async () => {
+        const calls: string[] = [];
+        const getHistory = vi.fn(async (s: string) => { calls.push(`fetch:${s}`); return []; });
+        const sleep = vi.fn(async () => { calls.push('sleep'); });
+        await hydrateAssetHistories(
+            [mk({ symbol: 'ZKIL', currency: 'EUR', currentPrice: 500 })],
+            { getHistory: adapte(getHistory), sleep, now: () => NOW },
+        );
+        expect(calls).toEqual([
+            'fetch:ZKIL',
+            'sleep', 'fetch:ZKIL.PA', 'sleep', 'fetch:ZKIL.DE', 'sleep', 'fetch:ZKIL.AS', 'sleep', 'fetch:ZKIL.MI',
+        ]);
+    });
+});
+
+describe('hydrateAssetHistories — [HIST-MULTI-PROVIDER] force + diagnostic', () => {
+    it('force:true → un actif FRAIS est quand même resynchronisé (geste explicite « Resynchroniser »)', async () => {
+        const getHistory = vi.fn(async () => [{ date: '2026-01-10', close: 29 }]);
+        const res = await hydrateAssetHistories(
+            [mk({ priceHistory: [{ date: '2026-01-10', price: 28 }], lastHistorySync: NOW - 1000 })], // frais
+            { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} },
+            { force: true },
+        );
+        expect(getHistory).toHaveBeenCalledTimes(1); // sans force : skip 'fresh', 0 appel
+        expect(res.patches.get('XEQT.TO')!.priceHistory).toEqual([{ date: '2026-01-10', price: 29 }]);
+    });
+
+    it('force:true → l\'éligibilité de base tient (sans symbole/détention : aucun appel)', async () => {
+        const getHistory = vi.fn(async () => [{ date: '2026-01-10', close: 29 }]);
+        await hydrateAssetHistories(
+            [mk({ quantity: 0, purchases: [], dateBought: undefined, buyPrice: undefined })],
+            { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} },
+            { force: true },
+        );
+        expect(getHistory).not.toHaveBeenCalled();
+    });
+
+    it('skip « empty » introuvable → detail ACTIONNABLE + triedSymbols (tout ce qui a été essayé)', async () => {
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'ZKIL', currency: 'EUR', currentPrice: 500 })],
+            { getHistory: adapte(async () => []), now: () => NOW, sleep: async () => {} },
+        );
+        const skip = res.skipped[0];
+        expect(skip.reason).toBe('empty');
+        expect(skip.triedSymbols).toEqual(['ZKIL', 'ZKIL.PA', 'ZKIL.DE', 'ZKIL.AS', 'ZKIL.MI']);
+        expect(skip.detail).toContain('Introuvable');
+        expect(skip.detail).toContain('ZKIL.PA'); // la liste essayée est DITE (pas un échec muet)
+    });
+
+    it('skip « empty » après variante REFUSÉE (plausibilité) → detail explique la confusion de ticker', async () => {
+        const getHistory = vi.fn(async (s: string) =>
+            s === 'ZKIL.PA' ? [{ date: '2026-01-10', close: 5000 }] : []);
+        const res = await hydrateAssetHistories(
+            [mk({ symbol: 'ZKIL', currency: 'EUR', currentPrice: 500 })],
+            { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} },
+        );
+        const skip = res.skipped[0];
+        expect(skip.reason).toBe('empty');
+        expect(skip.detail).toContain('ZKIL.PA');
+        expect(skip.detail).toContain('5000');   // le cours refusé est montré
+        expect(skip.detail).toContain('500');    // vs le prix de l'actif → diagnostic complet
+    });
+});
+
+describe('hydrateAssetHistories — [Finding code-reviewer #494] mutex module', () => {
+    it('deux passes CONCURRENTES (boot + bouton) sont SÉRIALISÉES — jamais deux fetches entrelacés', async () => {
+        // Sonde du finding : sans mutex, 2 appels réseau réels pour le même symbole en parallèle
+        // (débit doublé face à CoinGecko free ~30/min → 429 en « panne » trompeuse au diagnostic).
+        const order: string[] = [];
+        const getHistory = vi.fn(async (s: string) => {
+            order.push(`start:${s}`);
+            await new Promise((r) => setTimeout(r, 5));
+            order.push(`end:${s}`);
+            return [{ date: '2026-01-10', close: 1 }];
+        });
+        await Promise.all([
+            hydrateAssetHistories([mk({ symbol: 'P1A' }), mk({ symbol: 'P1B' })], { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} }),
+            hydrateAssetHistories([mk({ symbol: 'P2A' })], { getHistory: adapte(getHistory), now: () => NOW, sleep: async () => {} }, { force: true }),
+        ]);
+        // La passe 2 ne DÉMARRE qu'après la fin complète de la passe 1 (aucun entrelacement).
+        expect(order).toEqual(['start:P1A', 'end:P1A', 'start:P1B', 'end:P1B', 'start:P2A', 'end:P2A']);
+    });
+
+    it('une passe en ÉCHEC (deps cassées → skips error) ne bloque pas la file — la suivante aboutit', async () => {
+        // La défense PAR ACTIF convertit même un deps invalide en skip 'error' (la fonction ne
+        // rejette jamais en pratique) ; le .catch de la file reste une ceinture. On prouve que la
+        // passe suivante tourne normalement derrière une passe entièrement en échec.
+        const bad = hydrateAssetHistories([mk({})], {
+            getHistory: adapte(undefined as never), now: () => NOW, sleep: async () => {},
+        });
+        const good = hydrateAssetHistories([mk({})], {
+            getHistory: adapte(async () => [{ date: '2026-01-10', close: 1 }]), now: () => NOW, sleep: async () => {},
+        });
+        expect((await bad).skipped[0]?.reason).toBe('error'); // échec honnête, pas un crash
+        expect((await good).patches.has('XEQT.TO')).toBe(true);
+    });
+});
+
+describe('mergePriceHistories', () => {
+    it('union par date, le nouveau gagne, points invalides de l\'ancien purgés, tri croissant', () => {
+        expect(mergePriceHistories(
+            [{ date: '2025-06-01', price: 10 }, { date: '2025-06-02', price: NaN }, { date: '2025-06-03', price: 12 }],
+            [{ date: '2025-06-03', price: 13 }, { date: '2025-06-04', price: 14 }],
+        )).toEqual([
+            { date: '2025-06-01', price: 10 },
+            { date: '2025-06-03', price: 13 },
+            { date: '2025-06-04', price: 14 },
+        ]);
+    });
+});
+
+describe('applyHistoryPatches (anti-course)', () => {
+    it('patch par SYMBOLE sur la liste FRAÎCHE : un actif ajouté pendant l\'hydratation survit', () => {
+        const patches = new Map([['XEQT.TO', { priceHistory: [{ date: '2026-01-10', price: 28 }], lastHistorySync: NOW }]]);
+        const fresh = [mk({}), mk({ symbol: 'NOUVEAU' })]; // NOUVEAU ajouté pendant l'hydratation
+        const out = applyHistoryPatches(fresh, patches);
+        expect(out.find((a) => a.symbol === 'XEQT.TO')!.priceHistory!.length).toBe(1);
+        expect(out.find((a) => a.symbol === 'NOUVEAU')).toBeTruthy(); // pas écrasé
+        expect(out.find((a) => a.symbol === 'NOUVEAU')!.priceHistory).toBeUndefined();
+    });
+});

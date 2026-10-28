@@ -1,0 +1,5 @@
+{
+  "_comment": "Client OAuth « Desktop » FinanceAI PARTAGÉ. Copie ce fichier en connector-client.json (gitignoré) et renseigne tes valeurs, OU passe par les variables d'env GOOGLE_DESKTOP_CLIENT_ID / GOOGLE_DESKTOP_CLIENT_SECRET. Le secret d'un client « Desktop » est non-confidentiel par design (Google), mais on ne le commit pas dans le repo public. Embarqué tel quel au build du bundle .mcpb pour que les utilisateurs n'aient rien à créer.",
+  "clientId": "xxxxx.apps.googleusercontent.com",
+  "clientSecret": "GOCSPX-xxxxx"
+}

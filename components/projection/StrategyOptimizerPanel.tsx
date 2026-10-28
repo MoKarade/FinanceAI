@@ -1,0 +1,527 @@
+// components/projection/StrategyOptimizerPanel.tsx
+// G21 C5 commit 6 — optimiseur de stratégies configurable.
+//
+// L'utilisateur compose son espace de recherche en cochant des valeurs de leviers ;
+// le compte de configurations + le temps estimé s'affichent en direct. Au clic, un
+// pool multi-worker lance un Monte Carlo sur chaque config (runStrategySearchAsync).
+// Le classement par objectif (rankConfigResults) est re-calculé en mémoire au
+// changement d'objectif — aucun recalcul moteur. Verdict détaillé du gagnant +
+// score complet + tableau triable/filtrable de toutes les configs.
+
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { Icon } from '../ui/Icon';
+import { logError } from '../../services/errorLogger';
+import { SIMULATION_ECHEC } from '../../services/simulationMessages';
+import { PrivateAmount } from '../ui/PrivateAmount';
+import { useFinanceStore } from '../../store/useFinanceStore';
+import { useViewportBelowSm } from '../../hooks/useViewportBelowSm';
+import type { SimulationParams, ConfigResult } from '../../services/projection';
+import { formatCompactCAD } from '../../utils/format';
+import {
+    rankConfigResults,
+    explainWinner,
+    OBJECTIVE_LABELS,
+    type OptimizeObjective,
+    type RankedConfig,
+} from '../../services/projection';
+import {
+    runStrategySearchAsync,
+    SEARCH_CANCELLED,
+    type StrategySearchProgress,
+} from '../../services/projection/runAsync';
+import {
+    LEVER_LIBRARY,
+    leverValueLabel,
+    type StrategyConfig,
+} from '../../services/projection/strategyConfig';
+import {
+    countConfigs,
+    estimateRuntimeMs,
+    generateStrategySpace,
+    type LeverSelection,
+    type SpaceContext,
+} from '../../services/projection/strategySpace';
+
+interface Props {
+    params: SimulationParams;
+    /** Applique la config gagnante aux paramètres réels du Futur. Absent ⇒ pas de bouton. */
+    onApply?: (config: StrategyConfig) => void;
+}
+
+type Status = 'idle' | 'running' | 'done' | 'error';
+
+const OBJECTIVES: OptimizeObjective[] = ['balanced', 'wealth', 'tax', 'fire'];
+const WARN_THRESHOLD = 300; // au-delà : avertissement temps de calcul
+// Budget total de simulations : les itérations par config s'adaptent au nombre de
+// configs pour borner le temps total (sinon N×1000 sims = 15-20 min). Précision
+// statistique suffisante pour un classement ; bornée [60, 400] par config.
+const SIM_BUDGET = 24_000;
+const adaptiveIterations = (nConfigs: number): number =>
+    Math.max(60, Math.min(400, Math.round(SIM_BUDGET / Math.max(1, nConfigs))));
+
+// [FORMAT-EXPLAINS-TOLOCALESTRING] `formatCompactCAD` remplace un format composé à la main qui
+// écrivait le séparateur décimal ANGLAIS (« 2.35M$ ») dans une app en fr-CA — mesuré.
+const fmtM = (v: number): string => formatCompactCAD(v);
+const fmtMs = (ms: number): string => {
+    const s = Math.ceil(ms / 1000);
+    if (s < 60) return `~${s} s`;
+    return `~${Math.ceil(s / 60)} min`;
+};
+
+function successColor(rate: number): string {
+    if (rate >= 90) return 'bg-succes-texte';
+    if (rate >= 75) return 'bg-succes-texte';
+    if (rate >= 50) return 'bg-alerte-texte';
+    return 'bg-erreur-texte';
+}
+
+// Une barre de sous-score 0..1 (détail du score).
+// [PRIVACY-RATIOS-DUREES-UNIFORMES] Score = dérivé du dossier : largeur ET chiffre masqués en mode discret.
+const ScoreBar: React.FC<{ label: string; value: number }> = ({ label, value }) => {
+    const isPrivacyMode = useFinanceStore((s) => s.isPrivacyMode);
+    return (
+    <div className="flex items-center gap-2">
+        <span className="text-tiny text-texte-doux w-24 shrink-0">{label}</span>
+        <div className="h-1.5 flex-1 rounded-full bg-surface-douce border border-bordure overflow-hidden">
+            <div className="h-full bg-accent" style={{ width: `${isPrivacyMode ? 0 : Math.round(value * 100)}%` }} />
+        </div>
+        <span className="text-tiny text-texte-doux tabular-nums w-9 text-right"><PrivateAmount>{Math.round(value * 100)}</PrivateAmount></span>
+    </div>
+    );
+};
+
+export const StrategyOptimizerPanel: React.FC<Props> = ({ params, onApply }) => {
+    // [FUTUR-MOBILE-PR5] Leviers en puces + CTA 56 px — mobile UNIQUEMENT (desktop inchangé,
+    // mandat Marc #13).
+    const isNarrowViewport = useViewportBelowSm();
+    const [applied, setApplied] = useState(false);
+    const [composerOpen, setComposerOpen] = useState(true);
+    const [selection, setSelection] = useState<LeverSelection>({});
+    const [objective, setObjective] = useState<OptimizeObjective>('balanced');
+    const [status, setStatus] = useState<Status>('idle');
+    const [progress, setProgress] = useState<StrategySearchProgress | null>(null);
+    const [results, setResults] = useState<ConfigResult[] | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [filter, setFilter] = useState<{ key: keyof StrategyConfig; value: unknown } | null>(null);
+
+    const aliveRef = useRef(true);
+    const abortRef = useRef<AbortController | null>(null);
+    useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; abortRef.current?.abort(); }; }, []); // ré-armé au remount (StrictMode dev)
+
+    const ctx: SpaceContext = useMemo(() => ({
+        hasPrimaryPurchase: (params.realEstateGoals?.length ?? 0) > 0,
+        currentAge: params.config.users[0]?.age ?? 35,
+    }), [params]);
+
+    const configCount = useMemo(() => countConfigs(selection, ctx), [selection, ctx]);
+    const iters = adaptiveIterations(configCount); // budget adaptatif (borne le temps total)
+    const nWorkers = typeof navigator !== 'undefined' && navigator.hardwareConcurrency ? navigator.hardwareConcurrency : 4;
+    // ~8 ms/sim : coût observé d'une projection complète (40 ans) en prod, bien plus
+    // réaliste que le défaut optimiste de 2 ms (sinon l'estimation annonce 3 s pour 14 s).
+    const estMs = useMemo(
+        () => estimateRuntimeMs(configCount, iters, 8) / Math.max(1, nWorkers),
+        [configCount, iters, nWorkers],
+    );
+
+    // Re-tri par objectif SANS recalcul moteur : dérivé des résultats bruts.
+    const ranking = useMemo(
+        () => (results ? rankConfigResults(results, objective) : null),
+        [results, objective],
+    );
+
+    const toggleValue = useCallback(<K extends keyof StrategyConfig>(key: K, value: StrategyConfig[K]) => {
+        setSelection((prev) => {
+            const current = (prev[key] as ReadonlyArray<StrategyConfig[K]> | undefined) ?? [];
+            const next = current.includes(value)
+                ? current.filter((v) => v !== value)
+                : [...current, value];
+            return { ...prev, [key]: next };
+        });
+    }, []);
+
+    const run = useCallback(async () => {
+        setStatus('running');
+        setError(null);
+        setResults(null);
+        setApplied(false);
+        setComposerOpen(false); // replie le composeur pour laisser place aux résultats
+        setProgress({ done: 0, total: configCount });
+        const ac = new AbortController();
+        abortRef.current = ac;
+        try {
+            const configs = generateStrategySpace(selection, ctx);
+            const result = await runStrategySearchAsync(params, configs, {
+                iterations: iters,
+                signal: ac.signal,
+                onProgress: (p) => { if (aliveRef.current) setProgress(p); },
+            });
+            if (!aliveRef.current) return;
+            setResults(result.results);
+            setStatus('done');
+        } catch (e: unknown) {
+            if (!aliveRef.current) return;
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg === SEARCH_CANCELLED) {
+                setStatus('idle'); // annulation volontaire : retour propre, pas d'erreur
+                setComposerOpen(true);
+                return;
+            }
+            logError({ source: 'projection', severity: 'warning', message: `StrategyOptimizerPanel : échec de la recherche de stratégie (${msg})`, error: e instanceof Error ? e : new Error(msg) });
+            setError(SIMULATION_ECHEC);
+            setStatus('error');
+        }
+    }, [params, selection, ctx, configCount, iters]);
+
+    const cancel = useCallback(() => abortRef.current?.abort(), []);
+
+    const pct = progress && progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+    const winner = ranking?.ranked[0] ?? null;
+    const runnerUp = ranking?.ranked[1] ?? null;
+
+    const filteredRows = useMemo(() => {
+        if (!ranking) return [];
+        if (!filter) return ranking.ranked;
+        return ranking.ranked.filter((r) => r.result.config[filter.key] === filter.value);
+    }, [ranking, filter]);
+
+    return (
+        <div className="mt-3 rounded-xl border border-bordure bg-surface-douce p-3.5">
+            <div className="flex items-center justify-between gap-2">
+                <span className="text-meta font-black text-texte tracking-tight flex items-center gap-1.5">
+                    <Icon name="compass" size={14} className="text-texte-doux" /> Optimiseur de stratégie
+                </span>
+                {status === 'done' && winner && (
+                    <span className="text-tiny font-bold text-texte-doux">
+                        {ranking!.ranked.length} stratégies testées
+                    </span>
+                )}
+            </div>
+
+            <p className="text-tiny text-texte-doux mt-1.5">
+                Cochez les leviers à explorer. On teste <strong className="text-texte">toutes les combinaisons</strong> par
+                Monte Carlo et on désigne la meilleure selon votre objectif.
+            </p>
+
+            {/* En-tête repliable : une fois la recherche lancée, le composeur se replie
+                pour laisser la place aux résultats (réouvrable pour ajuster). */}
+            {(status === 'running' || status === 'done') && (
+                <button
+                    type="button"
+                    onClick={() => setComposerOpen((o) => !o)}
+                    aria-expanded={composerOpen}
+                    className="mt-3 w-full flex items-center justify-between gap-2 rounded-lg bg-fond border border-bordure hover:bg-surface-douce px-3 py-2 text-tiny text-texte-doux focus-ring transition-colors"
+                >
+                    <span><strong className="text-texte tabular-nums">{configCount.toLocaleString('fr-CA')}</strong> configuration{configCount > 1 ? 's' : ''} — leviers</span>
+                    <span aria-hidden="true">{composerOpen ? 'replier' : 'modifier'}</span>
+                </button>
+            )}
+
+            {/* Composeur de leviers */}
+            {composerOpen && (<>
+            <div className="mt-3 space-y-2.5">
+                {LEVER_LIBRARY.map((lever) => {
+                    const selected = (selection[lever.key] as ReadonlyArray<unknown> | undefined) ?? [];
+                    return (
+                        <div key={String(lever.key)}>
+                            <div className="text-tiny font-bold text-texte-doux mb-1">{lever.label}</div>
+                            <div className="flex flex-wrap gap-1.5">
+                                {lever.options.map((opt) => {
+                                    const active = selected.includes(opt.value);
+                                    return (
+                                        <button
+                                            key={String(opt.value)}
+                                            type="button"
+                                            onClick={() => toggleValue(lever.key, opt.value as never)}
+                                            aria-pressed={active}
+                                            className={`rounded-lg border px-2.5 py-1 text-tiny font-medium focus-ring transition-colors ${
+                                                isNarrowViewport ? 'min-h-[44px] min-w-[44px] inline-flex items-center justify-center' : ''
+                                            } ${
+                                                active
+                                                    ? 'border-accent bg-accent-fonce/20 text-texte'
+                                                    : 'border-bordure bg-fond text-texte-doux hover:bg-surface-douce'
+                                            }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Compte + temps estimé en direct */}
+            <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-fond border border-bordure px-3 py-2">
+                <span className="text-tiny text-texte-doux">
+                    <strong className="text-texte tabular-nums">{configCount.toLocaleString('fr-CA')}</strong> configuration{configCount > 1 ? 's' : ''}
+                    {' · '}{fmtMs(estMs)} sur {nWorkers} cœur{nWorkers > 1 ? 's' : ''}
+                </span>
+                {configCount > WARN_THRESHOLD && (
+                    <span className="text-tiny font-bold text-alerte-texte">calcul long</span>
+                )}
+            </div>
+            </>)}
+
+            {status !== 'running' && (
+                <button
+                    type="button"
+                    onClick={run}
+                    className={`mt-3 w-full rounded-lg bg-accent text-sur-accent hover:bg-accent-fonce border border-accent px-3 py-2 text-meta font-bold focus-ring transition-colors ${
+                        isNarrowViewport ? 'min-h-[56px]' : ''
+                    }`}
+                >
+                    {status === 'done' ? '↻ Relancer la recherche' : 'Trouver la meilleure stratégie'}
+                </button>
+            )}
+
+            {status === 'running' && progress && (
+                <div className="mt-3 rounded-lg bg-fond border border-bordure px-3 py-2.5">
+                    <div className="flex items-center justify-between text-tiny text-texte-doux mb-1.5">
+                        <span className="flex items-center gap-1.5">
+                            <span className="inline-block h-3 w-3 rounded-full border-2 border-accent/40 border-t-accent animate-spin" aria-hidden="true" />
+                            Simulation Monte Carlo en cours…
+                        </span>
+                        <span className="tabular-nums font-bold text-texte">{pct}%</span>
+                    </div>
+                    {/* NOMBRE-NON-MONETAIRE : avancement du calcul de l'optimiseur, pas une donnée du dossier */}
+                    <div className="h-2 rounded-full bg-surface-douce border border-bordure overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+                        <div className="h-full bg-accent transition-[width] duration-300" style={{ width: `${pct}%` }} />
+                    </div>
+                    <p className="text-tiny text-texte-doux mt-1.5">
+                        {Math.round(progress.done)}/{progress.total} configurations · ça peut prendre une minute, tu peux changer d'onglet.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={cancel}
+                        className="mt-2 w-full rounded-lg bg-erreur-fond hover:bg-erreur-fond/80 border border-erreur-texte/30 px-3 py-1.5 text-tiny font-bold text-erreur-texte focus-ring transition-colors"
+                    >
+                        Annuler
+                    </button>
+                </div>
+            )}
+
+            {status === 'error' && <p className="mt-3 text-tiny text-erreur-texte flex items-center gap-1.5"><Icon name="alert" size={12} /> {error}</p>}
+
+            {status === 'done' && ranking && winner && (
+                <div className="mt-4 space-y-3">
+                    {/* Sélecteur d'objectif — re-trie sans recalcul */}
+                    <div className="flex flex-wrap gap-1.5">
+                        {OBJECTIVES.map((obj) => (
+                            <button
+                                key={obj}
+                                type="button"
+                                onClick={() => setObjective(obj)}
+                                aria-pressed={objective === obj}
+                                className={`rounded-lg border px-2.5 py-1 text-tiny font-bold focus-ring transition-colors ${
+                                    objective === obj
+                                        ? 'border-accent bg-accent-fonce/20 text-texte'
+                                        : 'border-bordure bg-fond text-texte-doux hover:bg-surface-douce'
+                                }`}
+                            >
+                                {OBJECTIVE_LABELS[obj]}
+                            </button>
+                        ))}
+                    </div>
+
+                    <WinnerCard
+                        winner={winner}
+                        explanation={explainWinner(winner, runnerUp, objective)}
+                        survivalThreshold={ranking.survivalThreshold}
+                        hasSurvivor={ranking.hasSurvivor}
+                        applied={applied}
+                        onApply={onApply ? () => { onApply(winner.result.config); setApplied(true); } : undefined}
+                    />
+
+                    {/* Tableau de toutes les configs + filtre par levier */}
+                    <ResultsTable
+                        rows={filteredRows}
+                        totalRows={ranking.ranked.length}
+                        filter={filter}
+                        onFilter={setFilter}
+                    />
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ── Carte du gagnant : tous les leviers en clair + explication + détail du score ──
+const WinnerCard: React.FC<{
+    winner: RankedConfig;
+    explanation: string;
+    survivalThreshold: number;
+    hasSurvivor: boolean;
+    applied?: boolean;
+    onApply?: () => void;
+}> = ({ winner, explanation, survivalThreshold, hasSurvivor, applied, onApply }) => {
+    const r = winner.result;
+    return (
+        <div className="rounded-xl border border-succes-texte/30 bg-succes-fond p-3">
+            <div className="flex items-center gap-2">
+                <Icon name="trophy" size={15} className="text-succes-texte" />
+                <span className="text-meta font-black text-texte">Stratégie gagnante</span>
+                {!hasSurvivor && (
+                    <span className="text-tiny text-alerte-texte">aucune n'atteint {survivalThreshold}% de succès</span>
+                )}
+            </div>
+
+            {/* Métriques clés */}
+            <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <Metric label="Succès" value={`${r.successRate}%`} privacy />
+                <Metric label="Patrimoine méd." value={fmtM(r.finalNWp50)} privacy />
+                {/* [ENG-RANKTAX-ESTATE] lifetimeTax est désormais l'impôt TOTAL MODÉLISÉ (A4) :
+                    régularisations d'avril + solde à l'horizon + impôt SUCCESSORAL. ⚠️ Sémantique
+                    DIFFÉRENTE du MCP netTaxSettlements (resté sur les seuls règlements) — les deux
+                    chiffres ne se comparent plus. Toujours HORS retenue salariale (incorporée au
+                    net saisi — [PROJ-TAXPAID-SOLDE-AVRIL], mesuré ~732 k$ sur 10 ans de couple). */}
+                <Metric
+                    label="Impôt total (modélisé)"
+                    value={fmtM(r.lifetimeTax)}
+                    privacy
+                    title="Impôt total du scénario : soldes/remboursements d'avril sur l'horizon, + le solde de la dernière année, + l'impôt successoral de liquidation (décision : l'impôt successoral entre dans « impôt minimum »). N'inclut PAS l'impôt retenu à la source sur les salaires. Négatif = remboursements nets supérieurs au reste."
+                />
+                <Metric label="FIRE" value={r.fireAge !== null ? `${Math.round(r.fireAge)} ans` : '—'} privacy />
+            </div>
+
+            {/* Tous les leviers en clair (LEVER_LIBRARY) */}
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {LEVER_LIBRARY.map((lever) => (
+                    <span key={String(lever.key)} className="rounded-sm bg-fond border border-bordure px-2 py-0.5 text-tiny text-texte-doux">
+                        {lever.label}: <strong className="text-texte">{leverValueLabel(lever.key, r.config[lever.key])}</strong>
+                    </span>
+                ))}
+            </div>
+
+            <p className="mt-2.5 text-tiny text-texte-doux leading-relaxed">{explanation}</p>
+
+            {/* Détail du score */}
+            <div className="mt-2.5 space-y-1">
+                <div className="text-tiny font-bold text-texte-doux mb-1">Détail du score</div>
+                <ScoreBar label="Survie" value={winner.breakdown.survival} />
+                <ScoreBar label="Patrimoine" value={winner.breakdown.wealth} />
+                <ScoreBar label="Fiscalité" value={winner.breakdown.tax} />
+                <ScoreBar label="FIRE" value={winner.breakdown.fire} />
+                <ScoreBar label="Robustesse" value={winner.breakdown.robustness} />
+            </div>
+
+            {onApply && (
+                <button
+                    type="button"
+                    onClick={onApply}
+                    disabled={applied}
+                    className="mt-3 w-full rounded-lg bg-succes-texte/20 hover:bg-succes-texte/30 disabled:opacity-60 disabled:cursor-not-allowed border border-succes-texte/40 px-3 py-2 text-meta font-bold text-succes-texte focus-ring transition-colors"
+                >
+                    {applied ? 'Appliquée à tes paramètres' : 'Appliquer cette stratégie'}
+                </button>
+            )}
+            {onApply && (
+                <p className="mt-1.5 text-tiny text-texte-doux">
+                    Écrit les leviers dans tes paramètres du Futur (âge/dépenses retraite, coussin,
+                    Smith, RAP, cotisation, dettes, placement) et sélectionne le scénario de retrait correspondant.
+                </p>
+            )}
+        </div>
+    );
+};
+
+// [FORMAT-EXPLAINS-TOLOCALESTRING] La prop s'appelait `blur`, un nom FAUX depuis que le masquage
+// passe par `PrivateAmount` : celui-ci ne floute pas, il RETIRE la valeur du DOM. Renommée
+// `privacy`, comme `KPIStat` et `DualKPIStat` — un nom trompeur fabrique des faux findings, et
+// celui-ci en a fabriqué deux dans la garde du mode discret.
+const Metric: React.FC<{ label: string; value: string; privacy?: boolean; title?: string }> = ({ label, value, privacy, title }) => (
+    <div className="rounded-lg bg-fond border border-bordure px-2.5 py-1.5" title={title}>
+        <div className="text-tiny text-texte-doux">{label}</div>
+        {privacy
+            ? <PrivateAmount as="div" className="text-meta font-black text-texte tabular-nums">{value}</PrivateAmount>
+            : <div className="text-meta font-black text-texte tabular-nums">{value}</div>}
+    </div>
+);
+
+// ── Tableau de toutes les configs (triable par le classement courant, filtrable) ──
+const ResultsTable: React.FC<{
+    rows: RankedConfig[];
+    totalRows: number;
+    filter: { key: keyof StrategyConfig; value: unknown } | null;
+    onFilter: (f: { key: keyof StrategyConfig; value: unknown } | null) => void;
+}> = ({ rows, totalRows, filter, onFilter }) => {
+    // Filtre simple : choix d'un levier + valeur. La 1re sélection construit le filtre.
+    const filterKey = filter?.key ?? '';
+    const lever = LEVER_LIBRARY.find((l) => l.key === filterKey);
+
+    return (
+        <div>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-tiny font-bold text-texte-doux">
+                    Toutes les stratégies {filter ? `(${rows.length}/${totalRows})` : `(${totalRows})`}
+                </span>
+                <div className="flex items-center gap-1.5">
+                    <select
+                        value={String(filterKey)}
+                        onChange={(e) => {
+                            const key = e.target.value as keyof StrategyConfig | '';
+                            if (!key) { onFilter(null); return; }
+                            const def = LEVER_LIBRARY.find((l) => l.key === key)!;
+                            onFilter({ key, value: def.options[0].value });
+                        }}
+                        className="rounded-sm bg-fond border border-bordure-champ px-1.5 py-0.5 text-tiny text-texte focus-ring"
+                        aria-label="Filtrer par levier"
+                    >
+                        <option value="">Filtrer par…</option>
+                        {LEVER_LIBRARY.map((l) => (
+                            <option key={String(l.key)} value={String(l.key)}>{l.label}</option>
+                        ))}
+                    </select>
+                    {lever && (
+                        <select
+                            value={String(filter?.value)}
+                            onChange={(e) => {
+                                const opt = lever.options.find((o) => String(o.value) === e.target.value);
+                                if (opt) onFilter({ key: lever.key, value: opt.value });
+                            }}
+                            className="rounded-sm bg-fond border border-bordure-champ px-1.5 py-0.5 text-tiny text-texte focus-ring"
+                            aria-label="Valeur du filtre"
+                        >
+                            {lever.options.map((o) => (
+                                <option key={String(o.value)} value={String(o.value)}>{o.label}</option>
+                            ))}
+                        </select>
+                    )}
+                </div>
+            </div>
+
+            <div className="max-h-72 overflow-y-auto rounded-lg border border-bordure bg-surface-douce">
+                <table className="w-full text-tiny">
+                    <thead className="sticky top-0 bg-surface-douce/95 text-texte-doux border-b border-bordure">
+                        <tr>
+                            <th className="px-2 py-1.5 text-left font-medium">#</th>
+                            <th className="px-2 py-1.5 text-right font-medium">Succès</th>
+                            <th className="px-2 py-1.5 text-right font-medium">Patrim. méd.</th>
+                            <th className="px-2 py-1.5 text-right font-medium" title="Impôt total modélisé : régularisations d'avril + solde à l'horizon + impôt successoral (hors retenue à la source des salaires)">Impôt total</th>
+                            <th className="px-2 py-1.5 text-right font-medium">FIRE</th>
+                            <th className="px-2 py-1.5 text-right font-medium">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((row) => (
+                            <tr key={row.rank} className={`border-t border-bordure ${row.rank === 1 ? 'bg-succes-fond' : ''} ${!row.survived ? 'opacity-50' : ''}`}>
+                                <td className="px-2 py-1.5 font-mono text-texte-doux">{row.rank}</td>
+                                <td className="px-2 py-1.5 text-right">
+                                    <span className={`inline-block h-1.5 w-1.5 rounded-full ${successColor(row.result.successRate)} mr-1`} aria-hidden="true" />
+                                    <span className="tabular-nums text-texte"><PrivateAmount>{row.result.successRate}%</PrivateAmount></span>
+                                </td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-texte"><PrivateAmount>{fmtM(row.result.finalNWp50)}</PrivateAmount></td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-texte-doux"><PrivateAmount>{fmtM(row.result.lifetimeTax)}</PrivateAmount></td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-texte-doux">{row.result.fireAge !== null ? <PrivateAmount>{Math.round(row.result.fireAge)}</PrivateAmount> : '—'}</td>
+                                <td className="px-2 py-1.5 text-right tabular-nums font-bold text-texte"><PrivateAmount>{Math.round(row.score * 100)}</PrivateAmount></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <p className="text-tiny text-texte-doux mt-1">
+                Patrimoine médian = trajectoire P50. Lignes estompées = sous le seuil de survie.
+            </p>
+        </div>
+    );
+};

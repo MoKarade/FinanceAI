@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agent Control Center — FinanceAI</title>
+<style>
+:root{
+  --bg:#070910; --bg2:#0a0e18; --surface:rgba(255,255,255,.028); --surface-2:rgba(255,255,255,.05);
+  --glass:rgba(20,26,40,.55); --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.12);
+  --text:#eef2fb; --muted:#9aa6be; --faint:#5f6b85;
+  --accent:#7aa2ff; --accent-2:#a78bfa;
+  --ok:#3ddc97; --running:#5b9dff; --warn:#fbbf24; --crit:#ff6b6b; --pending:#7c8aa6;
+  --r:16px; --r-sm:11px; --mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,monospace;
+  --sh:0 1px 0 rgba(255,255,255,.04) inset,0 10px 30px -12px rgba(0,0,0,.7);
+  --glow-ok:0 0 0 1px color-mix(in oklab,var(--ok) 30%,transparent),0 8px 30px -10px color-mix(in oklab,var(--ok) 40%,transparent);
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;color:var(--text);min-height:100vh;font:14px/1.55 "Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:
+    radial-gradient(1100px 600px at 85% -8%,rgba(122,162,255,.10),transparent 60%),
+    radial-gradient(900px 520px at 8% 0%,rgba(167,139,250,.09),transparent 55%),
+    linear-gradient(180deg,var(--bg2),var(--bg));
+  background-attachment:fixed;-webkit-font-smoothing:antialiased;padding-bottom:56px}
+h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.02em}
+h2{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+h2::before{content:"";width:3px;height:13px;border-radius:2px;background:linear-gradient(var(--accent),var(--accent-2))}
+h3{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:18px 0 10px;display:flex;align-items:center;gap:9px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px}
+.mono{font-family:var(--mono)} code{font-family:var(--mono);color:var(--accent);font-size:.92em;background:var(--surface-2);padding:1px 6px;border-radius:6px}
+.muted{color:var(--faint)}
+.section-rule{height:1px;background:linear-gradient(90deg,transparent,var(--line-2),transparent);margin:46px 0 0}
+
+/* Bandeau exemple */
+.banner{display:none;align-items:center;justify-content:center;gap:8px;background:linear-gradient(90deg,rgba(251,191,36,.16),rgba(251,191,36,.08));
+  color:var(--warn);border-bottom:1px solid rgba(251,191,36,.28);padding:10px 18px;font-weight:600;font-size:12.5px;backdrop-filter:blur(6px)}
+.banner.on{display:flex}
+
+/* Header */
+.topbar{position:sticky;top:0;z-index:5;backdrop-filter:blur(14px);background:linear-gradient(180deg,rgba(8,11,20,.82),rgba(8,11,20,.45));
+  border-bottom:1px solid var(--line)}
+.topbar .row{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 26px;max-width:1240px;margin:0 auto;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:13px}
+.logo{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:18px;color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 6px 20px -6px color-mix(in oklab,var(--accent) 60%,transparent)}
+.brand .sub{margin:2px 0 0;color:var(--muted);font-size:12px}
+.tools{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);padding:5px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-family:var(--mono);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conn{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--ok);padding:5px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+.conn .pip{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);animation:pulse 1.6s ease-in-out infinite}
+.conn.down{color:var(--crit)} .conn.down .pip{background:var(--crit);box-shadow:0 0 8px var(--crit)}
+.updated{color:var(--faint);font-size:12px;font-variant-numeric:tabular-nums}
+.verdict{font-weight:800;font-size:12px;letter-spacing:.07em;padding:7px 15px;border-radius:999px;border:1px solid;backdrop-filter:blur(4px)}
+.verdict.GO{color:var(--ok);border-color:color-mix(in oklab,var(--ok) 45%,transparent);background:color-mix(in oklab,var(--ok) 13%,transparent);box-shadow:0 0 22px -8px var(--ok)}
+.verdict.NOGO{color:var(--crit);border-color:color-mix(in oklab,var(--crit) 50%,transparent);background:color-mix(in oklab,var(--crit) 13%,transparent);box-shadow:0 0 22px -8px var(--crit)}
+.verdict.PENDING{color:var(--warn);border-color:color-mix(in oklab,var(--warn) 42%,transparent);background:color-mix(in oklab,var(--warn) 11%,transparent)}
+
+/* Métriques */
+.metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-top:24px}
+.metric{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
+.metric::after{content:"";position:absolute;inset:0;background:radial-gradient(120px 60px at 100% 0,rgba(122,162,255,.08),transparent 70%);pointer-events:none}
+.metric .v{font-size:30px;font-weight:750;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.metric .l{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em;margin-top:8px}
+.metric.crit .v{color:var(--crit)} .metric.warn .v{color:var(--warn)} .metric.ok .v{color:var(--ok)} .metric.acc .v{color:var(--accent)}
+.metric .bar{height:4px;border-radius:99px;background:var(--surface-2);margin-top:12px;overflow:hidden}
+.metric .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .5s cubic-bezier(.2,.8,.2,1)}
+
+/* Pipeline */
+.pipeline{list-style:none;display:flex;gap:10px;padding:0;margin:0;overflow-x:auto;padding-bottom:6px}
+.pipeline li{position:relative;flex:1 0 130px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:14px 13px;display:flex;flex-direction:column;gap:7px;transition:.25s}
+.pipeline li .step{font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.pipeline li .ag{font-weight:600;font-size:12.5px}
+.pipeline li .du{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pipeline li.running{border-color:color-mix(in oklab,var(--running) 55%,transparent);box-shadow:0 0 26px -12px var(--running)}
+.pipeline li.completed{background:color-mix(in oklab,var(--ok) 7%,var(--surface));border-color:color-mix(in oklab,var(--ok) 22%,transparent)}
+.pipeline li.failed{background:color-mix(in oklab,var(--crit) 9%,var(--surface));border-color:color-mix(in oklab,var(--crit) 30%,transparent)}
+
+/* Agents */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(262px,1fr));gap:14px}
+.agent{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--sh);transition:.22s;overflow:hidden;cursor:pointer}
+.agent:hover{border-color:var(--line-2);transform:translateY(-2px)}
+.agent:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.agent.is-running{border-color:color-mix(in oklab,var(--running) 45%,transparent);box-shadow:var(--sh),0 0 30px -16px var(--running)}
+.agent.is-failed{border-color:color-mix(in oklab,var(--crit) 40%,transparent)}
+.agent .top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.agent .nm{font-weight:650;font-size:13.5px;letter-spacing:-.01em}
+.agent .meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.agent .task{color:var(--muted);font-size:12px;min-height:17px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.agent .foot{display:flex;justify-content:space-between;align-items:center;color:var(--faint);font-size:11px;font-variant-numeric:tabular-nums;margin-top:11px;padding-top:10px;border-top:1px solid var(--line)}
+.agent .foot .det{color:var(--accent);font-weight:600;opacity:0;transition:.2s}
+.agent:hover .foot .det,.agent:focus-visible .foot .det{opacity:1}
+.agent .tr{display:inline-flex;align-items:center;gap:5px;color:var(--accent-2);font-size:10px;font-weight:600}
+.agent .tr::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent-2)}
+
+/* Workflows (runs réels — Lot 4) */
+.wf{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.wfc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:15px;box-shadow:var(--sh);transition:.2s;overflow:hidden}
+.wfc:hover{border-color:var(--line-2)}
+.wfc.running{border-color:color-mix(in oklab,var(--running) 45%,transparent);box-shadow:var(--sh),0 0 30px -16px var(--running)}
+.wfc .wh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.wfc .wn{font-weight:650;font-size:13px;font-family:var(--mono);letter-spacing:-.01em;word-break:break-all}
+.wfc .wsum{color:var(--muted);font-size:12px;margin:7px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wfc .wph{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}
+.wfc .wph span{font-size:9.5px;color:var(--faint);border:1px solid var(--line);border-radius:6px;padding:2px 7px;white-space:nowrap}
+.wfc .wag{display:flex;gap:5px;flex-wrap:wrap;margin:9px 0 0}
+.wfc .wag .a{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:6px;border:1px solid var(--line);color:var(--muted);display:inline-flex;gap:6px;align-items:center;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.wfc .wag .a::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--pending);flex:0 0 auto}
+.wfc .wag .a.done::before{background:var(--ok)}
+.wfc .wag .a.running::before{background:var(--running);animation:pulse 1.5s ease-in-out infinite}
+.wfc .wmore{font-size:10px;color:var(--faint);align-self:center}
+.wfc .wf-foot{display:flex;gap:13px;flex-wrap:wrap;color:var(--faint);font-size:11px;margin-top:11px;padding-top:9px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+
+/* Badges */
+.badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.badge.opus{color:#c4b5fd;border-color:rgba(167,139,250,.35);background:rgba(167,139,250,.08)}
+.badge.haiku{color:#67e8f9;border-color:rgba(34,211,238,.3);background:rgba(34,211,238,.07)}
+.badge.sonnet{color:#93c5fd;border-color:rgba(122,162,255,.28)}
+.badge.critical{color:var(--crit);border-color:color-mix(in oklab,var(--crit) 38%,transparent);background:color-mix(in oklab,var(--crit) 9%,transparent)}
+.badge.high{color:var(--warn);border-color:color-mix(in oklab,var(--warn) 35%,transparent);background:color-mix(in oklab,var(--warn) 8%,transparent)}
+
+/* Status dot + label */
+.st{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;white-space:nowrap}
+.st::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--pending);box-shadow:0 0 0 0 transparent}
+.st.idle{color:var(--faint)}.st.idle::before{background:var(--faint)}
+.st.pending{color:var(--muted)}.st.pending::before{background:var(--muted)}
+.st.running{color:var(--running)}.st.running::before{background:var(--running);animation:pulse 1.5s ease-in-out infinite}
+.st.completed{color:var(--ok)}.st.completed::before{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.st.failed{color:var(--crit)}.st.failed::before{background:var(--crit)}
+.st.stale{color:var(--warn)}.st.stale::before{background:var(--warn);animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in oklab,currentColor 55%,transparent)}70%{box-shadow:0 0 0 6px transparent}}
+
+/* Listes */
+.cols{display:grid;grid-template-columns:1.5fr 1fr;gap:24px}
+.list{display:flex;flex-direction:column;gap:9px}
+.rowi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:11px;align-items:flex-start;transition:.2s}
+.rowi:hover{border-color:var(--line-2)}
+.sev{font-size:10px;font-weight:800;padding:3px 8px;border-radius:7px;white-space:nowrap;letter-spacing:.03em}
+.sev.CRITIQUE{color:var(--crit);background:color-mix(in oklab,var(--crit) 16%,transparent)}
+.sev.ELEVE{color:var(--warn);background:color-mix(in oklab,var(--warn) 13%,transparent)}
+.sev.MOYEN{color:var(--accent);background:color-mix(in oklab,var(--accent) 13%,transparent)}
+.sev.FAIBLE{color:var(--muted);background:var(--surface-2)}
+.rowi .bd{min-width:0;flex:1}
+.rowi .file{font-family:var(--mono);font-size:11.5px;color:var(--accent);word-break:break-all}
+.rowi .dsc{color:var(--muted);font-size:12px;margin-top:2px}
+.rowi .who{color:var(--faint);font-size:11px;margin-top:3px}
+.res{font-size:10px;font-weight:800;padding:3px 8px;border-radius:7px;letter-spacing:.03em}
+.res.pass{color:var(--ok);background:color-mix(in oklab,var(--ok) 14%,transparent)}
+.res.fail{color:var(--crit);background:color-mix(in oklab,var(--crit) 14%,transparent)}
+.res.warn{color:var(--warn);background:color-mix(in oklab,var(--warn) 13%,transparent)}
+
+/* Verdict + scores */
+.decision{display:flex;align-items:center;gap:20px;background:linear-gradient(135deg,var(--glass),var(--surface));border:1px solid var(--line);border-radius:var(--r);padding:22px;box-shadow:var(--sh);flex-wrap:wrap}
+.decision .big{font-size:30px;font-weight:850;letter-spacing:-.03em}
+.decision.GO{border-color:color-mix(in oklab,var(--ok) 42%,var(--line));box-shadow:var(--glow-ok)}.decision.GO .big{color:var(--ok)}
+.decision.NOGO{border-color:color-mix(in oklab,var(--crit) 45%,var(--line))}.decision.NOGO .big{color:var(--crit)}
+.decision.PENDING .big{color:var(--warn)}
+.decision .reason{color:var(--muted);font-size:13px}
+.scores{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-top:14px}
+.score{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px;text-align:center}
+.score b{display:block;font-size:23px;font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.score b.g{color:var(--ok)} .score b.y{color:var(--warn)} .score b.r{color:var(--crit)}
+.score span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-top:5px;display:block}
+
+/* Avancement — sous-ligne + phases */
+.subline{color:var(--faint);font-size:12px;margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.subline b{color:var(--muted);font-weight:600}
+.phase{display:flex;align-items:center;gap:13px;margin:9px 0}
+.phase .pl{width:210px;flex:0 0 auto;font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phase .pb{flex:1;height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.phase .pb i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.phase.done .pl{color:var(--ok)} .phase.done .pb i{background:linear-gradient(90deg,var(--ok),#7af0c0)}
+.phase .pf{width:54px;flex:0 0 auto;text-align:right;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+
+/* Avancement — toolbar (chips + recherche) */
+.bl-tools{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:6px 0 18px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.fchip{cursor:pointer;font-size:11.5px;font-weight:600;padding:6px 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);display:inline-flex;align-items:center;gap:7px;transition:.18s}
+.fchip:hover{border-color:var(--line-2)}
+.fchip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.fchip.on{color:var(--text);border-color:color-mix(in oklab,var(--accent) 60%,transparent);background:color-mix(in oklab,var(--accent) 14%,transparent)}
+.fchip .n{font-size:10px;font-variant-numeric:tabular-nums;background:var(--surface-2);border-radius:999px;padding:1px 7px;color:var(--muted)}
+.fchip.on .n{background:color-mix(in oklab,var(--accent) 22%,transparent);color:var(--text)}
+.search{flex:1;min-width:190px;max-width:360px;display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 13px}
+.search:focus-within{border-color:color-mix(in oklab,var(--accent) 50%,transparent)}
+.search svg{flex:0 0 auto;opacity:.6}
+.search input{flex:1;background:none;border:none;color:var(--text);font:inherit;outline:none}
+.search input::placeholder{color:var(--faint)}
+
+/* Backlog groupé */
+.bgroup{margin-bottom:22px}
+.bgroup.hide{display:none}
+.bitem{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:11px 13px;display:flex;gap:11px;align-items:flex-start;transition:.18s;margin-bottom:8px}
+.bitem:hover{border-color:var(--line-2)}
+.bitem .id{font-family:var(--mono);font-size:11.5px;color:var(--accent);font-weight:600;white-space:nowrap;flex:0 0 auto}
+.bitem .bd{min-width:0;flex:1}
+.bitem .ds{color:var(--muted);font-size:12.5px;line-height:1.45}
+.bitem .sec{color:var(--faint);font-size:10.5px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bitem.done{opacity:.6} .bitem.done .id{color:var(--ok)}
+.bitem .mk{font-size:12px;flex:0 0 auto;line-height:1.3}
+.pri{font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;flex:0 0 auto;letter-spacing:.03em}
+.pri.CRITICAL{color:var(--crit);background:color-mix(in oklab,var(--crit) 15%,transparent)}
+.pri.HIGH{color:var(--warn);background:color-mix(in oklab,var(--warn) 13%,transparent)}
+.pri.MEDIUM{color:var(--accent);background:color-mix(in oklab,var(--accent) 12%,transparent)}
+.pri.LOW{color:var(--muted);background:var(--surface-2)}
+.pri.P0,.pri.P1{color:var(--crit);background:color-mix(in oklab,var(--crit) 15%,transparent)}
+.pri.P2{color:var(--warn);background:color-mix(in oklab,var(--warn) 13%,transparent)}
+.pri.P3{color:var(--muted);background:var(--surface-2)}
+
+.tag{font-size:9.5px;font-weight:700;color:var(--faint);border:1px solid var(--line);border-radius:6px;padding:2px 7px;letter-spacing:.04em;text-transform:uppercase}
+.empty{color:var(--faint);font-size:13px;padding:18px;border:1px dashed var(--line);border-radius:12px;text-align:center;background:var(--surface)}
+.foot{max-width:1240px;margin:40px auto 0;padding:0 26px;color:var(--faint);font-size:12px;line-height:1.7}
+
+/* Tiroir détail agent */
+.scrim{position:fixed;inset:0;background:rgba(2,4,10,.62);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:.25s;z-index:40}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(580px,95vw);background:linear-gradient(180deg,var(--bg2),var(--bg));border-left:1px solid var(--line-2);
+  box-shadow:-24px 0 70px -22px rgba(0,0,0,.85);transform:translateX(101%);transition:transform .28s cubic-bezier(.2,.8,.2,1);z-index:41;display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.drawer .dh{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:22px 24px;border-bottom:1px solid var(--line)}
+.drawer .dh .nm{font-size:17px;font-weight:700;letter-spacing:-.02em}
+.drawer .dh .row2{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px;align-items:center}
+.drawer .db{padding:20px 24px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:20px}
+.drawer .x{cursor:pointer;flex:0 0 auto;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:18px;display:grid;place-items:center;transition:.18s}
+.drawer .x:hover{color:var(--text);border-color:var(--line-2)}
+.drawer .x:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.block h4{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0 0 9px;display:flex;align-items:center;gap:8px}
+.block pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:13px;margin:0;max-height:320px;overflow:auto}
+.block .meta-line{color:var(--faint);font-size:12px;line-height:1.7;font-variant-numeric:tabular-nums}
+.tools-row{display:flex;gap:7px;flex-wrap:wrap}
+.tchip{font-family:var(--mono);font-size:10.5px;color:var(--accent-2);border:1px solid var(--line);border-radius:7px;padding:3px 8px;background:var(--surface);white-space:nowrap}
+
+@media (max-width:920px){.metrics,.scores{grid-template-columns:repeat(3,1fr)}.cols{grid-template-columns:1fr}.phase .pl{width:130px}}
+@media (max-width:560px){.metrics,.scores{grid-template-columns:repeat(2,1fr)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="banner" class="banner" role="alert"></div>
+
+<header class="topbar">
+  <div class="row">
+    <div class="brand">
+      <div class="logo">◆</div>
+      <div><h1>Agent Control Center</h1><p class="sub">FinanceAI · 14 agents · dev-only</p></div>
+    </div>
+    <div class="tools">
+      <span id="branch" class="chip" hidden></span>
+      <span id="verdict" class="verdict PENDING">PENDING</span>
+      <span id="updated" class="updated"></span>
+      <span id="conn" class="conn"><span class="pip"></span><span id="conn-t">live</span></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- ════════ BLOC AGENTS ════════ -->
+  <section class="metrics" aria-label="Métriques agents">
+    <div class="metric"><div class="v" id="m-active">0</div><div class="l">actifs</div></div>
+    <div class="metric ok"><div class="v" id="m-done">0</div><div class="l">terminés</div></div>
+    <div class="metric"><div class="v" id="m-pending">0</div><div class="l">en attente</div></div>
+    <div class="metric crit"><div class="v" id="m-crit">0</div><div class="l">critiques</div></div>
+    <div class="metric warn"><div class="v" id="m-warn">0</div><div class="l">avertissements</div></div>
+    <div class="metric"><div class="v" id="m-pct">0%</div><div class="l">progression</div><div class="bar"><i id="m-bar" style="width:0%"></i></div></div>
+  </section>
+
+  <h2 id="h-pipe">Pipeline</h2>
+  <ol id="pipeline" class="pipeline" aria-labelledby="h-pipe"></ol>
+
+  <h2 id="h-ag">Agents <span class="muted" id="ag-count"></span> <span class="tag">clique → détail</span></h2>
+  <div id="agents" class="grid" aria-labelledby="h-ag"></div>
+
+  <h2>Workflows <span class="muted" id="wf-count"></span> <span class="tag" id="wf-tag" hidden>exemple</span></h2>
+  <div id="workflows" class="wf"></div>
+
+  <div class="cols">
+    <section><h2>Risques <span class="tag" id="risks-tag" hidden>best-effort</span></h2><div id="risks" class="list"></div></section>
+    <section><h2>Audits <span class="tag" id="audits-tag" hidden>v2</span></h2><div id="audits" class="list"></div></section>
+  </div>
+
+  <h2>Verdict <span class="tag" id="scores-tag" hidden>best-effort</span></h2>
+  <div id="decision" class="decision"></div>
+  <div id="scores" class="scores"></div>
+
+  <div class="section-rule"></div>
+
+  <!-- ════════ BLOC AVANCEMENT ════════ -->
+  <h2>Avancement du projet <span class="tag" id="bl-tag" hidden>exemple</span></h2>
+  <section class="metrics" aria-label="Métriques backlog">
+    <div class="metric"><div class="v" id="b-total">0</div><div class="l">items</div></div>
+    <div class="metric ok"><div class="v" id="b-fait">0</div><div class="l">faits</div></div>
+    <div class="metric acc"><div class="v" id="b-encours">0</div><div class="l">en cours</div></div>
+    <div class="metric warn"><div class="v" id="b-attente">0</div><div class="l">attente Marc</div></div>
+    <div class="metric"><div class="v" id="b-avenir">0</div><div class="l">à venir</div></div>
+    <div class="metric ok"><div class="v" id="b-tests">—</div><div class="l">tests verts</div></div>
+  </section>
+  <div class="subline" id="b-subline"></div>
+
+  <h3>Phases</h3>
+  <div id="phases"></div>
+
+  <h3>Backlog</h3>
+  <div class="bl-tools">
+    <div class="chips" id="bl-chips" role="group" aria-label="Filtrer le backlog"></div>
+    <label class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="bl-search" type="search" placeholder="Rechercher un item (ID ou texte)…" aria-label="Rechercher dans le backlog" autocomplete="off" />
+    </label>
+  </div>
+  <div id="backlog"></div>
+</main>
+
+<footer class="foot wrap">
+  Données réelles : <code>/status</code> (hook <code>agent-status.mjs</code>) + <code>/backlog</code> (scan <code>BACKLOG.md</code> + git).
+  Lance <code>npm run acc</code> pour la vraie activité · outil de dev, jamais shippé.
+</footer>
+
+<!-- Tiroir détail agent -->
+<div id="scrim" class="scrim"></div>
+<div id="drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="dw-name" aria-hidden="true" tabindex="-1">
+  <div class="dh">
+    <div>
+      <div class="nm" id="dw-name">—</div>
+      <div class="row2" id="dw-meta"></div>
+    </div>
+    <button class="x" id="dw-close" aria-label="Fermer le détail">✕</button>
+  </div>
+  <div class="db" id="dw-body" tabindex="0"></div>
+</div>
+
+<script>
+'use strict';
+// ── Données embarquées (repli quand le serveur ACC n'est pas lancé : aperçu beau + ÉTIQUETÉ exemple) ──
+const META=[
+ {name:'orchestrator',model:'sonnet',priority:'normal',role:'Route vers les agents pertinents.'},
+ {name:'architect',model:'sonnet',priority:'normal',role:'Structure cible + plan.'},
+ {name:'product-manager',model:'sonnet',priority:'normal',role:'Valeur / MVP / critères.'},
+ {name:'financial-integrity',model:'opus',priority:'critical',role:'Justesse des calculs $ + intégrité données.'},
+ {name:'security-privacy',model:'sonnet',priority:'high',role:'Failles / fuites / vie privée (Loi 25).'},
+ {name:'code-reviewer',model:'sonnet',priority:'high',role:'Correction / clarté / perf / tests.'},
+ {name:'ai-reviewer',model:'sonnet',priority:'normal',role:'Prompts / coût / fallback du SDK.'},
+ {name:'documentation-manager',model:'haiku',priority:'low',role:'Cohérence doc <-> code.'},
+ {name:'projection-validator',model:'opus',priority:'critical',role:'Conservation $ / 12 invariants.'},
+ {name:'silent-failure-hunter',model:'sonnet',priority:'high',role:'Erreurs avalées / fallback masquant.'},
+ {name:'test-writer',model:'sonnet',priority:'normal',role:'Tests Vitest de la logique ajoutée.'},
+ {name:'performance-optimizer',model:'sonnet',priority:'normal',role:'Profilage moteur profond.'},
+ {name:'a11y-auditor',model:'sonnet',priority:'normal',role:'Accessibilité WCAG AA.'},
+ {name:'code-analyzer',model:'sonnet',priority:'normal',role:'Dette technique large -> BACKLOG.'}];
+const PIPE_STEPS=['Request','Analysis','Architecture','Implementation','Review','Security','Financial','Testing','Documentation','Release'];
+const NOW=Date.now();
+const EXAMPLE={source:'example',updatedAt:new Date().toISOString(),currentTask:'Revue PR #325 — calcul RRQ',
+ progress:{done:3,active:1,pending:1,pct:60},activeAgents:['financial-integrity'],completedAgents:['architect','code-reviewer','silent-failure-hunter'],pendingAgents:['projection-validator'],
+ criticalIssues:0,warnings:2,decision:{verdict:'PENDING',reason:'Revue en cours (financial-integrity)',blockedBy:[]},
+ agents:{'financial-integrity':{status:'running',task:'Vérifier paliers RRQ vs FISCAL_REFERENCE.md',message:'Vérifie que les paliers RRQ utilisés dans services/projection correspondent à docs/FISCAL_REFERENCE.md (MGA, taux, exemption). Lis le diff via git diff. Verdict APPROVE/CHANGES bref.',startedAt:new Date().toISOString(),lastRun:new Date().toISOString(),durationMs:null,critical:0,warnings:1,transcript:null},
+  architect:{status:'completed',task:'Plan Control Center',message:'Propose la structure cible du dashboard Agent Control Center : sections, flux de données, fichiers à créer.',lastRun:new Date(NOW-240000).toISOString(),durationMs:18200,critical:0,warnings:0,
+    transcript:{id:'ex1',file:null,capturedAt:new Date(NOW-240000).toISOString(),hasThinking:false,tools:['Read','Grep','Glob'],thinkingExcerpt:'',outputExcerpt:'Structure recommandée : 2 blocs (Agents temps réel + Avancement projet). Serveur Node natif sert /status et /backlog. Dashboard auto-contenu, polling 2 s, repli exemple étiqueté.'}},
+  'code-reviewer':{status:'completed',task:'Revue diff PR #325',message:'Revue de correction/clarté/perf du diff courant (git diff). Verdict APPROVE/CHANGES avec fichier:ligne.',lastRun:new Date(NOW-200000).toISOString(),durationMs:24100,critical:0,warnings:1,
+    transcript:{id:'ex2',file:'agent-transcripts/ex2.json',capturedAt:new Date(NOW-200000).toISOString(),hasThinking:false,tools:['Read','Grep','Bash'],thinkingExcerpt:'',outputExcerpt:'APPROVE avec 1 finding MOYEN : barèmes 2026 codés en dur dans TaxBracketViz.tsx:41 — passer un prop year. Reste correct, lisible, pas de régression.'}},
+  'silent-failure-hunter':{status:'completed',task:'Erreurs avalées',message:'Traque les erreurs avalées / fallback masquant un bug dans le diff. Bref.',lastRun:new Date(NOW-190000).toISOString(),durationMs:15300,critical:0,warnings:0,
+    transcript:{id:'ex3',file:null,capturedAt:new Date(NOW-190000).toISOString(),hasThinking:false,tools:['Read','Grep'],thinkingExcerpt:'',outputExcerpt:'APPROVE — aucun catch vide, aucun fallback silencieux. Les erreurs remontent avec contexte.'}},
+  'projection-validator':{status:'pending',task:null,message:null,lastRun:null,durationMs:null,critical:0,warnings:0,transcript:null}},
+ pipeline:[{agent:'architect',status:'completed',durationMs:18200},{agent:'code-reviewer',status:'completed',durationMs:24100},{agent:'silent-failure-hunter',status:'completed',durationMs:15300},{agent:'financial-integrity',status:'running',durationMs:null},{agent:'projection-validator',status:'pending',durationMs:null}],
+ risks:[{severity:'MOYEN',agent:'code-reviewer',file:'components/TaxBracketViz.tsx:41',cause:'barèmes 2026 codés en dur',impact:'taux effectif faux en retraite',fix:'passer un prop year'}],
+ audits:[{label:'paliers RRQ 2025 vs FISCAL_REFERENCE',agent:'financial-integrity',result:'warn',detail:'MGA à revérifier 2026'},{label:'12 invariants moneyConservation',agent:'projection-validator',result:'pass',detail:'12/12 verts'}],
+ scores:{security:92,financial:98,quality:90,ux:95,documentation:88,global:93}};
+
+// Repli /backlog quand le serveur n'est pas lancé (ÉTIQUETÉ exemple via le tag de section).
+const BACKLOG_EXAMPLE={source:'example',branch:'claude/exemple-demo',generatedAt:new Date().toISOString(),
+ counts:{total:42,fait:18,enCours:1,enAttente:3,aVenir:20},
+ metrics:{tests:2176,commits7d:31,lastCommit:new Date(NOW-3600000).toISOString()},
+ phases:[{phase:1,label:'bugs chunk périmé',done:true},{phase:2,label:'clé de voûte (Web Worker, courbe)',done:false},{phase:3,label:'onglet Profil',done:false},{phase:4,label:'refontes par onglet',done:false}],
+ enCours:[{id:'ACC-LOT3',state:'open',marker:'claude',priority:'MEDIUM',section:'Agent Control Center',desc:'dashboard enrichi : tiroir agent + backlog'}],
+ enAttente:[{id:'LABEL-NW-SUCCESSORAL',state:'open',marker:'marc',priority:'MEDIUM',section:'Présentation money-critical',desc:'libellés NW successoral distincts + tooltip'},
+   {id:'FA-6',state:'open',marker:'marc',priority:'MEDIUM',section:'Fiscalité',desc:'dons de bienfaisance : barème fed + QC sourcé'},
+   {id:null,source:'A_FAIRE_MOI',marker:'human',desc:'Configurer le client OAuth Google (console)'}],
+ aVenir:[{id:'PH4-A',state:'open',marker:'claude',priority:'MEDIUM',section:'Budget',desc:'refonte Budget : besoin/envie/épargne'},
+   {id:'ITEM-2C',state:'open',marker:'claude',priority:'MEDIUM',section:'Fiscalité',desc:'attribution per-conjoint automatique'}],
+ fait:[{id:'FMT-CURRENCY-UNIFY',state:'done',marker:'claude',priority:'MEDIUM',section:'Format',desc:'formatCAD partout'},
+   {id:'MONEY-PHANTOM',state:'done',marker:'claude',priority:'CRITICAL',section:'Moteur',desc:'source unique computeRawNetWorth'}]};
+
+// Repli /workflows quand le serveur n'est pas lancé (ÉTIQUETÉ exemple via le tag de section).
+const WORKFLOWS_EXAMPLE={source:'example',counts:{running:1,recent:2,total:3},
+ enCours:[{runId:'wf_exemple-run',name:'audit-money-engine',status:'running',summary:'',startedAt:new Date(NOW-90000).toISOString(),durationMs:null,agentCount:4,totalTokens:null,totalToolCalls:null,phases:['Reproduce','Sweep','Verify'],agents:[{label:'reproduce',state:'done'},{label:'sweep:cashflow',state:'done'},{label:'sweep:immo',state:'running'},{label:'verify',state:'running'}],done:2}],
+ recents:[{runId:'wf_ex1',name:'verif-high-financiers',status:'completed',summary:'Vérifie #4/#5/#6 (HIGH financiers) avant fix — posture sceptique.',startedAt:new Date(NOW-3600000).toISOString(),durationMs:124000,agentCount:3,totalTokens:412000,totalToolCalls:18,phases:['Verification'],agents:[{label:'survivant',model:'opus',state:'done'},{label:'acb-renos',model:'opus',state:'done'},{label:'impot-immo',model:'opus',state:'done'}]},
+   {runId:'wf_ex2',name:'review-changes',status:'completed',summary:'Revue multi-dimensions du diff + vérification adversariale.',startedAt:new Date(NOW-7200000).toISOString(),durationMs:96000,agentCount:6,totalTokens:680000,totalToolCalls:42,phases:['Review','Verify'],agents:[{label:'review:bugs',state:'done'},{label:'review:perf',state:'done'},{label:'verify:bugs',state:'done'}]}]};
+
+const POLL=2000, STALE=600000;
+const $=id=>document.getElementById(id);
+const el=(t,c,x)=>{const n=document.createElement(t);if(c)n.className=c;if(x!=null)n.textContent=x;return n;};
+const dur=ms=>ms==null?'':ms<1000?ms+' ms':(ms/1000).toFixed(1)+' s';
+const ago=iso=>{if(!iso)return 'jamais';const d=Math.round((Date.now()-Date.parse(iso))/1000);if(isNaN(d))return '—';if(d<60)return 'il y a '+d+' s';if(d<3600)return 'il y a '+Math.round(d/60)+' min';if(d<86400)return 'il y a '+Math.round(d/3600)+' h';return 'il y a '+Math.round(d/86400)+' j';};
+const stLbl=s=>({idle:'inactif',pending:'en attente',running:'en cours',completed:'terminé',failed:'échec',stale:'bloqué ?'}[s]||s);
+const sevCls=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+const stOf=(a,live)=>(live&&a.status==='running'&&a.startedAt&&Date.now()-Date.parse(a.startedAt)>STALE)?'stale':(a.status||'idle');
+const metaOf=n=>META.find(m=>m.name===n)||{name:n};
+const MK={claude:'🔧',marc:'🧭',human:'👤'};
+const mkLbl={claude:'Claude',marc:'décision Marc',human:'action humaine'};
+function scoreCls(v){return v>=90?'g':v>=75?'y':'r';}
+
+let CUR=null;            // dernier /status rendu (pour le tiroir)
+let lastUpd=null;
+let drawerOpen=null;     // nom de l'agent ouvert dans le tiroir (pour rafraîchir live)
+let lastTrigger=null;    // carte qui a ouvert le tiroir (restitution du focus)
+let drawerSig=null;      // signature des données de l'agent ouvert (évite de reconstruire le tiroir pour rien)
+
+// ───────────────────────── BLOC AGENTS ─────────────────────────
+function render(s){
+  CUR=s;
+  const live=s.source!=='example';
+  const b=$('banner');b.classList.toggle('on',!live);if(!live)b.textContent="⚠ Données d'EXEMPLE — lance npm run acc + une revue d'agents pour la vraie activité.";
+  const v=(s.decision&&s.decision.verdict)||'PENDING',vc=v==='NO-GO'?'NOGO':v;
+  const vp=$('verdict');vp.textContent=v;vp.className='verdict '+vc;
+  lastUpd=s.updatedAt||null;$('updated').textContent=lastUpd?'maj '+ago(lastUpd):'';
+  const p=s.progress||{};
+  $('m-active').textContent=(s.activeAgents||[]).length;$('m-done').textContent=(s.completedAgents||[]).length;
+  $('m-pending').textContent=(s.pendingAgents||[]).length;$('m-crit').textContent=s.criticalIssues||0;
+  $('m-warn').textContent=s.warnings||0;$('m-pct').textContent=(p.pct||0)+'%';$('m-bar').style.width=(p.pct||0)+'%';
+
+  const pipe=$('pipeline');pipe.replaceChildren();
+  const steps=(s.pipeline&&s.pipeline.length)?s.pipeline.map(x=>({label:x.agent,status:x.status,du:x.durationMs})):PIPE_STEPS.map(l=>({label:l,status:'pending',du:null}));
+  steps.forEach((x,i)=>{const li=el('li',x.status);li.append(el('span','step','0'+(i+1)),el('span','ag',x.label),el('span','st '+x.status,stLbl(x.status)));if(x.du!=null)li.appendChild(el('span','du',dur(x.du)));pipe.appendChild(li);});
+
+  const grid=$('agents');grid.replaceChildren();$('ag-count').textContent='('+META.length+')';
+  const la=s.agents||{};
+  META.forEach(m=>{const a=la[m.name]||{status:'idle'};const st=stOf(a,live);
+    const c=el('div','agent'+(st==='running'?' is-running':st==='failed'?' is-failed':''));
+    c.tabIndex=0;c.setAttribute('role','button');c.dataset.name=m.name;c.setAttribute('aria-label','Détail de '+m.name);
+    const top=el('div','top');top.append(el('span','nm',m.name),el('span','st '+st,stLbl(st)));c.appendChild(top);
+    const mt=el('div','meta');if(m.model)mt.appendChild(el('span','badge '+m.model,m.model));if(m.priority&&m.priority!=='normal')mt.appendChild(el('span','badge '+m.priority,m.priority));c.appendChild(mt);
+    const tk=el('div','task');if(a.task)tk.textContent=a.task;else tk.appendChild(el('span','muted',m.role||'inactif'));c.appendChild(tk);
+    const ft=el('div','foot');
+    const left=a.transcript?el('span','tr','transcription'):el('span',null,a.lastRun?ago(a.lastRun):'jamais exécuté');
+    ft.append(left,el('span','det','voir détail →'));c.appendChild(ft);
+    grid.appendChild(c);});
+
+  $('risks-tag').hidden=!live;
+  fillList($('risks'),s.risks||[],r=>{const row=el('div','rowi');row.appendChild(el('span','sev '+sevCls(r.severity),r.severity||'?'));const bd=el('div','bd');if(r.file)bd.appendChild(el('div','file',r.file));bd.appendChild(el('div','dsc',[r.cause,r.impact,r.fix].filter(Boolean).join(' — ')));if(r.agent)bd.appendChild(el('div','who',r.agent));row.appendChild(bd);return row;},live?'Aucun risque structuré capté.':'Aucun risque.');
+  $('audits-tag').hidden=!live;
+  fillList($('audits'),s.audits||[],a=>{const row=el('div','rowi');row.appendChild(el('span','res '+(a.result||'warn'),(a.result||'').toUpperCase()));const bd=el('div','bd');bd.appendChild(el('div',null,a.label||''));if(a.detail)bd.appendChild(el('div','dsc',a.detail));row.appendChild(bd);return row;},live?'Aucun audit structuré capté.':'Aucun audit.');
+
+  $('scores-tag').hidden=!live;
+  const dec=$('decision');dec.className='decision '+vc;dec.replaceChildren(el('span','big',v),el('span','reason',(s.decision&&s.decision.reason)||''));
+  const sc=$('scores');sc.replaceChildren();const ss=s.scores||{};
+  const keys=[['security','sécurité'],['financial','financier'],['quality','qualité'],['ux','UX'],['documentation','doc'],['global','global']];
+  if(Object.keys(ss).length)keys.forEach(([k,l])=>{const d=el('div','score');const bb=el('b',null,ss[k]!=null?ss[k]:'—');if(ss[k]!=null)bb.classList.add(scoreCls(ss[k]));d.appendChild(bb);d.appendChild(el('span',null,l));sc.appendChild(d);});
+  else sc.appendChild(el('div','empty',live?'Scores agrégés = v3 (findings structurés requis).':'Pas de scores.'));
+
+  if(drawerOpen){const ds=agentSig(drawerOpen);if(ds!==drawerSig){drawerSig=ds;fillDrawer(drawerOpen);}} // re-rend le tiroir SEULEMENT si l'agent ouvert a bougé (garde le scroll des <pre>)
+}
+function fillList(node,items,fn,empty){node.replaceChildren();if(!items||!items.length){node.appendChild(el('div','empty',empty));return;}items.forEach(i=>node.appendChild(fn(i)));}
+
+// ───────────────────────── Tiroir détail agent ─────────────────────────
+// inert sur main+header pendant l'ouverture : piège le focus DANS le tiroir (Tab ne sort pas derrière)
+// ET masque le fond aux lecteurs d'écran — le tiroir est un sibling de <main>, donc non affecté.
+function setInert(on){const m=document.querySelector('main'),h=document.querySelector('header');if(m)m.inert=on;if(h)h.inert=on;}
+function agentSig(name){const a=(CUR&&CUR.agents&&CUR.agents[name])||{};return a.status+'|'+a.durationMs+'|'+(a.transcript?a.transcript.capturedAt:'')+'|'+(a.message?a.message.length:0);}
+function openDrawer(name,trigger){drawerOpen=name;lastTrigger=trigger||null;fillDrawer(name);drawerSig=agentSig(name);
+  setInert(true);$('scrim').classList.add('on');$('drawer').classList.add('on');$('drawer').setAttribute('aria-hidden','false');$('dw-close').focus();}
+function closeDrawer(){const name=drawerOpen;drawerOpen=null;setInert(false);$('scrim').classList.remove('on');$('drawer').classList.remove('on');$('drawer').setAttribute('aria-hidden','true');
+  // restitue le focus : la carte d'origine si elle existe encore, sinon retrouvée par data-name (la grille a pu re-rendre).
+  const t=(lastTrigger&&document.contains(lastTrigger))?lastTrigger:(name?document.querySelector('.agent[data-name="'+name+'"]'):null);if(t&&t.focus)t.focus();}
+function block(title,extra){const d=el('div','block');const h=el('h4',null,title);if(extra)h.appendChild(extra);d.appendChild(h);return d;}
+function fillDrawer(name){
+  const m=metaOf(name);const a=(CUR&&CUR.agents&&CUR.agents[name])||{status:'idle'};
+  const live=CUR&&CUR.source!=='example';const st=stOf(a,live);
+  $('dw-name').textContent=name;
+  const meta=$('dw-meta');meta.replaceChildren();
+  meta.appendChild(el('span','st '+st,stLbl(st)));
+  if(m.model)meta.appendChild(el('span','badge '+m.model,m.model));
+  if(m.priority&&m.priority!=='normal')meta.appendChild(el('span','badge '+m.priority,m.priority));
+  if(a.durationMs!=null)meta.appendChild(el('span','tag','durée '+dur(a.durationMs)));
+
+  const body=$('dw-body');body.replaceChildren();
+  if(m.role){const r=block('Rôle');r.appendChild(el('div','meta-line',m.role));body.appendChild(r);}
+  // Message reçu (prompt complet — v3 garde tout).
+  const msg=block('Message reçu');
+  if(a.message)msg.appendChild(el('pre',null,a.message));
+  else msg.appendChild(el('div','empty',a.task?'(prompt non capté — tâche : '+a.task+')':'Agent jamais lancé sur cette session.'));
+  body.appendChild(msg);
+
+  const tr=a.transcript;
+  if(tr){
+    if(tr.oversize){const o=block('Transcription');o.appendChild(el('div','empty','Transcript trop volumineux — non extrait (anti-timeout).'));body.appendChild(o);}
+    else{
+      // Fil de pensée — rare pour un sous-agent (souvent vide, signalé honnêtement).
+      const th=block('Fil de pensée');
+      if(tr.hasThinking&&tr.thinkingExcerpt)th.appendChild(el('pre',null,tr.thinkingExcerpt));
+      else th.appendChild(el('div','empty','Pas de fil de pensée (les sous-agents n\'en exposent pas).'));
+      body.appendChild(th);
+      // Sortie finale.
+      const out=block('Sortie finale');
+      if(tr.outputExcerpt)out.appendChild(el('pre',null,tr.outputExcerpt));
+      else out.appendChild(el('div','empty','(sortie vide)'));
+      body.appendChild(out);
+      // Outils utilisés.
+      if(tr.tools&&tr.tools.length){const t=block('Outils utilisés');const row=el('div','tools-row');tr.tools.forEach(x=>row.appendChild(el('span','tchip',x)));t.appendChild(row);body.appendChild(t);}
+      // Pointeur fichier détail complet.
+      const f=block('Détail complet');
+      f.appendChild(el('div','meta-line',tr.file?('→ '+tr.file+' (gitignored, capté '+ago(tr.capturedAt)+')'):'extrait seulement (pas de fichier détail écrit)'));
+      body.appendChild(f);
+    }
+  } else if(a.status==='running'){
+    const w=block('Transcription');w.appendChild(el('div','empty','Agent en cours — la transcription est captée à la fin.'));body.appendChild(w);
+  }
+}
+
+// ───────────────────────── BLOC AVANCEMENT (/backlog) ─────────────────────────
+const GROUPS=[['all','Tout'],['enCours','En cours'],['aVenir','À venir'],['enAttente','En attente'],['fait','Fait']];
+let blFilter='all', blSearch='', blInit=false, BL=null;
+
+function initBacklogUI(){
+  const chips=$('bl-chips');chips.replaceChildren();
+  GROUPS.forEach(([k,l])=>{const c=el('button','fchip'+(k===blFilter?' on':''));c.type='button';c.dataset.k=k;c.setAttribute('aria-pressed',k===blFilter?'true':'false');
+    c.append(el('span',null,l),el('span','n','0'));c.dataset.label=l;
+    c.addEventListener('click',()=>{blFilter=k;[...chips.children].forEach(ch=>{const on=ch.dataset.k===k;ch.classList.toggle('on',on);ch.setAttribute('aria-pressed',on?'true':'false');});renderBacklogLists();});
+    chips.appendChild(c);});
+  $('bl-search').addEventListener('input',e=>{blSearch=e.target.value.trim().toLowerCase();renderBacklogLists();});
+  blInit=true;
+}
+function renderBacklog(b,live){
+  BL=b;if(!blInit)initBacklogUI();
+  $('bl-tag').hidden=live;
+  const c=b.counts||{};
+  $('b-total').textContent=c.total||0;$('b-fait').textContent=c.fait||0;$('b-encours').textContent=c.enCours||0;
+  $('b-attente').textContent=c.enAttente||0;$('b-avenir').textContent=c.aVenir||0;
+  const mt=b.metrics||{};$('b-tests').textContent=mt.tests!=null?mt.tests:'—';
+  // Branche (topbar) + sous-ligne.
+  const bc=$('branch');if(b.branch){bc.hidden=false;bc.textContent='⎇ '+b.branch;}else bc.hidden=true;
+  const sub=$('b-subline');sub.replaceChildren();
+  if(b.branch){const s=el('span');s.append(el('b',null,'branche '),document.createTextNode(b.branch));sub.appendChild(s);}
+  if(mt.commits7d!=null){const s=el('span');s.append(el('b',null,mt.commits7d+' '),document.createTextNode('commits / 7 j'));sub.appendChild(s);}
+  if(mt.lastCommit){const s=el('span');s.append(el('b',null,'dernier commit '),document.createTextNode(ago(mt.lastCommit)));sub.appendChild(s);}
+  if(b.generatedAt){const s=el('span');s.append(el('b',null,'scan '),document.createTextNode(ago(b.generatedAt)));sub.appendChild(s);}
+
+  // Phases.
+  const ph=$('phases');ph.replaceChildren();
+  const phases=b.phases||[];
+  if(!phases.length)ph.appendChild(el('div','empty','Phases non détectées dans le HANDOVER.'));
+  else{const total=phases.length,doneN=phases.filter(p=>p.done).length;
+    phases.forEach(p=>{const row=el('div','phase'+(p.done?' done':''));
+      row.appendChild(el('div','pl','Phase '+p.phase+(p.label?' — '+p.label:'')));
+      const bar=el('div','pb');const i=document.createElement('i');i.style.width=(p.done?100:8)+'%';bar.appendChild(i);row.appendChild(bar);
+      row.appendChild(el('div','pf',p.done?'faite':'à venir'));ph.appendChild(row);});
+    const head=el('div','phase');head.style.opacity='.7';head.appendChild(el('div','pl','Global'));
+    const bar=el('div','pb');const i=document.createElement('i');i.style.width=Math.round(doneN/total*100)+'%';bar.appendChild(i);head.appendChild(bar);
+    head.appendChild(el('div','pf',doneN+'/'+total));ph.insertBefore(head,ph.firstChild);}
+
+  // Compte des chips = longueur RÉELLE des tableaux affichés (enAttente inclut A_FAIRE_MOI ; fait est plafonné
+  // côté serveur) → le chip matche l'entête de groupe. Les vrais totaux projet restent sur les cartes métriques.
+  if(blInit){const len=k=>(b[k]||[]).length;const counts={all:len('enCours')+len('aVenir')+len('enAttente')+len('fait'),enCours:len('enCours'),aVenir:len('aVenir'),enAttente:len('enAttente'),fait:len('fait')};
+    [...$('bl-chips').children].forEach(ch=>{const n=ch.querySelector('.n');if(n)n.textContent=counts[ch.dataset.k]||0;});}
+  renderBacklogLists();
+}
+function matchSearch(it){if(!blSearch)return true;return ((it.id||'')+' '+(it.desc||'')+' '+(it.section||'')).toLowerCase().includes(blSearch);}
+function backlogItemRow(it){
+  const row=el('div','bitem'+(it.state==='done'?' done':''));
+  const mk=el('span','mk',MK[it.marker]||'🔧');mk.title=mkLbl[it.marker]||'Claude';row.appendChild(mk);
+  const bd=el('div','bd');
+  const head=el('div');head.style.display='flex';head.style.gap='9px';head.style.alignItems='center';head.style.flexWrap='wrap';
+  if(it.id)head.appendChild(el('span','id',it.id));
+  if(it.priority)head.appendChild(el('span','pri '+it.priority,it.priority));
+  bd.appendChild(head);
+  if(it.desc)bd.appendChild(el('div','ds',it.desc));
+  if(it.section)bd.appendChild(el('div','sec',it.section));
+  row.appendChild(bd);return row;
+}
+function renderBacklogLists(){
+  const host=$('backlog');host.replaceChildren();if(!BL)return;
+  const defs=[['enCours','En cours',BL.enCours],['enAttente','En attente (Marc / humain)',BL.enAttente],['aVenir','À venir',BL.aVenir],['fait','Fait',BL.fait]];
+  let shown=0;
+  defs.forEach(([k,label,arr])=>{
+    if(blFilter!=='all'&&blFilter!==k)return;
+    const items=(arr||[]).filter(matchSearch);
+    if(!items.length)return;
+    shown+=items.length;
+    // Entête honnête : « Fait » est plafonné côté serveur → afficher « X sur <total> » (sans recherche active).
+    let head=label+' ('+items.length+')';
+    if(k==='fait'&&BL.counts&&!blSearch&&(BL.counts.fait||0)>(arr||[]).length)head=label+' ('+items.length+' sur '+BL.counts.fait+')';
+    const g=el('div','bgroup');g.appendChild(el('h3',null,head));
+    items.forEach(it=>g.appendChild(backlogItemRow(it)));host.appendChild(g);});
+  if(!shown)host.appendChild(el('div','empty',blSearch?('Aucun item ne correspond à « '+blSearch+' ».'):'Rien à afficher dans ce filtre.'));
+}
+
+// ───────────────────────── BLOC WORKFLOWS (/workflows) ─────────────────────────
+const fmtTok=n=>n==null?'—':n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3)+'k':String(n);
+const AG_CAP=10; // agents affichés par carte (le reste résumé en « +N »)
+function workflowCard(r){
+  const running=r.status==='running';
+  const st=running?'running':r.status==='stale'?'stale':'completed'; // stale = run fantôme (sans json final > 2 h)
+  const c=el('div','wfc'+(running?' running':''));
+  const h=el('div','wh');h.append(el('span','wn',r.name||'workflow'),el('span','st '+st,stLbl(st)));c.appendChild(h);
+  if(r.summary)c.appendChild(el('div','wsum',r.summary));
+  if(r.phases&&r.phases.length){const ph=el('div','wph');r.phases.forEach(p=>ph.appendChild(el('span',null,p)));c.appendChild(ph);}
+  if(r.agents&&r.agents.length){const ag=el('div','wag');r.agents.slice(0,AG_CAP).forEach(a=>{const x=el('span','a '+(a.state||''));x.textContent=a.label;if(a.phase)x.title=a.phase;ag.appendChild(x);});
+    if(r.agents.length>AG_CAP)ag.appendChild(el('span','wmore','+'+(r.agents.length-AG_CAP)));c.appendChild(ag);}
+  const ft=el('div','wf-foot');
+  ft.appendChild(el('span',null,(r.agentCount!=null?r.agentCount:'?')+' agents'));
+  if((running||r.status==='stale')&&r.done!=null)ft.appendChild(el('span',null,r.done+'/'+(r.agentCount||'?')+' finis'));
+  if(r.totalTokens!=null)ft.appendChild(el('span',null,fmtTok(r.totalTokens)+' tok'));
+  if(r.totalToolCalls!=null)ft.appendChild(el('span',null,r.totalToolCalls+' outils'));
+  if(r.durationMs!=null)ft.appendChild(el('span',null,dur(r.durationMs)));
+  if(r.startedAt)ft.appendChild(el('span',null,ago(r.startedAt)));
+  c.appendChild(ft);return c;
+}
+function renderWorkflows(w,live){
+  $('wf-tag').hidden=live;
+  const runs=[...(w.enCours||[]),...(w.recents||[])];
+  const cn=w.counts||{};$('wf-count').textContent=runs.length?('('+(cn.running||0)+' en cours · '+(w.recents||[]).length+' récents)'):'';
+  const host=$('workflows');host.replaceChildren();
+  if(!runs.length){host.appendChild(el('div','empty',live?'Aucun workflow récent. Lance un workflow (outil Workflow) pour le voir apparaître ici.':'Exemple — aucun run.'));return;}
+  runs.forEach(r=>host.appendChild(workflowCard(r)));
+}
+
+// ───────────────────────── Polling (avec détection de changement) ─────────────────────────
+// On ne re-rend QUE si les données ont bougé : évite de churner ~200 nœuds toutes les 2 s pour rien
+// (l'indicateur de connexion, lui, se met à jour à chaque tick). Le 1ʳᵉ rendu se fait toujours.
+let lastStatusSig=null, lastBlSig=null, lastWfSig=null;
+async function poll(){
+  try{const r=await fetch('/status',{cache:'no-store'});const s=await r.json();$('conn-t').textContent='live';$('conn').className='conn';
+    const sig=(s.updatedAt||'')+'|'+(s.source||''); // status.json n'est réécrit que sur activité d'agent
+    if(sig!==lastStatusSig){lastStatusSig=sig;render(s);}}
+  catch{$('conn-t').textContent='hors-ligne · exemple';$('conn').className='conn down';if(lastStatusSig!=='__ex'){lastStatusSig='__ex';render(EXAMPLE);}}
+}
+async function pollBacklog(){
+  try{const r=await fetch('/backlog',{cache:'no-store'});const b=await r.json();
+    if(b&&b.counts){const {generatedAt,...rest}=b;const sig=JSON.stringify(rest); // exclut le timestamp volatil
+      if(sig!==lastBlSig){lastBlSig=sig;renderBacklog(b,true);}}
+    else if(lastBlSig!=='__ex'){lastBlSig='__ex';renderBacklog(BACKLOG_EXAMPLE,false);}}
+  catch{if(lastBlSig!=='__ex'){lastBlSig='__ex';renderBacklog(BACKLOG_EXAMPLE,false);}}
+}
+async function pollWorkflows(){
+  try{const r=await fetch('/workflows',{cache:'no-store'});const w=await r.json();
+    if(w&&w.counts){const {generatedAt,...rest}=w;const sig=JSON.stringify(rest);
+      if(sig!==lastWfSig){lastWfSig=sig;renderWorkflows(w,true);}}
+    else if(lastWfSig!=='__ex'){lastWfSig='__ex';renderWorkflows(WORKFLOWS_EXAMPLE,false);}}
+  catch{if(lastWfSig!=='__ex'){lastWfSig='__ex';renderWorkflows(WORKFLOWS_EXAMPLE,false);}}
+}
+
+// Tiroir : ouverture (clic / clavier), fermeture (✕ / fond / Échap).
+$('agents').addEventListener('click',e=>{const card=e.target.closest('.agent');if(card)openDrawer(card.dataset.name,card);});
+$('agents').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const card=e.target.closest('.agent');if(card){e.preventDefault();openDrawer(card.dataset.name,card);}});
+$('dw-close').addEventListener('click',closeDrawer);
+$('scrim').addEventListener('click',closeDrawer);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawerOpen)closeDrawer();});
+
+poll();setInterval(poll,POLL);
+pollBacklog();setInterval(pollBacklog,POLL);
+pollWorkflows();setInterval(pollWorkflows,POLL);
+// Horloge « live » : re-tique l'âge de la dernière maj chaque seconde (le tableau de bord est VIVANT
+// même quand aucun agent ne tourne — tu vois le temps avancer + le battement de la pastille).
+setInterval(()=>{ if(lastUpd) $('updated').textContent='maj '+ago(lastUpd); },1000);
+</script>
+</body>
+</html>

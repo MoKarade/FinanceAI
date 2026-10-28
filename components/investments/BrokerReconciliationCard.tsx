@@ -38,7 +38,7 @@ const freshnessLabel = (observedAt: number | null): string =>
     observedAt === null || observedAt <= 0 ? 'fraîcheur inconnue' : `vu ${formatRelative(observedAt)}`;
 
 /** Heure EXACTE d'une lecture, à l'heure du Québec (« 28 oct. 2026, 16 h 46 ») ; `null`/`<= 0` = inconnue. */
-export const heureLecture = (at: number | null): string =>
+const heureLecture = (at: number | null): string =>
     at === null || at <= 0
         ? 'heure inconnue'
         : new Intl.DateTimeFormat('fr-CA', {

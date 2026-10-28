@@ -35,7 +35,7 @@ export type ReconcilableRegime = Extract<RegisteredAccountType, 'CELI' | 'REER' 
  * la lecture : le total d'un panier ne se vérifie pas contre l'écran du courtier tant qu'on ne voit
  * que la somme.
  */
-export interface CompteReconcilie {
+interface CompteReconcilie {
     label: string;
     montantCad: number;
     /** Devise native du solde, quand l'entrée la porte (entrée ancienne : `undefined`). */

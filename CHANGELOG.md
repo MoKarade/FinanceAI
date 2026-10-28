@@ -5,6 +5,11 @@
 - `finance.hubperso.com/manifest.webmanifest` (et les icônes) répondait par une redirection vers la connexion du hub, ce qui bloquait l'installation de l'app et la vérification du hub. Ces fichiers, sans aucune donnée, sont maintenant publics ; tout le reste reste derrière la session du hub.
 - La détection de session expirée lit désormais `/robots.txt` (toujours protégé) au lieu de `/icon.svg`.
 
+## 2026-10-28 — LIA ne répond plus « non autorisé » quand c'est la configuration qui manque (#20)
+
+- Si les clés du hub ou l'adresse du propriétaire ne sont pas posées sur le serveur, LIA dit « indisponible » (503) au lieu de faire croire à un refus de session.
+- Rien ne change pour toi une fois les variables posées : LIA répond dans FinanceAI comme avant.
+
 ## 2026-10-28 — FinanceAI est maintenant un dépôt public (#30)
 
 - Le code de FinanceAI est publié dans un dépôt neuf, sans l'historique ni aucune donnée personnelle de son propriétaire ; l'ancien dépôt est gardé en privé sous le nom `FinanceAI-archive`.

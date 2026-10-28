@@ -84,20 +84,41 @@ describe('[LIA-1253] repondreLiaAsk : échec fermé', () => {
         expect(fetchImpl).not.toHaveBeenCalled();
     });
 
-    it('clés publiques absentes ou illisibles → 401 (jamais de session acceptée sans clé)', async () => {
+    it('clés publiques absentes ou illisibles → 503 configuration_absente (jamais de session acceptée sans clé)', async () => {
         const cookie = await session(MARC);
-        for (const cles of [undefined, '', 'pas du json']) {
-            const r = await repondreLiaAsk(requete({ question: 'Salut ?' }, { cookie }), { env: envComplet({ HUB_SESSION_PUBLIC_KEYS: cles }), fetchImpl: hubOk() });
-            expect(r.status).toBe(401);
+        const fetchImpl = hubOk();
+        for (const cles of [undefined, '', 'pas du json', 'null']) {
+            const r = await repondreLiaAsk(requete({ question: 'Salut ?' }, { cookie }), { env: envComplet({ HUB_SESSION_PUBLIC_KEYS: cles }), fetchImpl });
+            expect(r.status).toBe(503);
+            expect(await r.json()).toEqual({ error: 'configuration_absente' });
+            expect(r.headers.get('cache-control')).toBe('no-store');
         }
+        expect(fetchImpl).not.toHaveBeenCalled();
     });
 
-    it('session valide d\'une AUTRE personne → 403 ; AUTHORIZED_EMAIL absent → 403 (personne n\'est le propriétaire)', async () => {
+    it('AUTHORIZED_EMAIL absent ou vide → 503 configuration_absente, même avec une session valide (personne n\'est servi)', async () => {
+        const cookie = await session(MARC);
+        const fetchImpl = hubOk();
+        for (const courriel of [undefined, '', '   ']) {
+            const r = await repondreLiaAsk(requete({ question: 'Salut ?' }, { cookie }), { env: envComplet({ AUTHORIZED_EMAIL: courriel }), fetchImpl });
+            expect(r.status).toBe(503);
+            expect(await r.json()).toEqual({ error: 'configuration_absente' });
+        }
+        expect(fetchImpl).not.toHaveBeenCalled();
+    });
+
+    it('sans cookie, 401 même quand la configuration manque : un appelant anonyme ne sonde pas les variables', async () => {
+        const r = await repondreLiaAsk(requete({ question: 'Salut ?' }), { env: {}, fetchImpl: hubOk() });
+        expect(r.status).toBe(401);
+        expect(await r.json()).toEqual({ error: 'unauthenticated' });
+    });
+
+    it('session valide d\'une AUTRE personne → 403 (configuration complète)', async () => {
         const fetchImpl = hubOk();
         const autre = await session('invite@example.test');
-        expect((await repondreLiaAsk(requete({ question: 'Salut ?' }, { cookie: autre }), { env: envComplet(), fetchImpl })).status).toBe(403);
-        const moi = await session(MARC);
-        expect((await repondreLiaAsk(requete({ question: 'Salut ?' }, { cookie: moi }), { env: envComplet({ AUTHORIZED_EMAIL: undefined }), fetchImpl })).status).toBe(403);
+        const r = await repondreLiaAsk(requete({ question: 'Salut ?' }, { cookie: autre }), { env: envComplet(), fetchImpl });
+        expect(r.status).toBe(403);
+        expect(await r.json()).toEqual({ error: 'reserve_au_proprietaire' });
         expect(fetchImpl).not.toHaveBeenCalled();
     });
 

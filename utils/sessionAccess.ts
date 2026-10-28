@@ -2,7 +2,8 @@
 //
 // LEÇON DE JUIN 2026 (A_FAIRE_MOI O1) : quand la session Access expire, Cloudflare répond 302 vers sa page de connexion
 // (autre origine) à TOUTE requête : les fetch et les chunks JS échouent en « Failed to fetch » sans que l'app comprenne
-// pourquoi. Ici, une sonde légère et sans donnée (`/icon.svg`, fichier statique de l'app) est demandée avec
+// pourquoi. Ici, une sonde légère et sans donnée (`/robots.txt`, fichier statique de l'app, derrière la garde du site : le manifeste
+// et les icônes, eux, sont publics depuis FinanceAI#39 et ne verraient jamais la redirection) est demandée avec
 // `redirect: 'manual'` : une redirection revient en réponse « opaqueredirect » = session expirée → on recharge la page
 // (la navigation, elle, sait suivre la redirection et afficher le code e-mail).
 //
@@ -13,7 +14,7 @@
 const CLE_RECHARGEMENT = 'financeai:sessionAccessReload:v1';
 const INTERVALLE_MIN_MS = 60_000;
 const ABSENCE_MIN_MS = 60_000;
-const URL_SONDE = '/icon.svg';
+const URL_SONDE = '/robots.txt';
 
 export type EtatSession = 'ok' | 'expiree' | 'inconnu';
 

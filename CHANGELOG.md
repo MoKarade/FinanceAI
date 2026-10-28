@@ -1,10 +1,29 @@
 # Changelog
 
+## 2026-10-28 — L'app s'installe de nouveau : manifeste et icônes lisibles sans connexion (#39)
+
+- `finance.hubperso.com/manifest.webmanifest` (et les icônes) répondait par une redirection vers la connexion du hub, ce qui bloquait l'installation de l'app et la vérification du hub. Ces fichiers, sans aucune donnée, sont maintenant publics ; tout le reste reste derrière la session du hub.
+- La détection de session expirée lit désormais `/robots.txt` (toujours protégé) au lieu de `/icon.svg`.
+
+## 2026-10-28 — LIA ne répond plus « non autorisé » quand c'est la configuration qui manque (#20)
+
+- Si les clés du hub ou l'adresse du propriétaire ne sont pas posées sur le serveur, LIA dit « indisponible » (503) au lieu de faire croire à un refus de session.
+- Rien ne change pour toi une fois les variables posées : LIA répond dans FinanceAI comme avant.
+
 ## 2026-10-28 — FinanceAI est maintenant un dépôt public (#30)
 
 - Le code de FinanceAI est publié dans un dépôt neuf, sans l'historique ni aucune donnée personnelle de son propriétaire ; l'ancien dépôt est gardé en privé sous le nom `FinanceAI-archive`.
 - Les vérifications tournent désormais sur les machines GitHub (gratuites) au lieu du robot unique du PC : une PR n'attend plus une demi-heure.
 - Les numéros d'issues ont changé : voir la correspondance dans `HANDOVER.md`.
+
+## 2026-10-28 — Comptes courtier : le total de chaque compte, l'heure exacte de lecture et le taux appliqué (#29)
+
+- La carte « Comptes courtier (Fintable) » détaille maintenant chaque compte d'un panier : son total en CAD, son montant dans sa devise d'origine avec le taux de change réellement appliqué, et l'heure exacte de la lecture (heure du Québec). Le total d'un panier se vérifie ainsi compte par compte contre l'écran du courtier.
+- Aucun chiffre nouveau n'est calculé : ce sont les valeurs lues. Un compte écarté (taux inconnu, solde illisible) reste dans son avertissement, pas dans le détail. Mode discret : les montants restent masqués.
+
+## 2026-10-28 — Courbe Placements : commande de diagnostic dans la console de l'app (#22)
+
+- `financeaiDiagnosticCourbe()` nomme le titre derrière chaque saut de la courbe, directement dans l'app, sans copier ton état nulle part. Elle ne sort que des dates, des symboles et des pourcentages.
 
 ## 2026-10-28 — FinanceAI n'ouvre plus qu'à toi : la connexion du hub devant tout le site
 

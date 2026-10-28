@@ -371,3 +371,43 @@ describe('incompleteRegimes / hasUnplaceableAccount — quel panier est amputé'
         expect(r.missingRateAccountLabels).toHaveLength(1);
     });
 });
+
+describe('reconcileBrokerBalances — détail par compte [29]', () => {
+    it('rend, pour chaque compte, son montant CAD, sa devise native, le taux appliqué et l\'heure lue', () => {
+        const r = reconcileBrokerBalances(
+            [
+                bal({ accountId: 'a', label: 'Compte A', balanceCad: 100_000, at: AT }),
+                bal({ accountId: 'b', label: 'Compte B', balanceCad: 0, amountNative: 1_000, currency: 'USD', at: AT + 60_000 }),
+            ],
+            { 'NON-ENREG': 0 },
+            TAUX_TEST,
+        );
+        const [a, b] = r.regimes[0].comptes;
+        expect(a).toEqual({ label: 'Compte A', montantCad: 100_000, observedAt: AT });
+        // Le natif est reconverti AU TAUX DU JOUR (1,40), et ce taux est celui qu'on montre.
+        expect(b).toEqual({ label: 'Compte B', montantCad: 1_400, devise: 'USD', montantNatif: 1_000, taux: 1.4, observedAt: AT + 60_000 });
+        expect(r.regimes[0].brokerTotalCad).toBe(101_400);
+    });
+
+    it('un compte en CAD natif n\'affiche aucun taux (pas de conversion à montrer)', () => {
+        const r = reconcileBrokerBalances(
+            [bal({ amountNative: 5_000, currency: 'CAD', balanceCad: 5_000 })], { 'NON-ENREG': 0 }, TAUX_TEST,
+        );
+        expect(r.regimes[0].comptes[0].taux).toBeUndefined();
+        expect(r.regimes[0].comptes[0].devise).toBe('CAD');
+    });
+
+    it('un horodatage corrompu (0) reste « inconnu » dans le détail, jamais une date inventée', () => {
+        const r = reconcileBrokerBalances([bal({ at: 0 })], { 'NON-ENREG': 0 }, TAUX_TEST);
+        expect(r.regimes[0].comptes[0].observedAt).toBeNull();
+    });
+
+    it('un compte écarté (taux manquant) n\'apparaît pas dans le détail des comptes retenus', () => {
+        const r = reconcileBrokerBalances(
+            [bal({ label: 'Retenu' }), bal({ accountId: 'x', label: 'USD sans taux', amountNative: 10, currency: 'USD' })],
+            { 'NON-ENREG': 0 }, { rates: {}, estimated: false },
+        );
+        expect(r.regimes[0].comptes.map((c) => c.label)).toEqual(['Retenu']);
+        expect(r.missingRateAccountLabels).toHaveLength(1);
+    });
+});

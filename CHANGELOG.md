@@ -6,6 +6,11 @@
 - Les vérifications tournent désormais sur les machines GitHub (gratuites) au lieu du robot unique du PC : une PR n'attend plus une demi-heure.
 - Les numéros d'issues ont changé : voir la correspondance dans `HANDOVER.md`.
 
+## 2026-10-28 — Comptes courtier : le total de chaque compte, l'heure exacte de lecture et le taux appliqué (#29)
+
+- La carte « Comptes courtier (Fintable) » détaille maintenant chaque compte d'un panier : son total en CAD, son montant dans sa devise d'origine avec le taux de change réellement appliqué, et l'heure exacte de la lecture (heure du Québec). Le total d'un panier se vérifie ainsi compte par compte contre l'écran du courtier.
+- Aucun chiffre nouveau n'est calculé : ce sont les valeurs lues. Un compte écarté (taux inconnu, solde illisible) reste dans son avertissement, pas dans le détail. Mode discret : les montants restent masqués.
+
 ## 2026-10-28 — Courbe Placements : commande de diagnostic dans la console de l'app (#22)
 
 - `financeaiDiagnosticCourbe()` nomme le titre derrière chaque saut de la courbe, directement dans l'app, sans copier ton état nulle part. Elle ne sort que des dates, des symboles et des pourcentages.

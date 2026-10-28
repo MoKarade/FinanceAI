@@ -2,11 +2,11 @@
   "/#DEBT": {
     "fichier": "debt.png",
     "statut": 200,
-    "sha256": "b9ba8802fc587335a0f6772c9426e3fbf9271dc1e4b49152c81e1cb366429d84"
+    "sha256": "23646cf11703e2e5800ac2cf43dca4ecf97e0005a61be331e079cf1e02e03860"
   },
   "/#FUTURE": {
     "fichier": "future.png",
     "statut": 200,
-    "sha256": "681243c1cda809ae2fb90bbd2f290ac212809622f6b5c12c8e17886fed1d96ab"
+    "sha256": "832c9f6e89ceb1adf0c5a1492c460dd6531b073d2f026e1fa2c074b76837498e"
   }
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-28 — FinanceAI est maintenant un dépôt public (#30)
+
+- Le code de FinanceAI est publié dans un dépôt neuf, sans l'historique ni aucune donnée personnelle de son propriétaire ; l'ancien dépôt est gardé en privé sous le nom `FinanceAI-archive`.
+- Les vérifications tournent désormais sur les machines GitHub (gratuites) au lieu du robot unique du PC : une PR n'attend plus une demi-heure.
+- Les numéros d'issues ont changé : voir la correspondance dans `HANDOVER.md`.
+
 ## 2026-10-28 — FinanceAI n'ouvre plus qu'à toi : la connexion du hub devant tout le site
 
 - Sans ta session du hub, `finance.hubperso.com` te renvoie à la connexion du hub ; les appels de l'app (assistant, cours, comptes) reçoivent un refus net, et un autre courriel est refusé. Seule la sonde de santé reste publique.

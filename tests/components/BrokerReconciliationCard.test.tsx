@@ -183,3 +183,40 @@ describe('[FINTABLE-DISNAT-USD-SOLDE-IGNORE] un compte sans taux est NOMMÉ là 
         expect(texte).not.toContain('Le taux arrive');
     });
 });
+
+describe('BrokerReconciliationCard — détail par compte [29]', () => {
+    const AT = Date.UTC(2026, 9, 28, 20, 46, 5); // 28 oct. 2026, 16 h 46 à Québec (UTC−4)
+
+    it('montre le total de chaque compte, son heure de lecture EXACTE (Québec), la devise native et le taux', () => {
+        useFinanceStore.setState({
+            fintableBrokerBalances: [
+                { accountId: 'a', label: 'Compte CAD', balanceCad: 100_000, taxRegime: 'NON-ENREG', at: AT },
+                { accountId: 'b', label: 'Compte USD', balanceCad: 0, amountNative: 1_000, currency: 'USD', taxRegime: 'NON-ENREG', at: AT },
+            ],
+            assets: [],
+            fxRates: { USD: 1.4038, EUR: 1.6, CAD: 1 },
+            fxRatesEstimated: false,
+            fxRatesSource: 'api',
+        });
+        const text = textOf(render(<BrokerReconciliationCard variant="full" />).container);
+        expect(text).toMatch(/Compte CAD/);
+        expect(text).toMatch(/Compte USD/);
+        expect(text).toMatch(/16 h 46/);                 // heure exacte, fuseau du Québec (pas UTC 20 h 46)
+        expect(text).not.toMatch(/20 h 46/);
+        expect(text).toMatch(/taux USD\/CAD 1,4038/);    // le taux réellement appliqué
+        expect(text).toMatch(/1 000,00 USD/);            // montant natif
+        expect(text).toMatch(/1 403,80/);                // converti au taux du jour
+    });
+
+    it('mode discret : ni montant natif ni montant par compte dans le DOM', () => {
+        useFinanceStore.setState({
+            fintableBrokerBalances: [
+                { accountId: 'b', label: 'Compte USD', balanceCad: 0, amountNative: 1_234, currency: 'USD', taxRegime: 'NON-ENREG', at: AT },
+            ],
+            assets: [], fxRates: { USD: 1.4, EUR: 1.6, CAD: 1 }, fxRatesEstimated: false, fxRatesSource: 'api', isPrivacyMode: true,
+        });
+        const text = textOf(render(<BrokerReconciliationCard variant="full" />).container);
+        expect(text).not.toMatch(/1 234/);
+        expect(text).not.toMatch(/1 727/);
+    });
+});

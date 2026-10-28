@@ -22,7 +22,7 @@ import { useFinanceStore } from '../../store/useFinanceStore';
 import { tauxCourantsDepuisEtat, reconcileBrokerBalances, type ReconcilableRegime } from '../../services/fintable/brokerBalances';
 import { holdingsCadByRegime } from '../../services/fintable/holdingsByRegime';
 import { profondeurEnJours } from '../../services/fintable/brokerHistory';
-import { formatCAD, formatSigned } from '../../utils/format';
+import { formatCAD, formatNumber, formatSigned } from '../../utils/format';
 import { formatRelative } from '../../utils/relativeTime';
 
 const REGIME_LABELS: Record<ReconcilableRegime, string> = {
@@ -36,6 +36,14 @@ const REGIME_LABELS: Record<ReconcilableRegime, string> = {
  *  (finding panel #543 : formatRelative(0) rend « jamais », un oxymore après « vu »). */
 const freshnessLabel = (observedAt: number | null): string =>
     observedAt === null || observedAt <= 0 ? 'fraîcheur inconnue' : `vu ${formatRelative(observedAt)}`;
+
+/** Heure EXACTE d'une lecture, à l'heure du Québec (« 28 oct. 2026, 16 h 46 ») ; `null`/`<= 0` = inconnue. */
+const heureLecture = (at: number | null): string =>
+    at === null || at <= 0
+        ? 'heure inconnue'
+        : new Intl.DateTimeFormat('fr-CA', {
+            timeZone: 'America/Toronto', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
+        }).format(new Date(at));
 
 interface Props {
     /** `full` (Investissements) : détail par régime + avertissements. `compact` (Accueil) : une ligne. */
@@ -230,6 +238,26 @@ export const BrokerReconciliationCard: React.FC<Props> = ({ variant }) => {
                                     {formatCAD(r.brokerTotalCad)}
                                 </PrivateAmount>
                             </div>
+                            {/* Total de CHAQUE compte, avec sa devise native, le taux appliqué et l'heure exacte
+                                de la lecture : le total du panier se vérifie compte par compte contre l'écran
+                                du courtier. Rien n'est arrondi ni déduit ici : ce sont les valeurs lues. */}
+                            <ul className="mt-2 space-y-1">
+                                {r.comptes.map((c, i) => (
+                                    <li key={`${c.label}-${i}`} className="flex items-baseline justify-between gap-3 flex-wrap text-tiny text-ink-400">
+                                        <span className="min-w-0 truncate">
+                                            {c.label || '(compte sans nom)'}
+                                            {' · '}{heureLecture(c.observedAt)}
+                                            {c.devise !== undefined && c.taux !== undefined && ` · taux ${c.devise}/CAD ${c.taux.toFixed(4).replace('.', ',')}`}
+                                        </span>
+                                        <span className="text-right">
+                                            {c.devise !== undefined && c.montantNatif !== undefined && c.taux !== undefined && (
+                                                <PrivateAmount className="mr-2">{formatNumber(c.montantNatif, { decimals: 2 })} {c.devise}</PrivateAmount>
+                                            )}
+                                            <PrivateAmount className="text-ink-200 tabular-nums">{formatCAD(c.montantCad, { decimals: 2 })}</PrivateAmount>
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
                             <div className="mt-1 text-meta text-ink-400">
                                 Titres saisis :{' '}
                                 <PrivateAmount className="text-ink-200 tabular-nums">{formatCAD(r.holdingsValueCad)}</PrivateAmount>

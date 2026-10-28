@@ -29,6 +29,25 @@ import { fxFaitAutorite, fxSourceEffective, type EtatFxMinimal } from '../fx/pro
 /** Régimes réconciliables. Sous-ensemble EXACT de `RegisteredAccountType` (zéro graphie parallèle). */
 export type ReconcilableRegime = Extract<RegisteredAccountType, 'CELI' | 'REER' | 'NON-ENREG'>;
 
+/**
+ * Un compte courtier retenu dans un panier, tel que LU (jamais arrondi, jamais mélangé à un autre).
+ * Sert à montrer le total de CHAQUE compte, sa devise native, le taux appliqué et l'heure exacte de
+ * la lecture : le total d'un panier ne se vérifie pas contre l'écran du courtier tant qu'on ne voit
+ * que la somme.
+ */
+interface CompteReconcilie {
+    label: string;
+    montantCad: number;
+    /** Devise native du solde, quand l'entrée la porte (entrée ancienne : `undefined`). */
+    devise?: string;
+    /** Solde dans sa devise native (entrée ancienne : `undefined`). */
+    montantNatif?: number;
+    /** Taux de conversion réellement appliqué à la lecture. `undefined` = aucune conversion. */
+    taux?: number;
+    /** Heure exacte de la lecture (epoch ms) ; `null` = inconnue. */
+    observedAt: number | null;
+}
+
 /** Réconciliation d'UN panier fiscal : ce que dit le courtier vs ce que disent les titres saisis. */
 interface RegimeReconciliation {
     regime: ReconcilableRegime;
@@ -40,6 +59,8 @@ interface RegimeReconciliation {
     gapCad: number;
     /** Libellés des comptes courtier agrégés ici (affichage : « Disnat 0001 + Disnat 0002 »). */
     accountLabels: string[];
+    /** Détail PAR compte du panier, dans l'ordre d'arrivée (même ordre que `accountLabels`). */
+    comptes: CompteReconcilie[];
     /**
      * Lecture la plus ANCIENNE du panier (epoch ms) — c'est elle qui borne la fraîcheur affichée.
      * `null` si AU MOINS un compte du panier n'a pas d'horodatage exploitable : mieux vaut ne rien
@@ -226,7 +247,7 @@ export function reconcileBrokerBalances(
     if (!Array.isArray(balances) || balances.length === 0) return empty;
 
     // `observedAt: number | null` — `null` = au moins un compte du panier sans horodatage lisible.
-    const byRegime = new Map<ReconcilableRegime, { total: number; labels: string[]; observedAt: number | null }>();
+    const byRegime = new Map<ReconcilableRegime, { total: number; labels: string[]; comptes: CompteReconcilie[]; observedAt: number | null }>();
     const unassignedAccountLabels: string[] = [];
     const unreadableAccountLabels: string[] = [];
     const missingRateAccountLabels: string[] = [];
@@ -273,12 +294,22 @@ export function reconcileBrokerBalances(
         const at = rawAt === null || rawAt === undefined || !Number.isFinite(Number(rawAt)) || Number(rawAt) <= 0
             ? null
             : Number(rawAt);
+        const devise = typeof b?.currency === 'string' && b.currency.trim() !== '' ? b.currency.trim().toUpperCase() : undefined;
+        const natif = Number(b?.amountNative);
+        const compte: CompteReconcilie = {
+            label: String(b.label ?? ''),
+            montantCad: amount,
+            ...(devise !== undefined && Number.isFinite(natif) ? { devise, montantNatif: natif } : {}),
+            ...(relu.reconverti && devise !== undefined ? { taux: fx.rates?.[devise] } : {}),
+            observedAt: at,
+        };
         const bucket = byRegime.get(b.taxRegime);
         if (bucket === undefined) {
-            byRegime.set(b.taxRegime, { total: amount, labels: [String(b.label ?? '')], observedAt: at });
+            byRegime.set(b.taxRegime, { total: amount, labels: [String(b.label ?? '')], comptes: [compte], observedAt: at });
         } else {
             bucket.total += amount;
             bucket.labels.push(String(b.label ?? ''));
+            bucket.comptes.push(compte);
             // La fraîcheur d'un panier vaut celle de son compte le PLUS ANCIEN : afficher la plus
             // récente laisserait croire à jour un panier dont la moitié date de deux semaines.
             // ⚠️ Un horodatage MANQUANT contamine à `null` (âge inconnu), il ne s'efface pas au
@@ -302,6 +333,7 @@ export function reconcileBrokerBalances(
             holdingsValueCad,
             gapCad: bucket.total - holdingsValueCad,
             accountLabels: bucket.labels,
+            comptes: bucket.comptes,
             observedAt: bucket.observedAt,
         }];
     });

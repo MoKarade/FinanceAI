@@ -81,6 +81,7 @@ jobs:
           SERVICE: ${{ vars.MCP_SERVICE_NAME || 'financeai-mcp' }}
           MIN_INSTANCES: ${{ vars.MCP_MIN_INSTANCES || '0' }}
           ACCESS_KEY_STRICT: ${{ vars.MCP_ACCESS_KEY_STRICT }}
+          MARKET_LIVE: ${{ vars.MCP_MARKET_LIVE }}
         run: bash mcp/deploy.sh
 
   # ── LE SILENCE DEVIENT BRUYANT ──────────────────────────────────────────────────────

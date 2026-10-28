@@ -119,3 +119,25 @@ describe('[VEHICULE-BAIL] le script de déploiement câble ce que le serveur lit
     expect(SOURCE_DEPLOY).toContain('GET /vehicule/bail désactivé');
   });
 });
+
+describe('[MARCHE-ROUTE] le magasin de marché est monté CONDITIONNELLEMENT et en essai à blanc par défaut', () => {
+  it('le secret de la route et la clé EODHD sont montés, la route seulement si son secret existe', () => {
+    expect(SOURCE_DEPLOY).toMatch(
+      /gcloud secrets describe financeai-market-secret[\s\S]*?FINANCEAI_MARKET_SECRET=financeai-market-secret:latest/,
+    );
+    expect(SOURCE_DEPLOY).toContain('FINANCEAI_EODHD_KEY=financeai-eodhd-key:latest');
+    expect(SOURCE_DEPLOY).toContain('POST /market-store désactivé');
+  });
+
+  it('l\'écriture réelle exige un geste explicite (MARKET_LIVE=1) ; sans lui le script le dit', () => {
+    expect(SOURCE_DEPLOY).toMatch(/\[ "\$\{MARKET_LIVE:-\}" = "1" \][\s\S]*?FINANCEAI_MARKET_LIVE=1/);
+    expect(SOURCE_DEPLOY).toContain('ESSAI À BLANC (MARKET_LIVE absent)');
+    // Le drapeau n'est posé nulle part ailleurs que sur ce chemin conditionnel.
+    expect(SOURCE_DEPLOY.match(/FINANCEAI_MARKET_LIVE=1/g)).toHaveLength(1);
+  });
+
+  it('le déploiement continu transmet la variable GitHub MCP_MARKET_LIVE (sinon le geste serait inatteignable)', () => {
+    const workflow = readFileSync(join(RACINE, '.github', 'workflows', 'deploy-mcp.yml'), 'utf8');
+    expect(workflow).toContain('MARKET_LIVE: ${{ vars.MCP_MARKET_LIVE }}');
+  });
+});

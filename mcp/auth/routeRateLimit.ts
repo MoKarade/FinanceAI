@@ -22,7 +22,7 @@
 
 import { makeAttemptLimiter, type AttemptLimiter } from './rateLimit';
 
-export type LimitedRoute = '/mcp' | '/hub/summary' | '/refresh' | '/fintable-sync' | '/vehicule/bail';
+export type LimitedRoute = '/mcp' | '/hub/summary' | '/refresh' | '/fintable-sync' | '/vehicule/bail' | '/market-store';
 
 export interface RouteLimit { max: number; windowMs: number }
 
@@ -37,6 +37,7 @@ export const ROUTE_LIMITS: Record<LimitedRoute, RouteLimit> = {
     '/fintable-sync': { max: 12, windowMs: HOUR },
     '/hub/summary': { max: 120, windowMs: HOUR },
     '/vehicule/bail': { max: 60, windowMs: HOUR },
+    '/market-store': { max: 12, windowMs: HOUR },
 };
 
 /** Échecs d'authentification tolérés PAR ADRESSE et par fenêtre (seuil haut : un humain ou un cron mal réglé ne

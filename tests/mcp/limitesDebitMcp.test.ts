@@ -85,8 +85,8 @@ describe('[MCP-RATE-LIMIT] routeRateLimit (pur)', () => {
         expect(adresseClient('', undefined)).toBe('inconnue');
     });
 
-    it('les plafonds par défaut couvrent les 5 routes et restent bornés', () => {
-        expect(Object.keys(ROUTE_LIMITS).sort()).toEqual(['/fintable-sync', '/hub/summary', '/mcp', '/refresh', '/vehicule/bail']);
+    it('les plafonds par défaut couvrent les 6 routes et restent bornés', () => {
+        expect(Object.keys(ROUTE_LIMITS).sort()).toEqual(['/fintable-sync', '/hub/summary', '/market-store', '/mcp', '/refresh', '/vehicule/bail']);
         for (const l of Object.values(ROUTE_LIMITS)) { expect(l.max).toBeGreaterThan(0); expect(l.max).toBeLessThanOrEqual(600); }
         expect(AUTH_FAILURE_MAX_PAR_ADRESSE).toBeGreaterThanOrEqual(50);
     });

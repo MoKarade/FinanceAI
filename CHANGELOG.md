@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-29 — Le moteur sait retrouver l'ISIN de chaque titre détenu (#23)
+
+- Une fonction pure range chaque titre détenu vers son ISIN et son symbole EODHD, ou dit pourquoi elle ne peut pas (introuvable, ambigu, devise douteuse, ISIN absent). Elle ne devine jamais un ISIN.
+- Rien ne change à l'écran. La recherche réelle chez EODHD vient ensuite (#45).
+
 ## 2026-10-29 — Le coût IA publié au hub est de nouveau mesuré (#50)
 
 - Depuis le retrait de l'ancien chat, le coût Claude publié au hub restait figé à 0 $ alors que la catégorisation, Planning, Impôts et la lecture des talons et relevés coûtaient de vrais dollars. Chaque réponse payée est maintenant comptée (jetons × tarif du modèle) et s'ajoute au cumul que le hub affiche.

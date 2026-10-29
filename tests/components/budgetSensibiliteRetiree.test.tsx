@@ -17,12 +17,11 @@
 // dépenses − 100 $/mois, coût mesuré +2,5 à 4,1 %) et Budget le LIT. Ce fichier vérifie donc les
 // deux sens : la sensibilité s'affiche quand le moteur l'a publiée, et JAMAIS quand il ne l'a pas
 // (no-fake-data : `null` → rien, pas un 0) — et toujours aucune capitalisation locale.
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
-import { getViewContext, _resetViewContextForTests, type BudgetViewDetail } from '../../services/aiChat/viewContext';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { stripCommentsJsx } from '../../utils/stripComments';
 import type { BudgetConfig, BudgetCategory, User } from '../../types';
@@ -61,10 +60,6 @@ const SENS = { extraMonthlySavings: 100, deltaEstateNetWorth: 87654, deltaFinalN
 const ouvrirOutils = () => fireEvent.click(screen.getByRole('button', { name: /Outils du budget/ }));
 const norm = (t: string | null | undefined) => (t ?? '').replace(/&nbsp;|\u00a0|\u202f/g, ' ');
 
-beforeEach(() => {
-    _resetViewContextForTests();
-});
-
 describe('[BUDGET-SENSIBILITE-MOTEUR] la sensibilité vient du moteur, ou ne vient pas', () => {
     it('ÉCRAN : publiée par le moteur → affichée, avec le delta du moteur (pas une formule)', () => {
         useFinanceStore.setState({ isPrivacyMode: false, lastProjection: projectionVivante(SENS) } as never);
@@ -91,24 +86,6 @@ describe('[BUDGET-SENSIBILITE-MOTEUR] la sensibilité vient du moteur, ou ne vie
         ouvrirOutils(); // déplié : sinon le test passerait à vide (rien de rendu)
         expect(screen.getByText(/Impact à long terme/)).toBeTruthy();
         expect(norm(container.textContent)).not.toContain('87 654');
-    });
-
-    it('CONTEXTE IA : la carte « Sensibilité (moteur) » part avec sa provenance, et seulement si publiée', () => {
-        useFinanceStore.setState({ isPrivacyMode: false, lastProjection: projectionVivante(SENS) } as never);
-        render(<Budget {...props} />);
-        const detail = getViewContext()?.detail as BudgetViewDetail | undefined;
-        expect(detail?.kind).toBe('budget');
-        const carte = (detail?.cards ?? []).find(c => c.label === 'Sensibilité (moteur)');
-        expect(carte, 'carte absente alors que le moteur a publié').toBeTruthy();
-        expect(norm(carte!.value)).toContain('+87 654 $');
-        expect(carte!.note).toContain('lastProjection.savingsSensitivity');
-
-        _resetViewContextForTests();
-        useFinanceStore.setState({ isPrivacyMode: false, lastProjection: projectionVivante(null) } as never);
-        render(<Budget {...props} />);
-        const labels = ((getViewContext()?.detail as BudgetViewDetail | undefined)?.cards ?? []).map(c => c.label);
-        expect(labels, 'anti-vacuité : la carte long terme doit toujours être publiée').toContain('Impact à long terme');
-        expect(labels).not.toContain('Sensibilité (moteur)');
     });
 
     it('SOURCE : toujours aucune capitalisation locale dans l\'onglet Budget', () => {

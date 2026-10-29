@@ -150,8 +150,6 @@ import { maskedTick } from '../utils/chartPrivacy';
 import { reperesRonds } from '../utils/reperesRonds';
 import { NO_DATA_LABEL } from './ui/emptyAware';
 // [REFONTE-NAV-L6a] Contexte d'écran « Futur » pour l'assistant (patron CHAT-PAGE-CONTEXT).
-import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
-import { buildFutureViewDetail } from '../services/aiChat/futureViewContext';
 import { dayVariation } from '../services/history/dayVariation';
 import { addDay } from '../services/history/reconstructCashHistory';
 
@@ -874,20 +872,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         getKey: (p) => p.monthIndex,
         containerRef: zoom.containerEl,
     });
-
-    // [REFONTE-NAV-L6a] Publication du contexte d'écran « Futur » pour l'assistant (chat panneau
-    // ouvert par-dessus cet onglet — patron CHAT-PAGE-CONTEXT, scope-guard + purge mode discret à
-    // la source via useViewContextPublisher). Résumé bâti sur `results` = la courbe AFFICHÉE
-    // (source unique lastProjection, ou son gel PROJECTION-PERSIST quand la courbe est figée) —
-    // JAMAIS un recalcul côté UI. Courbe non visible (gate d'amorçage) → détail « sans
-    // projection » : le prompt l'avoue, zéro chiffre (no-fake-data).
-    // Point sélectionné = modal détail ouvert, sinon infobulle FIGÉE (dernière sélection active).
-    const selectedCurvePoint = detailPoint ?? (selection.mode === 'frozen' ? selection.point : null);
-    const futureViewDetail = useMemo(
-        () => buildFutureViewDetail(curveVisible ? results : null, selectedCurvePoint),
-        [curveVisible, results, selectedCurvePoint],
-    );
-    useViewContextPublisher('future', futureViewDetail);
 
     // [FUTUR-DAILY lot B étape 2] La COURBE elle-même au jour, quand la fenêtre est assez serrée.
     // ⚠️ CORRECTION DE CAP (Marc, 2026-08-11) : « je veux pas voir dans l'info bulle le détail des

@@ -9,13 +9,12 @@ import { QUEBEC_FISCAL_CONTEXT } from '../claude';
 
 /**
  * [CHAT-PAGE-CONTEXT] `viewContextLine` (additif, défaut absent → prompt BYTE-IDENTIQUE à avant) :
- * la ligne « CONTEXTE ÉCRAN » de services/aiChat/viewContext.ts, calculée UNE fois par envoi dans
- * l'ancien chat (retiré) (le `system` est structurellement figé pour toute la boucle — jamais relu mi-envoi).
+ * la ligne « CONTEXTE ÉCRAN », calculée UNE fois par envoi par l'ancien chat (retiré ; le `system` est structurellement figé pour toute la boucle — jamais relu mi-envoi).
  * ⚠️ Placée en FIN de prompt : le jour où [AITOOLS-PROMPT-CACHE] pose un cache_control sur le
  * préfixe statique, il faudra scinder system en blocs (statique caché / dynamique) — cette ligne
  * change à chaque envoi et invaliderait sinon le hit de cache du préfixe entier.
  */
-export function buildAgentSystemPrompt(viewContextLine?: string): string {
+function buildAgentSystemPrompt(viewContextLine?: string): string {
     return `${QUEBEC_FISCAL_CONTEXT}
 OUTILS — Règles d'usage :
 - Tu as accès aux données financières RÉELLES de l'utilisateur via des outils (tools). Pour TOUTE

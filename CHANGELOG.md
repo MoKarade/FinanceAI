@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-29 — Ancien assistant : le contexte d'écran est retiré (#15, lot 2a)
+
+- Budget et Futur ne préparent plus de résumé de l'écran pour l'ancien chat, qui n'existe plus. Rien ne change à l'écran ni dans les chiffres.
+
 ## 2026-10-28 — L'app s'installe de nouveau : manifeste et icônes lisibles sans connexion (#39)
 
 - `finance.hubperso.com/manifest.webmanifest` (et les icônes) répondait par une redirection vers la connexion du hub, ce qui bloquait l'installation de l'app et la vérification du hub. Ces fichiers, sans aucune donnée, sont maintenant publics ; tout le reste reste derrière la session du hub.

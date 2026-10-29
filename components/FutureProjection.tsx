@@ -149,7 +149,6 @@ import { formatCAD, formatCompactCAD } from '../utils/format';
 import { maskedTick } from '../utils/chartPrivacy';
 import { reperesRonds } from '../utils/reperesRonds';
 import { NO_DATA_LABEL } from './ui/emptyAware';
-// [REFONTE-NAV-L6a] Contexte d'écran « Futur » pour l'assistant (patron CHAT-PAGE-CONTEXT).
 import { dayVariation } from '../services/history/dayVariation';
 import { addDay } from '../services/history/reconstructCashHistory';
 
@@ -1055,7 +1054,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // l'app reste ouverte, minuit passe, et la Map en cache pour ce mois a été construite avec
         // l'ANCIEN `todayIso` — le jour qui vient de basculer au passé y porte encore sa valeur
         // PROJETÉE. C'est le bug même que cette PR corrige, réapparu côté infobulle. Et comme
-        // l'infobulle FIGÉE alimente le contexte envoyé à l'assistant, la fausse valeur héritait de
+        // l'infobulle FIGÉE sert de référence à l'écran, la fausse valeur héritait de
         // l'autorité d'une « source unique ».
         // ⚠️ Ça ne se voyait pas en pratique : `dailyPastByDate` est une NOUVELLE Map à chaque
         // changement de `todayIso`, ce qui invalidait ce cache par ricochet. Une protection

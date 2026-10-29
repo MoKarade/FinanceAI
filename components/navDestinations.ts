@@ -5,7 +5,7 @@ import type { IconName } from './ui/Icon';
  * [S5-REFONTE-R1] Source UNIQUE de la navigation — refonte validée par Marc (maquettes du
  * 2026-09-25, « fusion Nocturne × Cockpit ») : barre latérale TEXTE en trois groupes
  * (Vue / Planifier / Outils), carte Profil en pied de barre ; sur mobile, barre du bas
- * (Futur, Transactions, Assistant, Plus) et menu « Plus » pour le reste.
+ * (Futur, Transactions, Budget, Plus) et menu « Plus » pour le reste.
  *
  * - Immobilier réunit les biens détenus ET les projets d'achat : un seul item de nav, actif sur
  *   les deux onglets (`alsoActiveFor`) ; la page porte les deux sous-onglets.

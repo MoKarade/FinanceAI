@@ -611,7 +611,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
     // [A11Y-PRIVACY-CHAINES-RESTANTES] La liste portait « Poste (312 $ dépassé) » en CHAÎNE, et elle
     // a DEUX consommateurs aux règles opposées : le bandeau à l'écran, qui doit masquer le montant,
-    // et le contexte de l'assistant, qui a besoin du chiffre. Une chaîne ne peut pas servir les deux.
+    // et un consommateur qui a besoin du chiffre. Une chaîne ne peut pas servir les deux.
     // Elle porte donc le nom et le dépassement séparément ; chaque consommateur compose le sien.
     const alerts = useMemo(() => {
         const list: Array<{ poste: string; depassement: number }> = [];

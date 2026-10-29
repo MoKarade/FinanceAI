@@ -282,10 +282,10 @@ pour les analyses ciblées (budget, talons de paie, abonnements, immobilier). Le
 **Frontière spec/register des tools MCP** (Lot A du chantier Claude-in-app, 2026-07-21, ADR-1) :
 chaque tool est scindé en `mcp/tools/<x>.spec.ts` (logique métier PURE, browser-safe : nom,
 description, schéma zod, handler/toDocument — types dans `_toolSpec.ts`) et `mcp/tools/<x>.tool.ts`
-(enregistrement serveur MINCE, seul autorisé à importer `@modelcontextprotocol/sdk`). Deux
-consommateurs des specs : le serveur MCP (`server.tool(...)`) et, à venir, le chat Claude in-app
-(`services/aiTools/` → SDK Anthropic tool-use). Exclus de la parité : `ping` (trivial) et
-`connect_drive` (OAuth loopback Node, sans équivalent in-app — l'app EST la source de données).
+(enregistrement serveur MINCE, seul autorisé à importer `@modelcontextprotocol/sdk`). Le
+consommateur des specs est le serveur MCP (`server.tool(...)`, pour claude.ai et LIA) ; le chat Claude
+in-app qui devait en être le second a été retiré le 29/10/2026 (FinanceAI#15). Exclus de la parité :
+`ping` (trivial) et `connect_drive` (OAuth loopback Node, sans équivalent dans l'app).
 Gardes : `tests/aiTools/noMcpSdkInSpecs.test.ts` (frontière + tools minces, volume prouvé) ;
 parité mesurée par capture d'enregistrement (worktree HEAD vs courant : 16 tools identiques).
 

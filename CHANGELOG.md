@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-29 — Ancien assistant : le moteur du chat est retiré (#15, lot 2b)
+
+- Le moteur de l'ancien chat (boucle d'outils, prompt système, aiguillage des outils, conversion des schémas) est supprimé : plus rien dans l'app ne l'appelait depuis le retrait de l'écran. Les outils restent servis par le serveur MCP (claude.ai, LIA) ; rien ne change à l'écran ni dans les chiffres.
+
 ## 2026-10-29 — Ancien assistant : le contexte d'écran est retiré (#15, lot 2a)
 
 - Budget et Futur ne préparent plus de résumé de l'écran pour l'ancien chat, qui n'existe plus. Rien ne change à l'écran ni dans les chiffres.

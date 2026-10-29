@@ -50,10 +50,6 @@ export const READ_SPECS: AnyReadToolSpec[] = [
     runProjectionSpec,
 ];
 
-/** Index par nom pour le dispatch. */
-export const READ_SPECS_BY_NAME: ReadonlyMap<string, AnyReadToolSpec> =
-    new Map(READ_SPECS.map((s) => [s.name, s]));
-
 /**
  * [AITOOLS-D] Tools d'ÉCRITURE exposés au chat in-app — les MÊMES specs que le serveur MCP.
  * ⚠️ Contrat NON NÉGOCIABLE (exigence Marc « aucune donnée changée » sans consentement) : ces specs
@@ -71,6 +67,3 @@ export const WRITE_SPECS: AnyWriteToolSpec[] = [
     setBudgetItemSpec,
     deleteItemSpec,
 ];
-
-export const WRITE_SPECS_BY_NAME: ReadonlyMap<string, AnyWriteToolSpec> =
-    new Map(WRITE_SPECS.map((s) => [s.name, s]));

@@ -21,8 +21,9 @@
 // appels SDK directs, pas de point d'entrée unique ». FAUX dans les deux sens. Mesuré sur
 // `\.messages\.(create|stream)\(` : **CINQ** points de contact SDK, et ils portent TOUS un
 // `system` — quatre dans `services/claude.ts` (chat, chatStream, analyzePayslip,
-// analyzeBankStatement) et un dans `services/aiTools/agentLoop.ts` (l'agent d'outils, celui
-// qui porte le contexte financier). Il y a donc bien une taille de guêpe.
+// analyzeBankStatement) et un dans l'agent d'outils (`services/aiTools/agentLoop.ts`, retiré le
+// 29/10/2026 avec l'ancien assistant, FinanceAI#15 : il ne reste que les quatre de `claude.ts`).
+// Il y avait donc bien une taille de guêpe.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 

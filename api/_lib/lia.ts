@@ -80,6 +80,7 @@ export async function demanderAuHub(
     demande: DemandeLia,
     { signal, fetchImpl = fetch, env = process.env }: { signal?: AbortSignal } & DepsLia = {},
 ): Promise<ReponseLiaApp> {
+    // Lu à chaque appel, mais fixé au déploiement : une valeur posée ou changée sur Vercel ne vaut qu'après le build suivant.
     const jeton = env.HUB_TOKEN;
     if (!jeton) throw new LiaIndisponible('HUB_TOKEN absent');
     const url = urlAsk(env.HUB_URL?.trim() || URL_HUB_DEFAUT);

@@ -1,5 +1,5 @@
 # ADR — Contexte d'écran du chat : injection `system` figée par envoi, PAS un tool (`CHAT-PAGE-CONTEXT`, 2026-07-22)
-**Statut** : accepté (OK Marc donné d'avance, plan architect 2026-07-22).
+**Statut** : retiré le 2026-10-29 (FinanceAI#15, lot 2) — le chat in-app n'existe plus, `viewContext` et `useViewContextPublisher` sont supprimés. Gardé pour mémoire ; accepté à l'origine (OK Marc donné d'avance, plan architect 2026-07-22).
 
 **Contexte** : le chat in-app doit savoir ce que l'utilisateur regarde (onglet, période, chiffres
 affichés) pour répondre à « explique-moi ce chiffre » — sans jamais recalculer un montant déjà

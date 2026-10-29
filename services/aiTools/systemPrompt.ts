@@ -15,7 +15,7 @@ import { QUEBEC_FISCAL_CONTEXT } from '../claude';
  * préfixe statique, il faudra scinder system en blocs (statique caché / dynamique) — cette ligne
  * change à chaque envoi et invaliderait sinon le hit de cache du préfixe entier.
  */
-export function buildAgentSystemPrompt(viewContextLine?: string): string {
+function buildAgentSystemPrompt(viewContextLine?: string): string {
     return `${QUEBEC_FISCAL_CONTEXT}
 OUTILS — Règles d'usage :
 - Tu as accès aux données financières RÉELLES de l'utilisateur via des outils (tools). Pour TOUTE

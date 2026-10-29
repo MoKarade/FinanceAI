@@ -59,6 +59,17 @@ export const PROGRAMMES_JQ_AUTORISES: Record<string, string[]> = {
         'def b: if type == "boolean" then . else null end; '
         + '{ok: (.ok | b), conflict: (.conflict | b), erreur_signalee: (.error != null)}',
     ],
+    'market-store.yml': [
+        'def b: if type == "boolean" then . else null end; '
+        + 'def n: if type == "number" then . else null end; '
+        + '{ok: (.ok | b), conflict: (.conflict | b), erreur_signalee: (.error != null), '
+        + 'essai_a_blanc: (.essaiABlanc | b), ecrit: (.ecrit | b), cibles: (.cibles | n), '
+        + 'clotures: {appels: (.rapport.clotures.appels | n), reportes: (.rapport.clotures.reportes | n), '
+        + 'ajouts: (.rapport.clotures.ajouts | n), echecs_reseau: (.rapport.clotures.echecsReseau | n), '
+        + 'reponses_illisibles: (.rapport.clotures.reponsesIllisibles | n)}, '
+        + 'taux: {appels: (.rapport.taux.appels | n), ajouts: (.rapport.taux.ajouts | n), '
+        + 'echecs_reseau: (.rapport.taux.echecsReseau | n), reponses_illisibles: (.rapport.taux.reponsesIllisibles | n)}}',
+    ],
     'refresh-prices.yml': [
         'def b: if type == "boolean" then . else null end; '
         + 'def code(liste): if . as $v | liste | index($v) then . else "autre" end; '

@@ -1,0 +1,63 @@
+# [PTF-L1C3-PLANIFICATION] Passe quotidienne du magasin de marché (clôtures EODHD, taux de la Banque du Canada).
+#
+# Appelle `POST /market-store` du serveur MCP (Cloud Run), qui lit le fichier de cours sur Drive, relit
+# les séries en retard sous budget et réécrit le fichier (un seul écrivain). Tant que `MARKET_LIVE=1`
+# n'est pas posé au déploiement, la route répond en ESSAI À BLANC (rien d'appelé ni d'écrit) : ce
+# workflow est donc sans risque à lancer.
+#
+# Secrets requis (Settings → Secrets and variables → Actions) :
+#   FINANCEAI_MCP_URL        — URL du serveur MCP (déjà posé pour refresh-prices.yml)
+#   FINANCEAI_MARKET_SECRET  — le même secret que `financeai-market-secret` (Secret Manager) monté sur Cloud Run
+#
+# Le job « rougit » sur tout non-200 : serveur injoignable, 401 (mauvais secret), 404 (secret absent côté
+# serveur), 503 (clé EODHD absente, Drive KO, fichier illisible) = panne RÉELLE → alerte GitHub. Un conflit de
+# concurrence (l'app ou un autre passage a écrit au même moment) reste 200 { ok:false, conflict:true } et sera
+# rattrapé au passage suivant (la passe relit les fenêtres qui se recouvrent).
+
+name: Passe quotidienne du magasin de marché
+
+on:
+  schedule:
+    # Tous les jours à 23 h 17 UTC (19 h 17 à Québec en heure d'été, 18 h 17 en hiver), après la clôture des
+    # marchés nord-américains. Silence détecté : plus aucune clôture écrite dans le fichier de cours. Minute 17,
+    # jamais 0 (créneau saturé de GitHub). Week-end : la passe ne fait aucun appel quand aucune séance n'a pu paraître.
+    - cron: '17 23 * * *'
+  workflow_dispatch: {} # déclenchement manuel possible depuis l'onglet Actions
+
+# Moindre privilège : un simple curl vers un service externe, aucun droit sur le dépôt.
+permissions: {}
+
+# Une seule passe à la fois (un run planifié et un run manuel ne se chevauchent pas).
+concurrency:
+  group: market-store
+  cancel-in-progress: false
+
+jobs:
+  passe:
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || fromJSON('["self-hosted","pc-marc"]') }} # dépôt public : machines GitHub (gratuites) ; privé : robot du PC
+    timeout-minutes: 10
+    steps:
+      - name: POST /market-store
+        env:
+          MCP_URL: ${{ secrets.FINANCEAI_MCP_URL }}
+          MARKET_SECRET: ${{ secrets.FINANCEAI_MARKET_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MCP_URL:-}" ] || [ -z "${MARKET_SECRET:-}" ]; then
+            echo "::error::Secrets FINANCEAI_MCP_URL / FINANCEAI_MARKET_SECRET manquants."
+            exit 1
+          fi
+          # --max-time 480 : jusqu'à 15 lectures EODHD à la suite, sous le timeout-minutes: 10 du job.
+          # --data '' : POST à corps VIDE mais avec Content-Length: 0 (le frontal de Cloud Run refuse un POST
+          # sans Content-Length : 411 avant d'atteindre le serveur).
+          code=$(curl -sS --max-time 480 -o /tmp/market_out -w '%{http_code}' \
+            -X POST "${MCP_URL%/}/market-store" \
+            -H "Authorization: Bearer ${MARKET_SECRET}" \
+            --data '')
+          echo "HTTP ${code}"
+          # ⚠️ Ce journal est PUBLIC (dépôt public) : on n'imprime que des booléens et des NOMBRES, jamais un
+          # symbole, un ISIN, un cours, une clé ni le texte d'une erreur. Programme jq sur la liste blanche de
+          # tests/journauxCiSansDonnees.test.ts.
+          jq -c 'def b: if type == "boolean" then . else null end; def n: if type == "number" then . else null end; {ok: (.ok | b), conflict: (.conflict | b), erreur_signalee: (.error != null), essai_a_blanc: (.essaiABlanc | b), ecrit: (.ecrit | b), cibles: (.cibles | n), clotures: {appels: (.rapport.clotures.appels | n), reportes: (.rapport.clotures.reportes | n), ajouts: (.rapport.clotures.ajouts | n), echecs_reseau: (.rapport.clotures.echecsReseau | n), reponses_illisibles: (.rapport.clotures.reponsesIllisibles | n)}, taux: {appels: (.rapport.taux.appels | n), ajouts: (.rapport.taux.ajouts | n), echecs_reseau: (.rapport.taux.echecsReseau | n), reponses_illisibles: (.rapport.taux.reponsesIllisibles | n)}}' /tmp/market_out || echo "(réponse non JSON, non affichée)"
+          # 200 = OK (ok:true) ou conflit transitoire (ok:false, conflict:true). Tout le reste = panne réelle.
+          test "${code}" = "200"

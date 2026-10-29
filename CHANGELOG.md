@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-28 — L'app s'installe de nouveau : manifeste et icônes lisibles sans connexion (#39)
+
+- `finance.hubperso.com/manifest.webmanifest` (et les icônes) répondait par une redirection vers la connexion du hub, ce qui bloquait l'installation de l'app et la vérification du hub. Ces fichiers, sans aucune donnée, sont maintenant publics ; tout le reste reste derrière la session du hub.
+- La détection de session expirée lit désormais `/robots.txt` (toujours protégé) au lieu de `/icon.svg`.
+
 ## 2026-10-28 — LIA ne répond plus « non autorisé » quand c'est la configuration qui manque (#20)
 
 - Si les clés du hub ou l'adresse du propriétaire ne sont pas posées sur le serveur, LIA dit « indisponible » (503) au lieu de faire croire à un refus de session.

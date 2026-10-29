@@ -4,6 +4,9 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-28 — **`[PWA-PUBLIC]`** : manifeste et icônes lisibles sans session (tâche #39)
+> Le hub signalait `finance.hubperso.com/manifest.webmanifest` en 302 vers la connexion (les 5 autres apps le servent) : l'app ne pouvait pas s'installer. `api/_lib/gardeSite.ts` ouvre maintenant, en GET/HEAD et par chemin EXACT (jamais un préfixe), `/manifest.webmanifest`, `/manifest.json`, `/icon.svg`, `/icon-192.png`, `/icon-512.png`, `/icon-maskable-512.png`, `/apple-touch-icon.png` ; `public/manifest.webmanifest` est une copie de `manifest.json` (test d'identité). ⚠️ La sonde de session expirée (`utils/sessionAccess.ts`) lisait `/icon.svg` : devenu public, il ne montrerait plus la redirection ; elle lit `/robots.txt`, qui reste derrière la garde. Verrous : `tests/api/middleware.test.ts` (bloc `[PWA-PUBLIC]`), `tests/utils/sessionAccess.test.ts`. Preuve en prod après déploiement : manifeste 200, `/` 302, `/api/yahoo/search?q=tsla` 401.
+>
 > ## 🟦 Session 2026-10-28 — **`[20]`** : LIA échoue fermé (503) sans clés publiques ou sans propriétaire (FinanceAI#20, mission .github#719)
 > `api/_lib/lia.ts` vérifiait déjà le cookie signé `__Secure-hub.session` avec `verifierSession` ; il répondait 401 (clés absentes) ou 403 (`AUTHORIZED_EMAIL` absent) quand la configuration manquait, ce qui ressemblait à un refus de session. Maintenant : cookie absent → 401, PUIS configuration absente (clés illisibles ou `AUTHORIZED_EMAIL` vide) → 503 `configuration_absente`, PUIS session invalide 401 / autre courriel 403. Le cookie passe avant la configuration pour qu'un anonyme ne sonde pas les variables. `AUTHORIZED_EMAIL` doit être posée sur le projet Vercel `finance-ai` (nom seulement dans ce dépôt, jamais la valeur) AVANT la fusion ; elle ne s'applique qu'au build suivant. Tests : `tests/lia/liaAsk.test.ts`. Doc : `docs/claude/hub.md`.
 >

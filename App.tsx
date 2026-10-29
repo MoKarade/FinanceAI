@@ -25,6 +25,7 @@ import { PassphraseGate } from './components/auth/PassphraseGate';
 import { SyncStatusBanner } from './components/sync/SyncStatusBanner';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { STORAGE_KEYS } from './utils/storageKeys';
+import NavApps from './components/NavApps';
 
 const GuideModal = lazyWithRetry(() => import('./components/GuideModal').then(m => ({ default: m.GuideModal })), 'GuideModal');
 // PH2-c — moteur de projection app-level LAZY-chargé : garde le bundle de BOOT léger (le code du
@@ -265,6 +266,9 @@ export const App: React.FC = () => {
                     setTimeout(() => startGuidedTour(), 700);
                 }} />
             )}
+            {/* Onglet « Apps » : l'app n'est servie qu'au propriétaire (middleware.ts) ; monté seulement une fois l'app
+                réellement affichée (ni coffre verrouillé — early return plus haut —, ni accueil). Aucune donnée, aucun état. */}
+            {!isFirstLaunch && <NavApps courant="financeai" />}
             {!isFirstLaunch && (
             <Layout
                 activeTab={activeTab}

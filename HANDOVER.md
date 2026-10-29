@@ -4,6 +4,9 @@
 > la lecture séquentielle de tous les autres. Pointeurs vers les détails
 > à la fin.
 >
+> ## 🟦 Session 2026-10-29 — **`[53]`** : onglet « Apps » de navigation entre les apps du parc (FinanceAI#53, mission .github#846)
+> `components/NavApps.tsx` (`<details>` natif, zéro état/fetch/donnée) + `utils/appsDuParc.ts` (copie figée de `Hubperso/lib/sources.ts`) + bloc `.nav-apps*` en fin de `index.css`. Monté dans `App.tsx` sous `!isFirstLaunch` : l'app n'est servie qu'au propriétaire (`middleware.ts`), donc pas de test de rôle ; ni écran de passphrase (early return) ni accueil. Doc : `docs/claude/nav-apps.md`. Tests : `tests/navApps.test.tsx`, `tests/appsDuParc.test.ts`. Compte de tests de `docs/claude/entete.md` non remesuré (aucun test ne le verrouille). Essai Chromium et skills de design non faits (indisponibles ici).
+>
 > ## 🟦 Session 2026-10-29 — **`[PTF-L1C3-INSTRUMENTS]`** : résoudre l'ISIN et le symbole EODHD d'un titre détenu (FinanceAI#23, mission #6)
 > `services/marche/instruments.ts` (pur) : `resoudreInstruments(titres, recherches)` rend, pour chaque titre `{ symbole, devise }`, une `CibleCloture` (`{ isin, symboleEodhd, devise }`) ou un refus honnête : `introuvable`, `ambigu` (deux ISIN, ou deux places pour un même titre sans suffixe qui départage), `devise-douteuse` (devise de la source différente de l'état, ou absente), `isin-absent` (ISIN absent ou mal formé). Jamais un ISIN deviné ; la devise vient de l'état. Les candidats arrivent déjà normalisés : le lecteur de la réponse réelle d'EODHD `/api/search` n'existe pas encore, il demande une MESURE que le conteneur ne peut pas faire (aucune route vers EODHD) : tâche #45. Le résultat se range dans le champ `cibles` du fichier de cours Drive (#24), jamais dans le dépôt. Tests : `tests/services/marche/instruments.test.ts` (18, données fictives).
 >

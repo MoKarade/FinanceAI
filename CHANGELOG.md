@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-29 — Un onglet « Apps » pour passer d'une app à l'autre (#53)
+
+- Un petit onglet « Apps » (replié, en haut à droite) se déplie en six liens : Hub, DriveAI, BatchChef, CarAI, JobAI, MemoryAI. Un clic ouvre l'app dans le même onglet.
+- L'onglet n'apparaît qu'une fois l'app affichée (ni sur l'écran de passphrase, ni pendant l'accueil). Aucune donnée financière, aucun appel réseau.
+
 ## 2026-10-29 — Le moteur sait retrouver l'ISIN de chaque titre détenu (#23)
 
 - Une fonction pure range chaque titre détenu vers son ISIN et son symbole EODHD, ou dit pourquoi elle ne peut pas (introuvable, ambigu, devise douteuse, ISIN absent). Elle ne devine jamais un ISIN.

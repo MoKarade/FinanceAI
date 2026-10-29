@@ -4,7 +4,7 @@
 // clic, et la promesse est résolue par le modal — jamais de promesse pendante orpheline.
 //
 // ⚠️ Pourquoi une extraction et pas une troisième copie. Ce bloc existait DEUX fois, à l'octet
-// près : dans l'ancien chat (retiré) (chat in-app) et dans `PayslipUploadCard` (dépôt de talon de paie).
+// près : dans l'ancien chat (retiré) et dans `PayslipUploadCard` (dépôt de talon de paie).
 // Vérifié avant d'extraire — les deux copies n'avaient PAS divergé, donc l'extraction est
 // mécanique et sans arbitrage. TaxCenter aurait été la troisième, et « deux copies d'un patron ont
 // déjà divergé, la troisième se refuse ».

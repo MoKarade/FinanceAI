@@ -151,7 +151,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                             {([
                                 { icon: 'budget', text: "Vois clairement où va ton argent chaque mois (budget, dettes, épargne)." },
                                 { icon: 'future', text: "Simule ton futur : retraite, achat de maison, enfants — et trouve la meilleure stratégie." },
-                                { icon: 'bot', text: "Un assistant IA (optionnel) catégorise tes dépenses et te conseille." },
+                                { icon: 'bot', text: "Une IA (optionnelle) catégorise tes dépenses et analyse ton budget." },
                                 { icon: 'lock', text: "Tes données restent sur ton appareil. Aucun serveur, aucun compte à créer." },
                             ] as Array<{ icon: IconName; text: string }>).map((f, i) => (
                                 <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-card border border-white/5">

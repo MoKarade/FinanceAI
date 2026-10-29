@@ -285,7 +285,7 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </main>
 
-      {/* Barre du bas (mobile, < lg) : Futur, Transactions, Assistant, Plus. Cibles ≥ 44 px. */}
+      {/* Barre du bas (mobile, < lg) : Futur, Transactions, Budget, Plus. Cibles ≥ 44 px. */}
       <nav aria-label="Navigation mobile" className="lg:hidden fixed bottom-0 left-0 right-0 h-[76px] z-100 grid grid-cols-4 px-3 pt-2 pb-4 pb-safe bg-[#0A0C10]/94 border-t border-white/6">
         {MOBILE_BAR_TABS.map((tab) => {
           const item = navItemOfTab(tab)!;

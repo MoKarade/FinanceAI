@@ -62,7 +62,3 @@ export function modelLabelFromId(id: string): string {
  */
 export const LOCAL_MODEL_ID = 'gpt-oss-atelier';
 
-/** Vrai si la réponse a été servie par l'IA locale (gratuite, jamais facturée). */
-export function isLocalModel(id: unknown): boolean {
-    return id === LOCAL_MODEL_ID;
-}

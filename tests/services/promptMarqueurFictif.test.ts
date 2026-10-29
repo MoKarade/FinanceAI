@@ -162,10 +162,10 @@ describe('[SANDBOX-PROMPTS-MARQUER-CONTEXTE] garde : tout point de contact SDK m
         expect(sitesSansMarqueur('c.messages.stream({ model: f(x), system: systemPourAppel(g(y)) }, { signal })').fautifs).toHaveLength(0);
     });
 
-    it('anti-vacuité : le balayage voit au moins les 5 points de contact mesurés (2026-09-29)', () => {
+    it('anti-vacuité : le balayage voit au moins les 4 points de contact mesurés (2026-10-29 ; 5 avant le retrait de l\'agent d\'outils, FinanceAI#15)', () => {
         expect(fichiers.length).toBeGreaterThanOrEqual(200);
         const total = scan.reduce((n, s) => n + s.total, 0);
-        expect(total).toBeGreaterThanOrEqual(5);
+        expect(total).toBeGreaterThanOrEqual(4);
     });
 
     it('AUCUN point de contact SDK de production n\'envoie un system sans marqueur', () => {

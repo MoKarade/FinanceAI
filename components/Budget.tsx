@@ -851,8 +851,8 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
         // Ces cartes ne sont PAS un rendu : elles composent le contexte envoyé à l'assistant IA
         // (`services/aiChat/viewContext.ts`). [PRIVACY-CONTEXTE-IA] Décision Marc 2026-09-05 :
         // MASQUER — appliquée EN AMONT : le publisher (`useViewContextPublisher`) purge le détail en
-        // mode discret et le chokepoint d'envoi (`useAiChat`) refuse la ligne de contexte. Ces cartes
-        // ne partent donc jamais en mode discret (prouvé : `useAiChat.viewContext.test.tsx`).
+        // mode discret et le chokepoint d'envoi (l'ancien chat (retiré)) refuse la ligne de contexte. Ces cartes
+        // ne partent donc jamais en mode discret (prouvé : le test du chokepoint du chat (retiré avec l'ancien chat)).
         // Le jeton `MONTANT-HORS-ECRAN` est répété SUR chaque ligne : la garde lit une fenêtre de
         // ±2 lignes, et ces cartes sont trop espacées pour qu'une seule marque les couvre.
         const cards: NonNullable<BudgetViewDetail['cards']> = [

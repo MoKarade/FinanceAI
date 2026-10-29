@@ -12,7 +12,7 @@
 //
 // Balayage du dépôt fait au même lot : 27 sites utilisent l'élément lui-même comme clé. UN seul
 // offender (celui-ci) ; deux autres sont explicitement dédoublonnés avec le commentaire qui explique
-// pourquoi (`AiChatView` via `new Set`, `FutureHistorySection` « leçon Diane & Robert ») ; les 24
+// pourquoi (l'ancien chat (retiré) via `new Set`, `FutureHistorySection` « leçon Diane & Robert ») ; les 24
 // restants itèrent des ensembles uniques par construction. La classe est comprise dans ce dépôt —
 // c'était le reliquat.
 

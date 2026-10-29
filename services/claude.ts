@@ -2,7 +2,7 @@
 // Phase 4 A1 — équivalent Anthropic du services/gemini.ts.
 //
 // Garde le MÊME contrat public que gemini.ts pour que les consumers
-// (AiAssistant, BudgetAiModal, Transactions, TaxCenter, Planning) puissent
+// (l'ancien assistant (retiré), BudgetAiModal, Transactions, TaxCenter, Planning) puissent
 // migrer en simple changement d'import.
 //
 // Décisions par usage (cf docs/PLAN_PHASE_4.md §3):
@@ -46,7 +46,7 @@ export const CATEGORIZE_MODEL_ID = MODEL_HAIKU;
 
 // ─── Privacy hardening ───────────────────────────────────────────────────────
 // La neutralisation des libellés utilisateur est centralisée dans
-// utils/promptSafety.ts (sanitizePromptText) — partagée avec AiAssistant et testée.
+// utils/promptSafety.ts (sanitizePromptText) — partagée avec l'ancien assistant (retiré) et testée.
 // On évite ici une copie locale qui dériverait.
 
 // [FMT-PROMPT-MIGRER] Décision de Marc (2026-09-03) : les montants des prompts passent par
@@ -300,7 +300,7 @@ export async function chat(
 
 /**
  * Appel Claude en streaming. Retourne un async iterable de chunks de texte.
- * Use case: AiAssistant — affichage progressif token par token.
+ * Use case: l'ancien assistant (retiré) — affichage progressif token par token.
  * §7.C.2 — supporte signal externe (bouton "Annuler") + timeout default 30s.
  */
 export async function* chatStream(

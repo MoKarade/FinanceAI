@@ -6,7 +6,6 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 // (cf hubperso.com regression : "Failed to fetch dynamically imported module")
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { PageSetupGate } from './setup/PageSetupGate';
-import { AssistantVerrouille } from './aiChat/AssistantVerrouille';
 // [REFONTE-NAV-L2a] Bannière « import bancaire figé » : vivait sur l'ex-Accueil (leçon incident
 // 2026-08-05 : une alerte doit être là où l'utilisateur regarde PAR DÉFAUT = désormais le Futur).
 // Import statique : store + syncHealth + Icon, rien de lourd ; elle se tait d'elle-même (région
@@ -34,7 +33,6 @@ const Retirement = lazyWithRetry(() => import('./Retirement').then(m => ({ defau
 const TaxCenter = lazyWithRetry(() => import('./TaxCenter').then(m => ({ default: m.TaxCenter })), 'TaxCenter');
 const Settings = lazyWithRetry(() => import('./Settings').then(m => ({ default: m.Settings })), 'Settings');
 const Profile = lazyWithRetry(() => import('./Profile').then(m => ({ default: m.Profile })), 'Profile');
-const AiAssistant = lazyWithRetry(() => import('./AiAssistant').then(m => ({ default: m.AiAssistant })), 'AiAssistant');
 // NBA-PAGE — « Prochaine action » en page dédiée (même composant que l'ex-widget, mode asPage).
 const FutureProjection = lazyWithRetry(() => import('./FutureProjection').then(m => ({ default: m.FutureProjection })), 'FutureProjection');
 const DebtManager = lazyWithRetry(() => import('./DebtManager').then(m => ({ default: m.DebtManager })), 'DebtManager');
@@ -261,14 +259,6 @@ export const TabRouter: React.FC<TabRouterProps> = ({
 
                 {activeTab === Tab.PROFILE && (
                     <Profile />
-                )}
-
-                {activeTab === Tab.ASSISTANT && (
-                    <PageSetupGate tab={Tab.ASSISTANT} verrouille={<AssistantVerrouille />}>
-                        {/* [AITOOLS-E] L'onglet rend la conversation partagée (variant tab) via le
-                            context AiChatProvider (monté App) — même instance que le panneau global. */}
-                        <AiAssistant />
-                    </PageSetupGate>
                 )}
                 </div>
             </ErrorBoundary>

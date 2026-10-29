@@ -20,14 +20,14 @@ import { navItemOfTab } from '../navDestinations';
  */
 
 // [REFONTE-NAV Lot 1] Accueil retiré ; ordre aligné sur les 6 destinations
-// (Futur, puis Configurations, Vie, Transactions, Assistant).
+// (Futur, puis Configurations, Vie, Transactions).
 // [REFONTE-NAV-L3] Tab.REAL_ESTATE_PROJECTS est VOLONTAIREMENT absent : il partage le
 // prérequis `realEstate` avec Immobilier — le lister doublerait la même carte et
 // gonflerait le % de complétion (double comptage du même prérequis).
 const TAB_ORDER: Tab[] = [
     Tab.FUTURE, Tab.INVESTMENTS, Tab.REAL_ESTATE, Tab.DEBT, Tab.TAX,
     Tab.RETIREMENT, Tab.CHILD, Tab.LIFE_PROJECTS,
-    Tab.TRANSACTIONS, Tab.BUDGET, Tab.ASSISTANT,
+    Tab.TRANSACTIONS, Tab.BUDGET,
 ];
 
 /**

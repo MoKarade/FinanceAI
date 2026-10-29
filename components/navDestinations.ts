@@ -5,7 +5,7 @@ import type { IconName } from './ui/Icon';
  * [S5-REFONTE-R1] Source UNIQUE de la navigation — refonte validée par Marc (maquettes du
  * 2026-09-25, « fusion Nocturne × Cockpit ») : barre latérale TEXTE en trois groupes
  * (Vue / Planifier / Outils), carte Profil en pied de barre ; sur mobile, barre du bas
- * (Futur, Transactions, Assistant, Plus) et menu « Plus » pour le reste.
+ * (Futur, Transactions, Budget, Plus) et menu « Plus » pour le reste.
  *
  * - Immobilier réunit les biens détenus ET les projets d'achat : un seul item de nav, actif sur
  *   les deux onglets (`alsoActiveFor`) ; la page porte les deux sous-onglets.
@@ -55,7 +55,6 @@ export const NAV_GROUPS: NavGroup[] = [
         label: 'Outils',
         items: [
             { tab: Tab.TAX, label: 'Impôts', icon: 'tax' },
-            { tab: Tab.ASSISTANT, label: 'Assistant', icon: 'bot' },
             { tab: Tab.SETTINGS, label: 'Réglages', icon: 'settings' },
         ],
     },
@@ -65,7 +64,7 @@ export const NAV_GROUPS: NavGroup[] = [
 export const PROFILE_TAB = Tab.PROFILE;
 
 /** Onglets épinglés dans la barre mobile (le reste passe par « Plus »). */
-export const MOBILE_BAR_TABS: Tab[] = [Tab.FUTURE, Tab.TRANSACTIONS, Tab.ASSISTANT];
+export const MOBILE_BAR_TABS: Tab[] = [Tab.FUTURE, Tab.TRANSACTIONS, Tab.BUDGET];
 
 /** L'item de nav qui représente cet onglet (y compris les onglets rattachés, ex. projets immo). */
 export const navItemOfTab = (tab: Tab): NavItem | undefined =>

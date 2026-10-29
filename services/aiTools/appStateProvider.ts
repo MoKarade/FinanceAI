@@ -38,9 +38,9 @@ export function snapshotAppState(): AppState {
         const value = store[key];
         if (value !== undefined) (dataOnly as Record<string, unknown>)[key] = value;
     }
-    validateAppStateShape(dataOnly); // throw clair sur état corrompu — journalisé par l'appelant (agentLoop)
+    validateAppStateShape(dataOnly); // throw clair sur état corrompu — journalisé par l'appelant
     return normalizeAppState(structuredClone(dataOnly));
 }
 
-/** StateProvider (contrat des specs) — capturé UNE fois par envoi dans agentLoop (snapshot cohérent). */
+/** StateProvider (contrat des specs) — capturé UNE fois par appel (snapshot cohérent). */
 export const appStateProvider = async (): Promise<AppState> => snapshotAppState();

@@ -30,8 +30,9 @@ const racine = resolve(process.cwd(), 'components');
 /**
  * Valeur MESURÉE le 2026-10-16 sur `origin/main` (2222ef5) + le correctif du lot (3 boutons de l'écran
  * Dettes) : 349 contrôles sur 494 sans hauteur de 44 px établie. Ne se relève pas sans décision de Marc.
+ * Resserré à 331 le 2026-10-28 : le retrait de l'ancien assistant (FinanceAI#15) emporte 18 contrôles.
  */
-const PLAFOND = 349;
+const PLAFOND = 331;
 
 /** Fichiers qui DOIVENT rester à zéro : le formulaire de dette (#1101) et ses sous-composants. */
 const ZERO = /(^|\/)components\/(DebtManager\.tsx|debt\/)/;

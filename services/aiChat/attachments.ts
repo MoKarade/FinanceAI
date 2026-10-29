@@ -41,16 +41,11 @@ export interface AiAttachmentPayload extends AiAttachmentMeta {
 
 // Bornes honnêtes (l'API Anthropic accepte 5 Mo/image et ~32 Mo/requête ; on reste en dessous
 // pour garder des envois rapides et un coût de tokens raisonnable sur la clé BYOK).
-export const MAX_ATTACHMENTS_PER_MESSAGE = 5;
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;   // 5 Mo (limite API par image)
 // ⚠️ Proxy IMPARFAIT de la vraie contrainte API (~100 pages) : un PDF texte dense de 10 Mo peut
 // dépasser 100 pages et échouer côté API malgré la validation locale (finding panel ai-reviewer).
 export const MAX_PDF_BYTES = 10 * 1024 * 1024;
 export const MAX_TEXT_BYTES = 1 * 1024 * 1024;    // 1 Mo de texte ≈ largement au-delà d'un CSV utile
-// Budget AGRÉGÉ par message (finding panel ÉLEVÉ) : la limite API est ~32 Mo par REQUÊTE et le
-// base64 gonfle de ×4/3 — valider chaque fichier ne suffit pas (3 PDF de 10 Mo passent un à un
-// mais font ~40 Mo encodés → rejet API générique après coup). 20 Mo bruts ≈ 27 Mo base64, marge saine.
-export const MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 /** Somme des octets d'un lot de fichiers/payloads (pour le budget agrégé). */
 export function totalAttachmentBytes(files: Array<{ size: number }>): number {
@@ -60,11 +55,6 @@ export function totalAttachmentBytes(files: Array<{ size: number }>): number {
 const IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 const TEXT_MIMES = new Set(['text/plain', 'text/csv', 'text/markdown', 'application/json']);
 const TEXT_EXTENSIONS = new Set(['txt', 'csv', 'md', 'json', 'tsv', 'log']);
-
-/** Liste `accept` pour l'<input type=file> (source unique UI ↔ validation). */
-export const ATTACHMENT_ACCEPT = [
-    ...IMAGE_MIMES, 'application/pdf', ...TEXT_MIMES, '.txt', '.csv', '.md', '.tsv', '.log',
-].join(',');
 
 type ClassifyResult =
     | { ok: true; kind: AiAttachmentKind; mimeType: string }

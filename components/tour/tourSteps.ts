@@ -17,7 +17,7 @@ interface TourStep {
 
 // [S5-REFONTE-R1] Visite dans l'ordre de la nav : Vue (Futur, Transactions, Budget, Dettes,
 // Placements), Planifier (Retraite, Immobilier, Enfants, Projets de vie), Outils (Impôts,
-// Assistant, Réglages), puis le Profil (carte en pied de barre).
+// Réglages), puis le Profil (carte en pied de barre).
 export const TOUR_STEPS: ReadonlyArray<TourStep> = [
   {
     tab: null,
@@ -73,11 +73,6 @@ export const TOUR_STEPS: ReadonlyArray<TourStep> = [
     tab: Tab.TAX,
     title: '🧮 Impôts',
     body: "Estimation de tes impôts (fédéral + Québec) à partir de ton profil.",
-  },
-  {
-    tab: Tab.ASSISTANT,
-    title: '🤖 Assistant',
-    body: "Pose tes questions financières en langage naturel. Il connaît ton contexte (si tu as activé Claude).",
   },
   {
     tab: Tab.SETTINGS,

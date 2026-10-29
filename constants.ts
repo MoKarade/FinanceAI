@@ -1,8 +1,10 @@
 
 import { BudgetCategory, BudgetConfig, ProjectionConfig, User, RealEstateGoal, ChildGoal, Tab } from "./types";
 
-// [CHAT-PAGE-CONTEXT] Libellés FR des onglets — SOURCE UNIQUE (consommée par TabRouter ET le
-// contexte d'écran du chat, services/aiChat/viewContext.ts). Ne pas redéclarer ailleurs.
+// Dépôt public (depuis le 28/10/2026) : aucune valeur personnelle dans ce fichier ni dans aucun fichier versionné
+// (verrou : tests/guards/donneesPerso.test.ts).
+
+// Libellés FR des onglets — SOURCE UNIQUE (consommée par TabRouter). Ne pas redéclarer ailleurs.
 export const TAB_LABELS: Record<Tab, string> = {
     [Tab.DASHBOARD]: 'Accueil',
     [Tab.TRANSACTIONS]: 'Transactions',
@@ -20,7 +22,6 @@ export const TAB_LABELS: Record<Tab, string> = {
     [Tab.TAX]: 'Impôts',
     [Tab.SETTINGS]: 'Réglages', // [S5-REFONTE] libellés de navigation des maquettes
     [Tab.PROFILE]: 'Profil',
-    [Tab.ASSISTANT]: 'Assistant',
 };
 
 // ============================================================

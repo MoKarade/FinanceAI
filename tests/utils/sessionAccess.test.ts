@@ -20,7 +20,7 @@ describe('verifierSession', () => {
     it('sonde sans donnée, sans suivre les redirections, sans cache', async () => {
         const f = vi.fn(async () => rep({}));
         expect(await verifierSession(f as unknown as typeof fetch)).toBe('ok');
-        expect(f).toHaveBeenCalledWith('/icon.svg', expect.objectContaining({ redirect: 'manual', cache: 'no-store' }));
+        expect(f).toHaveBeenCalledWith('/robots.txt', expect.objectContaining({ redirect: 'manual', cache: 'no-store' }));
     });
     it('redirection reçue : expirée', async () => {
         expect(await verifierSession((async () => rep({ type: 'opaqueredirect', status: 0 })) as unknown as typeof fetch)).toBe('expiree');

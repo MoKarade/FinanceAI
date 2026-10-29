@@ -14,8 +14,6 @@ import { StatementReminder } from './StatementReminder';
 import { Icon } from './ui/Icon';
 import { Badge } from './ui/Badge';
 import { formatCAD, formatSigned, formatNumber } from '../utils/format';
-import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
-import type { BudgetViewDetail } from '../services/aiChat/viewContext';
 import { computeBudgetParity, matchTransactionToCategory, computeActualByOwner, isSavingsNature, type OrphanCategory } from '../utils/budget';
 import { syncBudgetWithTransactionCategories, buildMonthlyLedger, computeMonthlyActualAverages, computeIncomeBreakdown, computeAvgByItem } from '../utils/budgetSync';
 import { DualKPIStat } from './budget/DualKPIStat';
@@ -91,7 +89,7 @@ function civilDaysBetween(a: Date, b: Date): number {
 export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItems, setBudgetItems, apiKey, pilotage }) => {
     const pilotageInterne = useBudgetPilotage();
     const p = pilotage ?? pilotageInterne;
-    const { timeView, periodOffset, personFilter, customStart, customEnd } = p;
+    const { timeView, periodOffset, customStart, customEnd } = p;
     const [inflationSim, setInflationSim] = useState(0);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // Pour le modal
@@ -613,7 +611,7 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
 
     // [A11Y-PRIVACY-CHAINES-RESTANTES] La liste portait « Poste (312 $ dépassé) » en CHAÎNE, et elle
     // a DEUX consommateurs aux règles opposées : le bandeau à l'écran, qui doit masquer le montant,
-    // et le contexte de l'assistant, qui a besoin du chiffre. Une chaîne ne peut pas servir les deux.
+    // et un consommateur qui a besoin du chiffre. Une chaîne ne peut pas servir les deux.
     // Elle porte donc le nom et le dépassement séparément ; chaque consommateur compose le sien.
     const alerts = useMemo(() => {
         const list: Array<{ poste: string; depassement: number }> = [];
@@ -819,102 +817,6 @@ export const Budget: React.FC<BudgetProps> = ({ transactions, config, budgetItem
     // sont implicitement couvertes par coupleAnalysis.totalSavings qui se recalcule avec elles.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastProjection, coupleAnalysis.totalSavings]);
-
-    // [CHAT-PAGE-CONTEXT] Contexte d'écran publié pour le chat : RÉUTILISE STRICTEMENT les valeurs
-    // déjà calculées pour le rendu (totalSpentDisplay/totalBudgetDisplay/totalActualIncomeDisplay/
-    // actualsMap/projectionSummary/alerts) — AUCUNE nouvelle expression arithmétique (« jamais un
-    // 3e chiffre », classes PH4D-BUDGET-RATIOS / BUDGET-INCOME-REAL). Le gate mode discret vit dans
-    // le hook (à la source). [Vague 1.5, demande Marc] TOUTES les cartes de la page + la PROVENANCE
-    // de chaque chiffre (le chat peut expliquer « d'où ça vient », pas seulement le citer).
-    const chatViewDetail = useMemo<BudgetViewDetail>(() => {
-        const { start, end } = getDateRange();
-        // [BUDGET-CUSTOM-PLAGE-INVERSEE] finding panel (MOYEN) : `getDateRange()` permute déjà les
-        // bornes CUSTOM inversées pour tous les calculs $ de cet objet — le libellé doit décrire la
-        // MÊME plage, pas les chaînes brutes `customStart`/`customEnd` (qui resteraient dans l'ordre
-        // saisi par erreur), sinon le chat recevrait un texte contradictoire avec les chiffres à côté.
-        const periodLabel = timeView === 'MONTH'
-            ? new Intl.DateTimeFormat('fr-CA', { month: 'long', year: 'numeric' }).format(start)
-            : timeView === 'QUARTER'
-                ? `T${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()}`
-                : timeView === 'YEAR'
-                    ? String(start.getFullYear())
-                    : `du ${toLocalDateStr(start)} au ${toLocalDateStr(end)}`;
-        const timeViewLabel = timeView === 'MONTH' ? 'mois'
-            : timeView === 'QUARTER' ? 'trimestre'
-                : timeView === 'YEAR' ? 'année' : 'plage personnalisée';
-        const topCategories = Object.entries(actualsMap)
-            .filter(([, spent]) => Number.isFinite(spent) && spent > 0)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([name, spent]) => ({ name, spent }));
-        const personName = personFilter !== null ? config.users[personFilter]?.name?.trim() : '';
-        // Ces cartes ne sont PAS un rendu : elles composent le contexte envoyé à l'assistant IA
-        // (`services/aiChat/viewContext.ts`). [PRIVACY-CONTEXTE-IA] Décision Marc 2026-09-05 :
-        // MASQUER — appliquée EN AMONT : le publisher (`useViewContextPublisher`) purge le détail en
-        // mode discret et le chokepoint d'envoi (`useAiChat`) refuse la ligne de contexte. Ces cartes
-        // ne partent donc jamais en mode discret (prouvé : `useAiChat.viewContext.test.tsx`).
-        // Le jeton `MONTANT-HORS-ECRAN` est répété SUR chaque ligne : la garde lit une fenêtre de
-        // ±2 lignes, et ces cartes sont trop espacées pour qu'une seule marque les couvre.
-        const cards: NonNullable<BudgetViewDetail['cards']> = [
-            {
-                label: 'Revenus (ventilation)',
-                value: `Salaire ${formatCAD(incomeBreakdown.salary)} · Divers ${formatCAD(incomeBreakdown.other)}`, // MONTANT-HORS-ECRAN
-                note: 'revenus RÉELS des transactions de la période (catégories de revenu), pas le salaire déclaré du profil',
-            },
-            {
-                label: 'Statut du budget',
-                value: avgRealIncomeDisplay >= totalBudgetDisplay ? 'Excédentaire' : 'Déficitaire',
-                note: 'compare la moyenne des revenus réels des mois passés à la cible totale du budget',
-            },
-        ];
-        if (timeView === 'MONTH' && periodOffset === 0) {
-            cards.push({
-                label: 'Fin de mois (projection)',
-                value: formatCAD(projectedTotalDisplay), // MONTANT-HORS-ECRAN
-                note: 'dépenses du mois projetées au rythme actuel (réel ÷ avancement du mois) — mois en cours seulement',
-            });
-        }
-        if (projectionSummary) {
-            cards.push({
-                label: 'Impact à long terme',
-                value: formatCAD(projectionSummary.estateNetWorth), // MONTANT-HORS-ECRAN
-                note: `patrimoine successoral projeté en ${projectionSummary.finalYear} (horizon ${projectionSummary.horizonYears} ans), rentes RRQ/PSV incluses — vient de la PROJECTION de l'onglet Futur (lastProjection.estateNetWorth) ; pour comparer avec get_projection, utiliser years=${projectionSummary.horizonYears}`,
-            });
-            if (projectionSummary.savingsSensitivity) {
-                const sens = projectionSummary.savingsSensitivity;
-                cards.push({
-                    label: 'Sensibilité (moteur)',
-                    value: `${formatCAD(sens.extraMonthlySavings)}/mois d'épargne en plus → ${formatSigned(sens.deltaEstateNetWorth, { withCurrency: true })} de patrimoine successoral`, // MONTANT-HORS-ECRAN
-                    note: 'second scénario calculé par la PROJECTION (lastProjection.savingsSensitivity : mêmes hypothèses, dépenses réduites d\'autant) — pas une formule locale',
-                });
-            }
-        }
-        if (timeView === 'MONTH' && alerts.length > 0) {
-            cards.push({
-                label: 'Dépassements détectés',
-                value: `${alerts.length} poste(s) : ${alerts.slice(0, 3).map((a) => `${a.poste} (${formatCAD(a.depassement)} dépassé)`).join(', ')}`, // MONTANT-HORS-ECRAN
-                note: 'postes dont le réel dépasse la cible de la période',
-            });
-        }
-        return {
-            kind: 'budget',
-            timeViewLabel,
-            periodLabel,
-            totalSpent: totalSpentDisplay,
-            totalBudgetTarget: totalBudgetDisplay,
-            totalRealIncome: totalActualIncomeDisplay,
-            topCategories,
-            ...(personName ? { personFilterLabel: personName } : {}),
-            cards,
-        };
-    // getDateRange est recréée à chaque render ; ses VRAIES deps (timeView, periodOffset,
-    // customStart, customEnd — leçon BUDGET-MONTH-NAV : lister TOUS les états qu'elle lit)
-    // sont listées directement, comme le memo incomeBreakdown voisin.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [timeView, periodOffset, customStart, customEnd, totalSpentDisplay, totalBudgetDisplay,
-        totalActualIncomeDisplay, actualsMap, personFilter, config.users, incomeBreakdown,
-        avgRealIncomeDisplay, projectedTotalDisplay, projectionSummary, alerts]);
-    useViewContextPublisher('budget', chatViewDetail);
 
     // [S5-REFONTE-BUDGET] Contrôles de période/personne : dans l'en-tête de page quand l'espace Budget
     // les porte (`pilotage` fourni), sinon ici (Budget rendu seul).

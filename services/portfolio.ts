@@ -271,7 +271,7 @@ export const computeTotalDebt = (
 /**
  * Patrimoine net PRÉSENT = actifs bruts − dettes (CAD). SOURCE UNIQUE du NW présent pour
  * TOUTES les surfaces (Dashboard `useDerivedFinancials`, snapshot IA `financialSnapshot`,
- * `AiAssistant`) — pendant du `computeRawNetWorth` (futur/moteur). Audit 2026-06-17 (H1,
+ * l'ancien assistant (retiré)) — pendant du `computeRawNetWorth` (futur/moteur). Audit 2026-06-17 (H1,
  * AI-CTX-FX) : les surfaces qui recalculaient inline OMETTAIENT les dettes → NW présent
  * gonflé vs moteur. Garde de parité : `tests/services/portfolio.test.ts` (persona endetté).
  */

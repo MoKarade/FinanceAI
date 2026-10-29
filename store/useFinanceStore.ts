@@ -10,6 +10,7 @@ import { migratePersistedState } from './migrationsPersistees';
 import { creerActionsModeTest } from './actionsModeTest';
 import { fusionnerEtatPersiste, surRehydratation, extrairePersistable } from './optionsPersistance';
 import { champsFxApres, type EcritureFx } from '../services/fx/ecritureFx';
+import { brancherCoutIa } from '../services/aiChat/coutIa';
 
 // Phase B2 — Deep-link cross-tab: un onglet pose un "intent" de focus, la page
 // destination le consomme au mount (scroll, highlight, focus, etc.).
@@ -204,3 +205,10 @@ export const useFinanceStore = create<FinanceState>()(
         }
     )
 );
+
+// [COUT-IA-MESURE] Seul écrivain du cumul à vie du coût Claude (FinanceAI#50) : chaque réponse payée,
+// mesurée au point de contact SDK (`services/claude.ts`), s'ajoute ici. Le bloc `usage` du hub le lit.
+brancherCoutIa((coutUsd) => {
+    const s = useFinanceStore.getState();
+    s.setAppState({ aiChatCostUsdTotal: (s.aiChatCostUsdTotal ?? 0) + coutUsd });
+});

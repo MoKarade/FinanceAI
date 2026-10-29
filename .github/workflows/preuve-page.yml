@@ -1,0 +1,39 @@
+name: Preuve de page (classe B)
+
+# Une tâche de FinanceAI dont le « Fini quand » est de classe B (cycle de vie §2 bis de MoKarade/.github) se prouve ici, sans le PC et sans secret :
+# à la fusion d'une PR, le workflow commun lance l'app avec les DONNÉES FICTIVES du mode test (couple Alex/Sam, comme `captures.yml`), lit les pages
+# des lignes « Lecture de page » de la tâche, puis pose « Acceptée » après le déploiement READY. Le commentaire dit que la lecture est fictive.
+# Ce n'est PAS un contrôle exigé : il ne bloque aucune PR. Tâche MoKarade/.github#781.
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  preuve-page:
+    name: Preuve de page
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      checks: read
+      actions: write
+      deployments: read
+    uses: MoKarade/.github/.github/workflows/preuve-page.yml@main
+    with:
+      runner: ${{ github.event.repository.visibility == 'public' && '"ubuntu-latest"' || '["self-hosted","pc-marc"]' }}
+      installation: npm ci
+      demarrage: npx vite --port 3000 --strictPort
+      url: http://localhost:3000
+      stockage-local: |
+        app_onboarding_done=true
+      etapes: |
+        aller /#SETTINGS
+        pointeur 1270 450
+        cliquer-bouton Activer le mode test
+        attendre-texte MODE TEST
+      deploiement: vercel
+      workflows-deploiement: deploy-mcp.yml

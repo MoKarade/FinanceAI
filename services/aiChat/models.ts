@@ -2,7 +2,7 @@
 //
 // [B3-CHAT-MODEL] Source UNIQUE des modèles Claude offerts dans le chat (demande Marc : « choisir
 // quel ia » par conversation). Module LÉGER (zéro import — boot-safe : consommé statiquement par
-// AiChatView/useAiChat). `services/claude.ts` dérive ses constantes MODEL_SONNET/MODEL_HAIKU d'ici
+// l'ancien chat (retiré)). `services/claude.ts` dérive ses constantes MODEL_SONNET/MODEL_HAIKU d'ici
 // (jamais deux littéraux d'id qui divergent — classe « littéral dupliqué à côté de la source »).
 
 import type { AiChatModelKey } from '../../types';
@@ -62,7 +62,3 @@ export function modelLabelFromId(id: string): string {
  */
 export const LOCAL_MODEL_ID = 'gpt-oss-atelier';
 
-/** Vrai si la réponse a été servie par l'IA locale (gratuite, jamais facturée). */
-export function isLocalModel(id: unknown): boolean {
-    return id === LOCAL_MODEL_ID;
-}

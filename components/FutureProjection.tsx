@@ -149,9 +149,6 @@ import { formatCAD, formatCompactCAD } from '../utils/format';
 import { maskedTick } from '../utils/chartPrivacy';
 import { reperesRonds } from '../utils/reperesRonds';
 import { NO_DATA_LABEL } from './ui/emptyAware';
-// [REFONTE-NAV-L6a] Contexte d'écran « Futur » pour l'assistant (patron CHAT-PAGE-CONTEXT).
-import { useViewContextPublisher } from '../hooks/useViewContextPublisher';
-import { buildFutureViewDetail } from '../services/aiChat/futureViewContext';
 import { dayVariation } from '../services/history/dayVariation';
 import { addDay } from '../services/history/reconstructCashHistory';
 
@@ -875,20 +872,6 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         containerRef: zoom.containerEl,
     });
 
-    // [REFONTE-NAV-L6a] Publication du contexte d'écran « Futur » pour l'assistant (chat panneau
-    // ouvert par-dessus cet onglet — patron CHAT-PAGE-CONTEXT, scope-guard + purge mode discret à
-    // la source via useViewContextPublisher). Résumé bâti sur `results` = la courbe AFFICHÉE
-    // (source unique lastProjection, ou son gel PROJECTION-PERSIST quand la courbe est figée) —
-    // JAMAIS un recalcul côté UI. Courbe non visible (gate d'amorçage) → détail « sans
-    // projection » : le prompt l'avoue, zéro chiffre (no-fake-data).
-    // Point sélectionné = modal détail ouvert, sinon infobulle FIGÉE (dernière sélection active).
-    const selectedCurvePoint = detailPoint ?? (selection.mode === 'frozen' ? selection.point : null);
-    const futureViewDetail = useMemo(
-        () => buildFutureViewDetail(curveVisible ? results : null, selectedCurvePoint),
-        [curveVisible, results, selectedCurvePoint],
-    );
-    useViewContextPublisher('future', futureViewDetail);
-
     // [FUTUR-DAILY lot B étape 2] La COURBE elle-même au jour, quand la fenêtre est assez serrée.
     // ⚠️ CORRECTION DE CAP (Marc, 2026-08-11) : « je veux pas voir dans l'info bulle le détail des
     // jours de chaque mois, je veux pouvoir sélectionner chaque jour dans le graph ». La version
@@ -1071,7 +1054,7 @@ export const FutureProjection: React.FC<FutureProjectionProps> = ({
         // l'app reste ouverte, minuit passe, et la Map en cache pour ce mois a été construite avec
         // l'ANCIEN `todayIso` — le jour qui vient de basculer au passé y porte encore sa valeur
         // PROJETÉE. C'est le bug même que cette PR corrige, réapparu côté infobulle. Et comme
-        // l'infobulle FIGÉE alimente le contexte envoyé à l'assistant, la fausse valeur héritait de
+        // l'infobulle FIGÉE sert de référence à l'écran, la fausse valeur héritait de
         // l'autorité d'une « source unique ».
         // ⚠️ Ça ne se voyait pas en pratique : `dailyPastByDate` est une NOUVELLE Map à chaque
         // changement de `todayIso`, ce qui invalidait ce cache par ricochet. Une protection

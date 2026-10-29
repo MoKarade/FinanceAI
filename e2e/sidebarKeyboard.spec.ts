@@ -13,7 +13,7 @@ import { scriptBypassOnboarding, activateTestMode } from './helpers/setup';
 const localChromium = process.env.PW_LOCAL_CHROMIUM;
 if (localChromium) test.use({ launchOptions: { executablePath: localChromium } });
 
-const ORDRE = ['Futur', 'Transactions', 'Budget', 'Dettes', 'Placements', 'Retraite', 'Immobilier', 'Enfants', 'Projets de vie', 'Impôts', 'Assistant', 'Réglages'];
+const ORDRE = ['Futur', 'Transactions', 'Budget', 'Dettes', 'Placements', 'Retraite', 'Immobilier', 'Enfants', 'Projets de vie', 'Impôts', 'Réglages'];
 
 test.describe('Barre latérale — pilotage clavier (S5-REFONTE-R1)', () => {
   test.setTimeout(120_000);

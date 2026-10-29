@@ -12,11 +12,12 @@ export function useTabNavigation(activeTab: Tab, setActiveTab: (tab: Tab) => voi
     useEffect(() => {
         const applyHash = () => {
             const hash = window.location.hash.replace('#', '');
-            // [ASSISTANT-HUB] L'onglet ACTIONS a fusionné dans ASSISTANT : un deep-link/bookmark
-            // #ACTIONS redirige explicitement (jamais un 404 silencieux) et l'URL est réécrite.
-            if (hash === 'ACTIONS') {
-                setActiveTab(Tab.ASSISTANT);
-                window.history.replaceState(null, '', '#ASSISTANT');
+            // L'onglet Assistant est retiré (28/10/2026, tout passe par LIA) et ACTIONS l'avait
+            // fusionné avant lui : un deep-link/bookmark #ASSISTANT ou #ACTIONS redirige
+            // explicitement vers le Futur (jamais un 404 silencieux), l'URL est réécrite.
+            if (hash === 'ACTIONS' || hash === 'ASSISTANT') {
+                setActiveTab(Tab.FUTURE);
+                window.history.replaceState(null, '', '#FUTURE');
                 return;
             }
             // [REFONTE-NAV Lot 1] L'Accueil est retiré : un deep-link/bookmark #DASHBOARD
@@ -52,7 +53,7 @@ export function useTabNavigation(activeTab: Tab, setActiveTab: (tab: Tab) => voi
     useEffect(() => {
         const SHORTCUTS: Array<Tab> = [
             // [REFONTE-NAV Lot 1] Ordre = destinations (Futur d'abord, Accueil retiré).
-            Tab.FUTURE, Tab.TRANSACTIONS, Tab.BUDGET, Tab.ASSISTANT,
+            Tab.FUTURE, Tab.TRANSACTIONS, Tab.BUDGET,
             Tab.PROFILE, Tab.INVESTMENTS, Tab.RETIREMENT, Tab.TAX, Tab.SETTINGS,
         ];
         const onKeyDown = (e: KeyboardEvent) => {

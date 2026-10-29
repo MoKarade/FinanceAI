@@ -10,8 +10,7 @@
         "child": "Enfant",
         "retirement": "Retraite",
         "tax": "Impôts & Docs",
-        "settings": "Paramètres",
-        "assistant": "Assistant IA"
+        "settings": "Paramètres"
     },
     "dashboard": {
         "title": "Vue d'ensemble",

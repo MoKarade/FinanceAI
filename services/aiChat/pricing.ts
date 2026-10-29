@@ -9,7 +9,7 @@
 // ⚠️ Pas des constantes fiscales (FISCAL_REFERENCE hors périmètre) mais bien du
 // money-critical : datées + sourcées, à rafraîchir si Anthropic change ses prix.
 //  - cache READ  = 0,1 × le tarif input (Haiku 5.5), 0,05 × chez Sonnet 5.5 et Opus 5.5 (champ `lectureCache`) ;
-//  - cache WRITE = 1,25 × le tarif input (TTL 5 min — le seul utilisé par le chat, cf. useAiChat
+//  - cache WRITE = 1,25 × le tarif input (TTL 5 min — le seul utilisé par le chat, cf. l'ancien chat (retiré)
 //    `cache_control: ephemeral` sur les pièces jointes ; le TTL 1h/2× n'est pas utilisé ici).
 
 /** Tokens consommés, champs du SDK agrégés sur tous les tours d'une boucle agentique. */

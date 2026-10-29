@@ -801,7 +801,7 @@ export enum Tab {
   INVESTMENTS = 'INVESTMENTS',
   FUTURE = 'FUTURE',
   // NBA-PAGE — « Prochaine action » (ex-widget sidebar) devient un onglet à part.
-  // [ASSISTANT-HUB 2026-07-23] ACTIONS retiré : fusionné dans ASSISTANT (deep-link #ACTIONS redirigé, App.tsx).
+  // ACTIONS puis ASSISTANT retirés (deep-links #ACTIONS et #ASSISTANT redirigés vers Futur, useTabNavigation) ; tout passe par LIA.
   REAL_ESTATE = 'REAL_ESTATE',
   // [REFONTE-NAV-L3] Split immo : REAL_ESTATE = biens ACTUELS (Config), REAL_ESTATE_PROJECTS =
   // projets d'achat FUTURS (Vie). Même tranche de store `realEstateGoals`, partition UI pure.
@@ -817,7 +817,6 @@ export enum Tab {
   // G22-N5 — SYSTEM retiré : fusionné dans Configuration (sous-onglet « Système & diagnostics »).
   // PH3 — onglet PROFIL unifié (regroupe tout le setup utilisateur, ex-« Profil de Configuration »).
   PROFILE = 'PROFILE',
-  ASSISTANT = 'ASSISTANT',
 }
 
 export interface CategorizationRule {
@@ -827,7 +826,7 @@ export interface CategorizationRule {
   createdAt: string;
 }
 
-export interface AiMessage {
+interface AiMessage {
   role: 'user' | 'model';
   text: string;
   /** ISO 8601 string (sérialisable JSON, contrairement à Date qui devient string après reload) */
@@ -1376,7 +1375,7 @@ export interface FintableSyncReport {
 }
 
 /** [B2-CHAT-HISTORY] Une conversation ARCHIVÉE du chat Assistant (l'active vit dans `aiConversation`). */
-export interface AiConversation {
+interface AiConversation {
   id: string;
   /** Titre auto (première question tronquée) — peut porter un montant → zone masquée en mode discret. */
   title: string;

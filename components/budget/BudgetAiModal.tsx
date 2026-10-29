@@ -94,7 +94,7 @@ export const BudgetAiModal: React.FC<BudgetAiModalProps> = ({ apiKey, payload, o
             }
             // [PRIVACY-CONTEXTE-IA] (décision Marc 2026-09-05 : MASQUER) Garde AU SERVICE, pas seulement
             // au clic : l'ouvreur refuse déjà avec un toast, mais le point d'ÉGRESS se garde en propre
-            // — même ceinture que le chokepoint du chat (`useAiChat`, finding #490). Le prompt porte
+            // — même ceinture que le chokepoint du chat (l'ancien chat (retiré), finding #490). Le prompt porte
             // les montants en clair (`MONTANT-HORS-ECRAN`) : il ne se construit même pas.
             if (isPrivacyMode) {
                 setErreur(MESSAGE_DIAGNOSTIC_MODE_DISCRET);

@@ -107,7 +107,7 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 - **Validation** : Zod 3
 - **Charts** : Recharts 3 (lazy-loaded)
 - **Backend** : aucun — 100 % navigateur, déploiement statique **Vercel** (`vercel.json`)
-- **LLM** : Anthropic Claude (Haiku 4.5 + Sonnet 4.6 + Opus 4.8 via `@anthropic-ai/sdk` — choix du modèle par conversation, coût réel CAD)
+- **LLM** : Anthropic Claude (famille 5.5 : Haiku + Sonnet + Opus via `@anthropic-ai/sdk` — modèle fixé par usage, réglages dans `services/aiChat/reglages.ts`)
 - **Vision** : Claude Vision pour OCR relevés/paies PDF
 - **Data marché** : Finnhub REST API (cours actions + ETF, cache 1h) ; CoinGecko (crypto)
 - **Sync** : Google Drive (chiffrement optionnel par passphrase, AES-256-GCM)
@@ -160,14 +160,12 @@ L'architecture détaillée est maintenue dans [`docs/ARCHITECTURE.md`](docs/ARCH
 - Zéro transmission de PII — toutes les données restent dans le navigateur
 
 ### Assistant IA
-- Chat persisté Claude avec contexte financier complet (tools de lecture/écriture partagés avec le MCP)
-- Le chat voit la page affichée : sur Budget, il connaît la période naviguée, les dépenses réelles et cibles de l'écran — « explique-moi ce chiffre » répond sur le chiffre visible, pas un recalcul
-- Modèle au choix PAR conversation : Haiku / Sonnet (défaut) / Opus — le choix suit la conversation
-- Coût API réel affiché en CAD (par réponse, par conversation, total cumulé) — tokens facturés × tarif
-- Onglet dédié avec historique multi-conversations (sync Drive) + pièces jointes (images, PDF, CSV)
-- Haiku 4.5 pour les tâches rapides (catégorisation, suggestions)
-- Réponses streamées avec bouton annulation
-- Privacy : aucune PII envoyée
+- **LIA** (l'assistant du hub perso, lia-ui) est la seule interface d'assistant ; l'ancien onglet Assistant, sa bulle flottante et son chat intégré sont retirés (28-29/10/2026, FinanceAI#15). Ses pouvoirs sur les chiffres de l'app arrivent avec MemoryAI#281
+- Connecteur MCP `financeAImcp` : Claude.ai lit les chiffres et écrit avec confirmation à deux temps (aperçu puis jeton, rien n'est écrit sans accord)
+- Dans l'app : diagnostic budget (streamé, annulable), suggestions Planning, catégorisation (Haiku), lecture de talon de paie et de relevés ; les écritures de Impôts et du talon de paie passent par le modal « Appliquer » (diff avant → après)
+- Modèles : Haiku (tâches rapides) / Sonnet (défaut) / Opus, famille 5.5
+- Mode discret : aucun montant n'est envoyé à l'IA ; aucune PII envoyée
+- Les anciennes conversations enregistrées ne sont ni lues ni effacées
 
 ### Accessibilité
 - Contraste WCAG AA vérifié (script `scripts/check-contrast.ts`)

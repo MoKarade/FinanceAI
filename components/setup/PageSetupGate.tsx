@@ -417,7 +417,7 @@ const SoftSetupBanner: React.FC<{ title: string; requirements: Requirement[]; cu
 // ────────────────────────────────────────────────────────────── Gate ───────
 /**
  * `verrouille` : écran propre à la page, rendu À LA PLACE de l'écran générique tant que les
- * prérequis manquent ([S5-REFONTE-ASSISTANT] l'Assistant montre un aperçu + sa carte d'activation).
+ * prérequis manquent (l'écran verrouillé montre un aperçu + sa carte d'activation).
  */
 export const PageSetupGate: React.FC<{ tab: Tab; children: React.ReactNode; verrouille?: React.ReactNode }> = ({ tab, children, verrouille }) => {
     const config = PAGE_SETUP[tab];

@@ -26,6 +26,10 @@ import type { DeviseTaux, PointTaux } from './magasinMarche';
 /** Symbole EODHD : `TICKER.PLACE` (ex. forme `ABC.US`, `XYZ.PA`). Lettres, chiffres, point, tiret. */
 const SYMBOLE_EODHD = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)?$/;
 
+/** Un symbole EODHD bien formé ? (Le fichier de cibles refuse un symbole mal formé avant tout appel.) */
+export const symboleEodhdValide = (symbole: unknown): symbole is string =>
+    typeof symbole === 'string' && SYMBOLE_EODHD.test(symbole);
+
 function exigerDate(d: string, nom: string): void {
     if (jourUtcDepuisD(d) === null) throw new Error(`${nom} illisible`);
 }

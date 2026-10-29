@@ -11,6 +11,7 @@ import { makeStateStore, type StateStore } from './state/stateStore';
 import { DriveStateSource } from './drive/driveStateSource';
 import { makeDriveTokenProvider } from './drive/tokenProvider';
 import { resolveCredentialsBackend } from './auth/credentialsBackend';
+import { creerStoreMarcheDrive, type StoreMarche } from './marche/storeMarche';
 
 export const MCP_SERVER_VERSION = '0.11.0';
 
@@ -48,6 +49,8 @@ export interface ResolvedState {
     isDrive: boolean;
     /** Renseigné si la source est Google Drive (compte autorisé). */
     driveEmail: string | null;
+    /** [MARCHE-STORE] Fichier Drive du magasin de marché ; absent sans Drive (la route répond alors 503). */
+    marche?: StoreMarche | null;
     /** Description humaine de la source (pour les logs de démarrage). */
     describe: () => string;
 }
@@ -58,8 +61,10 @@ export interface ResolvedState {
 export async function resolveState(explicitPath?: string): Promise<ResolvedState> {
     const backend = resolveCredentialsBackend();
     const driveCreds = await backend.load();
-    const source: StateSource | null = driveCreds
-        ? new DriveStateSource(makeDriveTokenProvider({ backend }))
+    // Un seul fournisseur de jeton pour l'état ET le magasin de marché : un seul cache, un seul refresh.
+    const tokenProvider = driveCreds ? makeDriveTokenProvider({ backend }) : null;
+    const source: StateSource | null = tokenProvider
+        ? new DriveStateSource(tokenProvider)
         : resolveDefaultStateSource(explicitPath);
     const store = makeStateStore(source);
     const driveEmail = driveCreds?.email ?? null;
@@ -71,5 +76,5 @@ export async function resolveState(explicitPath?: string): Promise<ResolvedState
         if (source) return source.description;
         return "aucune source d'état";
     };
-    return { source, store, isDrive: Boolean(driveCreds), driveEmail, describe };
+    return { source, store, isDrive: Boolean(driveCreds), driveEmail, describe, marche: tokenProvider ? creerStoreMarcheDrive(tokenProvider) : null };
 }

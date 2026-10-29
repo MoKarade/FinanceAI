@@ -171,10 +171,40 @@ else
   echo "             Pour l'activer : crée le secret puis redéploie (cf mcp/README.md § Bail du véhicule)."
 fi
 
+# [MARCHE-ROUTE] POST /market-store — met à jour le magasin de marché (clôtures EODHD, taux de la Banque
+# du Canada) dans son fichier Drive. OPTIONNEL, même logique : monté seulement si le secret de la route
+# existe (`financeai-market-secret`), sinon la route reste désactivée (404). La clé EODHD
+# (`financeai-eodhd-key`, plan gratuit : 20 appels par jour) est montée avec elle ; sans clé, chaque appel
+# répond 503 et le dit. Autorisé par Marc le 28/10/2026.
+#
+# ⚠️ ESSAI À BLANC PAR DÉFAUT : tant que MARKET_LIVE n'est pas posé à 1 (variable GitHub MCP_MARKET_LIVE, ou
+# MARKET_LIVE=1 sur la ligne de commande), la route calcule son plan sans rien appeler ni écrire. Le geste
+# qui l'allume est celui de Marc : il passe par ce script, pas par la console (--set-env-vars remplace l'existant).
+MARKET_ENV=""
+if gcloud secrets describe financeai-market-secret --project "$PROJECT_ID" >/dev/null 2>&1; then
+  SECRETS="${SECRETS},FINANCEAI_MARKET_SECRET=financeai-market-secret:latest"
+  echo "  Marché : secret financeai-market-secret trouvé → POST /market-store ACTIF."
+  if gcloud secrets describe financeai-eodhd-key --project "$PROJECT_ID" >/dev/null 2>&1; then
+    SECRETS="${SECRETS},FINANCEAI_EODHD_KEY=financeai-eodhd-key:latest"
+  else
+    echo "           ⚠️ MAIS financeai-eodhd-key absent → chaque appel répondra 503."
+  fi
+  if [ "${MARKET_LIVE:-}" = "1" ]; then
+    MARKET_ENV=",FINANCEAI_MARKET_LIVE=1"
+    echo "           Écriture RÉELLE (MARKET_LIVE=1)."
+  else
+    echo "           ESSAI À BLANC (MARKET_LIVE absent) : rien n'est appelé ni écrit."
+  fi
+else
+  echo "  Marché : secret financeai-market-secret absent → POST /market-store désactivé (404)."
+  echo "           Pour l'activer : crée financeai-market-secret et financeai-eodhd-key puis redéploie."
+fi
+
 # [MCP-ACCESS-KEY-MIN] ACCESS_KEY_STRICT=1 (ou la variable GitHub MCP_ACCESS_KEY_STRICT) → FINANCEAI_ACCESS_KEY_STRICT=1 :
 # une clé d'accès de moins de 32 caractères ferme alors /oauth/authorize (le reste du serveur continue). Posée ICI parce que
 # --set-env-vars REMPLACE l'existant : une variable ajoutée à la main dans la console serait effacée au déploiement suivant.
 ENV_VARS="FINANCEAI_GOOGLE_SECRET=projects/${PROJECT_ID}/secrets/financeai-google-refresh,FINANCEAI_PUBLIC_URL=${PUBLIC_URL},FINANCEAI_BUILD_SHA=${BUILD_SHA}"
+ENV_VARS="${ENV_VARS}${MARKET_ENV}"
 if [ "${ACCESS_KEY_STRICT:-}" = "1" ]; then
   ENV_VARS="${ENV_VARS},FINANCEAI_ACCESS_KEY_STRICT=1"
 fi

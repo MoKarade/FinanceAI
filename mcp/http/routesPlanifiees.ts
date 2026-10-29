@@ -16,6 +16,9 @@ import { FintableClient } from '../../services/fintable/client';
 import type { FintableMappingConfig } from '../../services/fintable/mapSnapshot';
 import { isStateConflictError } from '../state/stateErrors';
 import { configureMarketDataProvider } from '../../services/marketData';
+import type { LecteursMarche } from '../../services/marche/passeMagasin';
+import { runPasseMarche } from '../marche/runMarche';
+import { FichierMarcheIllisibleError, type StoreMarche } from '../marche/storeMarche';
 import { HUB_NO_STORE, hubTokensMatch, sendJson } from './plomberie';
 
 /** Le store d'état résolu (blob local ou Drive) — même objet que celui du serveur. */
@@ -29,6 +32,9 @@ type StoreEtat = ResolvedState['store'];
 // non nul, seul son contenu devient un code stable.
 export const ERREUR_CONFLIT_ETAT = 'conflit-etat';
 export const ERREUR_PANNE_ETAT = 'panne-etat';
+const ERREUR_CLE_EODHD_ABSENTE = 'cle-eodhd-absente';
+const ERREUR_STORE_MARCHE_ABSENT = 'store-marche-absent';
+const ERREUR_FICHIER_MARCHE_ILLISIBLE = 'fichier-marche-illisible';
 
 const detailErreur = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
@@ -64,6 +70,50 @@ export const handleRefresh = (req: IncomingMessage, res: ServerResponse, store: 
             }
             console.error('[FinanceAI MCP http] /refresh : échec —', detailErreur(err));
             sendJson(res, 503, { ok: false, error: ERREUR_PANNE_ETAT }, HUB_NO_STORE);
+        });
+};
+
+// [MARCHE-ROUTE] POST /market-store — met à jour le magasin de marché (clôtures EODHD, taux de la Banque du
+// Canada) dans SON fichier Drive, séparé de l'état de l'app. Déclenché par un job planifié EXTERNE (GitHub
+// Actions), authentifié par un secret DÉDIÉ (il autorise une écriture Drive et dépense le quota EODHD).
+// Réponses : 200 { ok:true, ecrit, cibles, rapport } (rapport = compteurs, JAMAIS un titre ni un cours : le
+// journal du workflow est public) ; 200 { ok:false, conflict:true } si le fichier a changé entre-temps
+// (transitoire) ; 503 sans clé EODHD, sans Drive, fichier illisible ou panne réelle (le job rougit).
+// Tant que `live` est faux : ESSAI À BLANC — le plan est calculé, rien n'est appelé, rien n'est écrit.
+export const handleMarketStore = (
+    req: IncomingMessage, res: ServerResponse, store: StoreMarche | null, secret: string,
+    cleEodhd: string | undefined, live: boolean, lecteurs: (cle: string) => LecteursMarche,
+    maintenant: () => Date = () => new Date(),
+): void => {
+    if (req.method !== 'POST') {
+        sendJson(res, 405, { error: 'POST uniquement.' }, HUB_NO_STORE);
+        return;
+    }
+    const header = req.headers.authorization;
+    const provided = typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : '';
+    if (!provided || !hubTokensMatch(provided, secret)) {
+        sendJson(res, 401, { error: 'Authorization: Bearer absent ou invalide.' }, HUB_NO_STORE);
+        return;
+    }
+    if (!cleEodhd) {
+        sendJson(res, 503, { ok: false, error: ERREUR_CLE_EODHD_ABSENTE }, HUB_NO_STORE);
+        return;
+    }
+    if (!store) {
+        sendJson(res, 503, { ok: false, error: ERREUR_STORE_MARCHE_ABSENT }, HUB_NO_STORE);
+        return;
+    }
+    runPasseMarche(store, lecteurs(cleEodhd), { maintenant: maintenant(), essaiABlanc: !live })
+        .then((resultat) => sendJson(res, 200, { ok: true, essaiABlanc: !live, ...resultat }, HUB_NO_STORE))
+        .catch((err: unknown) => {
+            if (isStateConflictError(err)) {
+                sendJson(res, 200, { ok: false, conflict: true, error: ERREUR_CONFLIT_ETAT }, HUB_NO_STORE);
+                return;
+            }
+            // Le texte de l'exception peut porter une URL de source : il ne va ni au journal ni à l'appelant.
+            const code = err instanceof FichierMarcheIllisibleError ? ERREUR_FICHIER_MARCHE_ILLISIBLE : ERREUR_PANNE_ETAT;
+            console.error(`[FinanceAI MCP http] /market-store : échec — ${code}`);
+            sendJson(res, 503, { ok: false, error: code }, HUB_NO_STORE);
         });
 };
 

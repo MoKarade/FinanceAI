@@ -532,6 +532,17 @@ curl -sS "$MCP_URL/vehicule/bail" -H "Authorization: Bearer $FINANCEAI_VEHICULE_
 # → {"ok":true,"statut":"trouve","bail":{"nom":"<nom de la dette>","solde":<solde>,"mensualite":<mensualité>,…}}
 ```
 
+## Magasin de marché — POST /market-store (MARCHE-ROUTE)
+
+Met à jour le **magasin de marché** (clôtures brutes EODHD, taux datés de la Banque du Canada) dans son propre fichier Drive `financeai-marche.json` (appDataFolder), **séparé de l'état de l'app** (ADR 0019 §3). Cette route en est le seul écrivain.
+
+- **Secrets** (Secret Manager, montés par `mcp/deploy.sh` seulement s'ils existent) : `financeai-market-secret` (le Bearer de la route, ≥ 16 caractères, distinct des autres) et `financeai-eodhd-key` (la clé EODHD, plan gratuit : 20 appels par jour). Sans le premier la route n'existe pas (404) ; sans la seconde elle répond 503.
+- **Essai à blanc par défaut** : sans `MARKET_LIVE=1` au déploiement (variable GitHub `MCP_MARKET_LIVE` pour le déploiement continu), la route calcule son plan, n'appelle aucune source et n'écrit rien. Allumer l'écriture réelle est un geste de Marc.
+- **Réponses** : `200 { ok:true, essaiABlanc, ecrit, cibles, rapport }` (le rapport ne contient que des compteurs : jamais un titre, un ISIN, un cours ni la clé, car le journal du workflow appelant est public) ; `200 { ok:false, conflict:true }` si le fichier a changé entre la lecture et l'écriture (transitoire) ; `503` sans clé (`cle-eodhd-absente`), sans Drive (`store-marche-absent`), fichier illisible (`fichier-marche-illisible`) ou panne réelle (`panne-etat`) ; `405` hors POST ; `401` sans Bearer valide.
+- **Concurrence** : le fichier porte un compteur `rev` ; l'écriture n'a lieu que si le fichier porte encore le `rev` lu.
+- **Cibles** : tant que le fichier ne liste aucune cible (`cibles`, ISIN → symbole EODHD, posées par la résolution #23), la passe n'a rien à lire et n'écrit rien. La liste vit dans le fichier Drive privé, jamais dans le dépôt.
+- **Fraîcheur** : le jour de la passe est celui du Québec.
+
 ## Sync Fintable planifiée — POST /fintable-sync (FINTABLE-3)
 
 Même besoin que le refresh de prix, mais pour les **transactions bancaires, soldes liquides et

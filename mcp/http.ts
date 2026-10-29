@@ -42,7 +42,9 @@ import type { FintableMappingConfig } from '../services/fintable/mapSnapshot';
 import { parseRolesJson } from '../services/fintable/rolesConfig';
 import { BodyTooLargeError, hubTokensMatch, readBody, sendJson, sendRpcError } from './http/plomberie';
 import { handleOAuth } from './http/oauth';
-import { handleFintableSync, handleHubSummary, handleRefresh, handleVehiculeBail } from './http/routesPlanifiees';
+import { handleFintableSync, handleHubSummary, handleMarketStore, handleRefresh, handleVehiculeBail } from './http/routesPlanifiees';
+import { creerLecteursReseau } from './marche/lecteursReseau';
+import type { LecteursMarche } from '../services/marche/passeMagasin';
 
 /** Délai de grâce de l'arrêt : au-delà, fermeture FORCÉE des connexions (sinon une requête en vol
  *  suspendue bloque `server.close()` à jamais → SIGKILL Cloud Run — prouvé par le panel 2026-07-13). */
@@ -92,6 +94,17 @@ export interface HttpServerOptions {
      *  Absent = sélection par kind/catégorie, et refus 409 si elle est ambiguë. */
     vehiculeNomDette?: string;
     fintableRoles?: FintableMappingConfig['roles'];
+    /** [MARCHE-ROUTE] secret du déclencheur planifié du magasin de marché : si présent, POST /market-store est
+     *  exposé (Authorization: Bearer, 401 sinon). Absent = route désactivée (404). DISTINCT des autres secrets. */
+    marketSecret?: string;
+    /** [MARCHE-ROUTE] clé EODHD (Secret Manager). Absente : la route répond 503, rien n'est appelé. */
+    eodhdKey?: string;
+    /** [MARCHE-ROUTE] false (défaut) = ESSAI À BLANC : le plan est calculé, rien n'est appelé ni écrit. */
+    marketLive?: boolean;
+    /** [MARCHE-ROUTE] lectures réseau (injectables pour les tests ; défaut : EODHD + Banque du Canada). */
+    marketLecteurs?: (cleEodhd: string) => LecteursMarche;
+    /** [MARCHE-ROUTE] horloge de la route (injectable pour les tests). */
+    marketMaintenant?: () => Date;
     /** [MCP-RATE-LIMIT] Garde de débit des routes (injectable pour les tests ; défaut : plafonds de `routeRateLimit.ts`). */
     rateGuard?: RouteGuard;
     /** [MCP-RATE-LIMIT] Limiteur d'échecs de /oauth/authorize (injectable pour les tests ; défaut : 8 par adresse, 200 global). */
@@ -283,6 +296,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
             case '/refresh': return egal(bearer, options.refreshSecret);
             case '/fintable-sync': return egal(bearer, options.fintableSyncSecret);
             case '/vehicule/bail': return egal(bearer, options.vehiculeSecret);
+            case '/market-store': return egal(bearer, options.marketSecret);
         }
     };
 
@@ -293,6 +307,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
         ...(options.refreshSecret ? ['/refresh'] : []),
         ...(options.fintableSyncSecret ? ['/fintable-sync'] : []),
         ...(options.vehiculeSecret ? ['/vehicule/bail'] : []),
+        ...(options.marketSecret ? ['/market-store'] : []),
     ];
 
     const server = createHttpServer((req, res) => {
@@ -315,6 +330,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
         const routeLimitee: LimitedRoute | null =
             url === '/mcp' || (url === '/hub/summary' && options.hubToken) || (url === '/refresh' && options.refreshSecret)
             || (url === '/fintable-sync' && options.fintableSyncSecret) || (url === '/vehicule/bail' && options.vehiculeSecret)
+            || (url === '/market-store' && options.marketSecret)
                 ? (url as LimitedRoute) : null;
         if (routeLimitee) {
             // VÉRIFIER D'ABORD, REFUSER APRÈS : un secret valide n'est jamais bloqué par un compteur d'échecs, et une
@@ -345,6 +361,13 @@ export async function startHttpServer(options: HttpServerOptions): Promise<Runni
         }
         if (url === '/vehicule/bail' && options.vehiculeSecret) {
             handleVehiculeBail(req, res, state.store, options.vehiculeSecret, options.vehiculeNomDette);
+            return;
+        }
+        if (url === '/market-store' && options.marketSecret) {
+            handleMarketStore(
+                req, res, state.marche ?? null, options.marketSecret, options.eodhdKey, options.marketLive === true,
+                options.marketLecteurs ?? ((cle) => creerLecteursReseau(cle)), options.marketMaintenant,
+            );
             return;
         }
         if (options.autorisationBloquee && url === '/oauth/authorize') {
@@ -517,6 +540,17 @@ if (isDirectRun) {
         }
         const vehiculeNomDette = process.env.FINANCEAI_VEHICULE_DETTE;
 
+        // [MARCHE-ROUTE] secret du cron du magasin de marché (POST /market-store) : optionnel (route
+        // désactivée sans lui), mais jamais faible — il autorise une ÉCRITURE Drive et dépense le quota EODHD.
+        const marketSecret = process.env.FINANCEAI_MARKET_SECRET;
+        if (marketSecret !== undefined && marketSecret.length < 16) {
+            console.error('[FinanceAI MCP http] REFUS de démarrer : FINANCEAI_MARKET_SECRET trop court (< 16 caractères).');
+            process.exit(1);
+        }
+        const eodhdKey = process.env.FINANCEAI_EODHD_KEY;
+        // Essai à blanc tant que ce drapeau n'est pas posé À LA MAIN sur le service (geste de Marc).
+        const marketLive = process.env.FINANCEAI_MARKET_LIVE === '1';
+
         const fintableToken = process.env.FINTABLE_TOKEN;
         let fintableRoles: FintableMappingConfig['roles'] | undefined;
         if (fintableSyncSecret) {
@@ -547,7 +581,7 @@ if (isDirectRun) {
         const state = await resolveState(process.argv[2]);
         const running = await startHttpServer({
             port, host, state, dnsRebindingProtection: isLoopback, auth, hubToken, refreshSecret, finnhubKey,
-            fintableSyncSecret, fintableToken, fintableRoles, vehiculeSecret, vehiculeNomDette,
+            fintableSyncSecret, fintableToken, fintableRoles, vehiculeSecret, vehiculeNomDette, marketSecret, eodhdKey, marketLive,
             cleAccesFaible: cleAcces.faible, autorisationBloquee: cleAcces.refuser,
         });
 
@@ -568,6 +602,9 @@ if (isDirectRun) {
         console.error(vehiculeSecret
             ? `[FinanceAI MCP http] Bail du véhicule : GET /vehicule/bail ACTIF (Bearer exigé)${vehiculeNomDette ? ' — dette nommée par FINANCEAI_VEHICULE_DETTE' : ' — dette choisie par kind/catégorie'}.`
             : '[FinanceAI MCP http] Bail du véhicule : /vehicule/bail désactivé (FINANCEAI_VEHICULE_TOKEN absent).');
+        console.error(marketSecret
+            ? `[FinanceAI MCP http] Magasin de marché : POST /market-store ACTIF (Bearer exigé) — ${marketLive ? 'ÉCRITURE réelle' : 'ESSAI À BLANC (FINANCEAI_MARKET_LIVE absent)'}${eodhdKey ? '' : ' — SANS clé EODHD : chaque appel répondra 503'}.`
+            : '[FinanceAI MCP http] Magasin de marché : /market-store désactivé (FINANCEAI_MARKET_SECRET absent).');
         if (isLoopback) {
             console.error('[FinanceAI MCP http] Mode LOCAL : loopback seulement, anti-DNS-rebinding actif.');
         } else if (!auth) {

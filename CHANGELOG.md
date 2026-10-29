@@ -34,6 +34,12 @@
 - Les vérifications tournent désormais sur les machines GitHub (gratuites) au lieu du robot unique du PC : une PR n'attend plus une demi-heure.
 - Les numéros d'issues ont changé : voir la correspondance dans `HANDOVER.md`.
 
+## 2026-10-28 — Magasin de marché : la route serveur qui tient les cours et les taux à jour (#24)
+
+- Nouvelle route `POST /market-store` sur le serveur : elle lit le fichier de cours séparé sur ton Drive, relit les clôtures (EODHD) et les taux (Banque du Canada) en retard, dans la limite du plan gratuit, et l'écrit sans jamais écraser un changement survenu entre-temps.
+- **Éteinte tant que tu ne l'allumes pas** : sans le secret de la route elle n'existe pas ; sans le drapeau d'écriture (`MARKET_LIVE=1` au déploiement) elle ne fait qu'un essai à blanc. Elle ne rend que des compteurs, jamais un titre ni un cours.
+- Pas encore de cible à lire : la liste des titres (ISIN et symbole EODHD) vient de la résolution #23.
+
 ## 2026-10-28 — Comptes courtier : le total de chaque compte, l'heure exacte de lecture et le taux appliqué (#29)
 
 - La carte « Comptes courtier (Fintable) » détaille maintenant chaque compte d'un panier : son total en CAD, son montant dans sa devise d'origine avec le taux de change réellement appliqué, et l'heure exacte de la lecture (heure du Québec). Le total d'un panier se vérifie ainsi compte par compte contre l'écran du courtier.

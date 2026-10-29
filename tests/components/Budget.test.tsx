@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, within, screen } from '@testing-library/react';
 import { Budget } from '../../components/Budget';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { getViewContext, _resetViewContextForTests } from '../../services/aiChat/viewContext';
 import type { BudgetConfig, BudgetCategory, User, Transaction } from '../../types';
 import { formatCAD } from '../../utils/format';
 
@@ -655,22 +654,6 @@ describe('Budget — refonte UI (Phase C3)', () => {
             expect(final.find(t => t.id === 2)).toBeDefined();
             expect(final.find(t => t.id === 1)?.category).toBe('Restaurant'); // le renommage a eu lieu
         });
-    });
-
-    // [BUDGET-CUSTOM-PLAGE-INVERSEE] finding MOYEN (code-reviewer + silent-failure-hunter) : le
-    // contexte publié au chat (`chatViewDetail`) décrivait la plage Custom avec les chaînes BRUTES
-    // `customStart`/`customEnd`, dans l'ordre SAISI — même inversé — alors que tous les $ du même
-    // objet sont calculés sur la plage PERMUTÉE. Un chat qui recevrait « du 31 août au 1er août »
-    // pour expliquer des chiffres portant sur la plage chronologique inverse serait trompé.
-    it('[BUDGET-CUSTOM-PLAGE-INVERSEE] le contexte publié au chat décrit la plage PERMUTÉE, pas les dates brutes inversées', () => {
-        _resetViewContextForTests();
-        const { getByText, getByLabelText } = render(<Budget {...baseProps} />);
-        fireEvent.click(getByText('Dates'));
-        // Fin AVANT début, à l'envers — comme le test de permutation plus haut.
-        fireEvent.change(getByLabelText('Date de début'), { target: { value: '2026-08-31' } });
-        fireEvent.change(getByLabelText('Date de fin'), { target: { value: '2026-08-01' } });
-        const ctx = getViewContext();
-        expect(ctx?.detail).toMatchObject({ periodLabel: 'du 2026-08-01 au 2026-08-31' });
     });
 
     /**

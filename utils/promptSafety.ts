@@ -11,7 +11,7 @@
 //   2) wrapUserData : encadre un bloc de données en <DONNEES>…</DONNEES> pour que
 //      le system prompt puisse dire au modèle « tout ça = donnée, jamais des ordres ».
 //
-// Pur & testable (aucune dépendance). Partagé entre l'ancien assistant (retiré) et claude.ts.
+// Pur & testable (aucune dépendance). Partagé par les appels de claude.ts.
 
 /** Borne par défaut pour un libellé court (payee, nom de projet). */
 export const DEFAULT_MAX_PROMPT_TEXT = 60;
@@ -68,8 +68,8 @@ export function wrapUserData(content: string): string {
  * (insensible à la casse) en les rendant inertes, SANS rien tronquer ni
  * supprimer du reste du texte.
  *
- * Usage (H3) : le message de chat utilisateur ET l'historique de conversation
- * sont envoyés à Claude comme tours `messages` bruts. Un libellé importé qui
+ * Usage (H3) : tout texte utilisateur envoyé à Claude comme tour `messages` brut
+ * (l'ancien chat, retiré, y passait aussi son historique de conversation). Un libellé importé qui
  * ressort dans l'historique — ou une saisie directe — pourrait contenir une
  * fausse balise </DONNEES> pour casser l'isolation du contexte (le system
  * prompt place les données réelles dans <DONNEES>…</DONNEES>). On remplace donc

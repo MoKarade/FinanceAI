@@ -1,9 +1,10 @@
 // tests/aiTools/toolSchemaContract.test.ts
 //
-// [S5-ZOD4] La garde de parité (`tests/mcp/writeToolParity.test.ts`) prouve que claude.ai et le chat
-// in-app reçoivent le MÊME JSON Schema. Elle ne voit pas une dérive qui toucherait les DEUX côtés à la
-// fois — c'est exactement ce que fait un changement de convertisseur (zod 3 → zod 4, 24/09/2026 : les
-// deux surfaces ont perdu `additionalProperties: false` ensemble, parité toujours verte).
+// [S5-ZOD4] La garde de parité (`tests/mcp/writeToolParity.test.ts`) prouve que le serveur MCP et le
+// registre disent la même chose. Elle ne voit pas une dérive du convertisseur lui-même — zod 3 → zod 4
+// (24/09/2026) a fait perdre `additionalProperties: false` à toutes les surfaces à la fois, parité
+// toujours verte. (Le chat in-app, seconde surface, a été retiré le 29/10/2026, FinanceAI#15 ; le
+// convertisseur de ce test reprend ses options : `z.toJSONSchema`, draft-7, côté entrée.)
 // Ce fichier fige le CONTRAT que le modèle lit, indépendamment du convertisseur :
 //   - schéma d'entrée = objet, sans clé méta `$schema` (hors contrat `Tool.InputSchema` d'Anthropic) ;
 //   - tout est INLINE : aucun `$ref` / `$defs` / `definitions` (le SDK Anthropic n'en attend pas) ;
@@ -13,11 +14,21 @@
 
 import { describe, it, expect } from 'vitest';
 import { READ_SPECS, WRITE_SPECS } from '../../services/aiTools/registry';
-import { toAnthropicTools } from '../../services/aiTools/toAnthropicTools';
+import { z } from 'zod';
+import type { AnyToolSpec } from '../../mcp/tools/_toolSpec';
 
 type Schema = Record<string, unknown>;
 
-const tools = toAnthropicTools([...READ_SPECS, ...WRITE_SPECS]);
+/** Mêmes options que le SDK MCP pour un schéma zod 4 (draft-7, côté entrée) ; la clé méta `$schema` est retirée. */
+function versSchemasModele(specs: readonly AnyToolSpec[]): Array<{ name: string; input_schema: Record<string, unknown> }> {
+    return specs.map((spec) => {
+        const schema = z.toJSONSchema(z.object(spec.inputSchema), { target: 'draft-7', io: 'input' }) as Record<string, unknown>;
+        delete schema.$schema;
+        return { name: spec.name, input_schema: schema };
+    });
+}
+
+const tools = versSchemasModele([...READ_SPECS, ...WRITE_SPECS]);
 const byName = new Map(tools.map((t) => [t.name, t.input_schema as unknown as Schema]));
 
 function schemaOf(name: string): Schema {

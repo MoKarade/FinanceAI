@@ -35,8 +35,8 @@ export function setHistorySyncReport(report: HistorySyncReport): void {
         try {
             l();
         } catch (e) {
-            // Un listener UI qui jette ne doit pas casser les autres ni l'hydratation (même
-            // patron que les callbacks isolés d'agentLoop).
+            // Un listener UI qui jette ne doit pas casser les autres ni l'hydratation (les
+            // callbacks sont isolés).
             logError({ source: 'ui', severity: 'warning', message: 'Listener de diagnostic de sync en échec (ignoré).', error: e instanceof Error ? e : new Error(String(e)) });
         }
     }

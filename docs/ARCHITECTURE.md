@@ -263,11 +263,7 @@ pour les analyses ciblées (budget, talons de paie, abonnements, immobilier). Le
 (avant le 28/10/2026)  User input ──► AiAssistant.tsx ──► claude.chatStream(messages, apiKey, { system: generateContext() })
 ```
 
-**Injection du contexte de page** (vague 1, PR #490) : le `system` prompt inclut via
-`services/aiChat/viewContext.ts` un registre de l'onglet actif (`TAB_LABELS`) et, pour
-Budget, les détails de la période naviguée (dépenses réelles, cible, revenus, top 3
-catégories, filtre) — le contexte est capturé SYNCHRONE au moment du clic Envoyer et figé
-pour toute la réponse (pas de dérive si l'utilisateur navigue).
+**Contexte de page** : retiré le 29/10/2026 (lot 2 de FinanceAI#15) avec le chat, seul lecteur du registre de l'onglet actif et des détails publiés par Budget et Futur (`viewContext`, `useViewContextPublisher`). LIA ne lit pas ce registre : elle reçoit la question, la page et le propriétaire par `api/lia/ask`. Ses pouvoirs sur les chiffres de l'app viennent de FinanceAI#14 et de MemoryAI#281. L'ADR 0005 reste pour mémoire.
 
 **Séparation des modèles** :
 - `claude-sonnet-5-5` — chat, analyses budget, suggestions Planning, vision payslip (28/10/2026 : famille 5.5, réglages dans `services/aiChat/reglages.ts` ; `temperature` supprimée, refusée par ces modèles)
@@ -286,10 +282,10 @@ pour toute la réponse (pas de dérive si l'utilisateur navigue).
 **Frontière spec/register des tools MCP** (Lot A du chantier Claude-in-app, 2026-07-21, ADR-1) :
 chaque tool est scindé en `mcp/tools/<x>.spec.ts` (logique métier PURE, browser-safe : nom,
 description, schéma zod, handler/toDocument — types dans `_toolSpec.ts`) et `mcp/tools/<x>.tool.ts`
-(enregistrement serveur MINCE, seul autorisé à importer `@modelcontextprotocol/sdk`). Deux
-consommateurs des specs : le serveur MCP (`server.tool(...)`) et, à venir, le chat Claude in-app
-(`services/aiTools/` → SDK Anthropic tool-use). Exclus de la parité : `ping` (trivial) et
-`connect_drive` (OAuth loopback Node, sans équivalent in-app — l'app EST la source de données).
+(enregistrement serveur MINCE, seul autorisé à importer `@modelcontextprotocol/sdk`). Le
+consommateur des specs est le serveur MCP (`server.tool(...)`, pour claude.ai et LIA) ; le chat Claude
+in-app qui devait en être le second a été retiré le 29/10/2026 (FinanceAI#15). Exclus de la parité :
+`ping` (trivial) et `connect_drive` (OAuth loopback Node, sans équivalent dans l'app).
 Gardes : `tests/aiTools/noMcpSdkInSpecs.test.ts` (frontière + tools minces, volume prouvé) ;
 parité mesurée par capture d'enregistrement (worktree HEAD vs courant : 16 tools identiques).
 

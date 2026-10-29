@@ -7,9 +7,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { chat, analyzeBankStatement, analyzePayslip, MODEL_HAIKU, MODEL_SONNET } from '../../services/claude';
-import { runAgentLoop, type AgentClientLike } from '../../services/aiTools/agentLoop';
-import { TEST_PERSONAS } from '../../services/testPersonas';
-import { normalizeAppState } from '../../mcp/state/loadAppState';
 
 const ok = (text: string) => new Response(JSON.stringify({
     id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-sonnet-5-5',
@@ -71,26 +68,5 @@ describe('requêtes de la génération 5.5', () => {
         expect(corps[0].output_config).toEqual({ effort: 'medium' });
         expect(corps[0].max_tokens).toBe(1024);
         expect(corps[0]).not.toHaveProperty('temperature');
-    });
-
-    it('runAgentLoop : effort moyen, plafond 8192 par tour, sans temperature', async () => {
-        const requests: Array<Record<string, unknown>> = [];
-        const client: AgentClientLike = {
-            messages: {
-                stream: (params) => {
-                    requests.push(params as unknown as Record<string, unknown>);
-                    return {
-                        on: () => undefined,
-                        finalMessage: async () => ({ content: [{ type: 'text', text: 'ok' }], stop_reason: 'end_turn' }) as never,
-                    };
-                },
-            },
-        };
-        const etat = normalizeAppState(TEST_PERSONAS.find((p) => p.id === 'karim-immigre')!.build());
-        await runAgentLoop([{ role: 'user', content: 'bonjour' }], { apiKey: 'sk-test', getState: async () => etat, client });
-        expect(requests).toHaveLength(1);
-        expect(requests[0].output_config).toEqual({ effort: 'medium' });
-        expect(requests[0].max_tokens).toBe(8192);
-        expect(requests[0]).not.toHaveProperty('temperature');
     });
 });

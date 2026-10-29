@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-29 — Le coût IA publié au hub est de nouveau mesuré (#50)
+
+- Depuis le retrait de l'ancien chat, le coût Claude publié au hub restait figé à 0 $ alors que la catégorisation, Planning, Impôts et la lecture des talons et relevés coûtaient de vrais dollars. Chaque réponse payée est maintenant comptée (jetons × tarif du modèle) et s'ajoute au cumul que le hub affiche.
+- Un appel dont le coût ne peut pas être mesuré (modèle sans tarif, réponse sans compteur) n'ajoute rien et le dit dans la console : jamais un coût inventé.
+
+## 2026-10-29 — Ancien assistant : les textes sont rangés (#15, lot 3)
+
+- Le README décrit maintenant LIA et le connecteur MCP au lieu du chat intégré, et la barre du bas annonce Futur, Transactions, Budget, Plus.
+- L'écran de bienvenue ne promet plus un assistant qui « te conseille » dans l'app. Aucun chiffre ni comportement ne change.
+
+## 2026-10-29 — Ancien assistant : le moteur du chat est retiré (#15, lot 2b)
+
+- Le moteur de l'ancien chat (boucle d'outils, prompt système, aiguillage des outils, conversion des schémas) est supprimé : plus rien dans l'app ne l'appelait depuis le retrait de l'écran. Les outils restent servis par le serveur MCP (claude.ai, LIA) ; rien ne change à l'écran ni dans les chiffres.
+
+## 2026-10-29 — Ancien assistant : le contexte d'écran est retiré (#15, lot 2a)
+
+- Budget et Futur ne préparent plus de résumé de l'écran pour l'ancien chat, qui n'existe plus. Rien ne change à l'écran ni dans les chiffres.
+
 ## 2026-10-28 — L'app s'installe de nouveau : manifeste et icônes lisibles sans connexion (#39)
 
 - `finance.hubperso.com/manifest.webmanifest` (et les icônes) répondait par une redirection vers la connexion du hub, ce qui bloquait l'installation de l'app et la vérification du hub. Ces fichiers, sans aucune donnée, sont maintenant publics ; tout le reste reste derrière la session du hub.

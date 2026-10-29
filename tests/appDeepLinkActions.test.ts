@@ -1,8 +1,8 @@
 // tests/appDeepLinkActions.test.ts
 //
-// [ASSISTANT-HUB — Test C du plan architect] Le deep-link `#ACTIONS` (bookmark/lien partagé d'avant
-// la fusion) doit REDIRIGER vers ASSISTANT — jamais un 404 silencieux (l'onglet ACTIONS n'existe
-// plus dans l'enum). App.tsx n'est pas rendable en test (providers lourds) → verrou par TEST-SCAN
+// Les deep-links `#ACTIONS` (fusionné dans l'Assistant) et `#ASSISTANT` (retiré le 28/10/2026, tout
+// passe par LIA) doivent REDIRIGER vers FUTURE — jamais un 404 silencieux (ni l'un ni l'autre
+// n'existe plus dans l'enum). App.tsx n'est pas rendable en test (providers lourds) → verrou par TEST-SCAN
 // du source, volume prouvé (convention FISC-CONST-LINT / leçon « App non-rendable »).
 
 import { describe, it, expect } from 'vitest';
@@ -14,27 +14,27 @@ import { Tab } from '../types';
 // telle quelle) — la garde suit le code, le FAIT défendu ne change pas.
 const src = readFileSync(resolve(process.cwd(), 'hooks/useTabNavigation.ts'), 'utf8');
 
-describe('deep-link #ACTIONS → ASSISTANT (useTabNavigation, scan du source)', () => {
+describe('deep-links #ACTIONS et #ASSISTANT → FUTURE (useTabNavigation, scan du source)', () => {
     it('volume prouvé : le fichier scanné est bien le hook de navigation entier', () => {
         // Mesuré 2026-09-04 : ~4 100 caractères (le hook est plus petit qu'App.tsx entier).
         expect(src.length).toBeGreaterThan(2500);
         expect(src).toContain('applyHash');
     });
 
-    it('le redirect explicite existe AVANT le check générique (hash ACTIONS → Tab.ASSISTANT + URL réécrite)', () => {
-        const redirectIdx = src.indexOf("hash === 'ACTIONS'");
+    it('le redirect explicite existe AVANT le check générique (hash ACTIONS ou ASSISTANT → Tab.FUTURE + URL réécrite)', () => {
+        const redirectIdx = src.indexOf("hash === 'ACTIONS' || hash === 'ASSISTANT'");
         const genericIdx = src.indexOf('Object.values(Tab).includes(hash');
         expect(redirectIdx).toBeGreaterThan(-1);
         expect(genericIdx).toBeGreaterThan(-1);
         expect(redirectIdx).toBeLessThan(genericIdx); // sinon le check générique rejette ACTIONS en silence
         const redirectBlock = src.slice(redirectIdx, redirectIdx + 400);
-        expect(redirectBlock).toContain('setActiveTab(Tab.ASSISTANT)');
-        expect(redirectBlock).toContain("replaceState(null, '', '#ASSISTANT')");
+        expect(redirectBlock).toContain('setActiveTab(Tab.FUTURE)');
+        expect(redirectBlock).toContain("replaceState(null, '', '#FUTURE')");
     });
 
-    it('ACTIONS a bien disparu de l\'enum Tab (le redirect est le SEUL chemin restant)', () => {
+    it('ACTIONS et ASSISTANT ont bien disparu de l\'enum Tab (le redirect est le SEUL chemin restant)', () => {
         expect(Object.values(Tab)).not.toContain('ACTIONS');
-        expect(Object.values(Tab)).toContain('ASSISTANT');
+        expect(Object.values(Tab)).not.toContain('ASSISTANT');
     });
 });
 

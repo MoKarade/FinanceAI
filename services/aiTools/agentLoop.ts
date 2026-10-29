@@ -36,7 +36,7 @@ const DEFAULT_TURN_TIMEOUT_MS = 60_000;
 const DEFAULT_MAX_TOKENS = 8192;
 
 /** Sous-ensemble STRUCTUREL du client Anthropic utilisé par la boucle (injectable en test). */
-export interface AgentStreamLike {
+interface AgentStreamLike {
     on(event: 'text', cb: (delta: string) => void): unknown;
     finalMessage(): Promise<Anthropic.Message>;
 }
@@ -89,7 +89,7 @@ interface AgentLoopResult {
     /** Renseigné quand stopReason === 'error' (message technique, déjà journalisé via logError). */
     errorMessage?: string;
     /** Historique complet (avec blocs tool_use/tool_result) de CET envoi. ⚠️ État réel (finding
-     *  panel) : le consommateur actuel (useAiChat) le JETTE à chaque tour — les tours suivants
+     *  panel) : le consommateur actuel (l'ancien chat (retiré)) le JETTE à chaque tour — les tours suivants
      *  repartent du transcript TEXTE seul, et le modèle re-consulte les tools au besoin (lecture
      *  idempotente sur le même état → mêmes chiffres). Jamais persisté/synchronisé (ADR-4). */
     messages: Anthropic.MessageParam[];
@@ -287,7 +287,7 @@ export async function runAgentLoop(
         // [B4-CHAT-COST] Le tour a abouti : ses tokens sont facturés — cumulés quel que soit le
         // dénouement de la boucle (une annulation au tour 3 a quand même payé les tours 1-2).
         // [IA-LOCALE] Sauf si le tour a été servi par l'IA LOCALE (relais → passerelle Ollama) : il n'est
-        // PAS facturé, ses tokens n'entrent donc pas dans l'usage (useAiChat le chiffrerait sinon au tarif
+        // PAS facturé, ses tokens n'entrent donc pas dans l'usage (l'ancien chat (retiré) le chiffrerait sinon au tarif
         // du modèle Claude DEMANDÉ — un coût inventé).
         if (!isLocalModel(msg.model)) usage = addUsage(usage, usageFromMessage(msg));
 
@@ -361,7 +361,7 @@ export async function runAgentLoop(
         // est re-servi du cache (lecture 0,1×). NB budget de 4 marqueurs PAR REQUÊTE : tools (1) +
         // system statique (1) + dernière pièce jointe B1 (≤1) + celui-ci (1) = 4 → on RETIRE le
         // marqueur posé au tour précédent avant d'en poser un nouveau (sinon 5 au tour 3 → erreur API).
-        // ⚠️ Vérifier l'état réel (leçon PM-STALE-BACKLOG) : entre deux ENVOIS, useAiChat reconstruit
+        // ⚠️ Vérifier l'état réel (leçon PM-STALE-BACKLOG) : entre deux ENVOIS, l'ancien chat (retiré) reconstruit
         // l'historique en TEXTE seul (aucun tool_result resoumis) — le coût était bien INTRA-boucle ;
         // une troncature aurait cassé la continuité du cache au lieu de l'exploiter.
         if (lastToolResultMarked) delete lastToolResultMarked.cache_control;

@@ -75,11 +75,6 @@ export const TOUR_STEPS: ReadonlyArray<TourStep> = [
     body: "Estimation de tes impôts (fédéral + Québec) à partir de ton profil.",
   },
   {
-    tab: Tab.ASSISTANT,
-    title: '🤖 Assistant',
-    body: "Pose tes questions financières en langage naturel. Il connaît ton contexte (si tu as activé Claude).",
-  },
-  {
     tab: Tab.SETTINGS,
     title: '⚙️ Réglages',
     body: "Tes clés API, ta sauvegarde, la sync et les diagnostics — tout est ici, en sous-onglets. C'est aussi d'ici que tu relances cette visite.",

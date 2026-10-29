@@ -79,7 +79,7 @@ describe('[A11Y-HOVER-ONLY-ACTIONS] pas d\'action masquée au doigt', () => {
         // ANTI-VACUITÉ : le pattern SAIN doit exister, sinon le scan ne lit rien d'utile — un
         // « aucun offender » sur un scan qui ne matche jamais rien ne prouve strictement rien.
         expect(occurrencesSaines, 'aucune occurrence saine trouvée → le scan ne lit pas ce qu\'il croit')
-            .toBeGreaterThanOrEqual(5);
+            .toBeGreaterThanOrEqual(4); // 5 avant le retrait de l'ancien assistant (FinanceAI#15), qui en portait un
         expect(offenders, `Action(s) masquée(s) au doigt :\n${offenders.join('\n')}`).toEqual([]);
     });
 

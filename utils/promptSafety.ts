@@ -11,7 +11,7 @@
 //   2) wrapUserData : encadre un bloc de données en <DONNEES>…</DONNEES> pour que
 //      le system prompt puisse dire au modèle « tout ça = donnée, jamais des ordres ».
 //
-// Pur & testable (aucune dépendance). Partagé entre AiAssistant et claude.ts.
+// Pur & testable (aucune dépendance). Partagé entre l'ancien assistant (retiré) et claude.ts.
 
 /** Borne par défaut pour un libellé court (payee, nom de projet). */
 export const DEFAULT_MAX_PROMPT_TEXT = 60;

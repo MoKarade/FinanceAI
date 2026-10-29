@@ -41,6 +41,12 @@
 - Les cours périmés (titre plus coté depuis longtemps) restent hors de la courbe. Les vraies clôtures arriveront avec la tâche serveur du magasin de marché (#1162).
 - Nouvel outil `scripts/diagnosticCourbe.ts` (#1324) : nomme le titre derrière chaque saut du total.
 
+## 2026-10-28 — L'ancien assistant est retiré : tout passe par LIA (#15)
+
+- Plus d'onglet Assistant ni de bulle flottante : tu parles à LIA (l'orbe, le clic droit). La barre du bas montre Futur, Transactions, Budget et « Plus ».
+- Pour l'instant LIA ne lit pas encore tes chiffres ni n'écrit à ta place dans FinanceAI ; ça vient avec les pouvoirs de LIA (MemoryAI#281).
+- Le tour guidé passe à 14 étapes. Les conversations déjà enregistrées ne sont pas effacées.
+
 ## 2026-10-28 — Google Drive : déconnexion après 30 jours d'inactivité au lieu de 8 h (#1319)
 
 - Tu restes connecté tant que tu ouvres l'app au moins une fois par mois. Le minuteur est plafonné pour ne pas tirer aussitôt sur un seuil de 30 jours.

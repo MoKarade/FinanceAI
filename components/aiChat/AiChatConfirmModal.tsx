@@ -46,7 +46,7 @@ interface AiChatConfirmModalProps {
 }
 
 export const AiChatConfirmModal: React.FC<AiChatConfirmModalProps> = ({ preview, onDecision }) => {
-    // [revue #608, FAIBLE] Le refus automatique en mode discret vit dans un `useEffect` (useAiChat,
+    // [revue #608, FAIBLE] Le refus automatique en mode discret vit dans un `useEffect` (l'ancien chat (retiré),
     // PayslipUploadCard) : un effet s'exécute APRÈS la peinture. Si le mode discret est DÉJÀ actif
     // quand une confirmation s'ouvre, le diff — avec ses montants réels — s'affiche une frame avant
     // d'être annulé. Le garde de RENDU ferme ce trou pour les DEUX surfaces d'un coup : on ne rend

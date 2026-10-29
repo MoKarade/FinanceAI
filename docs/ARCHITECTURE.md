@@ -249,11 +249,18 @@ Classification des actifs — Répartitions géo/secteur
 ## 6. IA — pipeline composé
 
 ```
-User input ──► AiAssistant.tsx
+User input ──► LIA (@mokarade/lia-ui, orbe et menu du clic droit)
                  │
-                 └─► claude.chatStream(messages, apiKey, { system: generateContext() })
-                      └─ Anthropic SDK (model: claude-sonnet-5-5)
-                         └─ Stream chunks → UI
+                 └─► api/lia/ask ──► MemoryAI (lecture seule, aucun outil, aucun pouvoir pour l'instant)
+```
+
+Depuis le 28/10/2026 (FinanceAI#15, demande de Marc) il n'y a plus de chat dans l'app : l'onglet Assistant, la
+bulle flottante et `AiChatView` sont retirés, tout passe par LIA. Les services `claude.ts` ci-dessous restent
+pour les analyses ciblées (budget, talons de paie, abonnements, immobilier). Les pouvoirs de LIA (lire les chiffres,
+écrire avec confirmation) arrivent avec MemoryAI#281.
+
+```
+(avant le 28/10/2026)  User input ──► AiAssistant.tsx ──► claude.chatStream(messages, apiKey, { system: generateContext() })
 ```
 
 **Injection du contexte de page** (vague 1, PR #490) : le `system` prompt inclut via

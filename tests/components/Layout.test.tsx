@@ -130,7 +130,7 @@ describe('Layout', () => {
         expect(aside.className, 'largeur fixe, plus de rail au survol').toContain('w-[232px]');
         const nav = within(aside).getByRole('navigation', { name: 'Navigation principale' });
         const textes = within(nav).getAllByRole('button').map((b) => b.textContent?.trim());
-        expect(textes).toEqual(['Futur', 'Transactions', 'Budget', 'Dettes', 'Placements', 'Retraite', 'Immobilier', 'Enfants', 'Projets de vie', 'Impôts', 'Assistant', 'Réglages']);
+        expect(textes).toEqual(['Futur', 'Transactions', 'Budget', 'Dettes', 'Placements', 'Retraite', 'Immobilier', 'Enfants', 'Projets de vie', 'Impôts', 'Réglages']);
         for (const titre of ['Vue', 'Planifier', 'Outils']) expect(within(nav).getByText(titre)).toBeInTheDocument();
         expect(within(nav).queryAllByRole('button').some((b) => b.hasAttribute('aria-expanded')), 'plus d\'accordéon').toBe(false);
     });
@@ -154,17 +154,18 @@ describe('Layout', () => {
         const setActiveTab = vi.fn();
         render(<Layout {...baseProps} setActiveTab={setActiveTab} />);
         const mobileNav = screen.getByRole('navigation', { name: 'Navigation mobile' });
-        for (const label of ['Futur', 'Transactions', 'Assistant']) {
+        // 3e bouton : Budget (choix de Marc, 28/10/2026, à la place de l'ancien Assistant ; LIA répond par son menu et son orbe)
+        for (const label of ['Futur', 'Transactions', 'Budget']) {
             expect(within(mobileNav).getByText(label)).toBeInTheDocument();
         }
         fireEvent.click(within(mobileNav).getByRole('button', { name: "Plus d'options" }));
         const menu = screen.getByRole('navigation', { name: 'Autres destinations' });
-        for (const label of ['Budget', 'Dettes', 'Placements', 'Retraite', 'Immobilier', 'Enfants', 'Projets de vie', 'Impôts', 'Réglages']) {
+        for (const label of ['Dettes', 'Placements', 'Retraite', 'Immobilier', 'Enfants', 'Projets de vie', 'Impôts', 'Réglages']) {
             const btns = within(menu).getAllByRole('button').filter(b => b.textContent?.replace('›', '').trim() === label);
             expect(btns.length, `« ${label} » = un bouton du menu`).toBe(1);
         }
-        fireEvent.click(within(menu).getByText('Budget'));
-        expect(setActiveTab).toHaveBeenCalledWith(Tab.BUDGET);
+        fireEvent.click(within(menu).getByText('Dettes'));
+        expect(setActiveTab).toHaveBeenCalledWith(Tab.DEBT);
     });
 
     it('[S5-REFONTE-R1] menu « Plus » : le Profil y est, Échap le referme', () => {

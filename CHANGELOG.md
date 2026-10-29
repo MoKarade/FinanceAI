@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-29 — Le coût IA publié au hub est de nouveau mesuré (#50)
+
+- Depuis le retrait de l'ancien chat, le coût Claude publié au hub restait figé à 0 $ alors que la catégorisation, Planning, Impôts et la lecture des talons et relevés coûtaient de vrais dollars. Chaque réponse payée est maintenant comptée (jetons × tarif du modèle) et s'ajoute au cumul que le hub affiche.
+- Un appel dont le coût ne peut pas être mesuré (modèle sans tarif, réponse sans compteur) n'ajoute rien et le dit dans la console : jamais un coût inventé.
+
 ## 2026-10-29 — Ancien assistant : les textes sont rangés (#15, lot 3)
 
 - Le README décrit maintenant LIA et le connecteur MCP au lieu du chat intégré, et la barre du bas annonce Futur, Transactions, Budget, Plus.

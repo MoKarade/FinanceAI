@@ -22,6 +22,7 @@ import { Transaction, RecurringItem } from '../types';
 import { logError } from './errorLogger';
 import { sanitizePromptText, wrapUserData, VISION_INJECTION_GUARD, marquerSystemFictif, type SystemTextBlock } from '../utils/promptSafety';
 import { modeDonneesFictives } from '../store/modeTestActif';
+import { signalerUsageIa } from './aiChat/coutIa';
 import { isInternalTransferLabel } from '../utils/transactionParser';
 import { MODEL_IDS } from './aiChat/models';
 import { reglagesConversation, reglagesLecture } from './aiChat/reglages';
@@ -283,6 +284,7 @@ export async function chat(
             system: systemPourAppel(options.system),
             messages,
         }, { signal });
+        signalerUsageIa(options.model ?? MODEL_SONNET, response.usage);
         // La réponse Anthropic est un array de content blocks; on concatène les text.
         // Tier 🟡 : flatMap type-safe — `block.type === 'text'` narrow le bloc, donc
         // `block.text` est accessible SANS cast `as` (le filter+map+cast perdait le narrowing).
@@ -320,6 +322,9 @@ export async function* chatStream(
                 yield event.delta.text;
             }
         }
+        // Flux terminé normalement : l'usage final existe. Un flux annulé ne passe pas ici (coût partiel non mesuré).
+        const final = await stream.finalMessage();
+        signalerUsageIa(options.model ?? MODEL_SONNET, final.usage);
     } finally {
         cleanup();
     }
@@ -1112,6 +1117,7 @@ export const analyzePayslip = async (file: File, apiKey: string): Promise<Paysli
         }],
     }, { signal });
     cleanup();
+    signalerUsageIa(MODEL_SONNET, response.usage); // payé même si la réponse est tronquée ou refusée
     if (response.stop_reason === 'max_tokens') throw new VisionTronqueeError('fiche de paie');
     if (response.stop_reason === 'refusal') throw new VisionReponseInvalideError('refus du classificateur de contenu');
 
@@ -1211,6 +1217,7 @@ RÉPONDS UNIQUEMENT avec un JSON Array strict (aucun markdown, aucun commentaire
         }],
     }, { signal });
     cleanup();
+    signalerUsageIa(MODEL_SONNET, response.usage); // payé même si la réponse est tronquée ou refusée
     if (response.stop_reason === 'max_tokens') throw new VisionTronqueeError('relevé');
     if (response.stop_reason === 'refusal') throw new VisionReponseInvalideError('refus du classificateur de contenu');
 

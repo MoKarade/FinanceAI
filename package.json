@@ -41,7 +41,7 @@
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@mokarade/hub-contract": "github:MoKarade/hub-contract#v1.5.0",
     "@mokarade/lia-ui": "github:MoKarade/lia-ui#v0.43.0",
-    "@sentry/node": "^11.10.0",
+    "@sentry/node": "^11.11.0",
     "@vercel/functions": "^3.10.5",
     "i18next": "^26.5.12",
     "jose": "6.2.14",
